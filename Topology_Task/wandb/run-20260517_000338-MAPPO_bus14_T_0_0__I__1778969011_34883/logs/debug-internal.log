@@ -1,0 +1,17 @@
+{"time":"2026-05-17T00:03:38.958245+02:00","level":"INFO","msg":"stream: starting","core version":"0.25.0"}
+{"time":"2026-05-17T00:03:39.176187+02:00","level":"INFO","msg":"stream: created new stream","id":"MAPPO_bus14_T_0_0__I__1778969011_34883"}
+{"time":"2026-05-17T00:03:39.176387+02:00","level":"INFO","msg":"handler: started","stream_id":"MAPPO_bus14_T_0_0__I__1778969011_34883"}
+{"time":"2026-05-17T00:03:39.177149+02:00","level":"INFO","msg":"stream: started","id":"MAPPO_bus14_T_0_0__I__1778969011_34883"}
+{"time":"2026-05-17T00:03:39.177158+02:00","level":"INFO","msg":"writer: started","stream_id":"MAPPO_bus14_T_0_0__I__1778969011_34883"}
+{"time":"2026-05-17T00:03:39.177267+02:00","level":"INFO","msg":"sender: started","stream_id":"MAPPO_bus14_T_0_0__I__1778969011_34883"}
+{"time":"2026-05-17T15:05:08.57658+02:00","level":"INFO","msg":"flowcontrol: backed up, offloading to disk","recordNumber":4585}
+{"time":"2026-05-17T15:05:08.576642+02:00","level":"INFO","msg":"flowcontrol: unblocked","totalOffloaded":1}
+{"time":"2026-05-17T15:05:08.576937+02:00","level":"INFO","msg":"flowcontrol: backed up, offloading to disk","recordNumber":4619}
+{"time":"2026-05-17T15:05:08.577075+02:00","level":"INFO","msg":"flowcontrol: unblocked","totalOffloaded":30}
+{"time":"2026-05-17T15:05:08.577076+02:00","level":"INFO","msg":"flowcontrol: backed up, offloading to disk","recordNumber":4649}
+{"time":"2026-05-17T15:05:08.577108+02:00","level":"INFO","msg":"flowcontrol: unblocked","totalOffloaded":4}
+{"time":"2026-05-17T15:05:08.577408+02:00","level":"INFO","msg":"stream: closing","id":"MAPPO_bus14_T_0_0__I__1778969011_34883"}
+{"time":"2026-05-17T15:05:09.534472+02:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2026-05-17T15:05:09.755573+02:00","level":"INFO","msg":"handler: closed","stream_id":"MAPPO_bus14_T_0_0__I__1778969011_34883"}
+{"time":"2026-05-17T15:05:09.755982+02:00","level":"INFO","msg":"sender: closed","stream_id":"MAPPO_bus14_T_0_0__I__1778969011_34883"}
+{"time":"2026-05-17T15:05:09.756058+02:00","level":"INFO","msg":"stream: closed","id":"MAPPO_bus14_T_0_0__I__1778969011_34883"}

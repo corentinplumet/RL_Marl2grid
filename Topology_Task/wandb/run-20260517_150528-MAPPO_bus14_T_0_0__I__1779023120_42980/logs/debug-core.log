@@ -1,0 +1,7 @@
+{"time":"2026-05-17T15:05:28.281716+02:00","level":"INFO","msg":"main: starting server","port-filename":"/var/folders/63/v61dj1054sbcfszdkhh2jnbwrgcr5p/T/tmp0ywwvui6/port-201.txt","pid":201,"log-level":0,"disable-analytics":false,"shutdown-on-parent-exit":false,"enable-dcgm-profiling":false}
+{"time":"2026-05-17T15:05:28.282162+02:00","level":"INFO","msg":"server: will exit if parent process dies","ppid":201}
+{"time":"2026-05-17T15:05:28.282157+02:00","level":"INFO","msg":"server: accepting connections","addr":{"Name":"/var/folders/63/v61dj1054sbcfszdkhh2jnbwrgcr5p/T/wandb-201-294-2384588996/socket","Net":"unix"}}
+{"time":"2026-05-17T15:05:28.4783+02:00","level":"INFO","msg":"connection: ManageConnectionData: new connection created","id":"1"}
+{"time":"2026-05-17T15:05:28.521682+02:00","level":"INFO","msg":"handleInformInit: received","streamId":"MAPPO_bus14_T_0_0__I__1779023120_42980","id":"1"}
+{"time":"2026-05-17T15:05:28.764375+02:00","level":"INFO","msg":"handleInformInit: stream started","streamId":"MAPPO_bus14_T_0_0__I__1779023120_42980","id":"1"}
+{"time":"2026-05-17T15:05:34.194446+02:00","level":"INFO","msg":"connection: cancelling request","id":"1","requestId":"2ge8vp5zy9xn"}

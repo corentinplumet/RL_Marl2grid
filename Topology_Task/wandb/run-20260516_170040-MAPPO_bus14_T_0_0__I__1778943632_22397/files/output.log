@@ -1,0 +1,86 @@
+Traceback (most recent call last):
+  File "/Users/nejjar/Desktop/RL_Marl2grid/Topology_Task/alg/mappo/core.py", line 152, in __init__
+    envs.step(action)
+  File "/Users/nejjar/Desktop/RL_Marl2grid/Topology_Task/env/wrappers.py", line 63, in step
+    return self.step_wait()
+           ^^^^^^^^^^^^^^^^
+  File "/Users/nejjar/Desktop/RL_Marl2grid/Topology_Task/env/wrappers.py", line 50, in step_wait
+    results = [remote.recv() for remote in self.remotes]
+               ^^^^^^^^^^^^^
+  File "/Users/nejjar/anaconda3/envs/marl2grid_iclr/lib/python3.12/multiprocessing/connection.py", line 250, in recv
+    buf = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "/Users/nejjar/anaconda3/envs/marl2grid_iclr/lib/python3.12/multiprocessing/connection.py", line 430, in _recv_bytes
+    buf = self._recv(4)
+          ^^^^^^^^^^^^^
+  File "/Users/nejjar/anaconda3/envs/marl2grid_iclr/lib/python3.12/multiprocessing/connection.py", line 395, in _recv
+    chunk = read(handle, remaining)
+            ^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/nejjar/Desktop/RL_Marl2grid/Topology_Task/main.py", line 125, in <module>
+    main(parser.parse_known_args()[0])
+  File "/Users/nejjar/Desktop/RL_Marl2grid/Topology_Task/main.py", line 58, in main
+    ALGORITHMS[alg](envs, run_name, start_time, args, checkpoint)
+  File "/Users/nejjar/Desktop/RL_Marl2grid/Topology_Task/alg/mappo/core.py", line 344, in __init__
+    envs.close()
+  File "/Users/nejjar/Desktop/RL_Marl2grid/Topology_Task/env/wrappers.py", line 69, in close
+    self.step_wait()
+  File "/Users/nejjar/Desktop/RL_Marl2grid/Topology_Task/env/wrappers.py", line 50, in step_wait
+    results = [remote.recv() for remote in self.remotes]
+               ^^^^^^^^^^^^^
+  File "/Users/nejjar/anaconda3/envs/marl2grid_iclr/lib/python3.12/multiprocessing/connection.py", line 250, in recv
+    buf = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "/Users/nejjar/anaconda3/envs/marl2grid_iclr/lib/python3.12/multiprocessing/connection.py", line 430, in _recv_bytes
+    buf = self._recv(4)
+          ^^^^^^^^^^^^^
+  File "/Users/nejjar/anaconda3/envs/marl2grid_iclr/lib/python3.12/multiprocessing/connection.py", line 399, in _recv
+    raise EOFError
+EOFError
+Traceback (most recent call last):
+  File "/Users/nejjar/Desktop/RL_Marl2grid/Topology_Task/alg/mappo/core.py", line 152, in __init__
+    envs.step(action)
+  File "/Users/nejjar/Desktop/RL_Marl2grid/Topology_Task/env/wrappers.py", line 63, in step
+    return self.step_wait()
+           ^^^^^^^^^^^^^^^^
+  File "/Users/nejjar/Desktop/RL_Marl2grid/Topology_Task/env/wrappers.py", line 50, in step_wait
+    results = [remote.recv() for remote in self.remotes]
+               ^^^^^^^^^^^^^
+  File "/Users/nejjar/anaconda3/envs/marl2grid_iclr/lib/python3.12/multiprocessing/connection.py", line 250, in recv
+    buf = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "/Users/nejjar/anaconda3/envs/marl2grid_iclr/lib/python3.12/multiprocessing/connection.py", line 430, in _recv_bytes
+    buf = self._recv(4)
+          ^^^^^^^^^^^^^
+  File "/Users/nejjar/anaconda3/envs/marl2grid_iclr/lib/python3.12/multiprocessing/connection.py", line 395, in _recv
+    chunk = read(handle, remaining)
+            ^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/nejjar/Desktop/RL_Marl2grid/Topology_Task/main.py", line 125, in <module>
+    main(parser.parse_known_args()[0])
+  File "/Users/nejjar/Desktop/RL_Marl2grid/Topology_Task/main.py", line 58, in main
+    ALGORITHMS[alg](envs, run_name, start_time, args, checkpoint)
+  File "/Users/nejjar/Desktop/RL_Marl2grid/Topology_Task/alg/mappo/core.py", line 344, in __init__
+    envs.close()
+  File "/Users/nejjar/Desktop/RL_Marl2grid/Topology_Task/env/wrappers.py", line 69, in close
+    self.step_wait()
+  File "/Users/nejjar/Desktop/RL_Marl2grid/Topology_Task/env/wrappers.py", line 50, in step_wait
+    results = [remote.recv() for remote in self.remotes]
+               ^^^^^^^^^^^^^
+  File "/Users/nejjar/anaconda3/envs/marl2grid_iclr/lib/python3.12/multiprocessing/connection.py", line 250, in recv
+    buf = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "/Users/nejjar/anaconda3/envs/marl2grid_iclr/lib/python3.12/multiprocessing/connection.py", line 430, in _recv_bytes
+    buf = self._recv(4)
+          ^^^^^^^^^^^^^
+  File "/Users/nejjar/anaconda3/envs/marl2grid_iclr/lib/python3.12/multiprocessing/connection.py", line 399, in _recv
+    raise EOFError
+EOFError

@@ -1,0 +1,21 @@
+2026-05-16 17:00:40,182 INFO    MainThread:87558 [wandb_setup.py:_flush():81] Current SDK version is 0.25.0
+2026-05-16 17:00:40,182 INFO    MainThread:87558 [wandb_setup.py:_flush():81] Configure stats pid to 87558
+2026-05-16 17:00:40,182 INFO    MainThread:87558 [wandb_setup.py:_flush():81] Loading settings from environment variables
+2026-05-16 17:00:40,182 INFO    MainThread:87558 [wandb_init.py:setup_run_log_directory():717] Logging user logs to /Users/nejjar/Desktop/RL_Marl2grid/Topology_Task/wandb/run-20260516_170040-MAPPO_bus14_T_0_0__I__1778943632_22397/logs/debug.log
+2026-05-16 17:00:40,183 INFO    MainThread:87558 [wandb_init.py:setup_run_log_directory():718] Logging internal logs to /Users/nejjar/Desktop/RL_Marl2grid/Topology_Task/wandb/run-20260516_170040-MAPPO_bus14_T_0_0__I__1778943632_22397/logs/debug-internal.log
+2026-05-16 17:00:40,183 INFO    MainThread:87558 [wandb_init.py:init():844] calling init triggers
+2026-05-16 17:00:40,183 INFO    MainThread:87558 [wandb_init.py:init():849] wandb.init called with sweep_config: {}
+config: {'time_limit': 1300, 'checkpoint': False, 'resume_run_name': '', 'alg': 'MAPPO', 'seed': 0, 'verbose': True, 'exp_tag': '', 'track': True, 'wandb_project': 'Grid2Op', 'wandb_entity': 'ismail-nejjar', 'wandb_mode': 'online', 'th_deterministic': False, 'cuda': True, 'n_threads': 16, 'env_id': 'bus14', 'n_envs': 20, 'action_type': 'topology', 'difficulty': 0, 'decentralized': True, 'n1_reward': False, 'env_config_path': 'scenario.json', 'norm_obs': True, 'use_heuristic': False, 'heuristic_type': 'idle', 'optimize_mem': True, 'constraints_type': 0, 'total_timesteps': 60000000, 'n_steps': 1000, 'eval_freq': 20000, 'actor_layers': [256, 256], 'critic_layers': [256, 256], 'actor_act_fn': 'relu', 'critic_act_fn': 'relu', 'actor_lr': 3e-05, 'critic_lr': 3e-05, 'anneal_lr': True, 'gamma': 0.99, 'gae_lambda': 0.95, 'update_epochs': 80, 'n_minibatches': 4, 'max_grad_norm': 10, 'target_kl': None, 'norm_adv': True, 'clip_coef': 0.2, 'clip_vfloss': True, 'entropy_coef': 0.01, 'vf_coef': 0.5, '_wandb': {}}
+2026-05-16 17:00:40,183 INFO    MainThread:87558 [wandb_init.py:init():892] starting backend
+2026-05-16 17:00:40,425 INFO    MainThread:87558 [wandb_init.py:init():895] sending inform_init request
+2026-05-16 17:00:40,462 INFO    MainThread:87558 [wandb_init.py:init():903] backend started and connected
+2026-05-16 17:00:40,465 INFO    MainThread:87558 [wandb_init.py:init():973] updated telemetry
+2026-05-16 17:00:40,466 INFO    MainThread:87558 [wandb_init.py:init():997] communicating run to backend with 90.0 second timeout
+2026-05-16 17:00:40,984 INFO    MainThread:87558 [wandb_init.py:init():1042] starting run threads in backend
+2026-05-16 17:00:41,034 INFO    MainThread:87558 [wandb_run.py:_console_start():2524] atexit reg
+2026-05-16 17:00:41,034 INFO    MainThread:87558 [wandb_run.py:_redirect():2373] redirect: wrap_raw
+2026-05-16 17:00:41,034 INFO    MainThread:87558 [wandb_run.py:_redirect():2442] Wrapping output streams.
+2026-05-16 17:00:41,034 INFO    MainThread:87558 [wandb_run.py:_redirect():2465] Redirects installed.
+2026-05-16 17:00:41,036 INFO    MainThread:87558 [wandb_init.py:init():1082] run started, returning control to user process
+2026-05-16 17:02:02,554 INFO    wandb-AsyncioManager-main:87558 [service_client.py:_forward_responses():134] Reached EOF.
+2026-05-16 17:02:02,555 INFO    wandb-AsyncioManager-main:87558 [mailbox.py:close():155] Closing mailbox, abandoning 1 handles.

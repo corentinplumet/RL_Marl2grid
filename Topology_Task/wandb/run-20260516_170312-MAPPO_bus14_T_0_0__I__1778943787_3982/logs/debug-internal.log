@@ -1,0 +1,14 @@
+{"time":"2026-05-16T17:03:12.483716+02:00","level":"INFO","msg":"stream: starting","core version":"0.25.0"}
+{"time":"2026-05-16T17:03:12.728185+02:00","level":"INFO","msg":"stream: created new stream","id":"MAPPO_bus14_T_0_0__I__1778943787_3982"}
+{"time":"2026-05-16T17:03:12.728423+02:00","level":"INFO","msg":"handler: started","stream_id":"MAPPO_bus14_T_0_0__I__1778943787_3982"}
+{"time":"2026-05-16T17:03:12.729299+02:00","level":"INFO","msg":"stream: started","id":"MAPPO_bus14_T_0_0__I__1778943787_3982"}
+{"time":"2026-05-16T17:03:12.729303+02:00","level":"INFO","msg":"writer: started","stream_id":"MAPPO_bus14_T_0_0__I__1778943787_3982"}
+{"time":"2026-05-16T17:03:12.72933+02:00","level":"INFO","msg":"sender: started","stream_id":"MAPPO_bus14_T_0_0__I__1778943787_3982"}
+{"time":"2026-05-16T17:20:17.343077+02:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/files/ismail-nejjar/Grid2Op/MAPPO_bus14_T_0_0__I__1778943787_3982/file_stream\": read tcp 10.252.8.168:55150->34.8.250.101:443: read: can't assign requested address"}
+{"time":"2026-05-16T21:24:18.996043+02:00","level":"INFO","msg":"flowcontrol: backed up, offloading to disk","recordNumber":1371}
+{"time":"2026-05-16T21:24:18.996137+02:00","level":"INFO","msg":"flowcontrol: unblocked","totalOffloaded":1}
+{"time":"2026-05-16T21:24:19.013755+02:00","level":"INFO","msg":"stream: closing","id":"MAPPO_bus14_T_0_0__I__1778943787_3982"}
+{"time":"2026-05-16T21:24:19.988569+02:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2026-05-16T21:24:20.233933+02:00","level":"INFO","msg":"handler: closed","stream_id":"MAPPO_bus14_T_0_0__I__1778943787_3982"}
+{"time":"2026-05-16T21:24:20.234172+02:00","level":"INFO","msg":"sender: closed","stream_id":"MAPPO_bus14_T_0_0__I__1778943787_3982"}
+{"time":"2026-05-16T21:24:20.234195+02:00","level":"INFO","msg":"stream: closed","id":"MAPPO_bus14_T_0_0__I__1778943787_3982"}

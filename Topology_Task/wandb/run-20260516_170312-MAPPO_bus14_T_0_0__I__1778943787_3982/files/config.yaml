@@ -1,0 +1,140 @@
+_wandb:
+    value:
+        cli_version: 0.25.0
+        e:
+            oi9146pptk5oyv3ryi8xgwmkenjgrr83:
+                args:
+                    - --env-id
+                    - bus14
+                    - --alg
+                    - MAPPO
+                codePath: main.py
+                codePathLocal: main.py
+                email: ismailnejjar@gmail.com
+                executable: /Users/nejjar/anaconda3/envs/marl2grid_iclr/bin/python
+                host: IMOS-C021272M
+                os: macOS-26.3.1-arm64-arm-64bit
+                program: /Users/nejjar/Desktop/RL_Marl2grid/Topology_Task/main.py
+                python: CPython 3.12.2
+                root: /Users/nejjar/Desktop/RL_Marl2grid/Topology_Task
+                startedAt: "2026-05-16T15:03:12.205710Z"
+                writerId: oi9146pptk5oyv3ryi8xgwmkenjgrr83
+        m: []
+        python_version: 3.12.2
+        t:
+            "1":
+                - 1
+                - 30
+            "2":
+                - 1
+                - 30
+            "3":
+                - 13
+                - 14
+                - 16
+                - 41
+                - 61
+            "4": 3.12.2
+            "5": 0.25.0
+            "12": 0.25.0
+            "13": darwin-arm64
+action_type:
+    value: topology
+actor_act_fn:
+    value: relu
+actor_layers:
+    value:
+        - 256
+        - 256
+actor_lr:
+    value: 3e-05
+alg:
+    value: MAPPO
+anneal_lr:
+    value: true
+checkpoint:
+    value: false
+clip_coef:
+    value: 0.2
+clip_vfloss:
+    value: true
+constraints_type:
+    value: 0
+critic_act_fn:
+    value: relu
+critic_layers:
+    value:
+        - 256
+        - 256
+critic_lr:
+    value: 3e-05
+cuda:
+    value: true
+decentralized:
+    value: true
+difficulty:
+    value: 0
+entropy_coef:
+    value: 0.01
+env_config_path:
+    value: scenario.json
+env_id:
+    value: bus14
+eval_freq:
+    value: 20000
+exp_tag:
+    value: ""
+gae_lambda:
+    value: 0.95
+gamma:
+    value: 0.99
+heuristic_type:
+    value: idle
+init_do_nothing_prob:
+    value: 0.5
+max_grad_norm:
+    value: 10
+n_envs:
+    value: 10
+n_minibatches:
+    value: 4
+n_steps:
+    value: 2000
+n_threads:
+    value: 16
+n1_reward:
+    value: false
+norm_adv:
+    value: true
+norm_obs:
+    value: true
+optimize_mem:
+    value: true
+resume_run_name:
+    value: ""
+seed:
+    value: 0
+target_kl:
+    value: null
+th_deterministic:
+    value: false
+time_limit:
+    value: 1300
+total_timesteps:
+    value: 60000000
+track:
+    value: true
+update_epochs:
+    value: 80
+use_heuristic:
+    value: false
+verbose:
+    value: true
+vf_coef:
+    value: 0.5
+wandb_entity:
+    value: ismail-nejjar
+wandb_mode:
+    value: online
+wandb_project:
+    value: Grid2Op

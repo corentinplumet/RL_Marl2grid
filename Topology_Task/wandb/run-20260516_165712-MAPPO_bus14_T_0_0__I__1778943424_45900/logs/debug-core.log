@@ -1,0 +1,14 @@
+{"time":"2026-05-16T16:57:12.304635+02:00","level":"INFO","msg":"main: starting server","port-filename":"/var/folders/63/v61dj1054sbcfszdkhh2jnbwrgcr5p/T/tmppikk9e6_/port-86817.txt","pid":86817,"log-level":0,"disable-analytics":false,"shutdown-on-parent-exit":false,"enable-dcgm-profiling":false}
+{"time":"2026-05-16T16:57:12.305111+02:00","level":"INFO","msg":"server: will exit if parent process dies","ppid":86817}
+{"time":"2026-05-16T16:57:12.305083+02:00","level":"INFO","msg":"server: accepting connections","addr":{"Name":"/var/folders/63/v61dj1054sbcfszdkhh2jnbwrgcr5p/T/wandb-86817-86898-2293974827/socket","Net":"unix"}}
+{"time":"2026-05-16T16:57:12.499966+02:00","level":"INFO","msg":"connection: ManageConnectionData: new connection created","id":"1"}
+{"time":"2026-05-16T16:57:12.542313+02:00","level":"INFO","msg":"handleInformInit: received","streamId":"MAPPO_bus14_T_0_0__I__1778943424_45900","id":"1"}
+{"time":"2026-05-16T16:57:12.74643+02:00","level":"INFO","msg":"handleInformInit: stream started","streamId":"MAPPO_bus14_T_0_0__I__1778943424_45900","id":"1"}
+{"time":"2026-05-16T16:57:15.263621+02:00","level":"INFO","msg":"handleInformTeardown: server teardown initiated","id":"1"}
+{"time":"2026-05-16T16:57:15.263647+02:00","level":"INFO","msg":"server is shutting down"}
+{"time":"2026-05-16T16:57:15.263645+02:00","level":"INFO","msg":"connection: closing","id":"1"}
+{"time":"2026-05-16T16:57:15.263678+02:00","level":"INFO","msg":"connection: closed successfully","id":"1"}
+{"time":"2026-05-16T16:57:15.263732+02:00","level":"INFO","msg":"server: listener closed","addr":{"Name":"/var/folders/63/v61dj1054sbcfszdkhh2jnbwrgcr5p/T/wandb-86817-86898-2293974827/socket","Net":"unix"}}
+{"time":"2026-05-16T16:57:16.495408+02:00","level":"INFO","msg":"handleInformTeardown: server shutdown complete","id":"1"}
+{"time":"2026-05-16T16:57:16.495496+02:00","level":"INFO","msg":"connection: ManageConnectionData: connection closed","id":"1"}
+{"time":"2026-05-16T16:57:16.495537+02:00","level":"INFO","msg":"server is closed"}
