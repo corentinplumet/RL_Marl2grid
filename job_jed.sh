@@ -1,22 +1,13 @@
 #!/usr/bin/env bash
-#
-# Submit from the repository root on Jed, for example:
-#   sbatch job_jed.sh
-#   sbatch --array=0-4 job_jed.sh
-#   sbatch --partition=standard job_jed.sh
-#
-# Override training options with environment variables:
-#   sbatch --export=ALL,ENV_ID=bus36,TOTAL_TIMESTEPS=5000000 job_jed.sh
-#
-# Or pass extra Python arguments after the script name:
-#   sbatch job_jed.sh --use-heuristic True --exp-tag quick_test
-
-#SBATCH --job-name=marl2grid
+#SBATCH --job-name=marl2grid_jed
+#SBATCH --mail-user=corentin.plumet@epfl.ch
 #SBATCH --partition=academic
+#SBATCH --qos=academic
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=24
-#SBATCH --time=2-00:00:00
+#SBATCH --cpus-per-task=72
+#SBATCH --mem-per-cpu=7000M
+#SBATCH --time=24:00:00
 #SBATCH --output=Topology_Task/slurm-%x-%j.out
 #SBATCH --error=Topology_Task/slurm-%x-%j.err
 
