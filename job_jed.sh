@@ -15,8 +15,14 @@ set -euo pipefail
 
 echo "Job ${SLURM_JOB_ID:-local} started on $(hostname) at $(date)"
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="${REPO_DIR:-${SLURM_SUBMIT_DIR:-$(pwd)}}"
 TASK_DIR="${REPO_DIR}/Topology_Task"
+
+if [ ! -d "${TASK_DIR}" ]; then
+    echo "Could not find ${TASK_DIR}." >&2
+    echo "Submit from the repository root, or set REPO_DIR=/path/to/RL_Marl2grid." >&2
+    exit 1
+fi
 
 # The conda env in Topology_Task/conda_env.yml is named "marl2grid".
 CONDA_ENV="${CONDA_ENV:-marl2grid}"
