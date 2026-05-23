@@ -97,7 +97,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--wandb-entity",
         type=str,
-        default="ismail-nejjar",
+        default="corentin-plumet-epfl",
         help="Entity (team) of wandb's project.",
     )
     parser.add_argument(
