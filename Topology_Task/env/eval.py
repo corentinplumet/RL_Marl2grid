@@ -52,6 +52,7 @@ class Evaluator:
                 []
             )  # l2rpn_idf_2023 (bus118) returns an additional 0 reward value; we fix it with an empty metrics
         self.use_heuristic = args.use_heuristic
+        self.deterministic_eval = getattr(args, "deterministic_eval", True)
         # if self.use_heuristic: self.env.set_n_rewards(len(self.reward_tags))
 
     def evaluate(self, glob_step: int, actors: Dict, eval_ep: int = 10) -> None:
@@ -78,7 +79,9 @@ class Evaluator:
         action = {}
         while len(ep_survivals) < eval_ep:
             for agent, model in actors.items():
-                action[agent] = model.get_eval_action(obs[agent])
+                action[agent] = model.get_eval_action(
+                    obs[agent], deterministic=self.deterministic_eval
+                )
 
             next_obs, _, _, _, info = self.env.step(action)
 
@@ -157,7 +160,9 @@ class CMDPEvaluator(Evaluator):
         action = {}
         while len(ep_survivals) < eval_ep:
             for agent, model in actors.items():
-                action[agent] = model.get_eval_action(obs[agent])
+                action[agent] = model.get_eval_action(
+                    obs[agent], deterministic=self.deterministic_eval
+                )
 
             next_obs, _, _, _, info = self.env.step(action)
 

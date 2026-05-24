@@ -126,5 +126,11 @@ def get_alg_args() -> Namespace:
         default=True,
         help="Toggle running-stats reward normalization (SB3 VecNormalize style: divide reward by running std of discounted returns).",
     )
+    parser.add_argument(
+        "--deterministic-eval",
+        type=str2bool,
+        default=True,
+        help="Use greedy argmax actions during evaluation. Set False to sample evaluation actions.",
+    )
 
     return parser.parse_known_args()[0]

@@ -75,15 +75,20 @@ class Actor(nn.Module):
 
         return action, probs.log_prob(action), probs.entropy()
 
-    def get_eval_discrete_action(self, x: th.Tensor) -> th.Tensor:
-        """Evaluate discrete actions without exploration.
+    def get_eval_discrete_action(
+        self, x: th.Tensor, deterministic: bool = True
+    ) -> th.Tensor:
+        """Evaluate discrete actions greedily or by sampling.
 
         Args:
             x: Input observations.
+            deterministic: If True, return the highest-logit action; otherwise sample.
 
         Returns:
-            A tensor with deterministic discrete actions for evaluation.
+            A tensor with selected discrete actions for evaluation.
         """
+        if not deterministic:
+            return self.get_discrete_action(x)[0]
         logits = self.actor(x)
         return th.argmax(logits, dim=-1)
 
