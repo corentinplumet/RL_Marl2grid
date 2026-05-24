@@ -84,7 +84,8 @@ class Actor(nn.Module):
         Returns:
             A tensor with deterministic discrete actions for evaluation.
         """
-        return self.get_discrete_action(x)[0]
+        logits = self.actor(x)
+        return th.argmax(logits, dim=-1)
 
     def get_continuous_action(
         self, x: th.Tensor, action: th.Tensor = None
