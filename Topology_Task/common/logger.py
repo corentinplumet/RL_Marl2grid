@@ -47,7 +47,14 @@ class Logger:
         )
         self.wb_path = os.path.split(wb_path.dir)[0]
 
-    def store_metrics(self, global_step: int, avg_survival: float, avg_return: float, tags: List) -> None:
+    def store_metrics(
+        self,
+        global_step: int,
+        avg_survival: float,
+        avg_return: float,
+        tags: List,
+        prefix: Optional[str] = None,
+    ) -> None:
         """Store the given metrics and log them if the log frequency is met.
 
         Args:
@@ -57,16 +64,21 @@ class Logger:
         """
         self.episodic_survival.append(avg_survival)
         self.episodic_return.append(avg_return)
-        if global_step % self.log_freq == 0: self.log_metrics(global_step, tags)
+        if global_step % self.log_freq == 0:
+            self.log_metrics(global_step, tags, prefix)
 
-    def log_metrics(self, global_step: int, tags: List) -> None:
+    def log_metrics(
+        self, global_step: int, tags: List, prefix: Optional[str] = None
+    ) -> None:
         """Log the stored metrics to WandB.
 
         Args:
             global_step: Current global step of training.
         """
-        record = dict(zip(tags, self.episodic_return[0]))   # assuming log_freq=1
-        record['charts/episodic_survival'] = np.mean(self.episodic_survival)
+        metric_tags = [f"{prefix}/{tag}" for tag in tags] if prefix else tags
+        survival_key = f"{prefix}/episodic_survival" if prefix else "charts/episodic_survival"
+        record = dict(zip(metric_tags, self.episodic_return[0]))   # assuming log_freq=1
+        record[survival_key] = np.mean(self.episodic_survival)
         record['charts/global_step'] = global_step
 
         wb.log(record, step=global_step)
@@ -112,7 +124,15 @@ class ConstrainedLogger(Logger):
         super().__init__(run_name, args, log_freq)
         self.episodic_cost = deque(maxlen=log_freq)
 
-    def store_metrics(self, global_step: int, avg_survival: float, avg_return: float, avg_cost: float, tags: List) -> None:
+    def store_metrics(
+        self,
+        global_step: int,
+        avg_survival: float,
+        avg_return: float,
+        avg_cost: float,
+        tags: List,
+        prefix: Optional[str] = None,
+    ) -> None:
         """Store the given metrics and log them if the log frequency is met.
 
         Args:
@@ -125,18 +145,23 @@ class ConstrainedLogger(Logger):
         self.episodic_survival.append(avg_survival)
         self.episodic_return.append(avg_return)
         self.episodic_cost.append(avg_cost)
-        if global_step % self.log_freq == 0: self.log_metrics(global_step, tags)
+        if global_step % self.log_freq == 0:
+            self.log_metrics(global_step, tags, prefix)
 
-    def log_metrics(self, global_step: int, tags: List) -> None:
+    def log_metrics(
+        self, global_step: int, tags: List, prefix: Optional[str] = None
+    ) -> None:
         """Log the stored metrics to WandB.
 
         Args:
             global_step: Current global step of training.
         """
-        record = dict(zip(tags, self.episodic_return[0]))   # assuming log_freq=1
+        metric_tags = [f"{prefix}/{tag}" for tag in tags] if prefix else tags
+        survival_key = f"{prefix}/episodic_survival" if prefix else "charts/episodic_survival"
+        cost_key = f"{prefix}/episodic_cost" if prefix else "charts/episodic_cost"
+        record = dict(zip(metric_tags, self.episodic_return[0]))   # assuming log_freq=1
         record['charts/global_step'] = global_step
-        record['charts/episodic_survival'] = np.mean(self.episodic_survival)
-        record['charts/episodic_cost'] = np.mean(self.episodic_cost[0])
+        record[survival_key] = np.mean(self.episodic_survival)
+        record[cost_key] = np.mean(self.episodic_cost[0])
 
         wb.log(record, step=global_step)
-    

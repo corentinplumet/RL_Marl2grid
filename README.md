@@ -58,4 +58,10 @@ The `--checkpoint` flag allows to save checkpoints. Checkpoints can be heavy bec
 
 There is a deterministic evaluation module embedded in the code. Policies will be tested at training time at results will be logged on wandb.
 
+Chronics can be split into train/test/validation sets with:
+
+```bash
+python main.py --env-id bus14 --alg MAPPO --split-chronics True --test-chronics-pct 0.2 --validation-chronics-pct 0.1
 ```
+
+With this flag enabled, training environments use the train split, periodic eval uses the test split, and the validation split is evaluated whenever a new best test survival is found. If checkpointing is enabled, the best test weights are saved as `checkpoint/best_test_<run_name>.tar`.

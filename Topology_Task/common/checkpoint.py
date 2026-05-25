@@ -51,6 +51,10 @@ class CheckpointSaver(ABC):
         """Save the current record to a checkpoint file."""
         th.save(self.record, self.ckpt_dir + "/" + self.run_name + ".tar")
 
+    def save_as(self, checkpoint_name: str) -> None:
+        """Save the current record to a specific checkpoint name."""
+        th.save(self.record, self.ckpt_dir + "/" + checkpoint_name + ".tar")
+
     @abstractmethod
     def set_record(self) -> None:
         """Abstract method to set the record with specific run details."""
@@ -68,6 +72,7 @@ class MAPPOCheckpoint(CheckpointSaver):
         critic_optim: optim,
         wb_run_name: str,
         last_rollout: int = 0,
+        mark_final: bool = True,
     ) -> None:
         """Set the record for PPO checkpoints.
 
@@ -80,8 +85,9 @@ class MAPPOCheckpoint(CheckpointSaver):
             critic_optim: Critic optimizer.
             wb_run_name: Weights & Biases run name.
             last_rollout: Last rollout step. Defaults to 0.
+            mark_final: Whether to prefix the run name when saving the final checkpoint.
         """
-        if global_step >= args.total_timesteps - args.n_envs:
+        if mark_final and global_step >= args.total_timesteps - args.n_envs:
             self.run_name = "final_" + self.run_name
         self._get_base_record(global_step)
         self.record["args"] = args

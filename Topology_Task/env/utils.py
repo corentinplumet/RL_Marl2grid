@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import hashlib
 from collections import defaultdict
 from packaging import version
 
@@ -40,6 +41,209 @@ if version.parse(grid2op.__version__) < MIN_GLOP_VERSION:
     )
 
 RHO_SAFETY_THRESHOLD = 0.90
+CHRONIC_SPLITS = ("train", "test", "validation")
+
+
+def _fraction_arg(value: float, name: str) -> float:
+    fraction = float(value)
+    if fraction > 1.0:
+        fraction /= 100.0
+    if fraction < 0.0 or fraction >= 1.0:
+        raise ValueError(f"{name} must be in [0, 1) or [0, 100). Got {value}.")
+    return fraction
+
+
+def _chronic_split_fractions(args: Dict[str, Any]) -> Tuple[float, float]:
+    test_fraction = _fraction_arg(
+        getattr(args, "test_chronics_pct", 0.2), "test_chronics_pct"
+    )
+    validation_fraction = _fraction_arg(
+        getattr(args, "validation_chronics_pct", 0.1), "validation_chronics_pct"
+    )
+    if test_fraction + validation_fraction >= 1.0:
+        raise ValueError(
+            "test_chronics_pct + validation_chronics_pct must leave at least one train split fraction."
+        )
+    return test_fraction, validation_fraction
+
+
+def _chronic_split_seed(args: Dict[str, Any]) -> int:
+    seed = getattr(args, "chronic_split_seed", None)
+    return getattr(args, "seed", 0) if seed is None else seed
+
+
+def _collect_chronic_paths_from(value: Any) -> List[str]:
+    if value is None or isinstance(value, (str, bytes)):
+        return []
+    if isinstance(value, Dict):
+        iterable = value.keys()
+    elif isinstance(value, (list, tuple, set, np.ndarray)):
+        iterable = value
+    else:
+        return []
+
+    paths = []
+    for item in iterable:
+        if item is None:
+            continue
+        paths.append(str(item))
+    return paths
+
+
+def _get_available_chronics(chronics_handler: Any) -> List[str]:
+    """Best-effort extraction of chronic ids/paths before applying a Grid2Op filter."""
+    candidates = []
+    objects = []
+    seen_objects = set()
+    queue = [chronics_handler]
+    while queue:
+        obj = queue.pop(0)
+        if obj is None or id(obj) in seen_objects:
+            continue
+        objects.append(obj)
+        seen_objects.add(id(obj))
+        for attr in ("real_data", "_real_data", "data", "_data"):
+            nested = getattr(obj, attr, None)
+            if nested is not None and id(nested) not in seen_objects:
+                queue.append(nested)
+
+    chronic_attr_groups = (
+        ("subpaths", "_subpaths", "paths", "_paths"),
+        ("available_chronics", "_available_chronics"),
+        ("chronics_list", "_chronics_list"),
+        ("chronics", "_chronics"),
+        ("names_chronics_to_backend", "_names_chronics_to_backend"),
+    )
+    for chronic_attrs in chronic_attr_groups:
+        candidates.clear()
+        for obj in objects:
+            for attr in chronic_attrs:
+                candidates.extend(
+                    _collect_chronic_paths_from(getattr(obj, attr, None))
+                )
+        seen = set()
+        unique = []
+        for path in candidates:
+            if path not in seen:
+                unique.append(path)
+                seen.add(path)
+        if unique:
+            return sorted(unique)
+    return []
+
+
+def _count_chronics(n_chronics: int, fraction: float, split_name: str) -> int:
+    if fraction == 0.0:
+        return 0
+    count = max(1, int(round(n_chronics * fraction)))
+    if count >= n_chronics:
+        raise ValueError(
+            f"{split_name} split would consume all {n_chronics} chronics. Reduce its percentage."
+        )
+    return count
+
+
+def _build_chronic_splits(
+    chronics: List[str], args: Dict[str, Any]
+) -> Dict[str, List[str]]:
+    n_chronics = len(chronics)
+    test_fraction, validation_fraction = _chronic_split_fractions(args)
+    n_test = _count_chronics(n_chronics, test_fraction, "test")
+    n_validation = _count_chronics(
+        n_chronics, validation_fraction, "validation"
+    )
+    if n_test + n_validation >= n_chronics:
+        raise ValueError(
+            f"Not enough chronics ({n_chronics}) for non-empty train/test/validation splits."
+        )
+
+    rng = np.random.default_rng(_chronic_split_seed(args))
+    shuffled = [chronics[idx] for idx in rng.permutation(n_chronics)]
+    return {
+        "test": shuffled[:n_test],
+        "validation": shuffled[n_test : n_test + n_validation],
+        "train": shuffled[n_test + n_validation :],
+    }
+
+
+def _chronic_key_variants(chronic_path: Any) -> set:
+    text = str(chronic_path)
+    norm = os.path.normpath(text)
+    return {text, norm, os.path.basename(norm)}
+
+
+def _stable_chronic_hash(chronic_path: Any, seed: int) -> float:
+    text = f"{seed}:{chronic_path}".encode("utf-8")
+    digest = hashlib.sha256(text).hexdigest()
+    return int(digest[:16], 16) / float(0xFFFFFFFFFFFFFFFF)
+
+
+def _hash_chronic_split(chronic_path: Any, args: Dict[str, Any]) -> str:
+    test_fraction, validation_fraction = _chronic_split_fractions(args)
+    value = _stable_chronic_hash(chronic_path, _chronic_split_seed(args))
+    if value < test_fraction:
+        return "test"
+    if value < test_fraction + validation_fraction:
+        return "validation"
+    return "train"
+
+
+def _resolve_chronic_split(
+    args: Dict[str, Any], eval_env: bool, chronic_split: Optional[str]
+) -> Optional[str]:
+    if not getattr(args, "split_chronics", False):
+        return None
+    split_name = chronic_split or ("test" if eval_env else "train")
+    if split_name not in CHRONIC_SPLITS:
+        raise ValueError(
+            f"Invalid chronic split: {split_name}. Choose from {CHRONIC_SPLITS}."
+        )
+    test_fraction, validation_fraction = _chronic_split_fractions(args)
+    if split_name == "test" and test_fraction == 0.0:
+        raise ValueError("The test chronic split is empty because test_chronics_pct=0.")
+    if split_name == "validation" and validation_fraction == 0.0:
+        raise ValueError(
+            "The validation chronic split is empty because validation_chronics_pct=0."
+        )
+    return split_name
+
+
+def _apply_chronic_split(
+    chronics_handler: Any, args: Dict[str, Any], split_name: str
+) -> Dict[str, Any]:
+    if not hasattr(chronics_handler, "set_filter"):
+        raise AttributeError("Grid2Op chronics handler does not expose set_filter().")
+
+    available_chronics = _get_available_chronics(chronics_handler)
+    if available_chronics:
+        splits = _build_chronic_splits(available_chronics, args)
+        selected_chronics = splits[split_name]
+        if not selected_chronics:
+            raise ValueError(f"Chronic split '{split_name}' is empty.")
+        selected_keys = set()
+        for chronic in selected_chronics:
+            selected_keys.update(_chronic_key_variants(chronic))
+        chronics_handler.set_filter(
+            lambda chronic_path, keys=selected_keys: bool(
+                keys.intersection(_chronic_key_variants(chronic_path))
+            )
+        )
+        return {
+            "split": split_name,
+            "selected": len(selected_chronics),
+            "total": len(available_chronics),
+            "exact": True,
+        }
+
+    chronics_handler.set_filter(
+        lambda chronic_path: _hash_chronic_split(chronic_path, args) == split_name
+    )
+    return {
+        "split": split_name,
+        "selected": None,
+        "total": None,
+        "exact": False,
+    }
 
 
 def load_config(file_path: str) -> Dict:
@@ -67,6 +271,7 @@ class MAEnvWrapper(MAEnv):
         async_vec_env: bool = False,
         action_space=None,
         eval_env: bool = False,
+        chronic_split: Optional[str] = None,
     ) -> Any:
         """Create and configure a grid2op environment.
 
@@ -77,6 +282,8 @@ class MAEnvWrapper(MAEnv):
             generate_class: Whether to generate classes for asynchronous environments.
             async_vec_env: Whether the environment is asynchronous.
             action_space: A previously generated action space for the agents (to share between processes)
+            eval_env: Whether this environment is used for policy evaluation.
+            chronic_split: Optional split override when --split-chronics is enabled.
 
         Returns:
             A configured grid2op environment wrapped in a GymEnv.
@@ -129,6 +336,26 @@ class MAEnvWrapper(MAEnv):
 
         self.g2op_env.seed(args.seed + idx)
         self.g2op_env.chronics_handler.seed(args.seed + idx)
+        self.chronic_split = _resolve_chronic_split(args, eval_env, chronic_split)
+        self.chronic_split_size = None
+        self.chronic_split_total = None
+        if self.chronic_split is not None:
+            split_summary = _apply_chronic_split(
+                self.g2op_env.chronics_handler, args, self.chronic_split
+            )
+            self.chronic_split_size = split_summary["selected"]
+            self.chronic_split_total = split_summary["total"]
+            if idx == 0 or eval_env:
+                if split_summary["exact"]:
+                    print(
+                        f"Chronic split '{self.chronic_split}': "
+                        f"{self.chronic_split_size}/{self.chronic_split_total} chronics"
+                    )
+                else:
+                    print(
+                        f"Chronic split '{self.chronic_split}': using hash filter "
+                        "(exact split size unavailable from Grid2Op handler)"
+                    )
         self.g2op_env.chronics_handler.shuffle()
 
         if args.optimize_mem:

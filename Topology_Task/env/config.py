@@ -99,6 +99,32 @@ def get_env_args() -> Namespace:
         choices=[0, 1, 2],
         help="Select the type of constraints to use: no constraints (0), failure constraints (1), overloads constraints (2)",
     )
+    parser.add_argument(
+        "--split-chronics",
+        type=str2bool,
+        default=False,
+        help="Split chronics into train/test/validation sets. Training uses train, periodic eval uses test.",
+    )
+    parser.add_argument(
+        "--test-chronics-pct",
+        type=float,
+        default=0.2,
+        help="Fraction of available chronics reserved for the test split when --split-chronics is enabled. Values > 1 are treated as percentages.",
+    )
+    parser.add_argument(
+        "--validation-chronics-pct",
+        "--val-chronics-pct",
+        dest="validation_chronics_pct",
+        type=float,
+        default=0.1,
+        help="Fraction of available chronics reserved for the validation split when --split-chronics is enabled. Values > 1 are treated as percentages.",
+    )
+    parser.add_argument(
+        "--chronic-split-seed",
+        type=int,
+        default=None,
+        help="Seed used to create the chronic split. Defaults to --seed.",
+    )
 
     # Parse the arguments
     params, _ = parser.parse_known_args()

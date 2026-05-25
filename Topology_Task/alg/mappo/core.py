@@ -137,7 +137,32 @@ class MAPPO:
             f"Invalid eval frequency: {args.eval_freq}. Must be multiple of n_envs {args.n_envs}"
         )
         logger = Logger(run_name, args) if args.track else None
-        evaluator = Evaluator(args, logger, device)
+        split_chronics = getattr(args, "split_chronics", False)
+        evaluator = Evaluator(
+            args,
+            logger,
+            device,
+            chronic_split="test" if split_chronics else None,
+            metric_prefix="test" if split_chronics else None,
+        )
+        validation_pct = getattr(args, "validation_chronics_pct", 0.1)
+        validation_fraction = (
+            validation_pct / 100.0 if validation_pct > 1.0 else validation_pct
+        )
+        validation_evaluator = (
+            Evaluator(
+                args,
+                logger,
+                device,
+                chronic_split="validation",
+                metric_prefix="validation",
+            )
+            if split_chronics
+            and getattr(args, "validate_on_best_test", True)
+            and validation_fraction > 0.0
+            else None
+        )
+        best_test_survival = -np.inf
 
         global_step = 0 if not ckpt.resumed else ckpt.loaded_run["global_step"]
         start_time = start_time
@@ -226,8 +251,27 @@ class MAPPO:
                                 ).to(device)
 
                     if global_step % args.eval_freq == 0:
-                        evaluator.env.env.set_obs_stats(envs.get_obs_stats())
-                        evaluator.evaluate(global_step, actors)
+                        obs_stats = envs.get_obs_stats()
+                        evaluator.env.env.set_obs_stats(obs_stats)
+                        eval_survival = evaluator.evaluate(global_step, actors)
+                        if split_chronics and eval_survival > best_test_survival:
+                            best_test_survival = eval_survival
+                            if args.checkpoint:
+                                ckpt.set_record(
+                                    args,
+                                    actors,
+                                    critic,
+                                    global_step,
+                                    actor_optim,
+                                    critic_optim,
+                                    "" if not logger else logger.wb_path,
+                                    iteration,
+                                    mark_final=False,
+                                )
+                                ckpt.save_as("best_test_" + run_name)
+                            if validation_evaluator is not None:
+                                validation_evaluator.env.env.set_obs_stats(obs_stats)
+                                validation_evaluator.evaluate(global_step, actors)
                         if args.verbose:
                             print(f"SPS={int(global_step / (time() - start_time))}")
 

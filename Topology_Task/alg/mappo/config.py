@@ -162,5 +162,17 @@ def get_alg_args() -> Namespace:
         default=10,
         help="Number of episodes/chronics used for each evaluation.",
     )
+    parser.add_argument(
+        "--eval-all-split-chronics",
+        type=str2bool,
+        default=True,
+        help="When chronic splitting is enabled, evaluate every chronic in the selected test/validation split.",
+    )
+    parser.add_argument(
+        "--validate-on-best-test",
+        type=str2bool,
+        default=True,
+        help="When chronic splitting is enabled, run validation eval whenever a new best test survival is found.",
+    )
 
     return parser.parse_known_args()[0]

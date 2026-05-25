@@ -17,7 +17,14 @@ class Evaluator:
         device (th.device): Device to run the model on (e.g., 'cpu' or 'cuda').
     """
 
-    def __init__(self, args: Dict[str, Any], logger: Logger, device: th.device) -> None:
+    def __init__(
+        self,
+        args: Dict[str, Any],
+        logger: Logger,
+        device: th.device,
+        chronic_split: Optional[str] = None,
+        metric_prefix: Optional[str] = None,
+    ) -> None:
         """Initialize the Evaluator with the given arguments, logger, and device.
 
         Args:
@@ -27,7 +34,7 @@ class Evaluator:
         """
 
         self.env = RecordEpisodeStatistics(
-            MAEnvWrapper(args, eval_env=True)
+            MAEnvWrapper(args, eval_env=True, chronic_split=chronic_split)
         )  # Initialize synchronized vector environment
 
         self.max_steps = (
@@ -54,6 +61,14 @@ class Evaluator:
         self.use_heuristic = args.use_heuristic
         self.deterministic_eval = getattr(args, "deterministic_eval", True)
         self.eval_episodes = getattr(args, "eval_episodes", 10)
+        if getattr(args, "split_chronics", False) and getattr(
+            args, "eval_all_split_chronics", True
+        ):
+            split_size = getattr(self.env.env, "chronic_split_size", None)
+            if split_size is not None:
+                self.eval_episodes = split_size
+        self.metric_prefix = metric_prefix
+        self.chronic_split = chronic_split
         # if self.use_heuristic: self.env.set_n_rewards(len(self.reward_tags))
 
     def evaluate(
@@ -117,10 +132,12 @@ class Evaluator:
                 avg_survival,
                 avg_return,
                 self.reward_tags if self.env_id != "bus118" else self.reward_tags[:-1],
+                prefix=self.metric_prefix,
             )
 
+        eval_label = self.metric_prefix or "eval"
         print(
-            f"Eval at step {glob_step}, survival={avg_survival * 100:.3f}%, return={avg_return}"
+            f"{eval_label} at step {glob_step}, survival={avg_survival * 100:.3f}%, return={avg_return}"
         )
         return avg_survival
 
@@ -135,8 +152,15 @@ class CMDPEvaluator(Evaluator):
         device (th.device): Device to run the model on (e.g., 'cpu' or 'cuda').
     """
 
-    def __init__(self, args: Dict[str, Any], logger: Logger, device: th.device) -> None:
-        super().__init__(args, logger, device)
+    def __init__(
+        self,
+        args: Dict[str, Any],
+        logger: Logger,
+        device: th.device,
+        chronic_split: Optional[str] = None,
+        metric_prefix: Optional[str] = None,
+    ) -> None:
+        super().__init__(args, logger, device, chronic_split, metric_prefix)
 
     def evaluate(
         self, glob_step: int, actors: Dict, eval_ep: Optional[int] = None
@@ -208,9 +232,11 @@ class CMDPEvaluator(Evaluator):
                 avg_return,
                 avg_cost_return,
                 self.reward_tags if self.env_id != "bus118" else self.reward_tags[:-1],
+                prefix=self.metric_prefix,
             )
 
+        eval_label = self.metric_prefix or "eval"
         print(
-            f"Eval at step {glob_step}, survival={avg_survival * 100:.3f}%, return={avg_return}"
+            f"{eval_label} at step {glob_step}, survival={avg_survival * 100:.3f}%, return={avg_return}"
         )
         return avg_survival
