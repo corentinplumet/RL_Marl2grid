@@ -67,3 +67,12 @@ python main.py --env-id bus14 --alg MAPPO --split-chronics True --test-chronics-
 With this flag enabled, training environments use the train split and periodic eval uses the test split. If checkpointing is enabled, the best test weights are saved as `checkpoint/best_test_<run_name>.tar`.
 
 To also log evaluation performance on the seen training chronics, add `--eval-train-chronics True`. This logs the same evaluation metrics for both splits, including `train_eval/charts/episodic_survival`, `train_eval/<reward name>`, `test/charts/episodic_survival`, and `test/<reward name>`. Checkpoint selection remains based on the test split.
+
+Actor and critic encoders can use the default MLP, a dynamic busbar graph GNN, or a heterogeneous element graph GNN:
+
+```bash
+python main.py --env-id bus14 --alg MAPPO --actor-encoder busbar_gnn --critic-encoder busbar_gnn
+python main.py --env-id bus14 --alg MAPPO --actor-encoder hetero_gnn --critic-encoder hetero_gnn
+```
+
+The GNN size is controlled with `--gnn-hidden-dim` and `--gnn-layers`.

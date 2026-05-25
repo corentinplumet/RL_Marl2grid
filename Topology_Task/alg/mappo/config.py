@@ -189,5 +189,76 @@ def get_alg_args() -> Namespace:
         default=False,
         help="When chronic splitting is enabled, also evaluate on the train split and log it under train_eval/.",
     )
+    parser.add_argument(
+        "--gnn-type",
+        type=str,
+        default="gat",
+        choices=["gcn", "gat", "gine", "graphsage"],
+        help="PyTorch Geometric convolution used by thesis-style gnn encoders.",
+    )
+    parser.add_argument(
+        "--gnn-hidden-dim",
+        type=int,
+        default=128,
+        help="Hidden dimension for thesis-style gnn encoders.",
+    )
+    parser.add_argument(
+        "--gnn-out-dim",
+        type=int,
+        default=128,
+        help="Output embedding dimension for thesis-style gnn encoders.",
+    )
+    parser.add_argument(
+        "--gnn-layers",
+        type=int,
+        default=2,
+        help="Number of message-passing layers for thesis-style gnn encoders.",
+    )
+    parser.add_argument(
+        "--gnn-heads",
+        type=int,
+        default=1,
+        help="Number of attention heads for thesis-style GAT encoders.",
+    )
+    parser.add_argument(
+        "--gnn-readout-aggr",
+        type=str,
+        default="mean",
+        choices=["mean", "sum", "max"],
+        help="Graph-level node pooling used by thesis-style gnn encoders.",
+    )
+    parser.add_argument(
+        "--graphsage-aggr",
+        type=str,
+        default="mean",
+        choices=["mean", "sum"],
+        help="GraphSAGE neighborhood aggregation for thesis-style gnn encoders.",
+    )
+    parser.add_argument(
+        "--gnn-aggr",
+        dest="graphsage_aggr",
+        type=str,
+        choices=["mean", "sum"],
+        help=ap.SUPPRESS,
+    )
+    parser.add_argument(
+        "--gnn-layer-norm",
+        type=str2bool,
+        default=True,
+        help="Use layer normalization inside thesis-style gnn layers.",
+    )
+    parser.add_argument(
+        "--gnn-concat-flat",
+        type=str2bool,
+        default=False,
+        help="Concatenate flat observations to thesis-style gnn embeddings before the head.",
+    )
+    parser.add_argument(
+        "--gnn-graph-type",
+        type=str,
+        default="bus",
+        choices=["bus"],
+        help="Graph type for thesis-style gnn encoders.",
+    )
 
     return parser.parse_known_args()[0]

@@ -20,6 +20,8 @@ from lightsim2grid import LightSimBackend
 from ray.rllib.env.multi_agent_env import MultiAgentEnv as MAEnv
 
 from common.imports import *
+from common.graph import GridGraphBuilder
+from common.utils import any_gnn_enabled
 from .reward import (
     LineMarginReward,
     RedispRewardv1,
@@ -280,6 +282,7 @@ class MAEnvWrapper(MAEnv):
         config = load_config(args.env_config_path)  # Load environment configuration
         env_id = args.env_id
         env_type = args.action_type.lower()
+        self.use_graph_obs = any_gnn_enabled(args)
 
         env_config = config["environments"]
         assert env_id in env_config.keys(), (
@@ -430,17 +433,18 @@ class MAEnvWrapper(MAEnv):
 
         # Prepare action and observation spaces
         state_attrs = config["state_attrs"]
-        obs_attrs = state_attrs["default"]
+        obs_attrs = list(state_attrs["default"])
         if env_config[env_id]["maintenance"]:
             obs_attrs += state_attrs["maintenance"]
 
         if env_type == "topology":
             obs_attrs += state_attrs["topology"]
-            obs_attrs += state_attrs["redispatch"]
-            if env_config[env_id]["renewable"]:
-                obs_attrs += state_attrs["curtailment"]
-            if env_config[env_id]["battery"]:
-                obs_attrs += state_attrs["storage"]
+            if not self.use_graph_obs:
+                obs_attrs += state_attrs["redispatch"]
+                if env_config[env_id]["renewable"]:
+                    obs_attrs += state_attrs["curtailment"]
+                if env_config[env_id]["battery"]:
+                    obs_attrs += state_attrs["storage"]
         else:
             raise NotImplementedError(
                 "Redispatching environments are not implemented yet!"
@@ -454,13 +458,40 @@ class MAEnvWrapper(MAEnv):
             )
             for agent_id in self.g2op_ma_env.agents
         }
+        flat_dims = {
+            agent_id: int(np.prod(self._aux_observation_space[agent_id].low.shape))
+            for agent_id in self.g2op_ma_env.agents
+        }
+
+        self.obs_norm_masks = {}
+        for agent_id, flat_dim in flat_dims.items():
+            self.obs_norm_masks[agent_id] = np.ones(flat_dim, dtype=bool)
+
+        self.graph_builder = None
+        self.graph_specs = None
+        if self.use_graph_obs:
+            self.graph_builder = GridGraphBuilder(
+                self.g2op_env,
+                self.observation_domains,
+                include_neighbors=getattr(args, "gnn_include_neighbors", True),
+                include_maintenance=env_config[env_id]["maintenance"],
+            )
+            self.graph_specs = self.graph_builder.specs
 
         # to avoid "weird" pickle issues
         self.observation_space = {
             agent_id: Box(
-                low=self._aux_observation_space[agent_id].low,
-                high=self._aux_observation_space[agent_id].high,
-                dtype=self._aux_observation_space[agent_id].dtype,
+                low=np.full(
+                    flat_dims[agent_id],
+                    -np.inf,
+                    dtype=np.float32,
+                ),
+                high=np.full(
+                    flat_dims[agent_id],
+                    np.inf,
+                    dtype=np.float32,
+                ),
+                dtype=np.float32,
             )
             for agent_id in self.g2op_ma_env.agents
         }
@@ -568,19 +599,37 @@ class MAEnvWrapper(MAEnv):
     def seed(self, seed):
         return self.g2op_ma_env.seed(seed)
 
+    def close(self):
+        if hasattr(self, "g2op_env"):
+            self.g2op_env.close()
+
     def _format_obs(self, grid2op_obs):
-        gym_obs = {
+        flat_obs = {
             agent_id: self._aux_observation_space[agent_id].to_gym(
                 grid2op_obs[agent_id]
             )
             for agent_id in self.g2op_ma_env.agents
         }
+
+        gym_obs = flat_obs
+
         if self.norm_obs:
             if not self.eval_env:
                 self._update_stats(gym_obs)
             gym_obs = self._normalize(gym_obs)
 
-        # return the proper dictionnary
+        if self.use_graph_obs:
+            graphs = self.graph_builder.build(self._obs)
+            return {
+                agent_id: {
+                    "flat": gym_obs[agent_id],
+                    "graph": graphs[agent_id],
+                    "state_graph": graphs["state"],
+                }
+                for agent_id in self.g2op_ma_env.agents
+            }
+
+        # return the proper dictionary
         return gym_obs
 
     def _update_stats(self, obs):
@@ -604,10 +653,12 @@ class MAEnvWrapper(MAEnv):
             var = stats["var"] / stats["count"]
             var = np.maximum(var, self.epsilon)  # avoid sqrt of negative or zero
             std = np.sqrt(var)
-            normed = (ob - stats["mean"]) / std
-            normed = np.where(
-                np.isfinite(normed), normed, 0.0
-            )  # replace NaN/inf with 0
+            normed = ob.astype(np.float32).copy()
+            mask = self.obs_norm_masks.get(
+                agent_id, np.ones_like(normed, dtype=bool)
+            )
+            normed[mask] = (ob[mask] - stats["mean"][mask]) / std[mask]
+            normed = np.where(np.isfinite(normed), normed, 0.0)
             norm_obs[agent_id] = normed
         return norm_obs
 

@@ -132,6 +132,26 @@ def get_env_args() -> Namespace:
         default=None,
         help="Seed used to create the chronic split. Defaults to --seed.",
     )
+    parser.add_argument(
+        "--actor-encoder",
+        type=str,
+        default="mlp",
+        choices=["mlp", "gnn"],
+        help="Encoder used by each actor policy.",
+    )
+    parser.add_argument(
+        "--critic-encoder",
+        type=str,
+        default="mlp",
+        choices=["mlp", "gnn"],
+        help="Encoder used by the centralized critic.",
+    )
+    parser.add_argument(
+        "--gnn-include-neighbors",
+        type=str2bool,
+        default=True,
+        help="For the thesis-style gnn encoder, include one-hop neighboring substations in local agent graphs.",
+    )
 
     # Parse the arguments
     params, _ = parser.parse_known_args()

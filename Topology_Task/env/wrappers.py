@@ -26,7 +26,9 @@ class AsyncMultiAgentVecEnv:
 
         # Probe observation and action spaces from first environment
         self.remotes[0].send(("get_spaces", None))
-        self.observation_space, self.action_space = self.remotes[0].recv()
+        self.observation_space, self.action_space, self.graph_specs = (
+            self.remotes[0].recv()
+        )
 
     def reset(self, seed: int = None):
         for remote in self.remotes:
@@ -118,8 +120,16 @@ class AsyncMultiAgentVecEnv:
         stacked = {}
         keys = dicts[0].keys()
         for k in keys:
-            stacked[k] = np.stack([d[k] for d in dicts])
+            stacked[k] = self._stack_values([d[k] for d in dicts])
         return stacked
+
+    def _stack_values(self, values: List[Any]):
+        if isinstance(values[0], dict):
+            return {
+                key: self._stack_values([value[key] for value in values])
+                for key in values[0].keys()
+            }
+        return np.stack(values)
 
     @staticmethod
     def _worker(remote, parent_remote, env_fn_wrapper):
@@ -143,7 +153,13 @@ class AsyncMultiAgentVecEnv:
                     remote.close()
                     break
                 elif cmd == "get_spaces":
-                    remote.send((env.observation_space, env.action_space))
+                    remote.send(
+                        (
+                            env.observation_space,
+                            env.action_space,
+                            getattr(env, "graph_specs", None),
+                        )
+                    )
                 elif cmd == "get_obs_stats":
                     remote.send(env.get_obs_stats())
                 elif cmd == "set_obs_stats":

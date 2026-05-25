@@ -1,7 +1,24 @@
 from torch.distributions import Categorical, Normal
 
 from common.imports import *
-from common.utils import Linear, th_act_fns
+from common.gnn import GraphAndFlatEncoder
+from common.utils import Linear, get_flat_obs, th_act_fns
+
+
+def build_mlp_head(
+    input_dim: int,
+    hidden_layers: List[int],
+    output_dim: int,
+    act_fn_name: str,
+) -> nn.Sequential:
+    layers = []
+    act_fn = th_act_fns[act_fn_name]
+    prev_dim = input_dim
+    for hidden_dim in hidden_layers:
+        layers.extend([Linear(prev_dim, hidden_dim, act_fn_name), act_fn])
+        prev_dim = hidden_dim
+    layers.append(Linear(prev_dim, output_dim, "linear"))
+    return nn.Sequential(*layers)
 
 
 class Actor(nn.Module):
@@ -10,33 +27,42 @@ class Actor(nn.Module):
     ):
         super().__init__()
 
-        # Actor network setup
-        actor_layers = args.actor_layers
-        act_str, act_fn = args.actor_act_fn, th_act_fns[args.actor_act_fn]
-        layers = []
-        layers.extend(
-            [
-                Linear(
-                    np.prod(envs.observation_space[f"agent_{id}"].shape),
-                    actor_layers[0],
-                    act_str,
-                ),
-                act_fn,
-            ]
-        )
-        for idx, embed_dim in enumerate(actor_layers[1:], start=1):
-            layers.extend([Linear(actor_layers[idx - 1], embed_dim, act_str), act_fn])
+        agent_id = f"agent_{id}"
+        self.encoder_type = getattr(args, "actor_encoder", "mlp")
 
-        # Final layer differs for continuous vs. discrete actions
+        if self.encoder_type == "mlp":
+            self.encoder = None
+            actor_input_dim = int(np.prod(envs.observation_space[agent_id].shape))
+        elif self.encoder_type == "gnn":
+            if getattr(envs, "graph_specs", None) is None:
+                raise ValueError(
+                    "actor_encoder=gnn requires thesis-style graph observations."
+                )
+            flat_dim = int(np.prod(envs.observation_space[agent_id].shape))
+            self.encoder = GraphAndFlatEncoder(
+                envs.graph_specs[agent_id],
+                flat_dim=flat_dim,
+                args=args,
+                use_flat=getattr(args, "gnn_concat_flat", False),
+            )
+            actor_input_dim = self.encoder.out_dim
+        else:
+            raise ValueError(
+                f"Unsupported actor encoder '{self.encoder_type}'. Use 'mlp' or 'gnn'."
+            )
+
+        actor_layers = args.actor_layers
         if continuous_actions:
             raise ("Redispatching actions are not yet implemented")
         else:
-            n_actions = int(envs.action_space[f"agent_{id}"].n)
+            n_actions = int(envs.action_space[agent_id].n)
             # Logit layer: Xavier with linear gain (=1.0). Using the ReLU gain
             # here (the Linear utility's default) amplifies logits and produces
             # an essentially-deterministic random initial policy on bus14.
-            out_layer = Linear(actor_layers[-1], n_actions, "linear")
-            layers.append(out_layer)
+            self.actor = build_mlp_head(
+                actor_input_dim, actor_layers, n_actions, args.actor_act_fn
+            )
+            out_layer = self.actor[-1]
             self.get_action = self.get_discrete_action
             self.get_eval_action = self.get_eval_discrete_action
 
@@ -54,7 +80,13 @@ class Actor(nn.Module):
                     out_layer.bias[0] = float(
                         np.log(init_p0 * (n_actions - 1) / (1.0 - init_p0))
                     )
-        self.actor = nn.Sequential(*layers)
+
+    def _encode(self, x: th.Tensor) -> th.Tensor:
+        if self.encoder_type == "gnn":
+            return self.encoder(x, graph_key="graph")
+        if self.encoder is not None:
+            return self.encoder(x)
+        return get_flat_obs(x)
 
     def get_discrete_action(
         self,
@@ -72,7 +104,7 @@ class Actor(nn.Module):
         Returns:
             A tuple containing tensors for the sampled discrete actions, the log probability of the sampled actions, and the entropy of the action distribution.
         """
-        logits = self.actor(x)
+        logits = self.actor(self._encode(x))
         if action0_bonus != 0.0:
             logits = logits.clone()
             logits[..., 0] = logits[..., 0] + action0_bonus
@@ -96,7 +128,7 @@ class Actor(nn.Module):
         """
         if not deterministic:
             return self.get_discrete_action(x)[0]
-        logits = self.actor(x)
+        logits = self.actor(self._encode(x))
         return th.argmax(logits, dim=-1)
 
     def get_continuous_action(
@@ -126,25 +158,41 @@ class Critic(nn.Module):
             args: Arguments for configuration.
         """
         super().__init__()
+        self.encoder_type = getattr(args, "critic_encoder", "mlp")
 
-        joint_obs_shape = (
-            sum(space.shape[0] for space in envs.observation_space.values())
-            if args.decentralized
-            else envs.observation_space["agent_0"].shape[-1]
-        )
-
-        # Critic network setup
         critic_layers = args.critic_layers
-        act_str, act_fn = args.critic_act_fn, th_act_fns[args.critic_act_fn]
-        layers = []
-        layers.extend(
-            [Linear(np.prod((joint_obs_shape,)), critic_layers[0], act_str), act_fn]
+        if self.encoder_type == "mlp":
+            self.encoder = None
+            joint_obs_shape = (
+                sum(space.shape[0] for space in envs.observation_space.values())
+                if args.decentralized
+                else envs.observation_space["agent_0"].shape[-1]
+            )
+            critic_input_dim = int(np.prod((joint_obs_shape,)))
+        elif self.encoder_type == "gnn":
+            if getattr(envs, "graph_specs", None) is None:
+                raise ValueError(
+                    "critic_encoder=gnn requires thesis-style graph observations."
+                )
+            flat_dim = (
+                sum(space.shape[0] for space in envs.observation_space.values())
+                if args.decentralized
+                else envs.observation_space["agent_0"].shape[-1]
+            )
+            self.encoder = GraphAndFlatEncoder(
+                envs.graph_specs["state"],
+                flat_dim=flat_dim,
+                args=args,
+                use_flat=getattr(args, "gnn_concat_flat", False),
+            )
+            critic_input_dim = self.encoder.out_dim
+        else:
+            raise ValueError(
+                f"Unsupported critic encoder '{self.encoder_type}'. Use 'mlp' or 'gnn'."
+            )
+        self.critic = build_mlp_head(
+            critic_input_dim, critic_layers, 1, args.critic_act_fn
         )
-
-        for idx, embed_dim in enumerate(critic_layers[1:], start=1):
-            layers.extend([Linear(critic_layers[idx - 1], embed_dim, act_str), act_fn])
-        layers.append(Linear(critic_layers[-1], 1, "linear"))
-        self.critic = nn.Sequential(*layers)
 
     def get_value(self, x: th.Tensor) -> th.Tensor:
         """Compute value estimate (critic output) for given observations.
@@ -155,4 +203,10 @@ class Critic(nn.Module):
         Returns:
             A tensor containing value estimates.
         """
+        if self.encoder_type == "gnn":
+            x = self.encoder(x, graph_key="state_graph")
+        elif self.encoder is not None:
+            x = self.encoder(x)
+        else:
+            x = get_flat_obs(x)
         return self.critic(x)

@@ -8,7 +8,14 @@ from common.logger import Logger
 from common.utils import (
     ReturnNormalizer,
     cast_np_to_tensors,
-    stack_agent_obs_by_env,
+    clone_nested,
+    flatten_rollout_obs,
+    get_joint_obs,
+    index_nested,
+    set_nested_at_step,
+    set_nested_env_index,
+    strip_state_graph,
+    zeros_like_with_leading,
 )
 from env.eval import Evaluator
 
@@ -129,22 +136,22 @@ class MAPPO:
             actor_optim.load_state_dict(ckpt.loaded_run["actor_optim"])
             critic_optim.load_state_dict(ckpt.loaded_run["critic_optim"])
 
-        joint_obs_size = (
-            sum(space.shape[0] for space in envs.observation_space.values())
-            if args.decentralized
-            else envs.observation_space["agent_0"].shape[-1]
+        next_obs, _ = envs.reset()
+        next_obs = cast_np_to_tensors(next_obs, device)
+        joint_obs_template = get_joint_obs(
+            next_obs, args.critic_encoder, args.decentralized
         )
-        joint_observations = th.zeros(
-            (args.n_steps, args.n_envs) + (joint_obs_size,)
-        ).to(device)
+        joint_observations = zeros_like_with_leading(
+            joint_obs_template, (args.n_steps,), device=device
+        )
         values = th.zeros((args.n_steps, args.n_envs)).to(device)
         dones = th.zeros((args.n_steps, args.n_envs), dtype=th.int32).to(device)
         terminations = th.zeros((args.n_steps, args.n_envs), dtype=th.int32).to(device)
         observations, actions, logprobs, rewards = [{} for _ in range(4)]
         for id in agent_ids:
-            observations[id] = th.zeros(
-                (args.n_steps, args.n_envs) + envs.observation_space[id].shape
-            ).to(device)
+            observations[id] = zeros_like_with_leading(
+                strip_state_graph(next_obs[id]), (args.n_steps,), device=device
+            )
             actions[id] = th.zeros((args.n_steps, args.n_envs)).to(
                 device
             )  # Assuming discrete actions
@@ -183,8 +190,6 @@ class MAPPO:
         reward_normalizer = (
             ReturnNormalizer(args.n_envs, args.gamma) if getattr(args, "norm_reward", False) else None
         )
-        next_obs, _ = envs.reset()
-        next_obs = cast_np_to_tensors(next_obs, device)
         try:
             for iteration in range(init_rollout, n_rollouts + 1):
                 # Annealing the rate if instructed to do so
@@ -200,7 +205,11 @@ class MAPPO:
 
                     action, logprob = {}, {}
                     for agent in agent_ids:
-                        observations[agent][step] = next_obs[agent]
+                        set_nested_at_step(
+                            observations[agent],
+                            step,
+                            strip_state_graph(next_obs[agent]),
+                        )
 
                         with th.no_grad():
                             action[agent], logprob[agent], _ = actors[agent].get_action(
@@ -212,13 +221,11 @@ class MAPPO:
 
                     # get joint obs for this
                     with th.no_grad():
-                        joint_obs = (
-                            stack_agent_obs_by_env(next_obs)
-                            if args.decentralized
-                            else next_obs["agent_0"]
+                        joint_obs = get_joint_obs(
+                            next_obs, args.critic_encoder, args.decentralized
                         )
                         value = critic.get_value(joint_obs)
-                        joint_observations[step] = joint_obs
+                        set_nested_at_step(joint_observations, step, joint_obs)
                         values[step] = value.flatten()
 
                     next_obs, reward, next_terminations, next_truncations, infos = (
@@ -253,14 +260,16 @@ class MAPPO:
                     )
 
                     next_obs = cast_np_to_tensors(next_obs, device)
-                    real_next_obs = next_obs.copy()
+                    real_next_obs = clone_nested(next_obs)
                     for idx, done in enumerate(dones[step]):
                         if done:
+                            final_obs = cast_np_to_tensors(
+                                infos[idx]["final_observation"], device
+                            )
                             for agent in agent_ids:
-                                real_next_obs[agent][idx] = th.tensor(
-                                    infos[idx]["final_observation"][agent],
-                                    dtype=th.float32,
-                                ).to(device)
+                                set_nested_env_index(
+                                    real_next_obs[agent], idx, final_obs[agent]
+                                )
 
                     if global_step % args.eval_freq == 0:
                         obs_stats = envs.get_obs_stats()
@@ -294,10 +303,8 @@ class MAPPO:
                 # Bootstrap value if not done
                 with th.no_grad():
                     advantages, returns = {}, {}
-                    joint_real_next_obs = (
-                        stack_agent_obs_by_env(real_next_obs)
-                        if args.decentralized
-                        else real_next_obs["agent_0"]
+                    joint_real_next_obs = get_joint_obs(
+                        real_next_obs, args.critic_encoder, args.decentralized
                     )
                     for agent in agent_ids:
                         advantages[agent] = th.zeros_like(rewards[agent]).to(device)
@@ -340,7 +347,7 @@ class MAPPO:
                 # --------------------------------------
 
                 b_values = values.reshape(-1)
-                b_joint_obs = joint_observations.reshape((-1,) + (joint_obs_size,))
+                b_joint_obs = flatten_rollout_obs(joint_observations)
 
                 # Per-rollout training metric accumulators
                 train_metrics = {
@@ -351,9 +358,7 @@ class MAPPO:
 
                 for agent in agent_ids:
                     # Flatten the batch
-                    b_obs = observations[agent].reshape(
-                        (-1,) + envs.observation_space[agent].shape
-                    )
+                    b_obs = flatten_rollout_obs(observations[agent])
                     b_logprobs = logprobs[agent].reshape(-1)
                     b_actions = actions[agent].reshape(
                         -1,
@@ -370,7 +375,7 @@ class MAPPO:
                             end = start + minibatch_size
                             mb_inds = b_inds[start:end]
                             action, newlogprob, entropy = actors[agent].get_action(
-                                b_obs[mb_inds],
+                                index_nested(b_obs, mb_inds),
                                 b_actions.long()[mb_inds],
                                 action0_bonus=action0_bonus,
                             )
@@ -412,7 +417,9 @@ class MAPPO:
                             actor_optim.step()
 
                             # Value loss
-                            newvalue = critic.get_value(b_joint_obs[mb_inds]).view(-1)
+                            newvalue = critic.get_value(
+                                index_nested(b_joint_obs, mb_inds)
+                            ).view(-1)
                             if args.clip_vfloss:
                                 v_loss_unclipped = (newvalue - b_returns[mb_inds]) ** 2
                                 v_clipped = b_values[mb_inds] + th.clamp(
