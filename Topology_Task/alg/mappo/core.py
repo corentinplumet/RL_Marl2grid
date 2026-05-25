@@ -39,6 +39,24 @@ def _scheduled_action0_bonus(args: Namespace, global_step: int) -> float:
     return _linear_schedule(init_bonus, final_bonus, progress)
 
 
+def _evaluate_preserving_training_rng(
+    evaluator: Evaluator, global_step: int, actors: Dict
+) -> float:
+    """Run eval without letting stochastic eval sampling change training RNG state."""
+    python_state = rnd.getstate()
+    numpy_state = np.random.get_state()
+    torch_state = th.get_rng_state()
+    cuda_states = th.cuda.get_rng_state_all() if th.cuda.is_available() else None
+    try:
+        return evaluator.evaluate(global_step, actors)
+    finally:
+        rnd.setstate(python_state)
+        np.random.set_state(numpy_state)
+        th.set_rng_state(torch_state)
+        if cuda_states is not None:
+            th.cuda.set_rng_state_all(cuda_states)
+
+
 class MAPPO:
     """Multi-agent Proximal Policy Optimization (PPO) implementation for training an agent in a given environment: https://arxiv.org/abs/2103.01955."""
 
@@ -137,7 +155,26 @@ class MAPPO:
             f"Invalid eval frequency: {args.eval_freq}. Must be multiple of n_envs {args.n_envs}"
         )
         logger = Logger(run_name, args) if args.track else None
-        evaluator = Evaluator(args, logger, device)
+        split_chronics = getattr(args, "split_chronics", False)
+        evaluator = Evaluator(
+            args,
+            logger,
+            device,
+            chronic_split="test" if split_chronics else None,
+            metric_prefix="test" if split_chronics else None,
+        )
+        train_evaluator = (
+            Evaluator(
+                args,
+                logger,
+                device,
+                chronic_split="train",
+                metric_prefix="train_eval",
+            )
+            if split_chronics and getattr(args, "eval_train_chronics", False)
+            else None
+        )
+        best_test_survival = -np.inf
 
         global_step = 0 if not ckpt.resumed else ckpt.loaded_run["global_step"]
         start_time = start_time
@@ -226,8 +263,31 @@ class MAPPO:
                                 ).to(device)
 
                     if global_step % args.eval_freq == 0:
-                        evaluator.env.env.set_obs_stats(envs.get_obs_stats())
-                        evaluator.evaluate(global_step, actors)
+                        obs_stats = envs.get_obs_stats()
+                        if train_evaluator is not None:
+                            train_evaluator.env.env.set_obs_stats(obs_stats)
+                            _evaluate_preserving_training_rng(
+                                train_evaluator, global_step, actors
+                            )
+                        evaluator.env.env.set_obs_stats(obs_stats)
+                        eval_survival = _evaluate_preserving_training_rng(
+                            evaluator, global_step, actors
+                        )
+                        if split_chronics and eval_survival > best_test_survival:
+                            best_test_survival = eval_survival
+                            if args.checkpoint:
+                                ckpt.set_record(
+                                    args,
+                                    actors,
+                                    critic,
+                                    global_step,
+                                    actor_optim,
+                                    critic_optim,
+                                    "" if not logger else logger.wb_path,
+                                    iteration,
+                                    mark_final=False,
+                                )
+                                ckpt.save_as("best_test_" + run_name)
                         if args.verbose:
                             print(f"SPS={int(global_step / (time() - start_time))}")
 

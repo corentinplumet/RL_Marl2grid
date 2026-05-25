@@ -1,5 +1,18 @@
+import sys
+
 from common.imports import *
 from common.utils import str2bool
+
+
+def _reject_removed_validation_split_args() -> None:
+    removed_flags = ("--validation-chronics-pct", "--val-chronics-pct")
+    for arg in sys.argv[1:]:
+        flag = arg.split("=", 1)[0]
+        if flag in removed_flags:
+            raise ValueError(
+                f"{flag} was removed. Chronic splitting now only supports train/test; "
+                "use --test-chronics-pct to control the test split."
+            )
 
 
 def get_env_args() -> Namespace:
@@ -9,6 +22,8 @@ def get_env_args() -> Namespace:
     Returns:
         Namespace: A namespace containing the parsed arguments.
     """
+    _reject_removed_validation_split_args()
+
     parser = ap.ArgumentParser()
 
     # Settings
@@ -98,6 +113,24 @@ def get_env_args() -> Namespace:
         default=0,
         choices=[0, 1, 2],
         help="Select the type of constraints to use: no constraints (0), failure constraints (1), overloads constraints (2)",
+    )
+    parser.add_argument(
+        "--split-chronics",
+        type=str2bool,
+        default=False,
+        help="Split chronics into train/test sets. Training uses train, periodic eval uses test.",
+    )
+    parser.add_argument(
+        "--test-chronics-pct",
+        type=float,
+        default=0.2,
+        help="Fraction of available chronics reserved for the test split when --split-chronics is enabled. Values > 1 are treated as percentages.",
+    )
+    parser.add_argument(
+        "--chronic-split-seed",
+        type=int,
+        default=None,
+        help="Seed used to create the chronic split. Defaults to --seed.",
     )
 
     # Parse the arguments

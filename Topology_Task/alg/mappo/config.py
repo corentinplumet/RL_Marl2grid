@@ -1,5 +1,18 @@
+import sys
+
 from common.imports import *
 from common.utils import str2bool
+
+
+def _reject_removed_validation_eval_args() -> None:
+    removed_flags = ("--validate-on-best-test",)
+    for arg in sys.argv[1:]:
+        flag = arg.split("=", 1)[0]
+        if flag in removed_flags:
+            raise ValueError(
+                f"{flag} was removed. Chronic splitting now only supports train/test "
+                "evaluation on the test split."
+            )
 
 
 def get_alg_args() -> Namespace:
@@ -10,6 +23,8 @@ def get_alg_args() -> Namespace:
     Returns:
         A namespace containing the parsed arguments.
     """
+    _reject_removed_validation_eval_args()
+
     parser = ap.ArgumentParser()
 
     parser.add_argument(
@@ -161,6 +176,18 @@ def get_alg_args() -> Namespace:
         type=int,
         default=10,
         help="Number of episodes/chronics used for each evaluation.",
+    )
+    parser.add_argument(
+        "--eval-all-split-chronics",
+        type=str2bool,
+        default=True,
+        help="When chronic splitting is enabled, evaluate every chronic in the test split.",
+    )
+    parser.add_argument(
+        "--eval-train-chronics",
+        type=str2bool,
+        default=False,
+        help="When chronic splitting is enabled, also evaluate on the train split and log it under train_eval/.",
     )
 
     return parser.parse_known_args()[0]

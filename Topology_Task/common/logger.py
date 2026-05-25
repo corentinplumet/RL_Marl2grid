@@ -1,6 +1,6 @@
 import os
 import subprocess
-from collections import deque 
+from collections import deque
 
 import shutil
 
@@ -31,6 +31,12 @@ class Logger:
         self.episodic_survival = deque(maxlen=log_freq)
         self.episodic_return = deque(maxlen=log_freq)
         self.episodic_length = deque(maxlen=log_freq)
+        self._eval_buffers = {
+            None: {
+                "survival": self.episodic_survival,
+                "return": self.episodic_return,
+            }
+        }
 
         self.wb_mode = args.wandb_mode
 
@@ -47,7 +53,30 @@ class Logger:
         )
         self.wb_path = os.path.split(wb_path.dir)[0]
 
-    def store_metrics(self, global_step: int, avg_survival: float, avg_return: float, tags: List) -> None:
+    def _get_eval_buffers(self, prefix: Optional[str] = None) -> Dict[str, Deque]:
+        if prefix not in self._eval_buffers:
+            self._eval_buffers[prefix] = {
+                "survival": deque(maxlen=self.log_freq),
+                "return": deque(maxlen=self.log_freq),
+            }
+        return self._eval_buffers[prefix]
+
+    def _survival_keys(self, prefix: Optional[str] = None) -> List[str]:
+        if prefix:
+            return [
+                f"{prefix}/charts/episodic_survival",
+                f"{prefix}/episodic_survival",
+            ]
+        return ["charts/episodic_survival"]
+
+    def store_metrics(
+        self,
+        global_step: int,
+        avg_survival: float,
+        avg_return: float,
+        tags: List,
+        prefix: Optional[str] = None,
+    ) -> None:
         """Store the given metrics and log them if the log frequency is met.
 
         Args:
@@ -55,18 +84,25 @@ class Logger:
             avg_survival: Average survival metric to be stored.
             avg_return: Average return metric to be stored.
         """
-        self.episodic_survival.append(avg_survival)
-        self.episodic_return.append(avg_return)
-        if global_step % self.log_freq == 0: self.log_metrics(global_step, tags)
+        buffers = self._get_eval_buffers(prefix)
+        buffers["survival"].append(avg_survival)
+        buffers["return"].append(avg_return)
+        if global_step % self.log_freq == 0:
+            self.log_metrics(global_step, tags, prefix)
 
-    def log_metrics(self, global_step: int, tags: List) -> None:
+    def log_metrics(
+        self, global_step: int, tags: List, prefix: Optional[str] = None
+    ) -> None:
         """Log the stored metrics to WandB.
 
         Args:
             global_step: Current global step of training.
         """
-        record = dict(zip(tags, self.episodic_return[0]))   # assuming log_freq=1
-        record['charts/episodic_survival'] = np.mean(self.episodic_survival)
+        buffers = self._get_eval_buffers(prefix)
+        metric_tags = [f"{prefix}/{tag}" for tag in tags] if prefix else tags
+        record = dict(zip(metric_tags, buffers["return"][0]))   # assuming log_freq=1
+        for survival_key in self._survival_keys(prefix):
+            record[survival_key] = np.mean(buffers["survival"])
         record['charts/global_step'] = global_step
 
         wb.log(record, step=global_step)
@@ -111,8 +147,17 @@ class ConstrainedLogger(Logger):
         """
         super().__init__(run_name, args, log_freq)
         self.episodic_cost = deque(maxlen=log_freq)
+        self._eval_buffers[None]["cost"] = self.episodic_cost
 
-    def store_metrics(self, global_step: int, avg_survival: float, avg_return: float, avg_cost: float, tags: List) -> None:
+    def store_metrics(
+        self,
+        global_step: int,
+        avg_survival: float,
+        avg_return: float,
+        avg_cost: float,
+        tags: List,
+        prefix: Optional[str] = None,
+    ) -> None:
         """Store the given metrics and log them if the log frequency is met.
 
         Args:
@@ -122,21 +167,37 @@ class ConstrainedLogger(Logger):
             avg_cost: Average cost return metric to be stored.
 
         """
-        self.episodic_survival.append(avg_survival)
-        self.episodic_return.append(avg_return)
-        self.episodic_cost.append(avg_cost)
-        if global_step % self.log_freq == 0: self.log_metrics(global_step, tags)
+        buffers = self._get_eval_buffers(prefix)
+        buffers["survival"].append(avg_survival)
+        buffers["return"].append(avg_return)
+        if "cost" not in buffers:
+            buffers["cost"] = deque(maxlen=self.log_freq)
+        buffers["cost"].append(avg_cost)
+        if global_step % self.log_freq == 0:
+            self.log_metrics(global_step, tags, prefix)
 
-    def log_metrics(self, global_step: int, tags: List) -> None:
+    def log_metrics(
+        self, global_step: int, tags: List, prefix: Optional[str] = None
+    ) -> None:
         """Log the stored metrics to WandB.
 
         Args:
             global_step: Current global step of training.
         """
-        record = dict(zip(tags, self.episodic_return[0]))   # assuming log_freq=1
+        buffers = self._get_eval_buffers(prefix)
+        if "cost" not in buffers:
+            buffers["cost"] = deque(maxlen=self.log_freq)
+        metric_tags = [f"{prefix}/{tag}" for tag in tags] if prefix else tags
+        record = dict(zip(metric_tags, buffers["return"][0]))   # assuming log_freq=1
         record['charts/global_step'] = global_step
-        record['charts/episodic_survival'] = np.mean(self.episodic_survival)
-        record['charts/episodic_cost'] = np.mean(self.episodic_cost[0])
+        for survival_key in self._survival_keys(prefix):
+            record[survival_key] = np.mean(buffers["survival"])
+        cost_keys = (
+            [f"{prefix}/charts/episodic_cost", f"{prefix}/episodic_cost"]
+            if prefix
+            else ["charts/episodic_cost"]
+        )
+        for cost_key in cost_keys:
+            record[cost_key] = np.mean(buffers["cost"])
 
         wb.log(record, step=global_step)
-    
