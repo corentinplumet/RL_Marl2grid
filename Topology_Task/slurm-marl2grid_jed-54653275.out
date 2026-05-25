@@ -1,0 +1,11 @@
+Job 54653275 started on jst304 at sam 23 mai 2026 15:36:08 CEST
+Training configuration:
+  conda env       : marl2grid
+  algorithm       : MAPPO
+  env             : bus14
+  seed            : 0
+  total timesteps : 25000000
+  n envs          : 68
+  torch threads   : 4
+  wandb mode      : online
+Running: python -u main.py --alg MAPPO --env-id bus14 --action-type topology --seed 0 --total-timesteps 25000000 --n-envs 68 --n-threads 4 --cuda False --checkpoint True --wandb-project Grid2Op --wandb-entity corentin-plumet-epfl --wandb-mode online --time-limit 1300  

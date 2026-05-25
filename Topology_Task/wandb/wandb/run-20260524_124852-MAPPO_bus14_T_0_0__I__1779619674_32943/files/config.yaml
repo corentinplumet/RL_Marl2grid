@@ -1,0 +1,214 @@
+_wandb:
+    value:
+        cli_version: 0.25.0
+        e:
+            7tmmkj9sirbq5bow6n3di2ganaelorlw:
+                args:
+                    - --alg
+                    - MAPPO
+                    - --env-id
+                    - bus14
+                    - --action-type
+                    - topology
+                    - --seed
+                    - "0"
+                    - --total-timesteps
+                    - "25000000"
+                    - --n-envs
+                    - "20"
+                    - --n-threads
+                    - "20"
+                    - --cuda
+                    - "False"
+                    - --checkpoint
+                    - "True"
+                    - --wandb-project
+                    - Grid2Op
+                    - --wandb-entity
+                    - corentin-plumet-epfl
+                    - --wandb-mode
+                    - online
+                    - --time-limit
+                    - "1300"
+                    - --total-timesteps
+                    - "15000000"
+                    - --eval-freq
+                    - "40000"
+                    - --actor-layers
+                    - "256"
+                    - "256"
+                    - "256"
+                    - --critic-layers
+                    - "256"
+                    - "256"
+                    - "256"
+                    - --actor-lr
+                    - "0.0001"
+                    - --critic-lr
+                    - "0.0001"
+                    - --gamma
+                    - "0.9"
+                    - --gae-lambda
+                    - "0.95"
+                    - --update-epochs
+                    - "10"
+                    - --max-grad-norm
+                    - "1.0"
+                    - --clip-coef
+                    - "0.2"
+                    - --vf-coef
+                    - "0.5"
+                    - --norm-reward
+                    - "True"
+                    - --deterministic-eval
+                    - "False"
+                    - --n-steps
+                    - "1000"
+                    - --n-minibatches
+                    - "10"
+                    - --entropy-coef
+                    - "0.01"
+                    - --target-kl
+                    - "0.02"
+                    - --init-do-nothing-prob
+                    - "0.5"
+                    - --exp-tag
+                    - b0_short_rollout
+                codePath: Topology_Task/main.py
+                codePathLocal: main.py
+                email: corentin.plumet@epfl.ch
+                executable: /home/plumet/miniforge3/envs/marl2grid/bin/python
+                git:
+                    commit: 7628d261749f3c8281ff0b71a5b3f1a459e11226
+                    remote: https://github.com/corentinplumet/RL_Marl2grid.git
+                host: jst280
+                os: Linux-5.14.0-427.42.1.el9_4.x86_64-x86_64-with-glibc2.34
+                program: /home/plumet/RL_Marl2grid/Topology_Task/main.py
+                python: CPython 3.12.2
+                root: /home/plumet/RL_Marl2grid/Topology_Task/wandb
+                startedAt: "2026-05-24T10:48:52.959271Z"
+                writerId: 7tmmkj9sirbq5bow6n3di2ganaelorlw
+        m: []
+        python_version: 3.12.2
+        t:
+            "1":
+                - 1
+                - 30
+            "2":
+                - 1
+                - 30
+            "3":
+                - 13
+                - 14
+                - 16
+                - 61
+            "4": 3.12.2
+            "5": 0.25.0
+            "12": 0.25.0
+            "13": linux-x86_64
+action_type:
+    value: topology
+actor_act_fn:
+    value: relu
+actor_layers:
+    value:
+        - 256
+        - 256
+        - 256
+actor_lr:
+    value: 0.0001
+alg:
+    value: MAPPO
+anneal_lr:
+    value: true
+checkpoint:
+    value: true
+clip_coef:
+    value: 0.2
+clip_vfloss:
+    value: true
+constraints_type:
+    value: 0
+critic_act_fn:
+    value: relu
+critic_layers:
+    value:
+        - 256
+        - 256
+        - 256
+critic_lr:
+    value: 0.0001
+cuda:
+    value: false
+decentralized:
+    value: true
+deterministic_eval:
+    value: false
+difficulty:
+    value: 0
+entropy_coef:
+    value: 0.01
+env_config_path:
+    value: scenario.json
+env_id:
+    value: bus14
+eval_freq:
+    value: 40000
+exp_tag:
+    value: b0_short_rollout
+gae_lambda:
+    value: 0.95
+gamma:
+    value: 0.9
+heuristic_type:
+    value: idle
+init_do_nothing_prob:
+    value: 0.5
+max_grad_norm:
+    value: 1
+n_envs:
+    value: 20
+n_minibatches:
+    value: 10
+n_steps:
+    value: 1000
+n_threads:
+    value: 20
+n1_reward:
+    value: false
+norm_adv:
+    value: true
+norm_obs:
+    value: true
+norm_reward:
+    value: true
+optimize_mem:
+    value: true
+resume_run_name:
+    value: ""
+seed:
+    value: 0
+target_kl:
+    value: 0.02
+th_deterministic:
+    value: false
+time_limit:
+    value: 1300
+total_timesteps:
+    value: 15000000
+track:
+    value: true
+update_epochs:
+    value: 10
+use_heuristic:
+    value: false
+verbose:
+    value: true
+vf_coef:
+    value: 0.5
+wandb_entity:
+    value: corentin-plumet-epfl
+wandb_mode:
+    value: online
+wandb_project:
+    value: Grid2Op

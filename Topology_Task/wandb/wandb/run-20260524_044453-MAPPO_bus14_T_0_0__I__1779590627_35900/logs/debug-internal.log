@@ -1,0 +1,11 @@
+{"time":"2026-05-24T04:44:56.110570298+02:00","level":"INFO","msg":"stream: starting","core version":"0.25.0"}
+{"time":"2026-05-24T04:44:56.284318259+02:00","level":"INFO","msg":"stream: created new stream","id":"MAPPO_bus14_T_0_0__I__1779590627_35900"}
+{"time":"2026-05-24T04:44:56.284476929+02:00","level":"INFO","msg":"handler: started","stream_id":"MAPPO_bus14_T_0_0__I__1779590627_35900"}
+{"time":"2026-05-24T04:44:56.285865137+02:00","level":"INFO","msg":"stream: started","id":"MAPPO_bus14_T_0_0__I__1779590627_35900"}
+{"time":"2026-05-24T04:44:56.286000591+02:00","level":"INFO","msg":"writer: started","stream_id":"MAPPO_bus14_T_0_0__I__1779590627_35900"}
+{"time":"2026-05-24T04:44:56.286033038+02:00","level":"INFO","msg":"sender: started","stream_id":"MAPPO_bus14_T_0_0__I__1779590627_35900"}
+{"time":"2026-05-24T17:04:27.255320772+02:00","level":"INFO","msg":"stream: closing","id":"MAPPO_bus14_T_0_0__I__1779590627_35900"}
+{"time":"2026-05-24T17:04:27.802167003+02:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2026-05-24T17:04:28.203364468+02:00","level":"INFO","msg":"handler: closed","stream_id":"MAPPO_bus14_T_0_0__I__1779590627_35900"}
+{"time":"2026-05-24T17:04:28.204881916+02:00","level":"INFO","msg":"sender: closed","stream_id":"MAPPO_bus14_T_0_0__I__1779590627_35900"}
+{"time":"2026-05-24T17:04:28.204907953+02:00","level":"INFO","msg":"stream: closed","id":"MAPPO_bus14_T_0_0__I__1779590627_35900"}

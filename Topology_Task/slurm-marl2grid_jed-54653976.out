@@ -1,0 +1,25 @@
+Job 54653976 started on jst057 at dim 24 mai 2026 04:42:42 CEST
+Training configuration:
+  conda env       : marl2grid
+  algorithm       : MAPPO
+  env             : bus14
+  seed            : 0
+  total timesteps : 25000000
+  n envs          : 40
+  torch threads   : 16
+  wandb mode      : online
+Running: python -u main.py --alg MAPPO --env-id bus14 --action-type topology --seed 0 --total-timesteps 25000000 --n-envs 40 --n-threads 16 --cuda False --checkpoint True --wandb-project Grid2Op --wandb-entity corentin-plumet-epfl --wandb-mode online --time-limit 1300  --total-timesteps 15000000 --eval-freq 40000 --actor-layers 256 256 256 --critic-layers 256 256 256 --actor-lr 0.0001 --critic-lr 0.0001 --gamma 0.9 --gae-lambda 0.95 --update-epochs 10 --max-grad-norm 1.0 --clip-coef 0.2 --vf-coef 0.5 --norm-reward True --n-steps 1000 --n-minibatches 16 --entropy-coef 0.01 --target-kl 0.02 --init-do-nothing-prob 0.5 --exp-tag b1_40env_1000steps
+Eval at step 40000, survival=16.592%, return=[-2.8072594852244945, 779.397775568962, -5.010612368712463, -1.0]
+SPS=167
+Eval at step 80000, survival=15.211%, return=[-2.6837024757813195, 694.0407585251335, -288.7004983979661, -41.34385964912325]
+SPS=197
+Eval at step 120000, survival=6.042%, return=[-1.6391480775841045, 284.50897810983656, -8.24428554279948, -27.968421052631584]
+SPS=222
+Eval at step 160000, survival=21.565%, return=[-3.4899097994260955, 1007.1690742712022, -5.432666180345587, -25.92280701754418]
+SPS=226
+Eval at step 200000, survival=19.149%, return=[-3.144247958646156, 891.332781329154, -5.009660415526014, -1.0]
+SPS=229
+Eval at step 240000, survival=19.276%, return=[-3.0994937255221884, 904.5805676221847, -5.010104781278642, -1.0]
+SPS=229
+Eval at step 280000, survival=16.438%, return=[-2.819328415900236, 767.181741805077, -5.012019313488008, -1.0]
+SPS=230

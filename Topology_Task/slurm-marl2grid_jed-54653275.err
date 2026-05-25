@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/home/plumet/RL_Marl2grid/Topology_Task/main.py", line 125, in <module>
+    main(parser.parse_known_args()[0])
+  File "/home/plumet/RL_Marl2grid/Topology_Task/main.py", line 58, in main
+    ALGORITHMS[alg](envs, run_name, start_time, args, checkpoint)
+  File "/home/plumet/RL_Marl2grid/Topology_Task/alg/mappo/core.py", line 40, in __init__
+    assert args.n_steps % args.n_envs == 0, (
+AssertionError: Invalid train frequency (n_steps): 2000. Must be multiple of n_envs 68
+srun: error: jst304: task 0: Exited with exit code 1
+srun: Terminating StepId=54653275.0

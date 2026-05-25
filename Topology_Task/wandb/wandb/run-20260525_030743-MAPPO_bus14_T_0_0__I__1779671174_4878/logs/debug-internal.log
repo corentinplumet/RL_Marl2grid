@@ -1,0 +1,6 @@
+{"time":"2026-05-25T03:07:46.533276133+02:00","level":"INFO","msg":"stream: starting","core version":"0.25.0"}
+{"time":"2026-05-25T03:07:46.720071806+02:00","level":"INFO","msg":"stream: created new stream","id":"MAPPO_bus14_T_0_0__I__1779671174_4878"}
+{"time":"2026-05-25T03:07:46.720949026+02:00","level":"INFO","msg":"handler: started","stream_id":"MAPPO_bus14_T_0_0__I__1779671174_4878"}
+{"time":"2026-05-25T03:07:46.721343275+02:00","level":"INFO","msg":"stream: started","id":"MAPPO_bus14_T_0_0__I__1779671174_4878"}
+{"time":"2026-05-25T03:07:46.721471299+02:00","level":"INFO","msg":"writer: started","stream_id":"MAPPO_bus14_T_0_0__I__1779671174_4878"}
+{"time":"2026-05-25T03:07:46.721498777+02:00","level":"INFO","msg":"sender: started","stream_id":"MAPPO_bus14_T_0_0__I__1779671174_4878"}

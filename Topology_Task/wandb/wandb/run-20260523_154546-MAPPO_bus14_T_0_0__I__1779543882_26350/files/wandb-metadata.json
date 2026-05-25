@@ -1,0 +1,43 @@
+{
+  "os":  "Linux-5.14.0-427.42.1.el9_4.x86_64-x86_64-with-glibc2.34",
+  "python":  "CPython 3.12.2",
+  "startedAt":  "2026-05-23T13:45:46.240510Z",
+  "args":  [
+    "--alg",
+    "MAPPO",
+    "--env-id",
+    "bus14",
+    "--action-type",
+    "topology",
+    "--seed",
+    "0",
+    "--total-timesteps",
+    "25000000",
+    "--n-threads",
+    "4",
+    "--cuda",
+    "False",
+    "--checkpoint",
+    "True",
+    "--wandb-project",
+    "Grid2Op",
+    "--wandb-entity",
+    "corentin-plumet-epfl",
+    "--wandb-mode",
+    "online",
+    "--time-limit",
+    "1300"
+  ],
+  "program":  "/home/plumet/RL_Marl2grid/Topology_Task/main.py",
+  "codePath":  "Topology_Task/main.py",
+  "codePathLocal":  "main.py",
+  "git":  {
+    "remote":  "https://github.com/corentinplumet/RL_Marl2grid.git",
+    "commit":  "ba1a4b6c99d9e9122bf6446f3582317f02146d69"
+  },
+  "email":  "corentin.plumet@epfl.ch",
+  "root":  "/home/plumet/RL_Marl2grid/Topology_Task/wandb",
+  "host":  "jst305",
+  "executable":  "/home/plumet/miniforge3/envs/marl2grid/bin/python",
+  "writerId":  "xkc0yq1q1ibmfmdh0m2lbvjq3yd0val5"
+}
