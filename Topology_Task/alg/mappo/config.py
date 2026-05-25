@@ -109,6 +109,12 @@ def get_alg_args() -> Namespace:
         "--entropy-coef", type=float, default=0.01, help="Entropy coefficient"
     )
     parser.add_argument(
+        "--entropy-coef-final",
+        type=float,
+        default=None,
+        help="If set, linearly anneal entropy coefficient from --entropy-coef to this value.",
+    )
+    parser.add_argument(
         "--vf-coef", type=float, default=0.5, help="Value function coefficient"
     )
 
@@ -127,10 +133,34 @@ def get_alg_args() -> Namespace:
         help="Toggle running-stats reward normalization (SB3 VecNormalize style: divide reward by running std of discounted returns).",
     )
     parser.add_argument(
+        "--action0-logit-bonus-init",
+        type=float,
+        default=0.0,
+        help="Extra training-time logit bonus for action 0 at the start of training.",
+    )
+    parser.add_argument(
+        "--action0-logit-bonus-final",
+        type=float,
+        default=0.0,
+        help="Final value for the training-time action-0 logit bonus schedule.",
+    )
+    parser.add_argument(
+        "--action0-logit-bonus-fraction",
+        type=float,
+        default=1.0,
+        help="Fraction of total timesteps over which to anneal the action-0 logit bonus.",
+    )
+    parser.add_argument(
         "--deterministic-eval",
         type=str2bool,
         default=True,
         help="Use greedy argmax actions during evaluation. Set False to sample evaluation actions.",
+    )
+    parser.add_argument(
+        "--eval-episodes",
+        type=int,
+        default=10,
+        help="Number of episodes/chronics used for each evaluation.",
     )
 
     return parser.parse_known_args()[0]

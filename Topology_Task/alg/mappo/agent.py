@@ -57,18 +57,25 @@ class Actor(nn.Module):
         self.actor = nn.Sequential(*layers)
 
     def get_discrete_action(
-        self, x: th.Tensor, action: th.Tensor = None
+        self,
+        x: th.Tensor,
+        action: th.Tensor = None,
+        action0_bonus: float = 0.0,
     ) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
         """Sample discrete actions and compute log probabilities and entropy.
 
         Args:
             x: Input observations.
             action: Specific action to take. Defaults to None.
+            action0_bonus: Optional logit bonus added to action 0.
 
         Returns:
             A tuple containing tensors for the sampled discrete actions, the log probability of the sampled actions, and the entropy of the action distribution.
         """
         logits = self.actor(x)
+        if action0_bonus != 0.0:
+            logits = logits.clone()
+            logits[..., 0] = logits[..., 0] + action0_bonus
         probs = Categorical(logits=logits)
         if action is None:
             action = probs.sample()

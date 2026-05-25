@@ -13,6 +13,32 @@ from common.utils import (
 from env.eval import Evaluator
 
 
+def _linear_schedule(start: float, end: float, progress: float) -> float:
+    progress = min(max(progress, 0.0), 1.0)
+    return start + progress * (end - start)
+
+
+def _scheduled_entropy_coef(args: Namespace, global_step: int) -> float:
+    final_coef = getattr(args, "entropy_coef_final", None)
+    if final_coef is None:
+        return args.entropy_coef
+    progress = global_step / max(args.total_timesteps, 1)
+    return _linear_schedule(args.entropy_coef, final_coef, progress)
+
+
+def _scheduled_action0_bonus(args: Namespace, global_step: int) -> float:
+    init_bonus = getattr(args, "action0_logit_bonus_init", 0.0)
+    final_bonus = getattr(args, "action0_logit_bonus_final", 0.0)
+    schedule_fraction = getattr(args, "action0_logit_bonus_fraction", 1.0)
+    if init_bonus == final_bonus:
+        return init_bonus
+    if schedule_fraction <= 0.0:
+        return final_bonus
+    schedule_steps = max(int(args.total_timesteps * schedule_fraction), 1)
+    progress = global_step / schedule_steps
+    return _linear_schedule(init_bonus, final_bonus, progress)
+
+
 class MAPPO:
     """Multi-agent Proximal Policy Optimization (PPO) implementation for training an agent in a given environment: https://arxiv.org/abs/2103.01955."""
 
@@ -129,6 +155,8 @@ class MAPPO:
                     frac = 1.0 - (iteration - 1.0) / n_rollouts
                     actor_optim.param_groups[0]["lr"] = frac * args.actor_lr
                     critic_optim.param_groups[0]["lr"] = frac * args.critic_lr
+                entropy_coef = _scheduled_entropy_coef(args, global_step)
+                action0_bonus = _scheduled_action0_bonus(args, global_step)
 
                 for step in range(0, args.n_steps):
                     global_step += args.n_envs
@@ -139,7 +167,7 @@ class MAPPO:
 
                         with th.no_grad():
                             action[agent], logprob[agent], _ = actors[agent].get_action(
-                                next_obs[agent]
+                                next_obs[agent], action0_bonus=action0_bonus
                             )
 
                         actions[agent][step] = action[agent]  # .unsqueeze(-1)
@@ -282,7 +310,9 @@ class MAPPO:
                             end = start + minibatch_size
                             mb_inds = b_inds[start:end]
                             action, newlogprob, entropy = actors[agent].get_action(
-                                b_obs[mb_inds], b_actions.long()[mb_inds]
+                                b_obs[mb_inds],
+                                b_actions.long()[mb_inds],
+                                action0_bonus=action0_bonus,
                             )
                             logratio = newlogprob - b_logprobs[mb_inds]
                             ratio = logratio.exp()
@@ -312,7 +342,7 @@ class MAPPO:
                             pg_loss = th.max(pg_loss1, pg_loss2).mean()
 
                             entropy_loss = entropy.mean()
-                            pg_loss = pg_loss - args.entropy_coef * entropy_loss
+                            pg_loss = pg_loss - entropy_coef * entropy_loss
 
                             actor_optim.zero_grad()
                             pg_loss.backward()
@@ -362,6 +392,8 @@ class MAPPO:
                     metrics_to_log: Dict[str, float] = {
                         "train/lr_actor": float(actor_optim.param_groups[0]["lr"]),
                         "train/lr_critic": float(critic_optim.param_groups[0]["lr"]),
+                        "train/entropy_coef": float(entropy_coef),
+                        "train/action0_logit_bonus": float(action0_bonus),
                         "train/v_loss": float(np.mean(v_loss_history)) if v_loss_history else 0.0,
                     }
                     for ag in agent_ids:

@@ -72,6 +72,18 @@ def get_env_args() -> Namespace:
         choices=["idle"],
         help="Select the type of heuristic to use: idle",
     )
+    parser.add_argument(
+        "--line-margin-reward-weight",
+        type=float,
+        default=0.0,
+        help="Optional training reward weight for LineMarginReward dense safety shaping.",
+    )
+    parser.add_argument(
+        "--topology-reward-weight",
+        type=float,
+        default=0.0,
+        help="Optional training reward weight for DistanceReward topology-change penalty.",
+    )
 
     parser.add_argument(
         "--optimize-mem",

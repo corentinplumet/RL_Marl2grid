@@ -53,9 +53,12 @@ class Evaluator:
             )  # l2rpn_idf_2023 (bus118) returns an additional 0 reward value; we fix it with an empty metrics
         self.use_heuristic = args.use_heuristic
         self.deterministic_eval = getattr(args, "deterministic_eval", True)
+        self.eval_episodes = getattr(args, "eval_episodes", 10)
         # if self.use_heuristic: self.env.set_n_rewards(len(self.reward_tags))
 
-    def evaluate(self, glob_step: int, actors: Dict, eval_ep: int = 10) -> None:
+    def evaluate(
+        self, glob_step: int, actors: Dict, eval_ep: Optional[int] = None
+    ) -> float:
         """Evaluate the model over a specified number of episodes.
 
         Args:
@@ -63,6 +66,9 @@ class Evaluator:
             model: Model to be evaluated.
             eval_ep: Number of episodes for evaluation.
         """
+
+        if eval_ep is None:
+            eval_ep = self.eval_episodes
 
         ep_survivals: Deque[float] = deque(
             maxlen=eval_ep
@@ -116,6 +122,7 @@ class Evaluator:
         print(
             f"Eval at step {glob_step}, survival={avg_survival * 100:.3f}%, return={avg_return}"
         )
+        return avg_survival
 
 
 class CMDPEvaluator(Evaluator):
@@ -131,7 +138,9 @@ class CMDPEvaluator(Evaluator):
     def __init__(self, args: Dict[str, Any], logger: Logger, device: th.device) -> None:
         super().__init__(args, logger, device)
 
-    def evaluate(self, glob_step: int, actors: Dict, eval_ep: int = 3) -> None:
+    def evaluate(
+        self, glob_step: int, actors: Dict, eval_ep: Optional[int] = None
+    ) -> float:
         """Evaluate the model over a specified number of episodes.
 
         Args:
@@ -139,6 +148,9 @@ class CMDPEvaluator(Evaluator):
             model: Model to be evaluated.
             eval_ep: Number of episodes for evaluation.
         """
+
+        if eval_ep is None:
+            eval_ep = self.eval_episodes
 
         ep_survivals: Deque[float] = deque(
             maxlen=eval_ep
@@ -201,3 +213,4 @@ class CMDPEvaluator(Evaluator):
         print(
             f"Eval at step {glob_step}, survival={avg_survival * 100:.3f}%, return={avg_return}"
         )
+        return avg_survival

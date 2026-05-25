@@ -153,11 +153,20 @@ class MAEnvWrapper(MAEnv):
         #            1.0)
         cr.addReward("FlatReward", FlatRewardv1(per_timestep=1), 1.0)
         if not eval_env:
-            # if env_type == 'topology': cr.addReward("TopologyReward", DistanceRewardv1(), 0.3)   # = 0 if topology is the original one, -1 if everything changed
+            topology_reward_weight = getattr(args, "topology_reward_weight", 0.0)
+            if env_type == "topology" and topology_reward_weight > 0.0:
+                # 0 if topology is the original one, negative when topology changes.
+                cr.addReward(
+                    "TopologyReward", DistanceRewardv1(), topology_reward_weight
+                )
             cr.addReward(
                 "redispatchReward", RedispRewardv1(), 1.0
             )  # Custom one, see common.rewards
-            # cr.addReward("LineMarginReward", LineMarginReward(), 0.5)  # Custom one, see common.rewards
+            line_margin_reward_weight = getattr(args, "line_margin_reward_weight", 0.0)
+            if line_margin_reward_weight > 0.0:
+                cr.addReward(
+                    "LineMarginReward", LineMarginReward(), line_margin_reward_weight
+                )
         if args.constraints_type != 2:
             cr.addReward(
                 "overloadReward",
