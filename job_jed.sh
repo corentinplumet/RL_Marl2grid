@@ -13,6 +13,29 @@
 
 set -euo pipefail
 
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    cat <<'EOF'
+Usage:
+  sbatch job_jed.sh
+  sbatch job_jed.sh configs/old_training.toml
+  sbatch job_jed.sh configs/old_training.toml --deterministic-eval false
+  sbatch --array=0-7 job_jed.sh configs/old_training.toml
+
+Environment:
+  JED_CONFIG      Default config path. Default: configs/old_training.toml
+  CONDA_ENV       Conda env to activate. Default: marl2grid
+  CONDA_BASE      Conda installation path, if conda is not on PATH.
+  DRY_RUN=true    Print the resolved command without launching training.
+
+Environment variables can override [args] values from the TOML by using the
+uppercase argument name, for example N_ENVS, SEED, TOTAL_TIMESTEPS, or
+TORCH_THREADS for n_threads.
+
+Config paths are resolved relative to Topology_Task.
+EOF
+    exit 0
+fi
+
 echo "Job ${SLURM_JOB_ID:-local} started on $(hostname) at $(date)"
 
 REPO_DIR="${REPO_DIR:-${SLURM_SUBMIT_DIR:-$(pwd)}}"
@@ -25,7 +48,13 @@ if [ ! -d "${TASK_DIR}" ]; then
 fi
 
 # The conda env in Topology_Task/conda_env.yml is named "marl2grid".
-CONDA_ENV="${CONDA_ENV:-marl2grid}"
+CONDA_ENV="${CONDA_ENV:-${CONDA_ENV_NAME:-marl2grid}}"
+
+CONFIG="${JED_CONFIG:-configs/old_training.toml}"
+if [[ $# -gt 0 && "${1:0:2}" != "--" ]]; then
+    CONFIG="$1"
+    shift
+fi
 
 if [ -n "${CONDA_BASE:-}" ]; then
     :
@@ -51,75 +80,14 @@ source "${CONDA_BASE}/etc/profile.d/conda.sh"
 conda activate "${CONDA_ENV}"
 
 cd "${TASK_DIR}"
-mkdir -p checkpoint
 
-export PYTHONUNBUFFERED=1
-export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
-export MKL_NUM_THREADS="${MKL_NUM_THREADS:-1}"
-export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-1}"
-export NUMEXPR_NUM_THREADS="${NUMEXPR_NUM_THREADS:-1}"
-export WANDB_DIR="${WANDB_DIR:-${TASK_DIR}/wandb}"
-
-ALG="${ALG:-MAPPO}"
-ENV_ID="${ENV_ID:-bus14}"
-ACTION_TYPE="${ACTION_TYPE:-topology}"
-TOTAL_TIMESTEPS="${TOTAL_TIMESTEPS:-25000000}"
-CHECKPOINT="${CHECKPOINT:-True}"
-WANDB_PROJECT="${WANDB_PROJECT:-Grid2Op}"
-WANDB_ENTITY="${WANDB_ENTITY:-corentin-plumet-epfl}"
-WANDB_MODE="${WANDB_MODE:-online}"
-ACTION_TIME_LIMIT="${ACTION_TIME_LIMIT:-1300}"
-TORCH_THREADS="${TORCH_THREADS:-4}"
-
-if [ -n "${SLURM_CPUS_PER_TASK:-}" ]; then
-    DEFAULT_N_ENVS=$((SLURM_CPUS_PER_TASK - TORCH_THREADS))
-    if [ "${DEFAULT_N_ENVS}" -lt 1 ]; then
-        DEFAULT_N_ENVS=1
-    fi
-else
-    DEFAULT_N_ENVS=20
+run_config_args=()
+if [[ "${DRY_RUN:-false}" == "true" ]]; then
+    run_config_args+=(--dry-run)
 fi
 
-N_ENVS="${N_ENVS:-${DEFAULT_N_ENVS}}"
-SEED="${SEED:-${SLURM_ARRAY_TASK_ID:-0}}"
-EXTRA_ARGS="${EXTRA_ARGS:-}"
-
-echo "Training configuration:"
-echo "  conda env       : ${CONDA_ENV}"
-echo "  algorithm       : ${ALG}"
-echo "  env             : ${ENV_ID}"
-echo "  seed            : ${SEED}"
-echo "  total timesteps : ${TOTAL_TIMESTEPS}"
-echo "  n envs          : ${N_ENVS}"
-echo "  torch threads   : ${TORCH_THREADS}"
-echo "  wandb mode      : ${WANDB_MODE}"
-
-cmd=(
-    python -u main.py
-    --alg "${ALG}"
-    --env-id "${ENV_ID}"
-    --action-type "${ACTION_TYPE}"
-    --seed "${SEED}"
-    --total-timesteps "${TOTAL_TIMESTEPS}"
-    --n-envs "${N_ENVS}"
-    --n-threads "${TORCH_THREADS}"
-    --cuda False
-    --checkpoint "${CHECKPOINT}"
-    --wandb-project "${WANDB_PROJECT}"
-    --wandb-entity "${WANDB_ENTITY}"
-    --wandb-mode "${WANDB_MODE}"
-    --time-limit "${ACTION_TIME_LIMIT}"
-)
-
-if [ -n "${EXTRA_ARGS}" ]; then
-    # Deliberately split simple flag strings such as: --difficulty 1 --track False
-    # shellcheck disable=SC2206
-    extra_argv=(${EXTRA_ARGS})
-else
-    extra_argv=()
-fi
-
-echo "Running: ${cmd[*]} ${extra_argv[*]} $*"
-srun "${cmd[@]}" "${extra_argv[@]}" "$@"
+echo "Using conda env: ${CONDA_ENV}"
+echo "Using config: ${CONFIG}"
+python -u run_from_config.py "${run_config_args[@]}" "${CONFIG}" "$@"
 
 echo "Job ${SLURM_JOB_ID:-local} finished at $(date)"

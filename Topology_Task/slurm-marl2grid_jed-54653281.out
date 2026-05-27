@@ -1,7 +1,0 @@
-Job 54653281 started on jst305 at sam 23 mai 2026 15:42:08 CEST
-Training configuration:
-  conda env       : marl2grid
-  algorithm       : MAPPO
-  env             : bus14
-  seed            : 0
-  total timesteps : 25000000

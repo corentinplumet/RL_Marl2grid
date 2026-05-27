@@ -1,8 +1,0 @@
-wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from /home/plumet/.netrc.
-wandb: Currently logged in as: corentin-plumet (corentin-plumet-epfl) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
-wandb: Tracking run with wandb version 0.25.0
-wandb: Run data is saved locally in /home/plumet/RL_Marl2grid/Topology_Task/wandb/wandb/run-20260524_052115-MAPPO_bus14_T_0_0__I__1779592809_177
-wandb: Run `wandb offline` to turn off syncing.
-wandb: Syncing run MAPPO_bus14_T_0_0__I__1779592809_177
-wandb: ⭐️ View project at https://wandb.ai/corentin-plumet-epfl/Grid2Op
-wandb: 🚀 View run at https://wandb.ai/corentin-plumet-epfl/Grid2Op/runs/MAPPO_bus14_T_0_0__I__1779592809_177
