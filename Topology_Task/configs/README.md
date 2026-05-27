@@ -35,6 +35,15 @@ sbatch job_jed.sh configs/gine/gine20_a1_decay_det.toml
 The `gine/` directory contains 8 GINE configs: four training recipes, each with
 deterministic and stochastic eval.
 
+Submit one of the lighter GINE runs:
+
+```bash
+sbatch job_jed.sh configs/gine_light/gine_light_a1_decay_det.toml
+```
+
+The `gine_light/` directory keeps the same 8 recipes but uses a smaller GINE
+encoder: 1 layer, hidden dim 64, output dim 64.
+
 Append one-off overrides after the config path:
 
 ```bash
