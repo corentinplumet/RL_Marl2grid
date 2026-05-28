@@ -44,6 +44,15 @@ sbatch job_jed.sh configs/gine_light/gine_light_a1_decay_det.toml
 The `gine_light/` directory keeps the same 8 recipes but uses a smaller GINE
 encoder: 1 layer, hidden dim 64, output dim 64.
 
+Submit one of the no-validation MLP seed-sweep runs:
+
+```bash
+sbatch job_jed.sh configs/noval_seed_sweep/noval20_mlp_a1_entropy_decay_s1_det.toml
+```
+
+The `noval_seed_sweep/` directory contains 12 MLP configs: A1/A3/A4 entropy
+decay recipes, each with deterministic and stochastic eval, for seeds 1 and 2.
+
 Append one-off overrides after the config path:
 
 ```bash

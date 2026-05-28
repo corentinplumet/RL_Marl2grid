@@ -16,14 +16,6 @@ Validation split flags from older train/test/validation runs are intentionally o
 | `noval20_mlp_p999_decay_det.toml` | `noval20_mlp_p999_decay_det` | running | 6160000 | 77.2% | det | train/test | 20x2000 |
 | `noval20_mlp_a1_decay_stoch.toml` | `noval20_mlp_a1_decay_stoch` | running | 8480000 | 45.1% | stoch | train/test | 20x2000 |
 | `noval20_mlp_a1_decay_det.toml` | `noval20_mlp_a1_decay_det` | running | 5680000 | 100.0% | det | train/test | 20x2000 |
-| `split90_mlp_a3_fixed_det.toml` | `split90_mlp_a3_fixed_det` | finished | 14520000 | 91.8% | det | train/test | 40x1000 |
-| `split90_mlp_p999_decay_stoch.toml` | `split90_mlp_p999_decay_stoch` | finished | 14400000 | 59.9% | stoch | train/test | 20x2000 |
-| `split90_mlp_p999_decay_det.toml` | `split90_mlp_p999_decay_det` | finished | 11120000 | 81.0% | det | train/test | 20x2000 |
-| `split90_mlp_a1_decay_stoch.toml` | `split90_mlp_a1_decay_stoch` | finished | 14560000 | 41.1% | stoch | train/test | 20x2000 |
-| `split90_mlp_a0_det.toml` | `split90_mlp_a0_det` | finished | 15000000 | 42.5% | det | train/test | 20x2000 |
-| `split90_mlp_a0_stoch.toml` | `split90_mlp_a0_stoch` | finished | 15000000 | 18.5% | stoch | train/test | 20x2000 |
-| `split90_mlp_a1_fixed_det.toml` | `split90_mlp_a1_fixed_det` | finished | 15000000 | 3.7% | det | train/test | 20x2000 |
-| `split90_mlp_a3_decay_stoch.toml` | `split90_mlp_a3_decay_stoch` | finished | 15000000 | 39.4% | stoch | train/test | 40x1000 |
 | `split_mlp_a3_logit_decay_stoch_s0.toml` | `split_mlp_a3_logit_decay_stoch_s0` | finished | 15000000 |  | stoch | train/test | 40x1000 |
 | `split_mlp_a3_logit_decay_det_s0.toml` | `split_mlp_a3_logit_decay_det_s0` | killed | 13120000 |  | det | train/test | 40x1000 |
 | `split_mlp_p999_decay_stoch_s0.toml` | `split_mlp_p999_decay_stoch_s0` | finished | 15000000 |  | stoch | train/test | 20x2000 |
