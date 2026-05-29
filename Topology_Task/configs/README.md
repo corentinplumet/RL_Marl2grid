@@ -53,6 +53,15 @@ sbatch job_jed.sh configs/noval_seed_sweep/noval20_mlp_a1_entropy_decay_s1_det.t
 The `noval_seed_sweep/` directory contains 12 MLP configs: A1/A3/A4 entropy
 decay recipes, each with deterministic and stochastic eval, for seeds 1 and 2.
 
+Submit the matching no-entropy-decay comparison:
+
+```bash
+sbatch job_jed.sh configs/noval_seed_sweep_no_entropy_decay/noval20_mlp_a4_no_entropy_decay_s1_det.toml
+```
+
+The `noval_seed_sweep_no_entropy_decay/` directory mirrors the 12 seed-sweep
+configs, but keeps `entropy_coef_final = entropy_coef` for the full run.
+
 Append one-off overrides after the config path:
 
 ```bash
