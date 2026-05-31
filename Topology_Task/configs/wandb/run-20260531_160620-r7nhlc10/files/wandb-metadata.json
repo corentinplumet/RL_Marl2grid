@@ -1,0 +1,29 @@
+{
+  "os":  "macOS-26.3.1-arm64-arm-64bit",
+  "python":  "CPython 3.12.2",
+  "startedAt":  "2026-05-31T08:06:20.675209Z",
+  "program":  "/Users/corentinplumet/Documents/RL_Marl2grid/Topology_Task/configs/wandb_run_plots.ipynb",
+  "codePath":  "/Users/corentinplumet/Documents/RL_Marl2grid/Topology_Task/configs/wandb_run_plots.ipynb",
+  "codePathLocal":  "wandb_run_plots.ipynb",
+  "git":  {
+    "remote":  "https://github.com/corentinplumet/RL_Marl2grid.git",
+    "commit":  "3ad39093ac62eb2e6b73bb6594e95b26595a92f5"
+  },
+  "email":  "corentin.plumet@epfl.ch",
+  "root":  "/Users/corentinplumet/Documents/RL_Marl2grid/Topology_Task/configs",
+  "host":  "MacBook-Pro-de-Corentin-3.local",
+  "executable":  "/opt/anaconda3/envs/marl2grid/bin/python",
+  "cpu_count":  8,
+  "cpu_count_logical":  8,
+  "disk":  {
+    "/":  {
+      "total":  "494384795648",
+      "used":  "471741112320"
+    }
+  },
+  "memory":  {
+    "total":  "8589934592"
+  },
+  "apple":  {},
+  "writerId":  "fcfbxohf55zfc4jyi4jza4qn0gqsjr8u"
+}
