@@ -23,6 +23,8 @@ class GraphEncoder(nn.Module):
         heads: int = 1,
         node_pre_encoder: bool = False,
         edge_pre_encoder: bool = False,
+        node_id_embeddings: bool = False,
+        node_id_emb_dim: int = 8,
     ) -> None:
         super().__init__()
         if GCNConv is None:
@@ -40,8 +42,19 @@ class GraphEncoder(nn.Module):
             raise ValueError(f"Unsupported GNN readout aggregation: {readout_aggr}")
         self.edge_dim = int(graph_spec["edge_dim"])
         self.register_buffer("edge_index", th.tensor(graph_spec["edge_index"], dtype=th.long))
+        self.register_buffer("node_ids", th.tensor(graph_spec["node_ids"], dtype=th.long))
 
         node_dim = int(graph_spec["node_dim"])
+        self.node_id_embeddings = bool(node_id_embeddings)
+        self.n_busbar = int(graph_spec.get("n_busbar", 2))
+        if self.node_id_embeddings:
+            if node_id_emb_dim < 1:
+                raise ValueError("node_id_emb_dim must be at least 1.")
+            n_sub = int(graph_spec.get("n_sub", int(self.node_ids.max().item() // self.n_busbar) + 1))
+            self.sub_id_embedding = nn.Embedding(n_sub, node_id_emb_dim)
+            self.bus_id_embedding = nn.Embedding(self.n_busbar, node_id_emb_dim)
+            node_dim = node_dim + 2 * node_id_emb_dim
+
         if node_pre_encoder:
             node_encoder_layers = [nn.Linear(node_dim, hidden_dim), nn.ReLU()]
             if layer_norm:
@@ -88,11 +101,13 @@ class GraphEncoder(nn.Module):
         self,
         graph_obs: Dict[str, th.Tensor],
         edge_index: Optional[th.Tensor] = None,
+        node_ids: Optional[th.Tensor] = None,
     ) -> th.Tensor:
         unbatched = graph_obs["node_features"].dim() == 2
-        x, edge_index, edge_attr, batch, node_mask = self._to_pyg_batch(
-            graph_obs, edge_index=edge_index
+        x, edge_index, edge_attr, batch, node_mask, flat_node_ids = self._to_pyg_batch(
+            graph_obs, edge_index=edge_index, node_ids=node_ids
         )
+        x = self._append_node_id_embeddings(x, flat_node_ids)
         x = self.node_pre_encoder(x)
         edge_attr = self.edge_pre_encoder(edge_attr)
 
@@ -139,6 +154,7 @@ class GraphEncoder(nn.Module):
         self,
         graph_obs: Dict[str, th.Tensor],
         edge_index: Optional[th.Tensor] = None,
+        node_ids: Optional[th.Tensor] = None,
     ):
         nodes = graph_obs["node_features"]
         edge_features = graph_obs["edge_features"]
@@ -152,11 +168,13 @@ class GraphEncoder(nn.Module):
             edge_mask = None if edge_mask is None else edge_mask.unsqueeze(0)
 
         base_edge_index = self.edge_index if edge_index is None else edge_index
+        base_node_ids = self.node_ids if node_ids is None else node_ids
         batch_size, n_nodes, node_dim = nodes.shape
         n_edges = base_edge_index.shape[1]
 
         x = nodes.reshape(batch_size * n_nodes, node_dim)
         batch = th.arange(batch_size, device=nodes.device).repeat_interleave(n_nodes)
+        flat_node_ids = base_node_ids.to(nodes.device).repeat(batch_size)
 
         base_edge_index = base_edge_index.to(nodes.device)
         edge_index = base_edge_index.unsqueeze(0).repeat(batch_size, 1, 1)
@@ -170,7 +188,21 @@ class GraphEncoder(nn.Module):
             edge_attr = edge_attr[keep_edges]
 
         flat_node_mask = None if node_mask is None else node_mask.reshape(batch_size * n_nodes)
-        return x, edge_index, edge_attr, batch, flat_node_mask
+        return x, edge_index, edge_attr, batch, flat_node_mask, flat_node_ids
+
+    def _append_node_id_embeddings(
+        self,
+        x: th.Tensor,
+        node_ids: th.Tensor,
+    ) -> th.Tensor:
+        if not self.node_id_embeddings:
+            return x
+        sub_ids = th.div(node_ids, self.n_busbar, rounding_mode="floor").long()
+        bus_ids = th.remainder(node_ids, self.n_busbar).long()
+        return th.cat(
+            [x, self.sub_id_embedding(sub_ids), self.bus_id_embedding(bus_ids)],
+            dim=-1,
+        )
 
     def _make_conv(
         self,
@@ -217,6 +249,8 @@ def build_graph_encoder(graph_spec: Dict[str, Any], args: Dict[str, Any]) -> Gra
         heads=args.gnn_heads,
         node_pre_encoder=getattr(args, "gnn_node_pre_encoder", False),
         edge_pre_encoder=getattr(args, "gnn_edge_pre_encoder", False),
+        node_id_embeddings=getattr(args, "gnn_node_id_embeddings", False),
+        node_id_emb_dim=getattr(args, "gnn_node_id_emb_dim", 8),
     )
 
 
@@ -236,11 +270,20 @@ class GraphAndFlatEncoder(nn.Module):
             th.tensor(graph_spec["edge_index"], dtype=th.long),
             persistent=False,
         )
+        self.register_buffer(
+            "node_ids",
+            th.tensor(graph_spec["node_ids"], dtype=th.long),
+            persistent=False,
+        )
         self.graph_encoder = graph_encoder or build_graph_encoder(graph_spec, args)
         self.out_dim = args.gnn_out_dim + (flat_dim if use_flat else 0)
 
     def forward(self, obs: Dict[str, th.Tensor], graph_key: str = "graph") -> th.Tensor:
-        graph_embedding = self.graph_encoder(obs[graph_key], edge_index=self.edge_index)
+        graph_embedding = self.graph_encoder(
+            obs[graph_key],
+            edge_index=self.edge_index,
+            node_ids=self.node_ids,
+        )
         if not self.use_flat:
             return graph_embedding
 

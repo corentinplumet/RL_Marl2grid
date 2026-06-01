@@ -260,6 +260,18 @@ def get_alg_args() -> Namespace:
         help="Use a small MLP to embed raw edge features before edge-aware gnn message passing.",
     )
     parser.add_argument(
+        "--gnn-node-id-embeddings",
+        type=str2bool,
+        default=False,
+        help="Concatenate learned substation and busbar id embeddings to each busbar node feature.",
+    )
+    parser.add_argument(
+        "--gnn-node-id-emb-dim",
+        type=int,
+        default=8,
+        help="Embedding size for each learned substation id and busbar id embedding.",
+    )
+    parser.add_argument(
         "--gnn-concat-flat",
         type=str2bool,
         default=False,

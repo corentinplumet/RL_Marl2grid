@@ -1,38 +1,28 @@
-# GINE Run Configs
+# Shared GINE No-Entropy Deterministic Configs
 
-These configs compare the current MLP recipes with thesis-style GNN encoders
-using `gnn_type = "gine"`. Each family has deterministic and stochastic eval.
-
-All runs use:
+These configs replace the old `gine` and `gine_light` sweeps. They are copied
+from the deterministic no-entropy-decay A1/A4 MLP recipes, then switched to the
+new busbar GINE architecture:
 
 - `actor_encoder = "gnn"`
 - `critic_encoder = "gnn"`
 - `gnn_type = "gine"`
-- bus14 topology with train/test split
-- `test_chronics_pct = 0.2`
-- `eval_train_chronics = true`
-- `eval_all_split_chronics = false`
+- `share_actor_gnn = true`
+- separate actor MLP heads per agent
+- `gnn_node_pre_encoder = true`
+- `gnn_edge_pre_encoder = true`
+- `gnn_node_id_embeddings = true`
+- `gnn_include_neighbors = false`
 
-Launch all 8 runs:
+The A1 configs keep `entropy_coef = 0.01` and `init_do_nothing_prob = 0.3`.
+The A4 configs keep `entropy_coef = 0.02` and `init_do_nothing_prob = 0.7`.
+All configs use deterministic evaluation.
+
+Launch examples:
 
 ```bash
-sbatch job_jed.sh configs/gine/gine20_a1_decay_det.toml
-sbatch job_jed.sh configs/gine/gine20_a1_decay_stoch.toml
-sbatch job_jed.sh configs/gine/gine20_p999_decay_det.toml
-sbatch job_jed.sh configs/gine/gine20_p999_decay_stoch.toml
-sbatch job_jed.sh configs/gine/gine20_a3_fixed_det.toml
-sbatch job_jed.sh configs/gine/gine20_a3_fixed_stoch.toml
-sbatch job_jed.sh configs/gine/gine20_a3_logit_decay_det.toml
-sbatch job_jed.sh configs/gine/gine20_a3_logit_decay_stoch.toml
+sbatch job_jed.sh configs/gine/shared_gine_a1_no_entropy_decay_s0_det.toml
+sbatch job_jed.sh configs/gine/shared_gine_a4_no_entropy_decay_s0_det.toml
 ```
 
-| Config | Base idea | Eval | Batch | Entropy | p0 | Notes |
-| --- | --- | --- | ---: | ---: | ---: | --- |
-| `gine20_a1_decay_det.toml` | A1 decay | det | 20x2000 | 0.01 -> 0.0 | 0.3 | Strong no-validation MLP deterministic family. |
-| `gine20_a1_decay_stoch.toml` | A1 decay | stoch | 20x2000 | 0.01 -> 0.0 | 0.3 | Same training, sampled eval. |
-| `gine20_p999_decay_det.toml` | high p0 decay | det | 20x2000 | 0.02 -> 0.001 | 0.999 | Tests strong idle prior with GINE. |
-| `gine20_p999_decay_stoch.toml` | high p0 decay | stoch | 20x2000 | 0.02 -> 0.001 | 0.999 | Same training, sampled eval. |
-| `gine20_a3_fixed_det.toml` | A3 fixed entropy | det | 40x1000 | 0.02 | 0.5 | Best old 40-env deterministic shape, now with split. |
-| `gine20_a3_fixed_stoch.toml` | A3 fixed entropy | stoch | 40x1000 | 0.02 | 0.5 | Same training, sampled eval. |
-| `gine20_a3_logit_decay_det.toml` | A3 logit decay | det | 40x1000 | 0.02 -> 0.001 | 0.5 | Adds temporary action-0 logit bonus. |
-| `gine20_a3_logit_decay_stoch.toml` | A3 logit decay | stoch | 40x1000 | 0.02 -> 0.001 | 0.5 | Same training, sampled eval. |
+Available seeds: `s0`, `s1`, `s2`.

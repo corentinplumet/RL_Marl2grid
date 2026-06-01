@@ -130,6 +130,9 @@ class GridGraphBuilder:
             "edge_ex_bus_ids": np.asarray(edge_ex_bus_ids, dtype=np.int64),
             "node_dim": self.node_dim,
             "edge_dim": self.edge_dim,
+            "n_sub": self.n_sub,
+            "n_busbar": self.n_busbar,
+            "n_bus_nodes": self.n_bus_nodes,
         }
 
     def _local_ids(self, domain_nodes):

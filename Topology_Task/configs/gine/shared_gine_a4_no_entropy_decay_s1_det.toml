@@ -1,7 +1,10 @@
-# GINE version of noval20_mlp_p999_decay_det.
+# Shared GINE config copied from A4 no-entropy-decay deterministic seed 1.
+# Train/test split is fixed with chronic_split_seed = 0; training seed = 1.
+# Eval mode: det.
+# Entropy is fixed: entropy_coef_final equals entropy_coef.
 
 [run]
-name = "gine20_p999_decay_det"
+name = "shared_gine_a4_no_entropy_decay_s1_det"
 run_dir = "outputs/jed-{config_name}-{job_id}"
 seed_from_slurm_array = false
 extra_args = []
@@ -28,9 +31,9 @@ XDG_CACHE_HOME = "{run_dir}/cache"
 time_limit = 1300
 checkpoint = true
 alg = "MAPPO"
-seed = 0
+seed = 1
 verbose = true
-exp_tag = "gine20_p999_decay_det"
+exp_tag = "shared_gine_a4_no_entropy_decay_s1_det"
 track = true
 wandb_project = "Grid2Op"
 wandb_entity = "corentin-plumet-epfl"
@@ -57,7 +60,7 @@ constraints_type = 0
 split_chronics = true
 test_chronics_pct = 0.2
 chronic_split_seed = 0
-gnn_include_neighbors = true
+gnn_include_neighbors = false
 
 # encoders
 actor_encoder = "gnn"
@@ -70,7 +73,12 @@ gnn_heads = 1
 gnn_readout_aggr = "mean"
 graphsage_aggr = "mean"
 gnn_layer_norm = true
+gnn_node_pre_encoder = true
+gnn_edge_pre_encoder = true
+gnn_node_id_embeddings = true
+gnn_node_id_emb_dim = 8
 gnn_concat_flat = false
+share_actor_gnn = true
 gnn_graph_type = "bus"
 
 # ppo
@@ -94,9 +102,9 @@ norm_adv = true
 clip_coef = 0.2
 clip_vfloss = true
 entropy_coef = 0.02
-entropy_coef_final = 0.001
+entropy_coef_final = 0.02
 vf_coef = 0.5
-init_do_nothing_prob = 0.999
+init_do_nothing_prob = 0.7
 norm_reward = true
 action0_logit_bonus_init = 0.0
 action0_logit_bonus_final = 0.0

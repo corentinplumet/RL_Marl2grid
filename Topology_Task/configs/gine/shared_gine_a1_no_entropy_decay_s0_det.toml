@@ -1,7 +1,10 @@
-# GINE version of noval20_mlp_a3_logit_decay_stoch.
+# Shared GINE config copied from A1 no-entropy-decay deterministic seed 0.
+# Train/test split is fixed with chronic_split_seed = 0; training seed = 0.
+# Eval mode: det.
+# Entropy is fixed: entropy_coef_final equals entropy_coef.
 
 [run]
-name = "gine20_a3_logit_decay_stoch"
+name = "shared_gine_a1_no_entropy_decay_s0_det"
 run_dir = "outputs/jed-{config_name}-{job_id}"
 seed_from_slurm_array = false
 extra_args = []
@@ -30,18 +33,18 @@ checkpoint = true
 alg = "MAPPO"
 seed = 0
 verbose = true
-exp_tag = "gine20_a3_logit_decay_stoch"
+exp_tag = "shared_gine_a1_no_entropy_decay_s0_det"
 track = true
 wandb_project = "Grid2Op"
 wandb_entity = "corentin-plumet-epfl"
 wandb_mode = "online"
 th_deterministic = false
 cuda = false
-n_threads = 12
+n_threads = 20
 
 # environment
 env_id = "bus14"
-n_envs = 40
+n_envs = 20
 action_type = "topology"
 difficulty = 0
 decentralized = true
@@ -57,7 +60,7 @@ constraints_type = 0
 split_chronics = true
 test_chronics_pct = 0.2
 chronic_split_seed = 0
-gnn_include_neighbors = true
+gnn_include_neighbors = false
 
 # encoders
 actor_encoder = "gnn"
@@ -70,12 +73,17 @@ gnn_heads = 1
 gnn_readout_aggr = "mean"
 graphsage_aggr = "mean"
 gnn_layer_norm = true
+gnn_node_pre_encoder = true
+gnn_edge_pre_encoder = true
+gnn_node_id_embeddings = true
+gnn_node_id_emb_dim = 8
 gnn_concat_flat = false
+share_actor_gnn = true
 gnn_graph_type = "bus"
 
 # ppo
 total_timesteps = 15000000
-n_steps = 1000
+n_steps = 2000
 eval_freq = 40000
 actor_layers = [256, 256, 256]
 critic_layers = [256, 256, 256]
@@ -87,21 +95,21 @@ anneal_lr = true
 gamma = 0.9
 gae_lambda = 0.95
 update_epochs = 10
-n_minibatches = 20
+n_minibatches = 16
 max_grad_norm = 1.0
 target_kl = 0.02
 norm_adv = true
 clip_coef = 0.2
 clip_vfloss = true
-entropy_coef = 0.02
-entropy_coef_final = 0.001
+entropy_coef = 0.01
+entropy_coef_final = 0.01
 vf_coef = 0.5
-init_do_nothing_prob = 0.5
+init_do_nothing_prob = 0.3
 norm_reward = true
-action0_logit_bonus_init = 1.0
+action0_logit_bonus_init = 0.0
 action0_logit_bonus_final = 0.0
-action0_logit_bonus_fraction = 0.4
-deterministic_eval = false
+action0_logit_bonus_fraction = 1.0
+deterministic_eval = true
 eval_episodes = 10
 eval_all_split_chronics = false
 eval_train_chronics = true
