@@ -2,13 +2,13 @@
 # IZAR / EPFL SLURM launcher.
 #SBATCH --mail-user=corentin.plumet@epfl.ch
 #SBATCH --job-name=marl2grid_izar
-#SBATCH --output=routput_jobs_izar/job_out_%j.log
-#SBATCH --error=routput_jobs_izar/job_err_%j.log
+#SBATCH --output=izar_%j_out.log
+#SBATCH --error=izar_%j_err.log
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=40
 #SBATCH --mem=128G
-#SBATCH --time=23:10:00
+#SBATCH --time=00:30:00
 #SBATCH --partition=gpu
 #SBATCH --qos=normal
 #SBATCH --gres=gpu:1

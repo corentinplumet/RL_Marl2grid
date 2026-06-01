@@ -1,0 +1,115 @@
+# A4 shared GINE with flat observation concatenation copied from A4 no-entropy-decay deterministic seed 2.
+# Train/test split is fixed with chronic_split_seed = 0; training seed = 2.
+# Eval mode: det.
+# Entropy is fixed: entropy_coef_final equals entropy_coef.
+
+[run]
+name = "shared_gine_a4_concat_flat_no_entropy_decay_s2_det"
+run_dir = "outputs/jed-{config_name}-{job_id}"
+seed_from_slurm_array = false
+extra_args = []
+
+[launcher]
+use_srun = true
+cpu_bind = "cores"
+print_python_summary = true
+
+[environment]
+PYTHONUNBUFFERED = "1"
+OMP_NUM_THREADS = "1"
+MKL_NUM_THREADS = "1"
+OPENBLAS_NUM_THREADS = "1"
+NUMEXPR_NUM_THREADS = "1"
+VECLIB_MAXIMUM_THREADS = "1"
+MAX_TIME_LIMIT_MINUTES = "10080"
+MPLCONFIGDIR = "{run_dir}/matplotlib"
+WANDB_DIR = "{run_dir}/wandb"
+XDG_CACHE_HOME = "{run_dir}/cache"
+
+[args]
+# core
+time_limit = 1300
+checkpoint = true
+alg = "MAPPO"
+seed = 2
+verbose = true
+exp_tag = "shared_gine_a4_concat_flat_no_entropy_decay_s2_det"
+track = true
+wandb_project = "Grid2Op"
+wandb_entity = "corentin-plumet-epfl"
+wandb_mode = "online"
+th_deterministic = false
+cuda = false
+n_threads = 20
+
+# environment
+env_id = "bus14"
+n_envs = 20
+action_type = "topology"
+difficulty = 0
+decentralized = true
+n1_reward = false
+env_config_path = "scenario.json"
+norm_obs = true
+use_heuristic = false
+heuristic_type = "idle"
+line_margin_reward_weight = 0.0
+topology_reward_weight = 0.0
+optimize_mem = true
+constraints_type = 0
+split_chronics = true
+test_chronics_pct = 0.2
+chronic_split_seed = 0
+gnn_include_neighbors = false
+
+# encoders
+actor_encoder = "gnn"
+critic_encoder = "gnn"
+gnn_type = "gine"
+gnn_hidden_dim = 128
+gnn_out_dim = 128
+gnn_layers = 2
+gnn_heads = 1
+gnn_readout_aggr = "mean"
+graphsage_aggr = "mean"
+gnn_layer_norm = true
+gnn_node_pre_encoder = true
+gnn_edge_pre_encoder = true
+gnn_node_id_embeddings = true
+gnn_node_id_emb_dim = 8
+gnn_concat_flat = true
+share_actor_gnn = true
+gnn_graph_type = "bus"
+
+# ppo
+total_timesteps = 15000000
+n_steps = 2000
+eval_freq = 40000
+actor_layers = [256, 256, 256]
+critic_layers = [256, 256, 256]
+actor_act_fn = "relu"
+critic_act_fn = "relu"
+actor_lr = 0.0001
+critic_lr = 0.0001
+anneal_lr = true
+gamma = 0.9
+gae_lambda = 0.95
+update_epochs = 10
+n_minibatches = 16
+max_grad_norm = 1.0
+target_kl = 0.02
+norm_adv = true
+clip_coef = 0.2
+clip_vfloss = true
+entropy_coef = 0.02
+entropy_coef_final = 0.02
+vf_coef = 0.5
+init_do_nothing_prob = 0.7
+norm_reward = true
+action0_logit_bonus_init = 0.0
+action0_logit_bonus_final = 0.0
+action0_logit_bonus_fraction = 1.0
+deterministic_eval = true
+eval_episodes = 10
+eval_all_split_chronics = false
+eval_train_chronics = true
