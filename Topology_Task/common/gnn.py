@@ -21,6 +21,8 @@ class GraphEncoder(nn.Module):
         readout_aggr: str = "mean",
         layer_norm: bool = True,
         heads: int = 1,
+        node_pre_encoder: bool = False,
+        edge_pre_encoder: bool = False,
     ) -> None:
         super().__init__()
         if GCNConv is None:
@@ -32,6 +34,7 @@ class GraphEncoder(nn.Module):
             raise ValueError("A GNN encoder needs at least one layer.")
 
         self.conv_type = conv_type.lower()
+        self.uses_edge_attr = self.conv_type in {"gat", "gine"}
         self.readout_aggr = readout_aggr.lower()
         if self.readout_aggr not in {"mean", "sum", "max"}:
             raise ValueError(f"Unsupported GNN readout aggregation: {readout_aggr}")
@@ -39,13 +42,33 @@ class GraphEncoder(nn.Module):
         self.register_buffer("edge_index", th.tensor(graph_spec["edge_index"], dtype=th.long))
 
         node_dim = int(graph_spec["node_dim"])
-        dims = [node_dim] + [hidden_dim] * n_layers
+        if node_pre_encoder:
+            node_encoder_layers = [nn.Linear(node_dim, hidden_dim), nn.ReLU()]
+            if layer_norm:
+                node_encoder_layers.append(nn.LayerNorm(hidden_dim))
+            self.node_pre_encoder = nn.Sequential(*node_encoder_layers)
+            conv_input_dim = hidden_dim
+        else:
+            self.node_pre_encoder = nn.Identity()
+            conv_input_dim = node_dim
+
+        if edge_pre_encoder and self.uses_edge_attr:
+            edge_encoder_layers = [nn.Linear(self.edge_dim, hidden_dim), nn.ReLU()]
+            if layer_norm:
+                edge_encoder_layers.append(nn.LayerNorm(hidden_dim))
+            self.edge_pre_encoder = nn.Sequential(*edge_encoder_layers)
+            conv_edge_dim = hidden_dim
+        else:
+            self.edge_pre_encoder = nn.Identity()
+            conv_edge_dim = self.edge_dim
+
+        dims = [conv_input_dim] + [hidden_dim] * n_layers
         self.convs = nn.ModuleList(
             [
                 self._make_conv(
                     in_dim=dims[idx],
                     hidden_dim=hidden_dim,
-                    edge_dim=self.edge_dim,
+                    edge_dim=conv_edge_dim,
                     conv_type=self.conv_type,
                     graphsage_aggr=graphsage_aggr,
                     heads=heads,
@@ -70,9 +93,11 @@ class GraphEncoder(nn.Module):
         x, edge_index, edge_attr, batch, node_mask = self._to_pyg_batch(
             graph_obs, edge_index=edge_index
         )
+        x = self.node_pre_encoder(x)
+        edge_attr = self.edge_pre_encoder(edge_attr)
 
         for conv, norm in zip(self.convs, self.norms):
-            if self.conv_type in {"gat", "gine"}:
+            if self.uses_edge_attr:
                 x = conv(x, edge_index, edge_attr=edge_attr)
             else:
                 x = conv(x, edge_index)
@@ -190,6 +215,8 @@ def build_graph_encoder(graph_spec: Dict[str, Any], args: Dict[str, Any]) -> Gra
         readout_aggr=getattr(args, "gnn_readout_aggr", "mean"),
         layer_norm=args.gnn_layer_norm,
         heads=args.gnn_heads,
+        node_pre_encoder=getattr(args, "gnn_node_pre_encoder", False),
+        edge_pre_encoder=getattr(args, "gnn_edge_pre_encoder", False),
     )
 
 

@@ -248,6 +248,18 @@ def get_alg_args() -> Namespace:
         help="Use layer normalization inside thesis-style gnn layers.",
     )
     parser.add_argument(
+        "--gnn-node-pre-encoder",
+        type=str2bool,
+        default=False,
+        help="Use a small MLP to embed raw node features before thesis-style gnn message passing.",
+    )
+    parser.add_argument(
+        "--gnn-edge-pre-encoder",
+        type=str2bool,
+        default=False,
+        help="Use a small MLP to embed raw edge features before edge-aware gnn message passing.",
+    )
+    parser.add_argument(
         "--gnn-concat-flat",
         type=str2bool,
         default=False,
