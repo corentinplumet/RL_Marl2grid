@@ -149,7 +149,7 @@ def get_env_args() -> Namespace:
     parser.add_argument(
         "--gnn-include-neighbors",
         type=str2bool,
-        default=True,
+        default=False,
         help="For the thesis-style gnn encoder, include one-hop neighboring substations in local agent graphs.",
     )
 

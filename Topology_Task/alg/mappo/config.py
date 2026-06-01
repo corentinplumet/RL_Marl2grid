@@ -254,6 +254,12 @@ def get_alg_args() -> Namespace:
         help="Concatenate flat observations to thesis-style gnn embeddings before the head.",
     )
     parser.add_argument(
+        "--share-actor-gnn",
+        type=str2bool,
+        default=False,
+        help="Share one actor GNN encoder across all actor policies while keeping separate MLP action heads.",
+    )
+    parser.add_argument(
         "--gnn-graph-type",
         type=str,
         default="bus",

@@ -1,7 +1,7 @@
 from torch.distributions import Categorical, Normal
 
 from common.imports import *
-from common.gnn import GraphAndFlatEncoder
+from common.gnn import GraphAndFlatEncoder, GraphEncoder
 from common.utils import Linear, get_flat_obs, th_act_fns
 
 
@@ -23,7 +23,12 @@ def build_mlp_head(
 
 class Actor(nn.Module):
     def __init__(
-        self, id: int, envs: gym.Env, args: Dict[str, Any], continuous_actions: bool
+        self,
+        id: int,
+        envs: gym.Env,
+        args: Dict[str, Any],
+        continuous_actions: bool,
+        shared_graph_encoder: Optional[GraphEncoder] = None,
     ):
         super().__init__()
 
@@ -44,6 +49,7 @@ class Actor(nn.Module):
                 flat_dim=flat_dim,
                 args=args,
                 use_flat=getattr(args, "gnn_concat_flat", False),
+                graph_encoder=shared_graph_encoder,
             )
             actor_input_dim = self.encoder.out_dim
         else:

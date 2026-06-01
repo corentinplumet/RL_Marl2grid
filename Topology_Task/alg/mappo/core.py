@@ -3,6 +3,7 @@ from time import time
 from .agent import Actor, Critic
 from .config import get_alg_args
 from common.checkpoint import CheckpointSaver
+from common.gnn import build_graph_encoder
 from common.imports import *
 from common.logger import Logger
 from common.utils import (
@@ -44,6 +45,75 @@ def _scheduled_action0_bonus(args: Namespace, global_step: int) -> float:
     schedule_steps = max(int(args.total_timesteps * schedule_fraction), 1)
     progress = global_step / schedule_steps
     return _linear_schedule(init_bonus, final_bonus, progress)
+
+
+def _truthy_info_value(value: Any) -> bool:
+    if isinstance(value, th.Tensor):
+        return bool(value.detach().cpu().any().item())
+    if isinstance(value, np.ndarray):
+        return bool(value.any())
+    if isinstance(value, (list, tuple, set)):
+        return any(_truthy_info_value(item) for item in value)
+    return bool(value)
+
+
+def _transition_info(info: Any) -> Any:
+    if isinstance(info, dict) and "final_info" in info:
+        return info["final_info"]
+    return info
+
+
+def _agent_took_illegal_action(info: Any, agent_id: str) -> bool:
+    info = _transition_info(info)
+    if not isinstance(info, dict):
+        return False
+
+    agent_info = info.get(agent_id)
+    if isinstance(agent_info, dict):
+        if "is_illegal" in agent_info:
+            return _truthy_info_value(agent_info["is_illegal"])
+        exception = agent_info.get("exception")
+        if exception is not None and "IllegalAction" in str(exception):
+            return True
+
+    if "is_illegal" in info:
+        return _truthy_info_value(info["is_illegal"])
+    exception = info.get("exception")
+    return exception is not None and "IllegalAction" in str(exception)
+
+
+def _unique_parameters(modules: List[nn.Module]) -> List[nn.Parameter]:
+    params = []
+    seen = set()
+    for module in modules:
+        for param in module.parameters():
+            param_id = id(param)
+            if param_id in seen:
+                continue
+            seen.add(param_id)
+            params.append(param)
+    return params
+
+
+def _build_shared_actor_graph_encoder(envs: gym.Env, args: Namespace, agent_ids: List[str]):
+    if not getattr(args, "share_actor_gnn", False):
+        return None
+    if getattr(args, "actor_encoder", "mlp") != "gnn":
+        raise ValueError("share_actor_gnn=True requires actor_encoder='gnn'.")
+    if getattr(envs, "graph_specs", None) is None:
+        raise ValueError("share_actor_gnn=True requires graph observations.")
+
+    first_spec = envs.graph_specs[agent_ids[0]]
+    node_dim = int(first_spec["node_dim"])
+    edge_dim = int(first_spec["edge_dim"])
+    for agent_id in agent_ids[1:]:
+        spec = envs.graph_specs[agent_id]
+        if int(spec["node_dim"]) != node_dim or int(spec["edge_dim"]) != edge_dim:
+            raise ValueError(
+                "Shared actor GNN requires all actor graph specs to have the same "
+                "node_dim and edge_dim."
+            )
+    return build_graph_encoder(first_spec, args)
 
 
 def _evaluate_preserving_training_rng(
@@ -112,8 +182,17 @@ class MAPPO:
 
         # Determine action space type
         continuous_actions = True if args.action_type == "redispatch" else False
+        shared_actor_graph_encoder = _build_shared_actor_graph_encoder(
+            envs, args, agent_ids
+        )
         actors = {
-            f"agent_{idx}": Actor(idx, envs, args, continuous_actions).to(device)
+            f"agent_{idx}": Actor(
+                idx,
+                envs,
+                args,
+                continuous_actions,
+                shared_graph_encoder=shared_actor_graph_encoder,
+            ).to(device)
             for idx in range(len(agent_ids))
         }
 
@@ -124,9 +203,7 @@ class MAPPO:
                 actors[agent].load_state_dict(ckpt.loaded_run[agent])
             critic.load_state_dict(ckpt.loaded_run["critic"])
 
-        actor_params = [
-            param for actor in actors.values() for param in actor.parameters()
-        ]
+        actor_params = _unique_parameters(list(actors.values()))
         if continuous_actions:
             raise ("Redispatching actions are not yet implemented")
         actor_optim = optim.Adam(actor_params, lr=args.actor_lr, eps=1e-5)
@@ -199,6 +276,8 @@ class MAPPO:
                     critic_optim.param_groups[0]["lr"] = frac * args.critic_lr
                 entropy_coef = _scheduled_entropy_coef(args, global_step)
                 action0_bonus = _scheduled_action0_bonus(args, global_step)
+                illegal_action_counts = {agent: 0 for agent in agent_ids}
+                illegal_action_totals = {agent: 0 for agent in agent_ids}
 
                 for step in range(0, args.n_steps):
                     global_step += args.n_envs
@@ -231,6 +310,17 @@ class MAPPO:
                     next_obs, reward, next_terminations, next_truncations, infos = (
                         envs.step(action)
                     )
+                    step_infos = (
+                        list(infos)
+                        if isinstance(infos, (list, tuple))
+                        else [infos]
+                    )
+                    for agent in agent_ids:
+                        illegal_action_totals[agent] += len(step_infos)
+                        illegal_action_counts[agent] += sum(
+                            int(_agent_took_illegal_action(info, agent))
+                            for info in step_infos
+                        )
 
                     if reward_normalizer is not None:
                         done_np = np.logical_or(
@@ -472,6 +562,13 @@ class MAPPO:
                             metrics_to_log[f"train/clipfrac_{ag}"] = float(np.mean(m["clipfrac"]))
                         actions_flat = actions[ag].long().reshape(-1).cpu().numpy()
                         metrics_to_log[f"train/frac_action_0_{ag}"] = float(np.mean(actions_flat == 0))
+                        illegal_total = max(illegal_action_totals[ag], 1)
+                        metrics_to_log[f"train/illegal_action_rate_{ag}"] = (
+                            illegal_action_counts[ag] / illegal_total
+                        )
+                        metrics_to_log[f"train/illegal_action_count_{ag}"] = float(
+                            illegal_action_counts[ag]
+                        )
 
                     # Explained variance of the (shared) critic against agent_0's returns
                     # (all agents have identical returns under shared joint reward)

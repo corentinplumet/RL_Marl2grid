@@ -61,9 +61,15 @@ class GraphEncoder(nn.Module):
             nn.ReLU(),
         )
 
-    def forward(self, graph_obs: Dict[str, th.Tensor]) -> th.Tensor:
+    def forward(
+        self,
+        graph_obs: Dict[str, th.Tensor],
+        edge_index: Optional[th.Tensor] = None,
+    ) -> th.Tensor:
         unbatched = graph_obs["node_features"].dim() == 2
-        x, edge_index, edge_attr, batch, node_mask = self._to_pyg_batch(graph_obs)
+        x, edge_index, edge_attr, batch, node_mask = self._to_pyg_batch(
+            graph_obs, edge_index=edge_index
+        )
 
         for conv, norm in zip(self.convs, self.norms):
             if self.conv_type in {"gat", "gine"}:
@@ -104,7 +110,11 @@ class GraphEncoder(nn.Module):
             pooled = pooled / denom
         return pooled
 
-    def _to_pyg_batch(self, graph_obs: Dict[str, th.Tensor]):
+    def _to_pyg_batch(
+        self,
+        graph_obs: Dict[str, th.Tensor],
+        edge_index: Optional[th.Tensor] = None,
+    ):
         nodes = graph_obs["node_features"]
         edge_features = graph_obs["edge_features"]
         node_mask = graph_obs.get("node_mask")
@@ -116,13 +126,14 @@ class GraphEncoder(nn.Module):
             node_mask = None if node_mask is None else node_mask.unsqueeze(0)
             edge_mask = None if edge_mask is None else edge_mask.unsqueeze(0)
 
+        base_edge_index = self.edge_index if edge_index is None else edge_index
         batch_size, n_nodes, node_dim = nodes.shape
-        n_edges = self.edge_index.shape[1]
+        n_edges = base_edge_index.shape[1]
 
         x = nodes.reshape(batch_size * n_nodes, node_dim)
         batch = th.arange(batch_size, device=nodes.device).repeat_interleave(n_nodes)
 
-        base_edge_index = self.edge_index.to(nodes.device)
+        base_edge_index = base_edge_index.to(nodes.device)
         edge_index = base_edge_index.unsqueeze(0).repeat(batch_size, 1, 1)
         offsets = (th.arange(batch_size, device=nodes.device) * n_nodes).view(batch_size, 1, 1)
         edge_index = (edge_index + offsets).permute(1, 0, 2).reshape(2, batch_size * n_edges)
@@ -168,6 +179,20 @@ class GraphEncoder(nn.Module):
         raise ValueError(f"Unsupported GNN type: {conv_type}")
 
 
+def build_graph_encoder(graph_spec: Dict[str, Any], args: Dict[str, Any]) -> GraphEncoder:
+    return GraphEncoder(
+        graph_spec=graph_spec,
+        hidden_dim=args.gnn_hidden_dim,
+        out_dim=args.gnn_out_dim,
+        n_layers=args.gnn_layers,
+        conv_type=args.gnn_type,
+        graphsage_aggr=getattr(args, "graphsage_aggr", getattr(args, "gnn_aggr", "mean")),
+        readout_aggr=getattr(args, "gnn_readout_aggr", "mean"),
+        layer_norm=args.gnn_layer_norm,
+        heads=args.gnn_heads,
+    )
+
+
 class GraphAndFlatEncoder(nn.Module):
     def __init__(
         self,
@@ -175,24 +200,20 @@ class GraphAndFlatEncoder(nn.Module):
         flat_dim: int,
         args: Dict[str, Any],
         use_flat: bool = False,
+        graph_encoder: Optional[GraphEncoder] = None,
     ) -> None:
         super().__init__()
         self.use_flat = use_flat
-        self.graph_encoder = GraphEncoder(
-            graph_spec=graph_spec,
-            hidden_dim=args.gnn_hidden_dim,
-            out_dim=args.gnn_out_dim,
-            n_layers=args.gnn_layers,
-            conv_type=args.gnn_type,
-            graphsage_aggr=getattr(args, "graphsage_aggr", getattr(args, "gnn_aggr", "mean")),
-            readout_aggr=getattr(args, "gnn_readout_aggr", "mean"),
-            layer_norm=args.gnn_layer_norm,
-            heads=args.gnn_heads,
+        self.register_buffer(
+            "edge_index",
+            th.tensor(graph_spec["edge_index"], dtype=th.long),
+            persistent=False,
         )
+        self.graph_encoder = graph_encoder or build_graph_encoder(graph_spec, args)
         self.out_dim = args.gnn_out_dim + (flat_dim if use_flat else 0)
 
     def forward(self, obs: Dict[str, th.Tensor], graph_key: str = "graph") -> th.Tensor:
-        graph_embedding = self.graph_encoder(obs[graph_key])
+        graph_embedding = self.graph_encoder(obs[graph_key], edge_index=self.edge_index)
         if not self.use_flat:
             return graph_embedding
 
