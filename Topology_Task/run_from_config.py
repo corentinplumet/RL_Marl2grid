@@ -13,8 +13,14 @@ from typing import Any
 
 try:
     import tomllib
-except ModuleNotFoundError as exc:  # pragma: no cover - cluster guard
-    raise SystemExit("Python 3.11+ is required to read TOML configs.") from exc
+except ModuleNotFoundError:  # pragma: no cover - Python < 3.11 guard
+    try:
+        import tomli as tomllib
+    except ModuleNotFoundError as exc:
+        raise SystemExit(
+            "Python < 3.11 needs the 'tomli' package to read TOML configs. "
+            "Install it with: pip install tomli"
+        ) from exc
 
 
 ENV_ALIASES = {

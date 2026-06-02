@@ -26,11 +26,11 @@ Config families:
 Launch examples:
 
 ```bash
-sbatch job_izar.sh configs/gine/shared_gine_a1_no_entropy_decay_s0_det.toml
-sbatch job_izar.sh configs/gine/shared_gine_a4_no_entropy_decay_s0_det.toml
-sbatch job_izar.sh configs/gine/shared_gine_a4_concat_flat_no_entropy_decay_s0_det.toml
-sbatch job_izar.sh configs/gine/shared_gine_a4_mlp_critic_no_entropy_decay_s0_det.toml
-sbatch job_izar.sh configs/gine/gine_a4_nonshared_actor_no_entropy_decay_s0_det.toml
+sbatch job_jed.sh configs/gine/shared_gine_a1_no_entropy_decay_s0_det.toml
+sbatch job_jed.sh configs/gine/shared_gine_a4_no_entropy_decay_s0_det.toml
+sbatch job_jed.sh configs/gine/shared_gine_a4_concat_flat_no_entropy_decay_s0_det.toml
+sbatch job_jed.sh configs/gine/shared_gine_a4_mlp_critic_no_entropy_decay_s0_det.toml
+sbatch job_jed.sh configs/gine/gine_a4_nonshared_actor_no_entropy_decay_s0_det.toml
 ```
 
 Available seeds: `s0`, `s1`, `s2`.
