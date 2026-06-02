@@ -1,0 +1,33 @@
+# Extracted from the marl2grid conda env and cleaned for pip/venv on Linux.
+# Compatible with Python 3.9 on Izar. If possible, Python 3.10+ is still nicer
+# because it can use newer matplotlib/pandas wheels.
+#
+# For GPU jobs, install the matching PyTorch CUDA wheel first, for example:
+#   python -m pip install --index-url https://download.pytorch.org/whl/cu121 torch==2.2.0
+# If Izar's loaded CUDA/driver stack needs CUDA 11.8 instead, use:
+#   python -m pip install --index-url https://download.pytorch.org/whl/cu118 torch==2.2.0
+
+torch==2.2.0
+torch-geometric==2.5.3
+numpy==1.26.4
+scipy==1.11.3
+pandas==2.2.3
+matplotlib==3.9.4
+packaging==23.1
+networkx==3.2.1
+cloudpickle==3.1.2
+tqdm==4.67.3
+PyYAML==6.0.3
+psutil==7.0.0
+protobuf==3.20.3
+
+gymnasium==0.29.1
+stable-baselines3==2.3.2
+tensorboard==2.20.0
+wandb==0.25.0
+
+pandapower==2.14.11
+LightSim2Grid==0.9.0
+deepdiff==9.0.0
+pybind11==3.0.4
+Grid2Op @ git+https://github.com/Grid2op/grid2op.git@dev_multiagent
