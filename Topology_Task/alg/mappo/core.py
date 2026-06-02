@@ -438,6 +438,9 @@ class MAPPO:
 
                 b_values = values.reshape(-1)
                 b_joint_obs = flatten_rollout_obs(joint_observations)
+                b_critic_returns = th.stack(
+                    [returns[agent].reshape(-1) for agent in agent_ids]
+                ).mean(dim=0)
 
                 # Per-rollout training metric accumulators
                 train_metrics = {
@@ -454,9 +457,8 @@ class MAPPO:
                         -1,
                     )
                     b_advantages = advantages[agent].reshape(-1)
-                    b_returns = returns[agent].reshape(-1)
 
-                    # Optimizing the policy and value network
+                    # Optimizing the policy network
                     b_inds = np.arange(batch_size)
                     clipfracs = []
                     for _ in range(args.update_epochs):
@@ -506,43 +508,55 @@ class MAPPO:
                             )
                             actor_optim.step()
 
-                            # Value loss
-                            newvalue = critic.get_value(
-                                index_nested(b_joint_obs, mb_inds)
-                            ).view(-1)
-                            if args.clip_vfloss:
-                                v_loss_unclipped = (newvalue - b_returns[mb_inds]) ** 2
-                                v_clipped = b_values[mb_inds] + th.clamp(
-                                    newvalue - b_values[mb_inds],
-                                    -args.clip_coef,
-                                    args.clip_coef,
-                                )
-                                v_loss_clipped = (v_clipped - b_returns[mb_inds]) ** 2
-                                v_loss_max = th.max(v_loss_unclipped, v_loss_clipped)
-                                v_loss = 0.5 * v_loss_max.mean()
-                            else:
-                                v_loss = (
-                                    0.5 * ((newvalue - b_returns[mb_inds]) ** 2).mean()
-                                )
-
-                            v_loss *= args.vf_coef
-
-                            critic_optim.zero_grad()
-                            v_loss.backward()
-                            nn.utils.clip_grad_norm_(
-                                critic.parameters(), args.max_grad_norm
-                            )
-                            critic_optim.step()
-
                             # Accumulate per-minibatch training metrics
                             train_metrics[agent]["entropy"].append(float(entropy_loss.detach()))
                             train_metrics[agent]["pg_loss"].append(float(pg_loss.detach()))
                             train_metrics[agent]["approx_kl"].append(float(approx_kl.detach()))
                             train_metrics[agent]["clipfrac"].append(float(clipfracs[-1]))
-                            v_loss_history.append(float(v_loss.detach()))
 
                         if args.target_kl is not None and approx_kl > args.target_kl:
                             break
+
+                # The critic is centralized and the environment uses a shared
+                # joint reward, so updating it inside every actor loop repeats
+                # the same value fit. Update it once per rollout minibatch.
+                b_inds = np.arange(batch_size)
+                for _ in range(args.update_epochs):
+                    np.random.shuffle(b_inds)
+                    for start in range(0, batch_size, minibatch_size):
+                        end = start + minibatch_size
+                        mb_inds = b_inds[start:end]
+                        newvalue = critic.get_value(
+                            index_nested(b_joint_obs, mb_inds)
+                        ).view(-1)
+                        if args.clip_vfloss:
+                            v_loss_unclipped = (
+                                newvalue - b_critic_returns[mb_inds]
+                            ) ** 2
+                            v_clipped = b_values[mb_inds] + th.clamp(
+                                newvalue - b_values[mb_inds],
+                                -args.clip_coef,
+                                args.clip_coef,
+                            )
+                            v_loss_clipped = (
+                                v_clipped - b_critic_returns[mb_inds]
+                            ) ** 2
+                            v_loss_max = th.max(v_loss_unclipped, v_loss_clipped)
+                            v_loss = 0.5 * v_loss_max.mean()
+                        else:
+                            v_loss = 0.5 * (
+                                (newvalue - b_critic_returns[mb_inds]) ** 2
+                            ).mean()
+
+                        v_loss *= args.vf_coef
+
+                        critic_optim.zero_grad()
+                        v_loss.backward()
+                        nn.utils.clip_grad_norm_(
+                            critic.parameters(), args.max_grad_norm
+                        )
+                        critic_optim.step()
+                        v_loss_history.append(float(v_loss.detach()))
 
                 # Log per-rollout training metrics to wandb
                 if logger is not None:
@@ -570,10 +584,9 @@ class MAPPO:
                             illegal_action_counts[ag]
                         )
 
-                    # Explained variance of the (shared) critic against agent_0's returns
-                    # (all agents have identical returns under shared joint reward)
+                    # Explained variance of the shared critic against the value target.
                     y_pred = values.reshape(-1).cpu().numpy()
-                    y_true = returns[agent_ids[0]].reshape(-1).cpu().numpy()
+                    y_true = b_critic_returns.cpu().numpy()
                     var_y = float(np.var(y_true))
                     metrics_to_log["train/explained_variance"] = (
                         float("nan") if var_y == 0.0 else 1.0 - float(np.var(y_true - y_pred)) / var_y

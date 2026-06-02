@@ -74,16 +74,22 @@ class GridGraphBuilder:
         return len(self.edge_features)
 
     def build(self, obs) -> Dict[str, Dict[str, np.ndarray]]:
-        state_graph = self.build_for_spec(obs, self.specs["state"])
+        cache = self._make_obs_cache(obs)
+        state_graph = self.build_for_spec(obs, self.specs["state"], cache=cache)
         graphs = {"state": state_graph}
         for agent, spec in self.specs.items():
             if agent == "state":
                 continue
-            graphs[agent] = self.build_for_spec(obs, spec)
+            graphs[agent] = self.build_for_spec(obs, spec, cache=cache)
         return graphs
 
-    def build_for_spec(self, obs, spec: Dict[str, Any]) -> Dict[str, np.ndarray]:
-        return self._build_bus_for_spec(obs, spec)
+    def build_for_spec(
+        self,
+        obs,
+        spec: Dict[str, Any],
+        cache: Optional[Dict[str, np.ndarray]] = None,
+    ) -> Dict[str, np.ndarray]:
+        return self._build_bus_for_spec(obs, spec, cache=cache)
 
     def _make_spec(self, node_ids, line_ids, controlled_nodes=None) -> Dict[str, Any]:
         return self._make_bus_spec(node_ids, line_ids, controlled_nodes=controlled_nodes)
@@ -147,9 +153,28 @@ class GridGraphBuilder:
             node_ids = np.unique(domain_nodes)
         return node_ids, line_ids
 
-    def _build_bus_for_spec(self, obs, spec: Dict[str, Any]) -> Dict[str, np.ndarray]:
-        node_features = self._bus_node_features(obs, spec["controlled_nodes"])[spec["node_ids"]]
-        edge_features, edge_mask = self._bus_edge_features(obs, spec)
+    def _make_obs_cache(self, obs) -> Dict[str, np.ndarray]:
+        line_status = self._obs_array(obs, "line_status", expected=self.n_line)
+        if line_status is None:
+            line_status = np.ones(self.n_line, dtype=np.float32)
+        return {
+            "base_node_features": self._base_bus_node_features(obs),
+            "line_features": self._line_feature_matrix(obs),
+            "line_status": line_status,
+            "line_or_bus": self._topo_bus_ids(obs, self.line_or_pos) - 1,
+            "line_ex_bus": self._topo_bus_ids(obs, self.line_ex_pos) - 1,
+        }
+
+    def _build_bus_for_spec(
+        self,
+        obs,
+        spec: Dict[str, Any],
+        cache: Optional[Dict[str, np.ndarray]] = None,
+    ) -> Dict[str, np.ndarray]:
+        if cache is None:
+            cache = self._make_obs_cache(obs)
+        node_features = self._bus_node_features_from_cache(cache, spec)
+        edge_features, edge_mask = self._bus_edge_features_from_cache(spec, cache)
         return {
             "node_features": node_features.astype(np.float32, copy=False),
             "edge_features": edge_features.astype(np.float32, copy=False),
@@ -157,7 +182,7 @@ class GridGraphBuilder:
             "edge_mask": edge_mask.astype(np.float32, copy=False),
         }
 
-    def _bus_node_features(self, obs, controlled_nodes):
+    def _base_bus_node_features(self, obs):
         features = np.zeros((self.n_bus_nodes, self.node_dim), dtype=np.float32)
         col = {name: idx for idx, name in enumerate(self.node_features)}
 
@@ -172,13 +197,26 @@ class GridGraphBuilder:
             for sub_id in range(self.n_sub):
                 features[self._bus_node_ids([sub_id]), col["time_before_cooldown_sub"]] = sub_cooldown[sub_id]
 
-        controlled_mask = np.isin(np.arange(self.n_sub), controlled_nodes).astype(np.float32)
-        for sub_id, is_controlled in enumerate(controlled_mask):
-            features[self._bus_node_ids([sub_id]), col["domain_mask"]] = is_controlled
-
         return np.nan_to_num(features, nan=0.0, posinf=0.0, neginf=0.0)
 
-    def _bus_edge_features(self, obs, spec):
+    def _bus_node_features_from_cache(self, cache, spec):
+        node_features = cache["base_node_features"][spec["node_ids"]].copy()
+        col = {name: idx for idx, name in enumerate(self.node_features)}
+        node_sub_ids = spec["node_ids"] // self.n_busbar
+        node_features[:, col["domain_mask"]] = np.isin(
+            node_sub_ids, spec["controlled_nodes"]
+        ).astype(np.float32)
+        return np.nan_to_num(node_features, nan=0.0, posinf=0.0, neginf=0.0)
+
+    def _bus_node_features(self, obs, controlled_nodes):
+        cache = {"base_node_features": self._base_bus_node_features(obs)}
+        spec = {
+            "node_ids": np.arange(self.n_bus_nodes, dtype=np.int64),
+            "controlled_nodes": np.asarray(controlled_nodes, dtype=np.int64),
+        }
+        return self._bus_node_features_from_cache(cache, spec)
+
+    def _bus_edge_features_from_cache(self, spec, cache):
         edge_line_ids = spec["edge_line_ids"]
         if len(edge_line_ids) == 0:
             return (
@@ -186,19 +224,20 @@ class GridGraphBuilder:
                 np.zeros((0,), dtype=np.float32),
             )
 
-        edge_features = self._line_feature_matrix(obs)[edge_line_ids]
-        line_status = self._obs_array(obs, "line_status", expected=self.n_line)
-        line_status = np.ones(self.n_line, dtype=np.float32) if line_status is None else line_status
-        or_bus = self._topo_bus_ids(obs, self.line_or_pos)[edge_line_ids] - 1
-        ex_bus = self._topo_bus_ids(obs, self.line_ex_pos)[edge_line_ids] - 1
+        edge_features = cache["line_features"][edge_line_ids].copy()
+        line_status = cache["line_status"]
+        or_bus = cache["line_or_bus"][edge_line_ids]
+        ex_bus = cache["line_ex_bus"][edge_line_ids]
         active = (
             (line_status[edge_line_ids] > 0)
             & (or_bus == spec["edge_or_bus_ids"])
             & (ex_bus == spec["edge_ex_bus_ids"])
         )
-        edge_features = edge_features.copy()
         edge_features[~active] = 0.0
         return np.nan_to_num(edge_features, nan=0.0, posinf=0.0, neginf=0.0), active.astype(np.float32)
+
+    def _bus_edge_features(self, obs, spec):
+        return self._bus_edge_features_from_cache(spec, self._make_obs_cache(obs))
 
     def _line_feature_matrix(self, obs):
         features = np.zeros((self.n_line, self.edge_dim), dtype=np.float32)
