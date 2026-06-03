@@ -19,6 +19,7 @@ Seed-sweep families:
 
 Single-seed light probes:
 
+- `test`: best current concat-flat S1 config with cheaper evaluation only.
 - `fast_light_shared_gine_a1_mlp_critic_no_entropy_decay_s0_det`: light A1 actor GINE, MLP critic.
 - `fast_light_shared_gine_a1_no_entropy_decay_s0_det`: light A1 actor GINE, light GNN critic.
 - `fast_light_shared_gine_a4_no_node_id_mlp_critic_no_entropy_decay_s0_det`: ablates learned bus/substation ID embeddings.
