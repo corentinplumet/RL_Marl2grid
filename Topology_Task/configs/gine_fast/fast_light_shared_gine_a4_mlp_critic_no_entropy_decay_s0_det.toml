@@ -84,7 +84,7 @@ gnn_graph_type = "bus"
 # ppo
 total_timesteps = 15000000
 n_steps = 2000
-eval_freq = 200000
+eval_freq = 80000
 actor_layers = [128, 128]
 critic_layers = [128, 128]
 actor_act_fn = "relu"
@@ -104,6 +104,7 @@ clip_vfloss = true
 entropy_coef = 0.02
 entropy_coef_final = 0.02
 vf_coef = 0.5
+optimize_critic_updates = true
 init_do_nothing_prob = 0.7
 norm_reward = true
 action0_logit_bonus_init = 0.0

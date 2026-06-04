@@ -4,11 +4,15 @@ These configs are faster diagnostic GNN runs for rented GPU/RunPod-style trainin
 They keep deterministic evaluation and seeds `s0`, `s1`, `s2`, but reduce the
 largest avoidable runtime costs:
 
-- `eval_freq = 200000`
+- `eval_freq = 80000`
 - `eval_episodes = 3`
 - `eval_train_chronics = false`
 - `n_threads = 1`
 - `gnn_include_neighbors = false`
+
+`optimize_critic_updates` controls whether the shared centralized critic is
+updated once per rollout minibatch (`true`) or with the older repeated update
+inside each actor loop (`false`).
 
 Seed-sweep families:
 
@@ -19,9 +23,12 @@ Seed-sweep families:
 
 Single-seed light probes:
 
-- `test`: best current concat-flat S1 config with cheaper evaluation only.
+- `fast_shared_gine_a4_concat_flat_no_entropy_decay_s1_det`: best current concat-flat S1 config with cheaper evaluation only.
 - `fast_light_shared_gine_a1_mlp_critic_no_entropy_decay_s0_det`: light A1 actor GINE, MLP critic.
 - `fast_light_shared_gine_a1_no_entropy_decay_s0_det`: light A1 actor GINE, light GNN critic.
+- `fast_shared_gine_a4_concat_flat_optcritic_no_entropy_decay_s1_det`: full concat-flat S1 with optimized critic updates.
+- `fast_shared_gine_a4_concat_flat_mlp_critic_no_entropy_decay_s1_det`: full concat-flat S1 with an MLP critic.
+- `fast_light_shared_gine_a4_concat_flat_mlp_critic_no_entropy_decay_s1_det`: light S1 actor GINE with flat observation concatenation and MLP critic.
 - `fast_light_shared_gine_a4_no_node_id_mlp_critic_no_entropy_decay_s0_det`: ablates learned bus/substation ID embeddings.
 - `fast_light_shared_gine_a4_no_node_pre_encoder_mlp_critic_no_entropy_decay_s0_det`: ablates the node pre-encoder.
 - `fast_light_shared_gine_a4_edge_pre_encoder_mlp_critic_no_entropy_decay_s0_det`: adds the edge pre-encoder.

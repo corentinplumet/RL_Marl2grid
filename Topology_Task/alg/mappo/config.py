@@ -132,6 +132,17 @@ def get_alg_args() -> Namespace:
     parser.add_argument(
         "--vf-coef", type=float, default=0.5, help="Value function coefficient"
     )
+    parser.add_argument(
+        "--optimize-critic-updates",
+        type=str2bool,
+        default=True,
+        help=(
+            "Update the shared centralized critic once per rollout minibatch instead "
+            "of once inside every actor update loop. True preserves the optimized "
+            "branch behavior; false restores the older "
+            "training dynamics."
+        ),
+    )
 
     parser.add_argument(
         "--init-do-nothing-prob",

@@ -84,7 +84,7 @@ gnn_graph_type = "bus"
 # ppo
 total_timesteps = 15000000
 n_steps = 2000
-eval_freq = 200000
+eval_freq = 80000
 actor_layers = [128, 128]
 critic_layers = [128, 128]
 actor_act_fn = "relu"
