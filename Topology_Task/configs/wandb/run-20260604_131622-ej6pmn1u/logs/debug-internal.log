@@ -4,3 +4,5 @@
 {"time":"2026-06-04T13:16:24.375089+08:00","level":"INFO","msg":"writer: started","stream_id":"ej6pmn1u"}
 {"time":"2026-06-04T13:16:24.37523+08:00","level":"INFO","msg":"sender: started","stream_id":"ej6pmn1u"}
 {"time":"2026-06-04T13:16:24.375244+08:00","level":"INFO","msg":"stream: started","id":"ej6pmn1u"}
+{"time":"2026-06-04T14:47:01.604384+08:00","level":"ERROR","msg":"api: HTTP error","status":404,"method":"POST","url":"https://api.wandb.ai/files/corentin-plumet-epfl/Grid2Op/ej6pmn1u/file_stream"}
+{"time":"2026-06-04T14:47:01.60745+08:00","level":"ERROR+4","msg":"filestream: fatal error: filestream: failed to upload: 404 Not Found url=https://api.wandb.ai/files/corentin-plumet-epfl/Grid2Op/ej6pmn1u/file_stream: {\"error\":\"run Grid2Op/ej6pmn1u not found while streaming file\"}"}

@@ -1,8 +1,8 @@
-# Exact rerun of the historical best shared_gine_a4_concat_flat_no_entropy_decay_s1_det.
-# Only adds optimize_critic_updates=false so the optimization branch preserves legacy critic behavior.
+# Concat-flat A4 GINE with GNN critic and optimized critic update.
+# Tests whether the historical best architecture still works with optimized critic updates.
 
 [run]
-name = "best_00_rerun_usual_shared_gine_a4_concat_flat_s1"
+name = "best_01_shared_actor_gnn_gine_a4_concat_flat_critic_gnn_optcritic_s1"
 run_dir = "outputs/jed-{config_name}-{job_id}"
 seed_from_slurm_array = false
 extra_args = []
@@ -31,7 +31,7 @@ checkpoint = true
 alg = "MAPPO"
 seed = 1
 verbose = true
-exp_tag = "best_00_rerun_usual_shared_gine_a4_concat_flat_s1"
+exp_tag = "best_01_shared_actor_gnn_gine_a4_concat_flat_critic_gnn_optcritic_s1"
 track = true
 wandb_project = "Grid2Op"
 wandb_entity = "corentin-plumet-epfl"
@@ -102,13 +102,13 @@ clip_vfloss = true
 entropy_coef = 0.02
 entropy_coef_final = 0.02
 vf_coef = 0.5
-optimize_critic_updates = false
+optimize_critic_updates = true
 init_do_nothing_prob = 0.7
 norm_reward = true
 action0_logit_bonus_init = 0.0
 action0_logit_bonus_final = 0.0
 action0_logit_bonus_fraction = 1.0
 deterministic_eval = true
-eval_episodes = 3
+eval_episodes = 5
 eval_all_split_chronics = false
-eval_train_chronics = false
+eval_train_chronics = true
