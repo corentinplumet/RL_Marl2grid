@@ -246,6 +246,16 @@ def get_alg_args() -> Namespace:
         help="GraphSAGE neighborhood aggregation for thesis-style gnn encoders.",
     )
     parser.add_argument(
+        "--gcn-edge-weight-feature",
+        type=str,
+        default="none",
+        choices=["none", "rho"],
+        help=(
+            "Optional edge feature used as GCNConv edge_weight. "
+            "Set to 'rho' to weight GCN messages by line loading."
+        ),
+    )
+    parser.add_argument(
         "--gnn-aggr",
         dest="graphsage_aggr",
         type=str,

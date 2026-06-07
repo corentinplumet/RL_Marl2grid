@@ -1,13 +1,13 @@
 # GINE Best-Search 2 Configs
 
-This folder contains a controlled follow-up around the strongest GINE runs.
-It is organized as eight experiment families, each repeated with seeds `s0`, `s1`,
+This folder contains a controlled follow-up around the strongest graph-encoder runs.
+It is organized as ten experiment families, each repeated with seeds `s0`, `s1`,
 and `s2`.
 
 Common settings kept fixed unless the family name says otherwise:
 
 - A4 exploration: `entropy_coef = 0.02`, `entropy_coef_final = 0.02`, `init_do_nothing_prob = 0.7`
-- GINE size: `gnn_layers = 2`, `gnn_hidden_dim = 128`, `gnn_out_dim = 128`
+- GNN size: `gnn_layers = 2`, `gnn_hidden_dim = 128`, `gnn_out_dim = 128`
 - actor encoder: `actor_encoder = "gnn"`
 - bus graph: `gnn_graph_type = "bus"`
 - no neighbor expansion: `gnn_include_neighbors = false`
@@ -31,6 +31,8 @@ Common settings kept fixed unless the family name says otherwise:
 | `best_04_shared_actor_gnn_light_gine_a4_concat_flat_critic_gnn_legacy_update_s*` | 0, 1, 2 | Same setup with a lighter 1-layer, 64-dimensional GINE encoder. |
 | `best_05_shared_actor_gnn_gine_a4_entropy_decay_concat_flat_critic_gnn_legacy_update_s*` | 0, 1, 2 | Same setup with entropy decayed from `0.02` to `0.0`. |
 | `best_06_shared_actor_gnn_gine_a4_no_node_id_concat_flat_critic_gnn_legacy_update_s*` | 0, 1, 2 | Same setup without learned node ID embeddings. |
+| `best_07_shared_actor_gnn_gat_a4_concat_flat_critic_gnn_legacy_update_s*` | 0, 1, 2 | Same setup with GAT message passing instead of GINE. |
+| `best_08_shared_actor_gnn_weighted_gcn_a4_concat_flat_critic_gnn_legacy_update_s*` | 0, 1, 2 | Same setup with GCN message passing weighted directly by raw `rho`. |
 
 Useful controlled comparisons:
 
@@ -41,6 +43,8 @@ Useful controlled comparisons:
 - `best_00` vs `best_04`: standard GINE encoder vs light GINE encoder.
 - `best_00` vs `best_05`: no entropy decay vs entropy decay.
 - `best_00` vs `best_06`: learned node ID embeddings vs no node ID embeddings.
+- `best_00` vs `best_07`: GINE message passing vs GAT message passing.
+- `best_00` vs `best_08`: GINE message passing vs raw-`rho` weighted GCN message passing.
 
 Launch from the repository root with:
 

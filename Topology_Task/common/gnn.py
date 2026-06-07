@@ -25,6 +25,7 @@ class GraphEncoder(nn.Module):
         edge_pre_encoder: bool = False,
         node_id_embeddings: bool = False,
         node_id_emb_dim: int = 8,
+        gcn_edge_weight_feature: str = "none",
     ) -> None:
         super().__init__()
         if GCNConv is None:
@@ -41,6 +42,8 @@ class GraphEncoder(nn.Module):
         if self.readout_aggr not in {"mean", "sum", "max"}:
             raise ValueError(f"Unsupported GNN readout aggregation: {readout_aggr}")
         self.edge_dim = int(graph_spec["edge_dim"])
+        self.gcn_edge_weight_feature = str(gcn_edge_weight_feature).lower()
+        self.gcn_edge_weight_idx = self._resolve_gcn_edge_weight_idx(graph_spec)
         self.register_buffer("edge_index", th.tensor(graph_spec["edge_index"], dtype=th.long))
         self.register_buffer("node_ids", th.tensor(graph_spec["node_ids"], dtype=th.long))
 
@@ -114,6 +117,12 @@ class GraphEncoder(nn.Module):
         for conv, norm in zip(self.convs, self.norms):
             if self.uses_edge_attr:
                 x = conv(x, edge_index, edge_attr=edge_attr)
+            elif self.conv_type == "gcn" and self.gcn_edge_weight_idx is not None:
+                x = conv(
+                    x,
+                    edge_index,
+                    edge_weight=edge_attr[:, self.gcn_edge_weight_idx],
+                )
             else:
                 x = conv(x, edge_index)
             x = norm(F.relu(x))
@@ -235,6 +244,26 @@ class GraphEncoder(nn.Module):
             return SAGEConv(in_dim, hidden_dim, aggr=sage_aggr)
         raise ValueError(f"Unsupported GNN type: {conv_type}")
 
+    def _resolve_gcn_edge_weight_idx(self, graph_spec: Dict[str, Any]) -> Optional[int]:
+        if self.gcn_edge_weight_feature in {"", "none", "false"}:
+            return None
+        if self.conv_type != "gcn":
+            raise ValueError("--gcn-edge-weight-feature can only be used with --gnn-type gcn.")
+
+        edge_feature_names = list(graph_spec.get("edge_feature_names", []))
+        if not edge_feature_names:
+            if self.gcn_edge_weight_feature == "rho" and self.edge_dim >= 2:
+                return 1
+            raise ValueError(
+                "GCN edge weighting requires graph specs with edge_feature_names."
+            )
+        if self.gcn_edge_weight_feature not in edge_feature_names:
+            raise ValueError(
+                f"Unknown GCN edge weight feature '{self.gcn_edge_weight_feature}'. "
+                f"Available edge features: {edge_feature_names}"
+            )
+        return edge_feature_names.index(self.gcn_edge_weight_feature)
+
 
 def build_graph_encoder(graph_spec: Dict[str, Any], args: Dict[str, Any]) -> GraphEncoder:
     return GraphEncoder(
@@ -251,6 +280,7 @@ def build_graph_encoder(graph_spec: Dict[str, Any], args: Dict[str, Any]) -> Gra
         edge_pre_encoder=getattr(args, "gnn_edge_pre_encoder", False),
         node_id_embeddings=getattr(args, "gnn_node_id_embeddings", False),
         node_id_emb_dim=getattr(args, "gnn_node_id_emb_dim", 8),
+        gcn_edge_weight_feature=getattr(args, "gcn_edge_weight_feature", "none"),
     )
 
 
