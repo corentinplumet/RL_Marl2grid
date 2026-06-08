@@ -179,6 +179,34 @@ python -m risk_prior.collect_dataset \
   --rollout-nonidle-prob 0.05
 ```
 
+On JED with Slurm, submit from the repository root:
+
+```bash
+sbatch job_risk_prior_jed.sh \
+  --env-id bus14 \
+  --max-examples 20000 \
+  --actions-per-agent 32
+```
+
+For a quick smoke test:
+
+```bash
+sbatch job_risk_prior_jed.sh \
+  --max-examples 200 \
+  --max-hazard-states 5 \
+  --actions-per-agent 8
+```
+
+For a small seed sweep:
+
+```bash
+sbatch --array=0-2 job_risk_prior_jed.sh \
+  --max-examples 20000 \
+  --actions-per-agent 32
+```
+
+The Slurm script uses `SEED=$SLURM_ARRAY_TASK_ID` by default for array jobs.
+
 ## Phase 1 Outputs
 
 The `.npz` file contains:
