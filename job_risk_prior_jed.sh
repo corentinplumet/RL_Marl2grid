@@ -31,6 +31,10 @@ Environment:
   ACTIONS_PER_AGENT    Local actions sampled per agent. Default: 32.
   RHO_THRESHOLD        Hazard threshold. Default: 0.90.
   OUTPUT               Output .npz path. Default includes env, seed, and job id.
+  JOINT_SAMPLES_PER_STATE
+                       Sampled joint actions per hazard state. Default: 0.
+  JOINT_ACTIVE_COUNT_PROBS
+                       Optional comma-separated active-agent probabilities.
 
 Any command-line args after the script name are forwarded to
 python -m risk_prior.collect_dataset and override duplicate defaults.
@@ -88,6 +92,8 @@ MAX_EXAMPLES="${MAX_EXAMPLES:-20000}"
 MAX_HAZARD_STATES="${MAX_HAZARD_STATES:-1000}"
 ACTIONS_PER_AGENT="${ACTIONS_PER_AGENT:-32}"
 RHO_THRESHOLD="${RHO_THRESHOLD:-0.90}"
+JOINT_SAMPLES_PER_STATE="${JOINT_SAMPLES_PER_STATE:-0}"
+JOINT_ACTIVE_COUNT_PROBS="${JOINT_ACTIVE_COUNT_PROBS:-}"
 JOB_ID="${SLURM_JOB_ID:-local}"
 OUTPUT="${OUTPUT:-${REPO_DIR}/outputs/risk_prior/${ENV_ID}_seed${SEED}_job${JOB_ID}.npz}"
 
@@ -98,6 +104,11 @@ echo "Using env id: ${ENV_ID}"
 echo "Using seed: ${SEED}"
 echo "Writing dataset to: ${OUTPUT}"
 
+joint_args=(--joint-samples-per-state "${JOINT_SAMPLES_PER_STATE}")
+if [ -n "${JOINT_ACTIVE_COUNT_PROBS}" ]; then
+    joint_args+=(--joint-active-count-probs "${JOINT_ACTIVE_COUNT_PROBS}")
+fi
+
 python -u -m risk_prior.collect_dataset \
     --env-id "${ENV_ID}" \
     --seed "${SEED}" \
@@ -106,6 +117,7 @@ python -u -m risk_prior.collect_dataset \
     --max-hazard-states "${MAX_HAZARD_STATES}" \
     --actions-per-agent "${ACTIONS_PER_AGENT}" \
     --output "${OUTPUT}" \
+    "${joint_args[@]}" \
     "$@"
 
 echo "Risk-prior collection job ${SLURM_JOB_ID:-local} finished at $(date)"

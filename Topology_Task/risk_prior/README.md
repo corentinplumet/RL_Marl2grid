@@ -23,10 +23,16 @@ terminal actions are treated as high-risk training labels for the surrogate.
 
 ### Phase 1: Offline Risk Dataset
 
-Collect supervised one-step labels:
+Collect supervised one-step labels. The first label type is unilateral:
 
 ```text
 state_graph, agent_id, local_action_id -> target_risk
+```
+
+The second, optional label type is sampled joint actions:
+
+```text
+state_graph, joint_action_ids -> target_risk
 ```
 
 The target is usually:
@@ -105,6 +111,7 @@ Optional follow-ups:
 ## Phase 1 In Detail
 
 Phase 1 builds the data needed by Phase 2. It does not modify MAPPO training.
+It can collect both unilateral labels and sampled joint-action labels.
 
 At each environment state, the collector checks:
 
@@ -127,6 +134,12 @@ all other agents -> action 0
 This isolates the one-step risk contribution of one local action. It is the
 cleanest first approximation for a multi-agent setup because it avoids the full
 combinatorial joint-action space.
+
+Because your current W&B diagnostic shows that simultaneous multi-agent actions
+are common, the collector can also add sampled joint-action labels. For each
+hazardous state, `--joint-samples-per-state M` samples `M` full joint actions,
+simulates them, and stores the same one-step risk target. This keeps runtime
+linear in `M` instead of exhaustive in the product of all agents' action spaces.
 
 The collector simulates the central action for one step from the current
 observation and stores:
@@ -179,6 +192,17 @@ python -m risk_prior.collect_dataset \
   --rollout-nonidle-prob 0.05
 ```
 
+To add sampled joint-action labels matching your observed bus14 non-idle-agent
+distribution:
+
+```bash
+python -m risk_prior.collect_dataset \
+  --env-id bus14 \
+  --all-actions true \
+  --joint-samples-per-state 64 \
+  --joint-active-count-probs "0.013475,0.148075,0.413175,0.425275"
+```
+
 On JED with Slurm, submit from the repository root:
 
 ```bash
@@ -207,6 +231,18 @@ sbatch --array=0-2 job_risk_prior_jed.sh \
 
 The Slurm script uses `SEED=$SLURM_ARRAY_TASK_ID` by default for array jobs.
 
+For exhaustive unilateral labels plus sampled joint labels:
+
+```bash
+sbatch job_risk_prior_jed.sh \
+  --env-id bus14 \
+  --all-actions true \
+  --joint-samples-per-state 64 \
+  --joint-active-count-probs "0.013475,0.148075,0.413175,0.425275" \
+  --max-hazard-states 1000 \
+  --max-examples 1000000
+```
+
 ## Phase 1 Outputs
 
 The `.npz` file contains:
@@ -218,6 +254,9 @@ node_mask
 edge_mask
 agent_index         # integer agent id used by the future model
 action_id           # local discrete action id
+joint_action_ids    # full vector of local actions, one per agent
+label_type          # 0 = unilateral, 1 = sampled joint action
+n_non_idle_agents   # number of non-zero entries in joint_action_ids
 target_risk         # supervised label
 pre_risk            # max rho before the candidate action
 reward              # one-step simulated reward
@@ -241,6 +280,7 @@ action_domains
 observation_domains
 state_graph_spec
 collector settings
+label_type_names
 sampled exception text
 ```
 

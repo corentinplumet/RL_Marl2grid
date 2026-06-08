@@ -7,6 +7,10 @@ form:
 
     state_graph, agent_id, local_action_id -> max(next_obs.rho)
 
+It can also add sampled joint-action labels:
+
+    state_graph, joint_action_ids -> max(next_obs.rho)
+
 Illegal, ambiguous, failed, or terminal simulations are kept as data and mapped
 to a configurable high-risk target. This keeps phase 1 fully data-driven rather
 than relying on hand-authored action masks.
@@ -31,6 +35,8 @@ if str(TASK_DIR) not in sys.path:
 
 
 DEFAULT_RHO_THRESHOLD = 0.90
+LABEL_UNILATERAL = 0
+LABEL_JOINT = 1
 
 
 @dataclass
@@ -155,6 +161,27 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--joint-samples-per-state",
+        type=int,
+        default=0,
+        help=(
+            "Additional sampled joint actions evaluated at each hazardous state. "
+            "0 disables joint-action labels."
+        ),
+    )
+    parser.add_argument(
+        "--joint-active-count-probs",
+        type=str,
+        default="",
+        help=(
+            "Comma-separated probabilities for how many agents are non-idle in "
+            "sampled joint actions. Length n_agents+1 means counts 0..n_agents; "
+            "length n_agents means counts 1..n_agents. Example for bus14 from "
+            "W&B: '0.013475,0.148075,0.413175,0.425275'. If omitted, counts "
+            "1..n_agents are sampled uniformly."
+        ),
+    )
+    parser.add_argument(
         "--progress-every",
         type=int,
         default=25,
@@ -271,6 +298,10 @@ def central_action_from_joint_ids(env: Any, joint_action_ids: dict[str, int]) ->
     return central_action
 
 
+def joint_ids_array(agent_ids: list[str], joint_action_ids: dict[str, int]) -> np.ndarray:
+    return np.asarray([joint_action_ids[agent_id] for agent_id in agent_ids], dtype=np.int64)
+
+
 def info_flag(info: Any, key: str) -> bool:
     if not isinstance(info, dict):
         return False
@@ -293,20 +324,10 @@ def info_exception(info: Any) -> str:
 
 def simulate_one_step(
     env: Any,
-    agent_ids: list[str],
-    controlled_agent: str,
-    action_id: int,
-    default_action_id: int,
+    joint_action_ids: dict[str, int],
     risk_penalty: float,
     terminal_is_high_risk: bool,
 ) -> SimulationResult:
-    joint_action_ids = make_joint_action_ids(
-        agent_ids,
-        controlled_agent,
-        int(action_id),
-        default_action_id,
-    )
-
     try:
         central_action = central_action_from_joint_ids(env, joint_action_ids)
         sim_obs, reward, done, info = env._obs.simulate(central_action)
@@ -339,6 +360,65 @@ def simulate_one_step(
         simulation_error=False,
         exception=info_exception(info),
     )
+
+
+def parse_active_count_probs(raw: str, n_agents: int) -> np.ndarray:
+    if not raw:
+        probs = np.zeros(n_agents + 1, dtype=np.float64)
+        probs[1:] = 1.0 / max(n_agents, 1)
+        return probs
+
+    values = np.asarray(
+        [float(part.strip()) for part in raw.split(",") if part.strip()],
+        dtype=np.float64,
+    )
+    if len(values) == n_agents:
+        probs = np.zeros(n_agents + 1, dtype=np.float64)
+        probs[1:] = values
+    elif len(values) == n_agents + 1:
+        probs = values
+    else:
+        raise ValueError(
+            "--joint-active-count-probs must contain either n_agents values "
+            f"(counts 1..n_agents) or n_agents+1 values (counts 0..n_agents). "
+            f"Got {len(values)} values for {n_agents} agents."
+        )
+    if np.any(probs < 0.0) or not np.isfinite(probs).all():
+        raise ValueError("--joint-active-count-probs must be finite and non-negative.")
+    total = float(probs.sum())
+    if total <= 0.0:
+        raise ValueError("--joint-active-count-probs must sum to a positive value.")
+    return probs / total
+
+
+def sample_joint_action_ids(
+    env: Any,
+    agent_ids: list[str],
+    rng: np.random.Generator,
+    active_count_probs: np.ndarray,
+    default_action_id: int,
+) -> dict[str, int]:
+    joint_action_ids = {agent_id: int(default_action_id) for agent_id in agent_ids}
+    active_candidates = [
+        agent_id for agent_id in agent_ids if int(env.action_space[agent_id].n) > 1
+    ]
+    max_active = len(active_candidates)
+    probs = active_count_probs.copy()
+    if max_active < len(agent_ids):
+        probs[max_active + 1 :] = 0.0
+    if probs.sum() <= 0.0:
+        probs[0] = 1.0
+    probs = probs / probs.sum()
+
+    active_count = int(rng.choice(np.arange(len(probs)), p=probs))
+    if active_count == 0:
+        return joint_action_ids
+
+    active_agents = rng.choice(active_candidates, size=active_count, replace=False)
+    for agent_id in active_agents:
+        n_actions = int(env.action_space[agent_id].n)
+        joint_action_ids[agent_id] = int(rng.integers(1, n_actions))
+    return joint_action_ids
 
 
 def sample_rollout_action(
@@ -410,6 +490,11 @@ def save_dataset(
         "edge_mask": np.stack([record["edge_mask"] for record in records]),
         "agent_index": np.asarray([record["agent_index"] for record in records], dtype=np.int64),
         "action_id": np.asarray([record["action_id"] for record in records], dtype=np.int64),
+        "joint_action_ids": np.stack([record["joint_action_ids"] for record in records]),
+        "label_type": np.asarray([record["label_type"] for record in records], dtype=np.int64),
+        "n_non_idle_agents": np.asarray(
+            [record["n_non_idle_agents"] for record in records], dtype=np.int64
+        ),
         "target_risk": np.asarray([record["target_risk"] for record in records], dtype=np.float32),
         "pre_risk": np.asarray([record["pre_risk"] for record in records], dtype=np.float32),
         "reward": np.asarray([record["reward"] for record in records], dtype=np.float32),
@@ -433,6 +518,10 @@ def collect(args: argparse.Namespace) -> tuple[list[dict[str, Any]], dict[str, A
     env = build_env(args)
     agent_ids = list(env.g2op_ma_env.agents)
     agent_to_index = {agent_id: idx for idx, agent_id in enumerate(agent_ids)}
+    joint_active_count_probs = parse_active_count_probs(
+        args.joint_active_count_probs,
+        len(agent_ids),
+    )
 
     records: list[dict[str, Any]] = []
     exceptions: list[dict[str, Any]] = []
@@ -474,20 +563,27 @@ def collect(args: argparse.Namespace) -> tuple[list[dict[str, Any]], dict[str, A
                                 include_action0=args.include_action0,
                             )
                             for action_id in actions:
+                                joint_action = make_joint_action_ids(
+                                    agent_ids,
+                                    agent_id,
+                                    int(action_id),
+                                    args.default_other_agent_action,
+                                )
                                 result = simulate_one_step(
                                     env,
-                                    agent_ids,
-                                    controlled_agent=agent_id,
-                                    action_id=int(action_id),
-                                    default_action_id=args.default_other_agent_action,
+                                    joint_action,
                                     risk_penalty=args.risk_penalty,
                                     terminal_is_high_risk=args.terminal_is_high_risk,
                                 )
+                                action_array = joint_ids_array(agent_ids, joint_action)
                                 records.append(
                                     {
                                         **snapshot,
                                         "agent_index": agent_to_index[agent_id],
                                         "action_id": int(action_id),
+                                        "joint_action_ids": action_array,
+                                        "label_type": LABEL_UNILATERAL,
+                                        "n_non_idle_agents": int(np.count_nonzero(action_array)),
                                         "target_risk": result.target_risk,
                                         "pre_risk": pre_risk,
                                         "reward": result.reward,
@@ -514,6 +610,54 @@ def collect(args: argparse.Namespace) -> tuple[list[dict[str, Any]], dict[str, A
                                     break
                             if len(records) >= args.max_examples:
                                 break
+
+                        for _ in range(max(args.joint_samples_per_state, 0)):
+                            if len(records) >= args.max_examples:
+                                break
+                            joint_action = sample_joint_action_ids(
+                                env,
+                                agent_ids,
+                                rng,
+                                active_count_probs=joint_active_count_probs,
+                                default_action_id=args.default_other_agent_action,
+                            )
+                            result = simulate_one_step(
+                                env,
+                                joint_action,
+                                risk_penalty=args.risk_penalty,
+                                terminal_is_high_risk=args.terminal_is_high_risk,
+                            )
+                            action_array = joint_ids_array(agent_ids, joint_action)
+                            records.append(
+                                {
+                                    **snapshot,
+                                    "agent_index": -1,
+                                    "action_id": -1,
+                                    "joint_action_ids": action_array,
+                                    "label_type": LABEL_JOINT,
+                                    "n_non_idle_agents": int(np.count_nonzero(action_array)),
+                                    "target_risk": result.target_risk,
+                                    "pre_risk": pre_risk,
+                                    "reward": result.reward,
+                                    "done": result.done,
+                                    "is_illegal": result.is_illegal,
+                                    "is_ambiguous": result.is_ambiguous,
+                                    "has_error": result.has_error,
+                                    "simulation_error": result.simulation_error,
+                                    "episode": episodes,
+                                    "env_step": env_steps,
+                                    "hazard_index": hazard_states - 1,
+                                }
+                            )
+                            if result.exception and len(exceptions) < 100:
+                                exceptions.append(
+                                    {
+                                        "agent_id": "joint",
+                                        "action_id": action_array.tolist(),
+                                        "env_step": env_steps,
+                                        "exception": result.exception,
+                                    }
+                                )
 
                         if (
                             args.progress_every > 0
@@ -559,7 +703,19 @@ def collect(args: argparse.Namespace) -> tuple[list[dict[str, Any]], dict[str, A
         "include_action0": args.include_action0,
         "default_other_agent_action": args.default_other_agent_action,
         "rollout_nonidle_prob": args.rollout_nonidle_prob,
+        "joint_samples_per_state": args.joint_samples_per_state,
+        "joint_active_count_probs": joint_active_count_probs,
+        "label_type_names": {
+            "unilateral": LABEL_UNILATERAL,
+            "joint": LABEL_JOINT,
+        },
         "n_examples": len(records),
+        "n_unilateral_examples": int(
+            sum(record["label_type"] == LABEL_UNILATERAL for record in records)
+        ),
+        "n_joint_examples": int(
+            sum(record["label_type"] == LABEL_JOINT for record in records)
+        ),
         "n_hazard_states": hazard_states,
         "n_seen_hazards": seen_hazards,
         "n_env_steps": env_steps,
@@ -592,4 +748,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
