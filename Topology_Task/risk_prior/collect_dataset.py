@@ -151,6 +151,22 @@ def parse_args() -> argparse.Namespace:
         help="Local action id used for agents other than the evaluated one.",
     )
     parser.add_argument(
+        "--max-simulation-error-frac",
+        type=float,
+        default=0.05,
+        help=(
+            "Abort collection if exception-based simulation failures exceed this "
+            "fraction after enough simulations have been attempted. Illegal or "
+            "ambiguous actions are tracked separately and do not count here."
+        ),
+    )
+    parser.add_argument(
+        "--min-simulations-before-error-check",
+        type=int,
+        default=64,
+        help="Minimum number of simulations before enforcing --max-simulation-error-frac.",
+    )
+    parser.add_argument(
         "--rollout-nonidle-prob",
         type=float,
         default=0.0,
@@ -289,12 +305,23 @@ def central_action_from_joint_ids(env: Any, joint_action_ids: dict[str, int]) ->
 
     MAEnvWrapper normally passes a dict of local actions to Grid2Op's
     MultiAgentEnv. For offline one-step simulation we need a single central
-    action, so we combine local Grid2Op actions with the central no-op action.
+    action, so local SubGridAction objects must first be projected back to the
+    full grid before being combined.
     """
     local_actions = env._get_grid2op_act(joint_action_ids)
-    central_action = env.g2op_env.action_space({})
-    for local_action in local_actions.values():
-        central_action += local_action
+    ma_env = env.g2op_ma_env
+    central_env = ma_env._cent_env
+    central_action = central_env.action_space({})
+    agent_order = getattr(ma_env, "agent_order", list(local_actions.keys()))
+    for agent_id in agent_order:
+        local_action = local_actions[agent_id]
+        if hasattr(ma_env, "_local_action_to_global"):
+            global_action = ma_env._local_action_to_global(local_action)
+        elif hasattr(local_action, "to_global"):
+            global_action = local_action.to_global(central_env.action_space)
+        else:
+            global_action = local_action
+        central_action += global_action
     return central_action
 
 
@@ -322,6 +349,43 @@ def info_exception(info: Any) -> str:
     return "" if exc is None else str(exc)
 
 
+def action_validation_flags(env: Any, central_action: Any) -> tuple[bool, bool, str]:
+    """Best-effort pre-check matching Grid2Op's multi-agent action aggregation.
+
+    Grid2Op's MultiAgentEnv rejects an ambiguous or illegal combined action and
+    applies no-op instead. For the risk-prior dataset, those candidates should be
+    labelled high risk directly rather than simulated as no-op.
+    """
+    central_env = env.g2op_ma_env._cent_env
+    messages: list[str] = []
+
+    is_ambiguous = False
+    try:
+        is_ambiguous, ambiguous_exc = central_action.is_ambiguous()
+        if is_ambiguous:
+            messages.append(f"ambiguous: {ambiguous_exc}")
+    except Exception as exc:  # noqa: BLE001 - keep exact validator failure
+        is_ambiguous = True
+        messages.append(f"ambiguity check failed: {exc!r}")
+
+    is_illegal = False
+    try:
+        central_action.get_topological_impact(
+            central_env.get_current_line_status(),
+            _store_in_cache=True,
+            _read_from_cache=False,
+        )
+        is_legal, reason = central_env._game_rules(action=central_action, env=central_env)
+        is_illegal = not bool(is_legal)
+        if is_illegal:
+            messages.append(f"illegal: {reason}")
+    except Exception as exc:  # noqa: BLE001 - keep exact validator failure
+        is_illegal = True
+        messages.append(f"legality check failed: {exc!r}")
+
+    return is_illegal, is_ambiguous, "; ".join(messages)
+
+
 def simulate_one_step(
     env: Any,
     joint_action_ids: dict[str, int],
@@ -330,6 +394,21 @@ def simulate_one_step(
 ) -> SimulationResult:
     try:
         central_action = central_action_from_joint_ids(env, joint_action_ids)
+        is_illegal, is_ambiguous, validation_message = action_validation_flags(
+            env,
+            central_action,
+        )
+        if is_illegal or is_ambiguous:
+            return SimulationResult(
+                target_risk=float(risk_penalty),
+                reward=0.0,
+                done=False,
+                is_illegal=is_illegal,
+                is_ambiguous=is_ambiguous,
+                has_error=False,
+                simulation_error=False,
+                exception=validation_message,
+            )
         sim_obs, reward, done, info = env._obs.simulate(central_action)
     except Exception as exc:  # noqa: BLE001 - the exception text is useful metadata
         return SimulationResult(
@@ -529,6 +608,25 @@ def collect(args: argparse.Namespace) -> tuple[list[dict[str, Any]], dict[str, A
     seen_hazards = 0
     env_steps = 0
     episodes = 0
+    simulation_attempts = 0
+    simulation_errors = 0
+
+    def track_simulation_health(result: SimulationResult) -> None:
+        nonlocal simulation_attempts, simulation_errors
+        simulation_attempts += 1
+        simulation_errors += int(result.simulation_error)
+        if simulation_attempts < max(args.min_simulations_before_error_check, 1):
+            return
+        error_frac = simulation_errors / simulation_attempts
+        if error_frac > args.max_simulation_error_frac:
+            raise RuntimeError(
+                "Aborting risk-prior collection because exception-based simulation "
+                f"failures reached {simulation_errors}/{simulation_attempts} "
+                f"({error_frac:.2%}), above --max-simulation-error-frac="
+                f"{args.max_simulation_error_frac:.2%}. This usually means the "
+                "offline action conversion path is broken, not that every action "
+                "is high risk."
+            )
 
     try:
         while (
@@ -575,6 +673,7 @@ def collect(args: argparse.Namespace) -> tuple[list[dict[str, Any]], dict[str, A
                                     risk_penalty=args.risk_penalty,
                                     terminal_is_high_risk=args.terminal_is_high_risk,
                                 )
+                                track_simulation_health(result)
                                 action_array = joint_ids_array(agent_ids, joint_action)
                                 records.append(
                                     {
@@ -627,6 +726,7 @@ def collect(args: argparse.Namespace) -> tuple[list[dict[str, Any]], dict[str, A
                                 risk_penalty=args.risk_penalty,
                                 terminal_is_high_risk=args.terminal_is_high_risk,
                             )
+                            track_simulation_health(result)
                             action_array = joint_ids_array(agent_ids, joint_action)
                             records.append(
                                 {
@@ -710,6 +810,13 @@ def collect(args: argparse.Namespace) -> tuple[list[dict[str, Any]], dict[str, A
             "joint": LABEL_JOINT,
         },
         "n_examples": len(records),
+        "n_simulation_attempts": simulation_attempts,
+        "n_simulation_errors": simulation_errors,
+        "simulation_error_frac": (
+            0.0 if simulation_attempts == 0 else simulation_errors / simulation_attempts
+        ),
+        "max_simulation_error_frac": args.max_simulation_error_frac,
+        "min_simulations_before_error_check": args.min_simulations_before_error_check,
         "n_unilateral_examples": int(
             sum(record["label_type"] == LABEL_UNILATERAL for record in records)
         ),

@@ -284,6 +284,31 @@ label_type_names
 sampled exception text
 ```
 
+After collection, check the simulation health before training any surrogate:
+
+```bash
+python - <<'PY'
+import numpy as np
+
+path = "outputs/risk_prior/<dataset>.npz"
+d = np.load(path)
+print("n examples:", len(d["target_risk"]))
+print("simulation_error frac:", d["simulation_error"].mean())
+print("has_error frac:", d["has_error"].mean())
+print("illegal frac:", d["is_illegal"].mean())
+print("ambiguous frac:", d["is_ambiguous"].mean())
+print("target mean:", d["target_risk"].mean())
+PY
+```
+
+`simulation_error` means the offline simulator raised an exception. It is not
+the same thing as a valid Grid2Op illegal or ambiguous action. A large
+`simulation_error frac` means the dataset is not trustworthy. The collector now
+aborts once exception-based failures exceed `--max-simulation-error-frac`
+after `--min-simulations-before-error-check` attempts, so an action-conversion
+bug should fail early instead of saving millions of artificial `risk_penalty`
+labels.
+
 ## Important Assumptions
 
 - Phase 1 labels one local action at a time while other agents do no-op.
