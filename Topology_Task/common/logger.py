@@ -107,7 +107,7 @@ class Logger:
 
         wb.log(record, step=global_step)
 
-    def log_train_metrics(self, global_step: int, metrics: Dict[str, float]) -> None:
+    def log_train_metrics(self, global_step: int, metrics: Dict[str, Any]) -> None:
         """Log per-rollout training metrics (entropy, KL, losses, action stats) to WandB.
 
         Args:

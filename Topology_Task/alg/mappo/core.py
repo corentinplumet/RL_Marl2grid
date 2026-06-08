@@ -95,6 +95,18 @@ def _unique_parameters(modules: List[nn.Module]) -> List[nn.Parameter]:
     return params
 
 
+def _joint_non_idle_action_counts(
+    actions: Dict[str, th.Tensor],
+    agent_ids: List[str],
+) -> np.ndarray:
+    """Count how many agents chose non-idle actions for each env step."""
+    non_idle = th.stack(
+        [(actions[agent_id].long() != 0) for agent_id in agent_ids],
+        dim=0,
+    )
+    return non_idle.sum(dim=0).reshape(-1).detach().cpu().numpy()
+
+
 def _build_shared_actor_graph_encoder(envs: gym.Env, args: Namespace, agent_ids: List[str]):
     if not getattr(args, "share_actor_gnn", False):
         return None
@@ -602,14 +614,47 @@ class MAPPO:
 
                 # Log per-rollout training metrics to wandb
                 if logger is not None:
-                    metrics_to_log: Dict[str, float] = {
+                    joint_non_idle_counts = _joint_non_idle_action_counts(
+                        actions, agent_ids
+                    )
+                    joint_non_idle_hist = np.bincount(
+                        joint_non_idle_counts,
+                        minlength=len(agent_ids) + 1,
+                    )
+                    joint_non_idle_frac = (
+                        joint_non_idle_hist / max(joint_non_idle_counts.size, 1)
+                    )
+                    metrics_to_log: Dict[str, Any] = {
                         "train/lr_actor": float(actor_optim.param_groups[0]["lr"]),
                         "train/lr_critic": float(critic_optim.param_groups[0]["lr"]),
                         "train/entropy_coef": float(entropy_coef),
                         "train/action0_logit_bonus": float(action0_bonus),
                         "train/optimize_critic_updates": float(optimize_critic_updates),
                         "train/v_loss": float(np.mean(v_loss_history)) if v_loss_history else 0.0,
+                        "train/non_idle_agents_mean": float(np.mean(joint_non_idle_counts)),
+                        "train/non_idle_agents_std": float(np.std(joint_non_idle_counts)),
+                        "train/non_idle_agents_max": float(np.max(joint_non_idle_counts)),
+                        "train/frac_any_non_idle": float(np.mean(joint_non_idle_counts > 0)),
+                        "train/frac_multi_agent_non_idle": float(np.mean(joint_non_idle_counts > 1)),
                     }
+                    for count, frac in enumerate(joint_non_idle_frac):
+                        metrics_to_log[
+                            f"train/non_idle_agents_count_{count}_frac"
+                        ] = float(frac)
+
+                    non_idle_table = wb.Table(
+                        data=[
+                            [int(count), float(frac)]
+                            for count, frac in enumerate(joint_non_idle_frac)
+                        ],
+                        columns=["non_idle_agents", "fraction"],
+                    )
+                    metrics_to_log["train/non_idle_agents_distribution"] = wb.plot.bar(
+                        non_idle_table,
+                        "non_idle_agents",
+                        "fraction",
+                        title="Non-idle agents per environment step",
+                    )
                     for ag in agent_ids:
                         m = train_metrics[ag]
                         if m["entropy"]:
