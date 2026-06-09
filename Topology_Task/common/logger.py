@@ -120,8 +120,10 @@ class Logger:
 
     def close(self) -> None:
         """Close the logger and clean up resources."""
-        if self.wb_path is not None and self.wb_mode == 'offline':
-            wb.finish()
+        if self.wb_path is None:
+            return
+        wb.finish()
+        if self.wb_mode == 'offline':
             subprocess.run(['wandb', 'sync', '--append', self.wb_path]) 
             shutil.rmtree(self.wb_path)   # Remove wandb run folder
 
