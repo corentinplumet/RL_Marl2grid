@@ -107,6 +107,8 @@ def index_nested(obj, indices):
 
 
 def any_gnn_enabled(args) -> bool:
+    if str(getattr(args, "risk_prior_checkpoint", "") or ""):
+        return True
     encoder_keys = [
         "actor_encoder",
         "critic_encoder",

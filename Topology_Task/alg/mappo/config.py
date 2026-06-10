@@ -177,6 +177,45 @@ def get_alg_args() -> Namespace:
         help="Fraction of total timesteps over which to anneal the action-0 logit bonus.",
     )
     parser.add_argument(
+        "--risk-prior-checkpoint",
+        type=str,
+        default="",
+        help=(
+            "Path to a frozen Phase 2 risk-surrogate checkpoint. When set, "
+            "actor logits are adjusted by a soft learned Gibbs prior."
+        ),
+    )
+    parser.add_argument(
+        "--risk-prior-beta",
+        type=float,
+        default=0.0,
+        help="Strength of the soft Gibbs prior. 0.0 disables the logit adjustment.",
+    )
+    parser.add_argument(
+        "--risk-prior-tau",
+        type=float,
+        default=1.0,
+        help="Temperature used in prior_score = -predicted_risk / tau.",
+    )
+    parser.add_argument(
+        "--risk-prior-warmup-updates",
+        type=int,
+        default=0,
+        help=(
+            "Number of PPO rollout updates used to linearly warm beta from 0 "
+            "to --risk-prior-beta. 0 applies the full beta immediately."
+        ),
+    )
+    parser.add_argument(
+        "--risk-prior-clip",
+        type=float,
+        default=5.0,
+        help=(
+            "Symmetric clip applied to the unscaled prior score before multiplying "
+            "by beta. Use <=0 to disable clipping."
+        ),
+    )
+    parser.add_argument(
         "--deterministic-eval",
         type=str2bool,
         default=True,

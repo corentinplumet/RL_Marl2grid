@@ -47,6 +47,27 @@ def _scheduled_action0_bonus(args: Namespace, global_step: int) -> float:
     return _linear_schedule(init_bonus, final_bonus, progress)
 
 
+def _risk_prior_enabled(args: Namespace) -> bool:
+    return bool(str(getattr(args, "risk_prior_checkpoint", "") or ""))
+
+
+def _scheduled_risk_prior_beta(args: Namespace, iteration: int) -> float:
+    beta = float(getattr(args, "risk_prior_beta", 0.0))
+    warmup_updates = int(getattr(args, "risk_prior_warmup_updates", 0))
+    if beta == 0.0 or warmup_updates <= 0:
+        return beta
+    progress = max(iteration - 1, 0) / max(warmup_updates, 1)
+    return beta * min(max(progress, 0.0), 1.0)
+
+
+def _actor_obs_for_storage(obs: Any, args: Namespace) -> Any:
+    if not _risk_prior_enabled(args):
+        return strip_state_graph(obs)
+    if getattr(args, "actor_encoder", "mlp") != "gnn" and isinstance(obs, dict):
+        return {"flat": obs["flat"], "state_graph": obs["state_graph"]}
+    return obs
+
+
 def _truthy_info_value(value: Any) -> bool:
     if isinstance(value, th.Tensor):
         return bool(value.detach().cpu().any().item())
@@ -239,7 +260,7 @@ class MAPPO:
         observations, actions, logprobs, rewards = [{} for _ in range(4)]
         for id in agent_ids:
             observations[id] = zeros_like_with_leading(
-                strip_state_graph(next_obs[id]), (args.n_steps,), device=device
+                _actor_obs_for_storage(next_obs[id], args), (args.n_steps,), device=device
             )
             actions[id] = th.zeros((args.n_steps, args.n_envs)).to(
                 device
@@ -288,6 +309,9 @@ class MAPPO:
                     critic_optim.param_groups[0]["lr"] = frac * args.critic_lr
                 entropy_coef = _scheduled_entropy_coef(args, global_step)
                 action0_bonus = _scheduled_action0_bonus(args, global_step)
+                risk_prior_beta = _scheduled_risk_prior_beta(args, iteration)
+                for actor in actors.values():
+                    actor.set_risk_prior_beta(risk_prior_beta)
                 illegal_action_counts = {agent: 0 for agent in agent_ids}
                 illegal_action_totals = {agent: 0 for agent in agent_ids}
 
@@ -299,7 +323,7 @@ class MAPPO:
                         set_nested_at_step(
                             observations[agent],
                             step,
-                            strip_state_graph(next_obs[agent]),
+                            _actor_obs_for_storage(next_obs[agent], args),
                         )
 
                         with th.no_grad():
@@ -629,6 +653,8 @@ class MAPPO:
                         "train/lr_critic": float(critic_optim.param_groups[0]["lr"]),
                         "train/entropy_coef": float(entropy_coef),
                         "train/action0_logit_bonus": float(action0_bonus),
+                        "train/risk_prior_beta": float(risk_prior_beta),
+                        "train/risk_prior_tau": float(getattr(args, "risk_prior_tau", 1.0)),
                         "train/optimize_critic_updates": float(optimize_critic_updates),
                         "train/v_loss": float(np.mean(v_loss_history)) if v_loss_history else 0.0,
                         "train/non_idle_agents_mean": float(np.mean(joint_non_idle_counts)),

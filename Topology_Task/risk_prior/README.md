@@ -493,3 +493,91 @@ checks whether the model finds the lowest-risk actions; this is directly useful
 for a Gibbs prior because those actions get higher logits. `risky_topk_recall`
 checks whether it also recognizes the worst actions. `spearman_mean` measures
 the overall action-risk ordering within each local action set.
+
+## Running Phase 3
+
+Phase 3 loads a frozen Phase 2 checkpoint during MAPPO and applies a soft logit
+prior:
+
+```text
+final_logits(agent, action)
+  = actor_logits(agent, action)
+  - beta * predicted_risk(state_graph, agent, action) / tau
+```
+
+This is not an action mask. Every action remains available; the learned
+surrogate only shifts probability mass away from actions predicted to be risky.
+
+The recommended first checkpoint is the multiseed unilateral surrogate:
+
+```text
+risk_prior_models/risk_surrogate_multiseed_unilateral/best_surrogate.pt
+```
+
+From the repository root on JED, start with a baseline and a conservative prior
+sweep. Use the same config you use for your current best MAPPO run:
+
+```bash
+sbatch job_jed.sh configs/<your_training_config>.toml \
+  --risk-prior-beta 0.0
+```
+
+```bash
+sbatch job_jed.sh configs/<your_training_config>.toml \
+  --risk-prior-checkpoint /home/plumet/RL_Marl2grid/outputs/risk_prior_models/risk_surrogate_multiseed_unilateral/best_surrogate.pt \
+  --risk-prior-beta 0.1 \
+  --risk-prior-tau 1.0 \
+  --risk-prior-clip 5.0
+```
+
+```bash
+sbatch job_jed.sh configs/<your_training_config>.toml \
+  --risk-prior-checkpoint /home/plumet/RL_Marl2grid/outputs/risk_prior_models/risk_surrogate_multiseed_unilateral/best_surrogate.pt \
+  --risk-prior-beta 0.3 \
+  --risk-prior-tau 1.0 \
+  --risk-prior-clip 5.0
+```
+
+Only try `--risk-prior-beta 1.0` after the weaker priors are stable. A strong
+prior can dominate the early policy too much.
+
+### Phase 3 Parameters
+
+`--risk-prior-checkpoint` enables Phase 3 and points to `best_surrogate.pt`.
+When this is set, the env automatically emits `state_graph` observations even
+if the actor and critic are otherwise MLPs.
+
+`--risk-prior-beta` controls the prior strength. `0.0` disables the adjustment.
+
+`--risk-prior-tau` is the Gibbs temperature. Lower values make the same risk
+prediction create a stronger logit shift.
+
+`--risk-prior-warmup-updates` linearly warms beta from `0` to
+`--risk-prior-beta` over that many PPO rollout updates. Example:
+
+```bash
+--risk-prior-beta 0.3 --risk-prior-warmup-updates 10
+```
+
+`--risk-prior-clip` clips the unscaled prior score
+`-predicted_risk / tau` before multiplying by beta. The default `5.0` is just a
+guardrail against badly calibrated checkpoints.
+
+Phase 3 logs:
+
+```text
+train/risk_prior_beta
+train/risk_prior_tau
+```
+
+The existing action diagnostics remain important:
+
+```text
+train/non_idle_agents_count_*_frac
+train/frac_multi_agent_non_idle
+train/illegal_action_rate_agent_*
+train/frac_action_0_agent_*
+```
+
+For a good prior, the first signs should be lower illegal-action rates and more
+stable early survival without collapsing permanently to action 0.
