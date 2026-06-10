@@ -72,6 +72,12 @@ The most important validation metric is action ranking quality, not only MSE.
 For the Gibbs prior, it matters that low-risk actions receive lower predicted
 risk than dangerous actions.
 
+Implemented in:
+
+```text
+risk_prior/train_surrogate.py
+```
+
 ### Phase 3: Soft Gibbs Logit Prior
 
 Load the frozen risk surrogate during MAPPO and adjust actor logits:
@@ -352,3 +358,138 @@ python -m risk_prior.analyze_checkpoint_actions \
 
 The script prints `count_1_frac` directly, along with the full distribution over
 the number of non-idle agents per decision step.
+
+## Running Phase 2
+
+Phase 2 trains the supervised risk model from a Phase 1 `.npz` file. Start with
+the clean exhaustive unilateral plus sampled-joint dataset, but train only the
+unilateral labels first:
+
+```bash
+python -m risk_prior.train_surrogate \
+  --dataset risk_prior/risk_prior_dataset/bus14_seed0_job54981230.npz \
+  --label-types unilateral \
+  --epochs 50 \
+  --batch-size 512
+```
+
+Default outputs:
+
+```text
+../outputs/risk_prior_models/<run_name>/best_surrogate.pt
+../outputs/risk_prior_models/<run_name>/last_surrogate.pt
+../outputs/risk_prior_models/<run_name>/metrics.json
+../outputs/risk_prior_models/<run_name>/train_config.json
+```
+
+On JED, submit from the repository root:
+
+```bash
+sbatch job_risk_surrogate_jed.sh \
+  --dataset /home/plumet/RL_Marl2grid/outputs/risk_prior/bus14_seed0_job54981230.npz \
+  --label-types unilateral \
+  --epochs 50 \
+  --batch-size 512
+```
+
+For a quick smoke test before a long run:
+
+```bash
+sbatch job_risk_surrogate_jed.sh \
+  --dataset /home/plumet/RL_Marl2grid/outputs/risk_prior/bus14_seed0_job54981230.npz \
+  --label-types unilateral \
+  --limit-examples 20000 \
+  --epochs 3 \
+  --batch-size 512
+```
+
+To log the trained model as a W&B artifact:
+
+```bash
+sbatch job_risk_surrogate_jed.sh \
+  --dataset /home/plumet/RL_Marl2grid/outputs/risk_prior/bus14_seed0_job54981230.npz \
+  --label-types unilateral \
+  --epochs 50 \
+  --wandb true \
+  --wandb-project risk_prior
+```
+
+Phase 2 uses a hazard-level split, not a random row split. Every label from the
+same hazardous state goes either to train or validation. This matters because
+one hazardous state contains many rows with the same graph and different action
+ids; a random row split would leak the exact graph into validation.
+
+### Phase 2 Parameters
+
+`--dataset` points to one or more Phase 1 `.npz` files. If multiple files are
+passed, they must have the same graph spec, agent order, and action spaces.
+
+`--label-types` controls which labels are used:
+
+```text
+unilateral  # default; state_graph, agent_id, local_action_id -> risk
+joint       # sampled full joint actions only
+all         # unilateral and sampled joint labels together
+```
+
+Use `unilateral` for the first Gibbs prior because independent actors need a
+local action score for every agent/action pair. `joint` and `all` are useful
+later for studying interaction effects.
+
+`--exclude-simulation-errors true` drops exception-based simulator failures.
+Illegal, ambiguous, terminal, and valid Grid2Op error outcomes remain valid
+high-risk labels; `simulation_error` is different because it means the offline
+simulator raised an exception.
+
+`--val-frac` is the fraction of hazardous states held out for validation.
+
+`--include-pre-risk true` adds the current `max(rho)` as a scalar input beside
+the graph embedding. It is observable at inference time and helps calibration.
+
+`--gnn-*` parameters configure the same `GraphEncoder` family used by MAPPO.
+The defaults use a 2-layer GINE with node and edge pre-encoders and learned node
+ids.
+
+`--penalty-threshold` defines which labels count as high-risk penalty examples
+for classification metrics. With the default Phase 1 `--risk-penalty 2.0`, the
+default threshold is `1.999`.
+
+### Phase 2 Metrics
+
+Regression metrics:
+
+```text
+train/loss, val/loss
+train/mae, val/mae
+train/mse, val/mse
+train/rmse, val/rmse
+```
+
+These tell you whether the surrogate predicts the numeric one-step risk.
+
+Penalty metrics:
+
+```text
+val/penalty_frac
+val/penalty_accuracy
+val/penalty_auroc
+```
+
+These tell you whether the model separates high-risk penalty labels from normal
+continuous-risk labels.
+
+Ranking metrics:
+
+```text
+val/spearman_mean
+val/risky_topk_recall
+val/safe_bottomk_recall
+val/unilateral_rank_groups
+```
+
+These are the most important for Phase 3. They are computed per
+`hazard_state, agent` over that agent's candidate actions. `safe_bottomk_recall`
+checks whether the model finds the lowest-risk actions; this is directly useful
+for a Gibbs prior because those actions get higher logits. `risky_topk_recall`
+checks whether it also recognizes the worst actions. `spearman_mean` measures
+the overall action-risk ordering within each local action set.
