@@ -151,6 +151,17 @@ def get_alg_args() -> Namespace:
         help="Initial softmax probability on action 0 (do-nothing) at actor init. "
         "0.0 keeps the default Xavier init; e.g. 0.7 makes do-nothing 70%% likely at every state initially.",
     )
+    parser.add_argument(
+        "--intervention-gate",
+        type=str2bool,
+        default=False,
+        help=(
+            "Use a hierarchical actor with a learned do-nothing/intervene gate "
+            "followed by a non-idle local action head. The environment action "
+            "space is unchanged; action 0 is produced when the gate selects "
+            "do-nothing."
+        ),
+    )
 
     parser.add_argument(
         "--norm-reward",

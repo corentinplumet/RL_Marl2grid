@@ -34,6 +34,7 @@ class Actor(nn.Module):
 
         agent_id = f"agent_{id}"
         self.encoder_type = getattr(args, "actor_encoder", "mlp")
+        self.intervention_gate = bool(getattr(args, "intervention_gate", False))
 
         if self.encoder_type == "mlp":
             self.encoder = None
@@ -62,15 +63,29 @@ class Actor(nn.Module):
             raise ("Redispatching actions are not yet implemented")
         else:
             n_actions = int(envs.action_space[agent_id].n)
-            # Logit layer: Xavier with linear gain (=1.0). Using the ReLU gain
-            # here (the Linear utility's default) amplifies logits and produces
-            # an essentially-deterministic random initial policy on bus14.
-            self.actor = build_mlp_head(
-                actor_input_dim, actor_layers, n_actions, args.actor_act_fn
-            )
-            out_layer = self.actor[-1]
-            self.get_action = self.get_discrete_action
-            self.get_eval_action = self.get_eval_discrete_action
+            self.n_actions = n_actions
+            if self.intervention_gate:
+                if n_actions <= 1:
+                    raise ValueError(
+                        "intervention_gate=True requires at least one non-idle action."
+                    )
+                self.gate_actor = build_mlp_head(
+                    actor_input_dim, actor_layers, 2, args.actor_act_fn
+                )
+                self.nonidle_actor = build_mlp_head(
+                    actor_input_dim, actor_layers, n_actions - 1, args.actor_act_fn
+                )
+                self.get_action = self.get_intervention_gated_action
+                self.get_eval_action = self.get_eval_intervention_gated_action
+            else:
+                # Logit layer: Xavier with linear gain (=1.0). Using the ReLU gain
+                # here (the Linear utility's default) amplifies logits and produces
+                # an essentially-deterministic random initial policy on bus14.
+                self.actor = build_mlp_head(
+                    actor_input_dim, actor_layers, n_actions, args.actor_act_fn
+                )
+                self.get_action = self.get_discrete_action
+                self.get_eval_action = self.get_eval_discrete_action
 
             # Optional: bias initial policy toward action 0 (do-nothing).
             # Random topology changes on bus14 crash the grid at step 0, so a
@@ -80,12 +95,27 @@ class Actor(nn.Module):
                 assert 0.0 < init_p0 < 1.0, (
                     f"init_do_nothing_prob must be in (0, 1), got {init_p0}"
                 )
-                with th.no_grad():
-                    out_layer.weight.zero_()
-                    out_layer.bias.zero_()
-                    out_layer.bias[0] = float(
-                        np.log(init_p0 * (n_actions - 1) / (1.0 - init_p0))
-                    )
+                self._init_do_nothing_prior(init_p0)
+
+    def _init_do_nothing_prior(self, init_p0: float) -> None:
+        if self.intervention_gate:
+            gate_layer = self.gate_actor[-1]
+            nonidle_layer = self.nonidle_actor[-1]
+            with th.no_grad():
+                gate_layer.weight.zero_()
+                gate_layer.bias[0] = float(np.log(init_p0))
+                gate_layer.bias[1] = float(np.log(1.0 - init_p0))
+                nonidle_layer.weight.zero_()
+                nonidle_layer.bias.zero_()
+            return
+
+        out_layer = self.actor[-1]
+        with th.no_grad():
+            out_layer.weight.zero_()
+            out_layer.bias.zero_()
+            out_layer.bias[0] = float(
+                np.log(init_p0 * (self.n_actions - 1) / (1.0 - init_p0))
+            )
 
     def _encode(self, x: th.Tensor) -> th.Tensor:
         if self.encoder_type == "gnn":
@@ -136,6 +166,85 @@ class Actor(nn.Module):
             return self.get_discrete_action(x)[0]
         logits = self.actor(self._encode(x))
         return th.argmax(logits, dim=-1)
+
+    def _gated_distributions(
+        self,
+        x: th.Tensor,
+        action0_bonus: float = 0.0,
+    ) -> Tuple[Categorical, Categorical]:
+        encoded = self._encode(x)
+        gate_logits = self.gate_actor(encoded)
+        if action0_bonus != 0.0:
+            gate_logits = gate_logits.clone()
+            gate_logits[..., 0] = gate_logits[..., 0] + action0_bonus
+        nonidle_logits = self.nonidle_actor(encoded)
+        return Categorical(logits=gate_logits), Categorical(logits=nonidle_logits)
+
+    def _gated_action_log_prob(
+        self,
+        gate_dist: Categorical,
+        nonidle_dist: Categorical,
+        action: th.Tensor,
+    ) -> th.Tensor:
+        action = action.long()
+        if th.any((action < 0) | (action >= self.n_actions)):
+            raise ValueError(
+                f"Gated actor received action outside [0, {self.n_actions - 1}]."
+            )
+
+        is_noop = action == 0
+        gate_target = th.where(is_noop, th.zeros_like(action), th.ones_like(action))
+        gate_logprob = gate_dist.log_prob(gate_target)
+        nonidle_target = (action - 1).clamp_min(0)
+        nonidle_logprob = nonidle_dist.log_prob(nonidle_target)
+        return th.where(is_noop, gate_logprob, gate_logprob + nonidle_logprob)
+
+    def get_intervention_gated_action(
+        self,
+        x: th.Tensor,
+        action: th.Tensor = None,
+        action0_bonus: float = 0.0,
+    ) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
+        """Sample or score actions from a do-nothing/intervene hierarchy."""
+        gate_dist, nonidle_dist = self._gated_distributions(
+            x, action0_bonus=action0_bonus
+        )
+        if action is None:
+            gate = gate_dist.sample()
+            nonidle_action = nonidle_dist.sample() + 1
+            action = th.where(
+                gate == 0,
+                th.zeros_like(nonidle_action),
+                nonidle_action,
+            )
+        else:
+            action = action.long()
+
+        logprob = self._gated_action_log_prob(gate_dist, nonidle_dist, action)
+        entropy = (
+            gate_dist.entropy()
+            + gate_dist.probs[..., 1] * nonidle_dist.entropy()
+        )
+        return action, logprob, entropy
+
+    def get_eval_intervention_gated_action(
+        self, x: th.Tensor, deterministic: bool = True
+    ) -> th.Tensor:
+        """Evaluate the most likely final action under the gated policy."""
+        if not deterministic:
+            return self.get_intervention_gated_action(x)[0]
+
+        gate_dist, nonidle_dist = self._gated_distributions(x)
+        gate_log_probs = th.log_softmax(gate_dist.logits, dim=-1)
+        nonidle_log_probs = th.log_softmax(nonidle_dist.logits, dim=-1)
+        final_log_probs = th.cat(
+            [
+                gate_log_probs[..., :1],
+                gate_log_probs[..., 1:2] + nonidle_log_probs,
+            ],
+            dim=-1,
+        )
+        return th.argmax(final_log_probs, dim=-1)
 
     def get_continuous_action(
         self, x: th.Tensor, action: th.Tensor = None

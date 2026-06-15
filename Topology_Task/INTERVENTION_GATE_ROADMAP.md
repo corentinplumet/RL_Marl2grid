@@ -110,6 +110,8 @@ We can show the current intervention pattern before introducing the gate.
 Goal: replace the single flat categorical action head with a hierarchical local
 policy.
 
+Status: implemented behind `--intervention-gate true`.
+
 Current actor:
 
 ```text
