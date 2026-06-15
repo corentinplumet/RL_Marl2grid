@@ -1,0 +1,6 @@
+{"time":"2026-06-10T15:31:44.438457+08:00","level":"INFO","msg":"stream: starting","core version":"0.25.0"}
+{"time":"2026-06-10T15:31:45.496342+08:00","level":"INFO","msg":"stream: created new stream","id":"etycmy95"}
+{"time":"2026-06-10T15:31:45.496668+08:00","level":"INFO","msg":"handler: started","stream_id":"etycmy95"}
+{"time":"2026-06-10T15:31:45.497345+08:00","level":"INFO","msg":"writer: started","stream_id":"etycmy95"}
+{"time":"2026-06-10T15:31:45.497599+08:00","level":"INFO","msg":"sender: started","stream_id":"etycmy95"}
+{"time":"2026-06-10T15:31:45.497629+08:00","level":"INFO","msg":"stream: started","id":"etycmy95"}
