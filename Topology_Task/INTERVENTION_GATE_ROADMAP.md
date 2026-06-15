@@ -174,6 +174,8 @@ Goal: make the gated action distribution fully compatible with rollout sampling,
 PPO log-prob recomputation, entropy regularization, checkpointing, and
 deterministic evaluation.
 
+Status: implemented through rollout-time gate diagnostics and W&B logs.
+
 Training path:
 
 ```text
@@ -191,10 +193,14 @@ actor.get_action(obs_i, stored_action_i)
 Deterministic evaluation:
 
 ```text
-if gate_argmax == do_nothing:
-    action_i = 0
-else:
-    action_i = 1 + argmax(nonidle_action_logits)
+--intervention-gate-eval-mode final_action_map:
+    action_i = argmax over final executed action probabilities
+
+--intervention-gate-eval-mode hierarchical_greedy:
+    if gate_argmax == do_nothing:
+        action_i = 0
+    else:
+        action_i = 1 + argmax(nonidle_action_logits)
 ```
 
 New logs:
@@ -202,6 +208,7 @@ New logs:
 ```text
 train/intervention_gate_do_nothing_frac_agent_*
 train/intervention_gate_intervene_frac_agent_*
+train/intervention_gate_prob_do_nothing_agent_*
 train/intervention_gate_prob_intervene_agent_*
 train/intervention_gate_entropy_agent_*
 train/nonidle_action_entropy_agent_*

@@ -238,6 +238,24 @@ class Actor(nn.Module):
         )
         return action, logprob, entropy
 
+    def get_intervention_gate_diagnostics(
+        self,
+        x: th.Tensor,
+        action0_bonus: float = 0.0,
+    ) -> Dict[str, th.Tensor]:
+        """Return rollout-time diagnostics for the learned intervention gate."""
+        if not self.intervention_gate:
+            return {}
+        gate_dist, nonidle_dist = self._gated_distributions(
+            x, action0_bonus=action0_bonus
+        )
+        return {
+            "prob_do_nothing": gate_dist.probs[..., 0],
+            "prob_intervene": gate_dist.probs[..., 1],
+            "gate_entropy": gate_dist.entropy(),
+            "nonidle_action_entropy": nonidle_dist.entropy(),
+        }
+
     def get_eval_intervention_gated_action(
         self, x: th.Tensor, deterministic: bool = True
     ) -> th.Tensor:

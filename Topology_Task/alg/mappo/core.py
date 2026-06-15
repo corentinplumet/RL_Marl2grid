@@ -237,6 +237,14 @@ class MAPPO:
         dones = th.zeros((args.n_steps, args.n_envs), dtype=th.int32).to(device)
         terminations = th.zeros((args.n_steps, args.n_envs), dtype=th.int32).to(device)
         observations, actions, logprobs, rewards = [{} for _ in range(4)]
+        intervention_gate_metric_names = (
+            "prob_do_nothing",
+            "prob_intervene",
+            "gate_entropy",
+            "nonidle_action_entropy",
+        )
+        collect_intervention_gate_metrics = bool(getattr(args, "track", False))
+        intervention_gate_metrics = {}
         for id in agent_ids:
             observations[id] = zeros_like_with_leading(
                 strip_state_graph(next_obs[id]), (args.n_steps,), device=device
@@ -246,6 +254,13 @@ class MAPPO:
             )  # Assuming discrete actions
             logprobs[id] = th.zeros((args.n_steps, args.n_envs)).to(device)
             rewards[id] = th.zeros((args.n_steps, args.n_envs)).to(device)
+            if collect_intervention_gate_metrics and getattr(
+                actors[id], "intervention_gate", False
+            ):
+                intervention_gate_metrics[id] = {
+                    name: th.zeros((args.n_steps, args.n_envs), device=device)
+                    for name in intervention_gate_metric_names
+                }
 
         assert args.eval_freq % args.n_envs == 0, (
             f"Invalid eval frequency: {args.eval_freq}. Must be multiple of n_envs {args.n_envs}"
@@ -306,6 +321,14 @@ class MAPPO:
                             action[agent], logprob[agent], _ = actors[agent].get_action(
                                 next_obs[agent], action0_bonus=action0_bonus
                             )
+                            if agent in intervention_gate_metrics:
+                                gate_diagnostics = actors[
+                                    agent
+                                ].get_intervention_gate_diagnostics(
+                                    next_obs[agent], action0_bonus=action0_bonus
+                                )
+                                for name, value in gate_diagnostics.items():
+                                    intervention_gate_metrics[agent][name][step] = value
 
                         actions[agent][step] = action[agent]  # .unsqueeze(-1)
                         logprobs[agent][step] = logprob[agent]  # .unsqueeze(-1)
@@ -664,6 +687,28 @@ class MAPPO:
                             metrics_to_log[f"train/clipfrac_{ag}"] = float(np.mean(m["clipfrac"]))
                         actions_flat = actions[ag].long().reshape(-1).cpu().numpy()
                         metrics_to_log[f"train/frac_action_0_{ag}"] = float(np.mean(actions_flat == 0))
+                        if ag in intervention_gate_metrics:
+                            gate_buffers = intervention_gate_metrics[ag]
+                            metrics_to_log[
+                                f"train/intervention_gate_do_nothing_frac_{ag}"
+                            ] = float(np.mean(actions_flat == 0))
+                            metrics_to_log[
+                                f"train/intervention_gate_intervene_frac_{ag}"
+                            ] = float(np.mean(actions_flat != 0))
+                            metrics_to_log[
+                                f"train/intervention_gate_prob_do_nothing_{ag}"
+                            ] = float(gate_buffers["prob_do_nothing"].mean().item())
+                            metrics_to_log[
+                                f"train/intervention_gate_prob_intervene_{ag}"
+                            ] = float(gate_buffers["prob_intervene"].mean().item())
+                            metrics_to_log[
+                                f"train/intervention_gate_entropy_{ag}"
+                            ] = float(gate_buffers["gate_entropy"].mean().item())
+                            metrics_to_log[
+                                f"train/nonidle_action_entropy_{ag}"
+                            ] = float(
+                                gate_buffers["nonidle_action_entropy"].mean().item()
+                            )
                         illegal_total = max(illegal_action_totals[ag], 1)
                         metrics_to_log[f"train/illegal_action_rate_{ag}"] = (
                             illegal_action_counts[ag] / illegal_total
