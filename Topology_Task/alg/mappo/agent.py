@@ -35,6 +35,17 @@ class Actor(nn.Module):
         agent_id = f"agent_{id}"
         self.encoder_type = getattr(args, "actor_encoder", "mlp")
         self.intervention_gate = bool(getattr(args, "intervention_gate", False))
+        self.intervention_gate_eval_mode = str(
+            getattr(args, "intervention_gate_eval_mode", "final_action_map")
+        )
+        if self.intervention_gate_eval_mode not in {
+            "final_action_map",
+            "hierarchical_greedy",
+        }:
+            raise ValueError(
+                "intervention_gate_eval_mode must be 'final_action_map' or "
+                f"'hierarchical_greedy', got {self.intervention_gate_eval_mode!r}."
+            )
 
         if self.encoder_type == "mlp":
             self.encoder = None
@@ -230,11 +241,20 @@ class Actor(nn.Module):
     def get_eval_intervention_gated_action(
         self, x: th.Tensor, deterministic: bool = True
     ) -> th.Tensor:
-        """Evaluate the most likely final action under the gated policy."""
+        """Evaluate the gated policy with the configured deterministic decoder."""
         if not deterministic:
             return self.get_intervention_gated_action(x)[0]
 
         gate_dist, nonidle_dist = self._gated_distributions(x)
+        if self.intervention_gate_eval_mode == "hierarchical_greedy":
+            gate = th.argmax(gate_dist.logits, dim=-1)
+            nonidle_action = th.argmax(nonidle_dist.logits, dim=-1) + 1
+            return th.where(
+                gate == 0,
+                th.zeros_like(nonidle_action),
+                nonidle_action,
+            )
+
         gate_log_probs = th.log_softmax(gate_dist.logits, dim=-1)
         nonidle_log_probs = th.log_softmax(nonidle_dist.logits, dim=-1)
         final_log_probs = th.cat(

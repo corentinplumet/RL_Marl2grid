@@ -162,6 +162,19 @@ def get_alg_args() -> Namespace:
             "do-nothing."
         ),
     )
+    parser.add_argument(
+        "--intervention-gate-eval-mode",
+        type=str,
+        default="final_action_map",
+        choices=["final_action_map", "hierarchical_greedy"],
+        help=(
+            "Deterministic evaluation rule for --intervention-gate. "
+            "'final_action_map' chooses the most likely executed environment "
+            "action under the full hierarchical policy. 'hierarchical_greedy' "
+            "first chooses the most likely gate decision, then the most likely "
+            "non-idle action if the gate chooses intervene."
+        ),
+    )
 
     parser.add_argument(
         "--norm-reward",
