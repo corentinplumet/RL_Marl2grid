@@ -77,6 +77,8 @@ local action head is responsible only for actions `1..n_actions_i-1`.
 Goal: establish what the current independent MAPPO policy is doing before we
 change the architecture.
 
+Status: implemented in the clean intervention branch through W&B training logs.
+
 Add or reuse logs:
 
 ```text

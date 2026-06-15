@@ -107,7 +107,7 @@ class Logger:
 
         wb.log(record, step=global_step)
 
-    def log_train_metrics(self, global_step: int, metrics: Dict[str, float]) -> None:
+    def log_train_metrics(self, global_step: int, metrics: Dict[str, Any]) -> None:
         """Log per-rollout training metrics (entropy, KL, losses, action stats) to WandB.
 
         Args:
@@ -120,8 +120,10 @@ class Logger:
 
     def close(self) -> None:
         """Close the logger and clean up resources."""
-        if self.wb_path is not None and self.wb_mode == 'offline':
-            wb.finish()
+        if self.wb_path is None:
+            return
+        wb.finish()
+        if self.wb_mode == 'offline':
             subprocess.run(['wandb', 'sync', '--append', self.wb_path]) 
             shutil.rmtree(self.wb_path)   # Remove wandb run folder
 

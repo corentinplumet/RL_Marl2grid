@@ -1,3 +1,4 @@
 Topology_Task/outputs/
 Topology_Task/notebooks/wandb/
+**/wandb/
 **/.ipynb_checkpoints/
