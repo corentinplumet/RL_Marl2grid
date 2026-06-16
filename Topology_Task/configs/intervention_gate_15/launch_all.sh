@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+sbatch job_jed.sh configs/intervention_gate_15/ig_00_phase2_base_s0.toml
+sbatch job_jed.sh configs/intervention_gate_15/ig_01_entropy_decay_s0.toml
+sbatch job_jed.sh configs/intervention_gate_15/ig_02_topo001_entropy_decay_s0.toml
+sbatch job_jed.sh configs/intervention_gate_15/ig_03_topo005_entropy_decay_s0.toml
+sbatch job_jed.sh configs/intervention_gate_15/ig_04_topo010_entropy_decay_s0.toml
+sbatch job_jed.sh configs/intervention_gate_15/ig_00_phase2_base_s1.toml
+sbatch job_jed.sh configs/intervention_gate_15/ig_01_entropy_decay_s1.toml
+sbatch job_jed.sh configs/intervention_gate_15/ig_02_topo001_entropy_decay_s1.toml
+sbatch job_jed.sh configs/intervention_gate_15/ig_03_topo005_entropy_decay_s1.toml
+sbatch job_jed.sh configs/intervention_gate_15/ig_04_topo010_entropy_decay_s1.toml
+sbatch job_jed.sh configs/intervention_gate_15/ig_00_phase2_base_s2.toml
+sbatch job_jed.sh configs/intervention_gate_15/ig_01_entropy_decay_s2.toml
+sbatch job_jed.sh configs/intervention_gate_15/ig_02_topo001_entropy_decay_s2.toml
+sbatch job_jed.sh configs/intervention_gate_15/ig_03_topo005_entropy_decay_s2.toml
+sbatch job_jed.sh configs/intervention_gate_15/ig_04_topo010_entropy_decay_s2.toml

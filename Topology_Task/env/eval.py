@@ -87,6 +87,20 @@ class Evaluator:
         self.chronic_split = chronic_split
         # if self.use_heuristic: self.env.set_n_rewards(len(self.reward_tags))
 
+    def _log_per_step_reward_metrics(
+        self,
+        glob_step: int,
+        avg_return_per_step: List[float],
+        tags: List[str],
+    ) -> None:
+        prefix = f"{self.metric_prefix}/" if self.metric_prefix else ""
+        record = {
+            f"{prefix}{tag} per step": float(value)
+            for tag, value in zip(tags, avg_return_per_step)
+        }
+        record["charts/global_step"] = glob_step
+        wb.log(record, step=glob_step)
+
     def evaluate(
         self, glob_step: int, actors: Dict, eval_ep: Optional[int] = None
     ) -> float:
@@ -107,6 +121,9 @@ class Evaluator:
         ep_returns: Deque[float] = deque(
             maxlen=eval_ep
         )  # Queue to store returns of episodes
+        ep_returns_per_step: Deque[float] = deque(
+            maxlen=eval_ep
+        )  # Queue to store episode-average reward components
         ep_rewards = np.zeros(len(self.reward_tags))
 
         obs, info = self.env.reset()
@@ -166,11 +183,13 @@ class Evaluator:
                 ep_rewards += list(info["agent_0"]["rewards"].values())
             # Record rewards for plotting purposes
             if "episode" in info:  # Denote end of an episode
-                ep_survivals.append(
-                    self.env.g2op_ma_env._cent_env.nb_time_step / self.max_steps
+                episode_length = max(
+                    int(self.env.g2op_ma_env._cent_env.nb_time_step), 1
                 )
+                ep_survivals.append(episode_length / self.max_steps)
                 if not self.use_heuristic:
                     ep_returns.append(ep_rewards)
+                    ep_returns_per_step.append(ep_rewards / episode_length)
                 obs, _ = self.env.reset()
                 obs = cast_np_to_tensors(obs, self.device)
                 if not self.use_heuristic:
@@ -183,15 +202,24 @@ class Evaluator:
         # Calculate average survival rate and return over the evaluated episodes
         avg_survival = sum(ep_survivals) / eval_ep
         avg_return = [sum(r) / eval_ep for r in zip(*ep_returns)]
+        avg_return_per_step = [
+            sum(r) / eval_ep for r in zip(*ep_returns_per_step)
+        ]
 
         # Log the metrics if logger is available
         if self.logger:
+            reward_tags = (
+                self.reward_tags if self.env_id != "bus118" else self.reward_tags[:-1]
+            )
             self.logger.store_metrics(
                 glob_step,
                 avg_survival,
                 avg_return,
-                self.reward_tags if self.env_id != "bus118" else self.reward_tags[:-1],
+                reward_tags,
                 prefix=self.metric_prefix,
+            )
+            self._log_per_step_reward_metrics(
+                glob_step, avg_return_per_step, reward_tags
             )
             if trace_records:
                 decoded_actions = {}
@@ -261,6 +289,9 @@ class CMDPEvaluator(Evaluator):
         ep_returns: Deque[float] = deque(
             maxlen=eval_ep
         )  # Queue to store returns of episodes
+        ep_returns_per_step: Deque[float] = deque(
+            maxlen=eval_ep
+        )  # Queue to store episode-average reward components
         ep_cost_returns: Deque[float] = deque(
             maxlen=eval_ep
         )  # Queue to store cost returns of episodes
@@ -287,10 +318,12 @@ class CMDPEvaluator(Evaluator):
 
             # Record rewards for plotting purposes
             if "episode" in info:  # Denote end of an episode
-                ep_survivals.append(
-                    self.env.g2op_ma_env._cent_env.nb_time_step / self.max_steps
+                episode_length = max(
+                    int(self.env.g2op_ma_env._cent_env.nb_time_step), 1
                 )
+                ep_survivals.append(episode_length / self.max_steps)
                 ep_returns.append(ep_rewards)
+                ep_returns_per_step.append(ep_rewards / episode_length)
                 ep_cost_returns.append(ep_costs)
 
                 obs, _ = self.env.reset()
@@ -301,17 +334,26 @@ class CMDPEvaluator(Evaluator):
         # Calculate average survival rate and return over the evaluated episodes
         avg_survival = sum(ep_survivals) / eval_ep
         avg_return = [sum(r) / eval_ep for r in zip(*ep_returns)]
+        avg_return_per_step = [
+            sum(r) / eval_ep for r in zip(*ep_returns_per_step)
+        ]
         avg_cost_return = [sum(ep_cost_returns) / eval_ep]
 
         # Log the metrics if logger is available
         if self.logger:
+            reward_tags = (
+                self.reward_tags if self.env_id != "bus118" else self.reward_tags[:-1]
+            )
             self.logger.store_metrics(
                 glob_step,
                 avg_survival,
                 avg_return,
                 avg_cost_return,
-                self.reward_tags if self.env_id != "bus118" else self.reward_tags[:-1],
+                reward_tags,
                 prefix=self.metric_prefix,
+            )
+            self._log_per_step_reward_metrics(
+                glob_step, avg_return_per_step, reward_tags
             )
 
         eval_label = self.metric_prefix or "eval"
