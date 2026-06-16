@@ -115,6 +115,16 @@ class AsyncMultiAgentVecEnv:
         for remote in self.remotes:
             remote.recv()
 
+    def decode_action_ids(
+        self, action_ids_by_agent: Dict[str, List[int]], env_idx: int = 0
+    ) -> Dict[str, Dict[int, str]]:
+        """Decode discrete action ids in one worker environment."""
+        if self.waiting:
+            raise RuntimeError("Cannot decode actions while an async env step is pending.")
+        env_idx = int(np.clip(env_idx, 0, self.num_envs - 1))
+        self.remotes[env_idx].send(("decode_action_ids", action_ids_by_agent))
+        return self.remotes[env_idx].recv()
+
     def _stack_dicts(self, dicts: List[Dict[str, Any]]) -> Dict[str, np.ndarray]:
         # Transpose list of dicts into dict of lists, then stack
         stacked = {}
@@ -165,6 +175,8 @@ class AsyncMultiAgentVecEnv:
                 elif cmd == "set_obs_stats":
                     env.set_obs_stats(data)
                     remote.send(None)
+                elif cmd == "decode_action_ids":
+                    remote.send(env.decode_action_ids(data))
                 else:
                     raise NotImplementedError(f"Unknown command: {cmd}")
         except KeyboardInterrupt:
@@ -260,6 +272,11 @@ class RecordEpisodeStatistics(gym.Wrapper, gym.utils.RecordConstructorArgs):
         self.episode_returns = np.zeros(self.num_envs, dtype=np.float32)
         self.episode_lengths = np.zeros(self.num_envs, dtype=np.int32)
         return obs, info
+
+    def decode_action_ids(
+        self, action_ids_by_agent: Dict[str, List[int]]
+    ) -> Dict[str, Dict[int, str]]:
+        return self.env.decode_action_ids(action_ids_by_agent)
 
     def step(self, action):
         """Steps through the environment, recording the episode statistics."""

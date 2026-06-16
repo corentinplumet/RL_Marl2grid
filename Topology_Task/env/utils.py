@@ -693,6 +693,40 @@ class MAEnvWrapper(MAEnv):
             for agent_id in self.g2op_ma_env.agents
         }
 
+    def decode_action(self, agent_id: str, action_id: int, max_chars: int = 600) -> str:
+        """Return a compact human-readable Grid2Op action description."""
+        action_id = int(action_id)
+        if agent_id not in self._conv_action_space:
+            return f"unknown agent {agent_id}"
+        if action_id < 0 or action_id >= self._conv_action_space[agent_id].n:
+            return f"invalid action id {action_id}"
+        if action_id == 0:
+            return "DO-NOTHING"
+        try:
+            action = self._conv_action_space[agent_id].from_gym(action_id)
+            text = " | ".join(
+                line.strip() for line in str(action).splitlines() if line.strip()
+            )
+            text = re.sub(r"\s+", " ", text).strip()
+            if not text:
+                text = str(action).strip() or f"action {action_id}"
+            if len(text) > max_chars:
+                text = text[: max_chars - 3] + "..."
+            return text
+        except Exception as exc:
+            return f"decode error: {type(exc).__name__}: {exc}"
+
+    def decode_action_ids(
+        self, action_ids_by_agent: Dict[str, List[int]]
+    ) -> Dict[str, Dict[int, str]]:
+        return {
+            agent_id: {
+                int(action_id): self.decode_action(agent_id, int(action_id))
+                for action_id in action_ids
+            }
+            for agent_id, action_ids in action_ids_by_agent.items()
+        }
+
     def step(self, actions):
         # convert the action to grid2op
         grid2op_act = self._get_grid2op_act(actions)

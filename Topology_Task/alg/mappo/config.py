@@ -225,6 +225,40 @@ def get_alg_args() -> Namespace:
         help="When chronic splitting is enabled, also evaluate on the train split and log it under train_eval/.",
     )
     parser.add_argument(
+        "--trace-rollout-actions",
+        type=str2bool,
+        default=False,
+        help=(
+            "Log exact per-agent action traces as WandB tables during training "
+            "and evaluation. Disabled by default because decoded action traces "
+            "can be verbose."
+        ),
+    )
+    parser.add_argument(
+        "--trace-rollout-env-idx",
+        type=int,
+        default=0,
+        help="Vectorized training environment index to include in the action trace table.",
+    )
+    parser.add_argument(
+        "--trace-rollout-max-steps",
+        type=int,
+        default=512,
+        help="Maximum number of rows/steps to keep in each logged action trace table.",
+    )
+    parser.add_argument(
+        "--trace-rollout-every",
+        type=int,
+        default=10,
+        help="Log one training action trace every N rollouts when --trace-rollout-actions is true.",
+    )
+    parser.add_argument(
+        "--trace-rollout-decode-actions",
+        type=str2bool,
+        default=True,
+        help="Decode action ids to Grid2Op action descriptions in rollout action trace tables.",
+    )
+    parser.add_argument(
         "--gnn-type",
         type=str,
         default="gat",

@@ -1,5 +1,12 @@
 from collections import deque
 
+from common.action_trace import (
+    build_action_trace_table,
+    collect_unique_action_ids,
+    decode_action_ids_safely,
+    tensor_scalar_to_float,
+    tensor_scalar_to_int,
+)
 from common.imports import *
 from common.logger import Logger
 from common.utils import cast_np_to_tensors, stack_agent_obs_by_env
@@ -61,6 +68,15 @@ class Evaluator:
         self.use_heuristic = args.use_heuristic
         self.deterministic_eval = getattr(args, "deterministic_eval", True)
         self.eval_episodes = getattr(args, "eval_episodes", 10)
+        self.trace_rollout_actions = bool(
+            getattr(args, "trace_rollout_actions", False)
+        )
+        self.trace_rollout_max_steps = int(
+            getattr(args, "trace_rollout_max_steps", 512)
+        )
+        self.trace_rollout_decode_actions = bool(
+            getattr(args, "trace_rollout_decode_actions", True)
+        )
         if getattr(args, "split_chronics", False) and getattr(
             args, "eval_all_split_chronics", True
         ):
@@ -98,13 +114,52 @@ class Evaluator:
         # if self.use_heuristic: ep_rewards += list(info['rewards'].values())
 
         action = {}
+        agent_ids = list(actors.keys())
+        trace_records = []
+        trace_episode = 0
+        trace_episode_step = 0
+        trace_step = 0
         while len(ep_survivals) < eval_ep:
             for agent, model in actors.items():
                 action[agent] = model.get_eval_action(
                     obs[agent], deterministic=self.deterministic_eval
                 )
 
-            next_obs, _, _, _, info = self.env.step(action)
+            action_ids = {
+                agent: tensor_scalar_to_int(action[agent]) for agent in agent_ids
+            }
+            next_obs, reward, terminations, truncations, info = self.env.step(action)
+            done = bool(
+                np.logical_or(
+                    terminations[agent_ids[0]],
+                    truncations[agent_ids[0]],
+                )
+            )
+            if (
+                self.logger is not None
+                and self.trace_rollout_actions
+                and len(trace_records) < self.trace_rollout_max_steps
+            ):
+                trace_records.append(
+                    {
+                        "source": self.metric_prefix or "eval",
+                        "rollout": 0,
+                        "global_step": glob_step,
+                        "step": trace_step,
+                        "env_idx": 0,
+                        "episode": trace_episode,
+                        "episode_step": trace_episode_step,
+                        "non_idle_agents": sum(
+                            action_id != 0 for action_id in action_ids.values()
+                        ),
+                        "reward_agent_0": tensor_scalar_to_float(
+                            reward[agent_ids[0]]
+                        ),
+                        "done": done,
+                        "actions": action_ids,
+                    }
+                )
+            trace_step += 1
 
             obs = cast_np_to_tensors(next_obs, self.device)
             if not self.use_heuristic:
@@ -120,6 +175,10 @@ class Evaluator:
                 obs = cast_np_to_tensors(obs, self.device)
                 if not self.use_heuristic:
                     ep_rewards = np.zeros(len(self.reward_tags))
+                trace_episode += 1
+                trace_episode_step = 0
+            else:
+                trace_episode_step += 1
 
         # Calculate average survival rate and return over the evaluated episodes
         avg_survival = sum(ep_survivals) / eval_ep
@@ -134,6 +193,26 @@ class Evaluator:
                 self.reward_tags if self.env_id != "bus118" else self.reward_tags[:-1],
                 prefix=self.metric_prefix,
             )
+            if trace_records:
+                decoded_actions = {}
+                if self.trace_rollout_decode_actions:
+                    action_ids_by_agent = collect_unique_action_ids(
+                        trace_records, agent_ids
+                    )
+                    decoded_actions = decode_action_ids_safely(
+                        self.env.decode_action_ids,
+                        action_ids_by_agent,
+                    )
+                trace_key = f"{self.metric_prefix or 'eval'}/rollout_action_trace"
+                wb.log(
+                    {
+                        trace_key: build_action_trace_table(
+                            trace_records, agent_ids, decoded_actions
+                        ),
+                        "charts/global_step": glob_step,
+                    },
+                    step=glob_step,
+                )
 
         eval_label = self.metric_prefix or "eval"
         print(

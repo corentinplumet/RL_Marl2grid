@@ -2,6 +2,12 @@ from time import time
 
 from .agent import Actor, Critic
 from .config import get_alg_args
+from common.action_trace import (
+    build_action_trace_table,
+    collect_unique_action_ids,
+    decode_action_ids_safely,
+    tensor_scalar_to_float,
+)
 from common.checkpoint import CheckpointSaver
 from common.gnn import build_graph_encoder
 from common.imports import *
@@ -105,6 +111,72 @@ def _joint_non_idle_action_counts(
         dim=0,
     )
     return non_idle.sum(dim=0).reshape(-1).detach().cpu().numpy()
+
+
+def _should_log_training_action_trace(
+    args: Namespace, iteration: int, init_rollout: int
+) -> bool:
+    if not bool(getattr(args, "trace_rollout_actions", False)):
+        return False
+    every = int(getattr(args, "trace_rollout_every", 10))
+    if every <= 0:
+        return False
+    return iteration == init_rollout or iteration % every == 0
+
+
+def _build_training_action_trace_records(
+    args: Namespace,
+    actions: Dict[str, th.Tensor],
+    rewards: Dict[str, th.Tensor],
+    dones: th.Tensor,
+    agent_ids: List[str],
+    iteration: int,
+    global_step: int,
+) -> List[Dict[str, Any]]:
+    max_steps = min(
+        max(int(getattr(args, "trace_rollout_max_steps", 0)), 0),
+        int(args.n_steps),
+    )
+    if max_steps <= 0:
+        return []
+    env_idx = int(
+        np.clip(getattr(args, "trace_rollout_env_idx", 0), 0, args.n_envs - 1)
+    )
+    rollout_start_step = global_step - int(args.n_steps * args.n_envs)
+    records = []
+    episode = 0
+    episode_step = 0
+    for step in range(max_steps):
+        action_ids = {
+            agent: int(actions[agent][step, env_idx].long().detach().cpu().item())
+            for agent in agent_ids
+        }
+        done = bool(dones[step, env_idx].detach().cpu().item())
+        records.append(
+            {
+                "source": "train",
+                "rollout": iteration,
+                "global_step": rollout_start_step + (step + 1) * int(args.n_envs),
+                "step": step,
+                "env_idx": env_idx,
+                "episode": episode,
+                "episode_step": episode_step,
+                "non_idle_agents": sum(
+                    action_id != 0 for action_id in action_ids.values()
+                ),
+                "reward_agent_0": tensor_scalar_to_float(
+                    rewards[agent_ids[0]][step, env_idx]
+                ),
+                "done": done,
+                "actions": action_ids,
+            }
+        )
+        if done:
+            episode += 1
+            episode_step = 0
+        else:
+            episode_step += 1
+    return records
 
 
 def _build_shared_actor_graph_encoder(envs: gym.Env, args: Namespace, agent_ids: List[str]):
@@ -730,6 +802,39 @@ class MAPPO:
                     metrics_to_log["train/explained_variance"] = (
                         float("nan") if var_y == 0.0 else 1.0 - float(np.var(y_true - y_pred)) / var_y
                     )
+
+                    if _should_log_training_action_trace(
+                        args, iteration, init_rollout
+                    ):
+                        trace_records = _build_training_action_trace_records(
+                            args,
+                            actions,
+                            rewards,
+                            dones,
+                            agent_ids,
+                            iteration,
+                            global_step,
+                        )
+                        if trace_records:
+                            decoded_actions = {}
+                            if getattr(args, "trace_rollout_decode_actions", True):
+                                action_ids_by_agent = collect_unique_action_ids(
+                                    trace_records, agent_ids
+                                )
+                                decoded_actions = decode_action_ids_safely(
+                                    lambda ids: envs.decode_action_ids(
+                                        ids,
+                                        env_idx=getattr(
+                                            args, "trace_rollout_env_idx", 0
+                                        ),
+                                    ),
+                                    action_ids_by_agent,
+                                )
+                            metrics_to_log[
+                                "train/rollout_action_trace"
+                            ] = build_action_trace_table(
+                                trace_records, agent_ids, decoded_actions
+                            )
 
                     logger.log_train_metrics(global_step, metrics_to_log)
 
