@@ -9,6 +9,12 @@ from common.action_trace import (
     tensor_scalar_to_float,
 )
 from common.checkpoint import CheckpointSaver
+from common.explainability import (
+    EXPLAIN_LINE_KEYS,
+    EXPLAIN_SCALAR_KEYS,
+    explain_arrays_from_infos,
+    summarize_explain_arrays,
+)
 from common.gnn import build_graph_encoder
 from common.imports import *
 from common.logger import Logger
@@ -111,6 +117,58 @@ def _joint_non_idle_action_counts(
         dim=0,
     )
     return non_idle.sum(dim=0).reshape(-1).detach().cpu().numpy()
+
+
+def _sparse_intervention_penalty_enabled(args: Namespace) -> bool:
+    return (
+        float(getattr(args, "intervention_penalty", 0.0)) > 0.0
+        or float(getattr(args, "safe_intervention_penalty", 0.0)) > 0.0
+    )
+
+
+def _apply_sparse_intervention_penalty(
+    reward: Dict[str, np.ndarray],
+    action: Dict[str, th.Tensor],
+    agent_ids: List[str],
+    args: Namespace,
+    pre_action_max_rho: Optional[np.ndarray],
+) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], np.ndarray]:
+    """Subtract sparse-control penalties from per-agent training rewards."""
+    intervention_penalty = float(getattr(args, "intervention_penalty", 0.0))
+    safe_intervention_penalty = float(
+        getattr(args, "safe_intervention_penalty", 0.0)
+    )
+    if intervention_penalty <= 0.0 and safe_intervention_penalty <= 0.0:
+        empty_penalties = {
+            agent: np.zeros_like(np.asarray(reward[agent]), dtype=np.float32)
+            for agent in agent_ids
+        }
+        return reward, empty_penalties, np.zeros_like(
+            np.asarray(reward[agent_ids[0]]), dtype=bool
+        )
+
+    if safe_intervention_penalty > 0.0:
+        if pre_action_max_rho is None:
+            raise ValueError(
+                "--safe-intervention-penalty requires pre-action max rho values."
+            )
+        max_rho = np.asarray(pre_action_max_rho, dtype=np.float32)
+        threshold = float(getattr(args, "safe_intervention_rho_threshold", 0.90))
+        safe_state = np.isfinite(max_rho) & (max_rho < threshold)
+    else:
+        safe_state = np.zeros_like(np.asarray(reward[agent_ids[0]]), dtype=bool)
+
+    penalties = {}
+    for agent in agent_ids:
+        non_idle = action[agent].detach().cpu().numpy().astype(np.int64) != 0
+        penalty = intervention_penalty * non_idle.astype(np.float32)
+        if safe_intervention_penalty > 0.0:
+            penalty = penalty + safe_intervention_penalty * (
+                non_idle & safe_state
+            ).astype(np.float32)
+        penalties[agent] = penalty.astype(np.float32)
+        reward[agent] = np.asarray(reward[agent], dtype=np.float32) - penalties[agent]
+    return reward, penalties, safe_state
 
 
 def _should_log_training_action_trace(
@@ -317,6 +375,15 @@ class MAPPO:
         )
         collect_intervention_gate_metrics = bool(getattr(args, "track", False))
         intervention_gate_metrics = {}
+        collect_explain_metrics = bool(getattr(args, "track", False))
+        explain_metrics = (
+            {
+                key: th.zeros((args.n_steps, args.n_envs), device=device)
+                for key in EXPLAIN_SCALAR_KEYS + EXPLAIN_LINE_KEYS
+            }
+            if collect_explain_metrics
+            else {}
+        )
         for id in agent_ids:
             observations[id] = zeros_like_with_leading(
                 strip_state_graph(next_obs[id]), (args.n_steps,), device=device
@@ -364,7 +431,29 @@ class MAPPO:
         last_ckpt_time = start_time  # <-- track last checkpoint timestamp
 
         reward_normalizer = (
-            ReturnNormalizer(args.n_envs, args.gamma) if getattr(args, "norm_reward", False) else None
+            {
+                agent: ReturnNormalizer(args.n_envs, args.gamma)
+                for agent in agent_ids
+            }
+            if getattr(args, "norm_reward", False)
+            else None
+        )
+        sparse_penalty_enabled = _sparse_intervention_penalty_enabled(args)
+        safe_penalty_enabled = (
+            float(getattr(args, "safe_intervention_penalty", 0.0)) > 0.0
+        )
+        sparse_penalties = (
+            {
+                agent: th.zeros((args.n_steps, args.n_envs), device=device)
+                for agent in agent_ids
+            }
+            if sparse_penalty_enabled
+            else {}
+        )
+        safe_intervention_state = (
+            th.zeros((args.n_steps, args.n_envs), device=device)
+            if sparse_penalty_enabled
+            else None
         )
         try:
             for iteration in range(init_rollout, n_rollouts + 1):
@@ -414,6 +503,13 @@ class MAPPO:
                         set_nested_at_step(joint_observations, step, joint_obs)
                         values[step] = value.flatten()
 
+                    pre_action_max_rho = (
+                        envs.get_current_max_rho()
+                        if sparse_penalty_enabled
+                        and safe_penalty_enabled
+                        else None
+                    )
+
                     next_obs, reward, next_terminations, next_truncations, infos = (
                         envs.step(action)
                     )
@@ -422,6 +518,12 @@ class MAPPO:
                         if isinstance(infos, (list, tuple))
                         else [infos]
                     )
+                    if collect_explain_metrics:
+                        explain_arrays = explain_arrays_from_infos(step_infos)
+                        for name, values_np in explain_arrays.items():
+                            explain_metrics[name][step] = th.as_tensor(
+                                values_np, dtype=th.float32, device=device
+                            )
                     for agent in agent_ids:
                         illegal_action_totals[agent] += len(step_infos)
                         illegal_action_counts[agent] += sum(
@@ -429,18 +531,31 @@ class MAPPO:
                             for info in step_infos
                         )
 
+                    if sparse_penalty_enabled:
+                        reward, penalty, safe_state = _apply_sparse_intervention_penalty(
+                            reward,
+                            action,
+                            agent_ids,
+                            args,
+                            pre_action_max_rho,
+                        )
+                        for agent in agent_ids:
+                            sparse_penalties[agent][step] = th.as_tensor(
+                                penalty[agent], dtype=th.float32, device=device
+                            )
+                        safe_intervention_state[step] = th.as_tensor(
+                            safe_state, dtype=th.float32, device=device
+                        )
+
                     if reward_normalizer is not None:
                         done_np = np.logical_or(
                             next_terminations[agent_ids[0]],
                             next_truncations[agent_ids[0]],
                         )
-                        # Reward is identical across agents in this env (joint reward),
-                        # so normalize once and broadcast to every agent's stream.
-                        normed = reward_normalizer(
-                            np.asarray(reward[agent_ids[0]]), done_np
-                        )
                         for agent in agent_ids:
-                            reward[agent] = normed
+                            reward[agent] = reward_normalizer[agent](
+                                np.asarray(reward[agent]), done_np
+                            )
 
                     reward = cast_np_to_tensors(reward, device)
                     for agent in agent_ids:
@@ -737,6 +852,43 @@ class MAPPO:
                             f"train/non_idle_agents_count_{count}_frac"
                         ] = float(frac)
 
+                    if sparse_penalty_enabled:
+                        all_penalties = th.stack(
+                            [sparse_penalties[ag] for ag in agent_ids], dim=0
+                        )
+                        metrics_to_log["train/intervention_penalty_coef"] = float(
+                            getattr(args, "intervention_penalty", 0.0)
+                        )
+                        metrics_to_log[
+                            "train/safe_intervention_penalty_coef"
+                        ] = float(getattr(args, "safe_intervention_penalty", 0.0))
+                        metrics_to_log[
+                            "train/safe_intervention_rho_threshold"
+                        ] = float(
+                            getattr(args, "safe_intervention_rho_threshold", 0.90)
+                        )
+                        metrics_to_log[
+                            "train/intervention_penalty_mean"
+                        ] = float(all_penalties.mean().item())
+                        metrics_to_log[
+                            "train/intervention_penalty_total"
+                        ] = float(all_penalties.sum().item())
+                        if safe_penalty_enabled:
+                            metrics_to_log["train/safe_state_frac"] = float(
+                                safe_intervention_state.mean().item()
+                            )
+
+                    if collect_explain_metrics:
+                        metrics_to_log.update(
+                            summarize_explain_arrays(
+                                {
+                                    key: value.detach().cpu().numpy()
+                                    for key, value in explain_metrics.items()
+                                },
+                                prefix="train/explain",
+                            )
+                        )
+
                     non_idle_table = wb.Table(
                         data=[
                             [int(count), float(frac)]
@@ -759,8 +911,38 @@ class MAPPO:
                             metrics_to_log[f"train/clipfrac_{ag}"] = float(np.mean(m["clipfrac"]))
                         actions_flat = actions[ag].long().reshape(-1).cpu().numpy()
                         metrics_to_log[f"train/frac_action_0_{ag}"] = float(np.mean(actions_flat == 0))
+                        metrics_to_log[
+                            f"train/explain/action_nonidle_{ag}"
+                        ] = float(np.mean(actions_flat != 0))
+                        if sparse_penalty_enabled:
+                            penalty_flat = (
+                                sparse_penalties[ag].reshape(-1).detach().cpu().numpy()
+                            )
+                            safe_flat = (
+                                safe_intervention_state.reshape(-1)
+                                .detach()
+                                .cpu()
+                                .numpy()
+                                .astype(bool)
+                            )
+                            non_idle_flat = actions_flat != 0
+                            metrics_to_log[
+                                f"train/intervention_penalty_mean_{ag}"
+                            ] = float(np.mean(penalty_flat))
+                            if safe_penalty_enabled:
+                                if np.any(safe_flat):
+                                    metrics_to_log[
+                                        f"train/intervention_rate_when_safe_{ag}"
+                                    ] = float(np.mean(non_idle_flat[safe_flat]))
+                                if np.any(~safe_flat):
+                                    metrics_to_log[
+                                        f"train/intervention_rate_when_hazard_{ag}"
+                                    ] = float(np.mean(non_idle_flat[~safe_flat]))
                         if ag in intervention_gate_metrics:
                             gate_buffers = intervention_gate_metrics[ag]
+                            metrics_to_log[
+                                f"train/explain/gate_intervened_{ag}"
+                            ] = float(np.mean(actions_flat != 0))
                             metrics_to_log[
                                 f"train/intervention_gate_do_nothing_frac_{ag}"
                             ] = float(np.mean(actions_flat == 0))

@@ -175,6 +175,32 @@ def get_alg_args() -> Namespace:
             "non-idle action if the gate chooses intervene."
         ),
     )
+    parser.add_argument(
+        "--intervention-penalty",
+        type=float,
+        default=0.0,
+        help=(
+            "Training-time reward penalty applied to each agent for its own "
+            "non-idle action. This applies to both the flat actor and "
+            "--intervention-gate."
+        ),
+    )
+    parser.add_argument(
+        "--safe-intervention-penalty",
+        type=float,
+        default=0.0,
+        help=(
+            "Additional training-time reward penalty for a non-idle action when "
+            "the pre-action max rho is below --safe-intervention-rho-threshold. "
+            "This targets unnecessary interventions in safe states."
+        ),
+    )
+    parser.add_argument(
+        "--safe-intervention-rho-threshold",
+        type=float,
+        default=0.90,
+        help="Grid state is treated as safe for sparse-intervention penalties when max rho is below this value.",
+    )
 
     parser.add_argument(
         "--norm-reward",

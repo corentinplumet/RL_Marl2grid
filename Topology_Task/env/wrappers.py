@@ -115,6 +115,14 @@ class AsyncMultiAgentVecEnv:
         for remote in self.remotes:
             remote.recv()
 
+    def get_current_max_rho(self) -> np.ndarray:
+        """Collect each worker's pre-action max rho."""
+        if self.waiting:
+            raise RuntimeError("Cannot query max rho while an async env step is pending.")
+        for remote in self.remotes:
+            remote.send(("get_current_max_rho", None))
+        return np.asarray([remote.recv() for remote in self.remotes], dtype=np.float32)
+
     def decode_action_ids(
         self, action_ids_by_agent: Dict[str, List[int]], env_idx: int = 0
     ) -> Dict[str, Dict[int, str]]:
@@ -175,6 +183,8 @@ class AsyncMultiAgentVecEnv:
                 elif cmd == "set_obs_stats":
                     env.set_obs_stats(data)
                     remote.send(None)
+                elif cmd == "get_current_max_rho":
+                    remote.send(env.get_current_max_rho())
                 elif cmd == "decode_action_ids":
                     remote.send(env.decode_action_ids(data))
                 else:

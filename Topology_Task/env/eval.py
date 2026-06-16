@@ -7,6 +7,7 @@ from common.action_trace import (
     tensor_scalar_to_float,
     tensor_scalar_to_int,
 )
+from common.explainability import explain_arrays_from_infos, summarize_explain_arrays
 from common.imports import *
 from common.logger import Logger
 from common.utils import cast_np_to_tensors, stack_agent_obs_by_env
@@ -132,6 +133,9 @@ class Evaluator:
 
         action = {}
         agent_ids = list(actors.keys())
+        action_nonidle_counts = {agent: 0 for agent in agent_ids}
+        explain_eval_arrays = None
+        n_eval_steps = 0
         trace_records = []
         trace_episode = 0
         trace_episode_step = 0
@@ -146,6 +150,17 @@ class Evaluator:
                 agent: tensor_scalar_to_int(action[agent]) for agent in agent_ids
             }
             next_obs, reward, terminations, truncations, info = self.env.step(action)
+            for agent, action_id in action_ids.items():
+                action_nonidle_counts[agent] += int(action_id != 0)
+            n_eval_steps += 1
+            step_explain = explain_arrays_from_infos(info)
+            if explain_eval_arrays is None:
+                explain_eval_arrays = {
+                    key: [value] for key, value in step_explain.items()
+                }
+            else:
+                for key, value in step_explain.items():
+                    explain_eval_arrays[key].append(value)
             done = bool(
                 np.logical_or(
                     terminations[agent_ids[0]],
@@ -221,6 +236,25 @@ class Evaluator:
             self._log_per_step_reward_metrics(
                 glob_step, avg_return_per_step, reward_tags
             )
+            if explain_eval_arrays:
+                eval_label = self.metric_prefix or "eval"
+                record = summarize_explain_arrays(
+                    {
+                        key: np.concatenate(values)
+                        for key, values in explain_eval_arrays.items()
+                    },
+                    prefix=f"{eval_label}/explain",
+                )
+                for agent in agent_ids:
+                    record[f"{eval_label}/explain/action_nonidle_{agent}"] = (
+                        action_nonidle_counts[agent] / max(n_eval_steps, 1)
+                    )
+                    if getattr(actors[agent], "intervention_gate", False):
+                        record[f"{eval_label}/explain/gate_intervened_{agent}"] = (
+                            action_nonidle_counts[agent] / max(n_eval_steps, 1)
+                        )
+                record["charts/global_step"] = glob_step
+                wb.log(record, step=glob_step)
             if trace_records:
                 decoded_actions = {}
                 if self.trace_rollout_decode_actions:

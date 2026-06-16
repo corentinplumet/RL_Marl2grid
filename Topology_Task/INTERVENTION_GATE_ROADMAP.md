@@ -224,6 +224,10 @@ space."
 
 ## Phase 3: Sparse-Intervention Objective
 
+Status: implemented in MAPPO for both the original flat actor and the gated
+actor. The objective is actor-agnostic: it penalizes the final executed
+environment action id, so it works with or without `--intervention-gate`.
+
 Goal: make the learned behavior more operator-like without forcing a hard rule.
 
 Start with logging only. Then test one optional reward regularizer:
@@ -249,6 +253,21 @@ Recommended flags:
 --safe-intervention-rho-threshold 0.90
 ```
 
+Implementation details:
+
+```text
+--intervention-penalty
+    subtracts the penalty from agent i only when agent i chose action != 0
+
+--safe-intervention-penalty
+    adds an extra penalty only when pre-action max rho is below the safety
+    threshold
+```
+
+The penalty is applied before reward normalization. When reward normalization is
+enabled, each agent now has its own return normalizer so local sparse penalties
+are preserved instead of being overwritten by a shared normalized reward.
+
 Ablation plan:
 
 ```text
@@ -267,6 +286,10 @@ actions, especially in safe states.
 
 ## Phase 4: Explainability Logs Without Extra Simulation
 
+Status: implemented for train rollouts and eval episodes. The environment
+attaches lightweight before/after physical diagnostics to each real transition;
+MAPPO aggregates them into W&B logs without running extra simulations.
+
 Goal: explain the behavior using quantities already available from real
 transitions.
 
@@ -283,6 +306,14 @@ explain/topology_distance_after
 explain/topology_distance_delta
 explain/action_nonidle_agent_*
 explain/gate_intervened_agent_*
+```
+
+Implemented metric namespaces:
+
+```text
+train/explain/*
+test/explain/*
+train_eval/explain/*
 ```
 
 Definitions:

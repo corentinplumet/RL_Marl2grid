@@ -20,6 +20,7 @@ from lightsim2grid import LightSimBackend
 from ray.rllib.env.multi_agent_env import MultiAgentEnv as MAEnv
 
 from common.imports import *
+from common.explainability import EXPLAIN_INFO_KEY
 from common.graph import GridGraphBuilder
 from common.utils import any_gnn_enabled
 from .reward import (
@@ -685,6 +686,41 @@ class MAEnvWrapper(MAEnv):
                 "var": None if s["var"] is None else s["var"].copy(),
             }
 
+    def get_current_max_rho(self) -> float:
+        """Return the current Grid2Op max rho before the next action is applied."""
+        rho = getattr(self._obs, "rho", None)
+        if rho is None:
+            return float("nan")
+        rho = np.asarray(rho, dtype=np.float32)
+        if rho.size == 0 or not np.isfinite(rho).any():
+            return float("nan")
+        return float(np.nanmax(rho))
+
+    def get_explainability_state(self) -> Dict[str, Any]:
+        """Return lightweight physical diagnostics for the current Grid2Op state."""
+        obs = self._obs
+        rho = getattr(obs, "rho", None)
+        rho = np.asarray([] if rho is None else rho, dtype=np.float32)
+        finite_rho = np.isfinite(rho)
+        if rho.size > 0 and finite_rho.any():
+            masked_rho = np.where(finite_rho, rho, -np.inf)
+            worst_line = int(np.argmax(masked_rho))
+            max_rho = float(masked_rho[worst_line])
+        else:
+            worst_line = -1
+            max_rho = float("nan")
+
+        topo_vect = getattr(obs, "topo_vect", None)
+        topo_vect = np.asarray([] if topo_vect is None else topo_vect)
+        topology_distance = (
+            float(np.sum(topo_vect != 1)) if topo_vect.size > 0 else float("nan")
+        )
+        return {
+            "max_rho": max_rho,
+            "worst_line": worst_line,
+            "topology_distance": topology_distance,
+        }
+
     def _get_grid2op_act(self, actions):
         return {
             agent_id: self._conv_action_space[agent_id].from_gym(
@@ -728,6 +764,7 @@ class MAEnvWrapper(MAEnv):
         }
 
     def step(self, actions):
+        explain_pre = self.get_explainability_state()
         # convert the action to grid2op
         grid2op_act = self._get_grid2op_act(actions)
 
@@ -739,6 +776,11 @@ class MAEnvWrapper(MAEnv):
             r = {k: v + heuristic_reward for k, v in r.items()}
 
         self._get_cost(done, info)
+        if isinstance(info, dict):
+            info[EXPLAIN_INFO_KEY] = {
+                "pre": explain_pre,
+                "post": self.get_explainability_state(),
+            }
 
         # Retrieve the observation in the proper form
         gym_obs = self._format_obs(obs)
