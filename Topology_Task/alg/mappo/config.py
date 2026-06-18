@@ -233,6 +233,27 @@ def get_alg_args() -> Namespace:
         help="Use greedy argmax actions during evaluation. Set False to sample evaluation actions.",
     )
     parser.add_argument(
+        "--eval-action-heuristic",
+        type=str,
+        default="none",
+        choices=["none", "rho_threshold"],
+        help=(
+            "Evaluation-only action override. 'rho_threshold' forces all agents "
+            "to execute action 0 when the pre-action max rho is below "
+            "--eval-action-rho-threshold, otherwise the learned policy action is used."
+        ),
+    )
+    parser.add_argument(
+        "--eval-action-rho-threshold",
+        type=float,
+        default=0.90,
+        help=(
+            "Pre-action max rho threshold used by "
+            "--eval-action-heuristic rho_threshold. States below this threshold "
+            "are treated as safe and eval actions are forced to do nothing."
+        ),
+    )
+    parser.add_argument(
         "--eval-episodes",
         type=int,
         default=10,

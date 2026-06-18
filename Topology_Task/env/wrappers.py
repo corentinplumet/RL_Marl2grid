@@ -288,6 +288,9 @@ class RecordEpisodeStatistics(gym.Wrapper, gym.utils.RecordConstructorArgs):
     ) -> Dict[str, Dict[int, str]]:
         return self.env.decode_action_ids(action_ids_by_agent)
 
+    def get_current_max_rho(self) -> float:
+        return self.env.get_current_max_rho()
+
     def step(self, action):
         """Steps through the environment, recording the episode statistics."""
         (
