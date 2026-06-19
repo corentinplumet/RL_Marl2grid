@@ -179,6 +179,7 @@ def main() -> int:
 
     for key, value in config.get("environment", {}).items():
         os.environ[key] = format_value(value, context)
+    os.environ.setdefault("WANDB__SERVICE_WAIT", "300")
 
     for key in ["MPLCONFIGDIR", "WANDB_DIR", "XDG_CACHE_HOME"]:
         if key in os.environ:

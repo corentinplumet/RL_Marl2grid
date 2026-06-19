@@ -22,6 +22,7 @@ VECLIB_MAXIMUM_THREADS = "1"
 MAX_TIME_LIMIT_MINUTES = "10080"
 MPLCONFIGDIR = "{run_dir}/matplotlib"
 WANDB_DIR = "{run_dir}/wandb"
+WANDB__SERVICE_WAIT = "300"
 XDG_CACHE_HOME = "{run_dir}/cache"
 
 [args]
