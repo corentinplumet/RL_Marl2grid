@@ -38,6 +38,9 @@ class Actor(nn.Module):
         self.intervention_gate_eval_mode = str(
             getattr(args, "intervention_gate_eval_mode", "final_action_map")
         )
+        self.intervention_gate_entropy_mode = str(
+            getattr(args, "intervention_gate_entropy_mode", "coupled")
+        )
         if self.intervention_gate_eval_mode not in {
             "final_action_map",
             "hierarchical_greedy",
@@ -46,6 +49,17 @@ class Actor(nn.Module):
                 "intervention_gate_eval_mode must be 'final_action_map' or "
                 f"'hierarchical_greedy', got {self.intervention_gate_eval_mode!r}."
             )
+        if self.intervention_gate_entropy_mode not in {"coupled", "separate"}:
+            raise ValueError(
+                "intervention_gate_entropy_mode must be 'coupled' or "
+                f"'separate', got {self.intervention_gate_entropy_mode!r}."
+            )
+        self.intervention_gate_entropy_mult = float(
+            getattr(args, "intervention_gate_entropy_mult", 1.0)
+        )
+        self.intervention_nonidle_entropy_mult = float(
+            getattr(args, "intervention_nonidle_entropy_mult", 1.0)
+        )
 
         if self.encoder_type == "mlp":
             self.encoder = None
@@ -232,10 +246,15 @@ class Actor(nn.Module):
             action = action.long()
 
         logprob = self._gated_action_log_prob(gate_dist, nonidle_dist, action)
-        entropy = (
-            gate_dist.entropy()
-            + gate_dist.probs[..., 1] * nonidle_dist.entropy()
-        )
+        gate_entropy = gate_dist.entropy()
+        nonidle_entropy = nonidle_dist.entropy()
+        if self.intervention_gate_entropy_mode == "separate":
+            entropy = (
+                self.intervention_gate_entropy_mult * gate_entropy
+                + self.intervention_nonidle_entropy_mult * nonidle_entropy
+            )
+        else:
+            entropy = gate_entropy + gate_dist.probs[..., 1] * nonidle_entropy
         return action, logprob, entropy
 
     def get_intervention_gate_diagnostics(

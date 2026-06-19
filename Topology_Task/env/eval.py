@@ -325,12 +325,18 @@ class Evaluator:
                     prefix=f"{eval_label}/explain",
                 )
                 for agent in agent_ids:
+                    action_nonidle_frac = action_nonidle_counts[agent] / max(
+                        n_eval_steps, 1
+                    )
                     record[f"{eval_label}/explain/action_nonidle_{agent}"] = (
-                        action_nonidle_counts[agent] / max(n_eval_steps, 1)
+                        action_nonidle_frac
+                    )
+                    record[f"{eval_label}/explain/frac_action_0_{agent}"] = (
+                        1.0 - action_nonidle_frac
                     )
                     if getattr(actors[agent], "intervention_gate", False):
                         record[f"{eval_label}/explain/gate_intervened_{agent}"] = (
-                            action_nonidle_counts[agent] / max(n_eval_steps, 1)
+                            action_nonidle_frac
                         )
                 if self.eval_action_heuristic != "none":
                     all_rhos = [

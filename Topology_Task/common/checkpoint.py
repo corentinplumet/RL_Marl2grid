@@ -73,6 +73,7 @@ class MAPPOCheckpoint(CheckpointSaver):
         wb_run_name: str,
         last_rollout: int = 0,
         mark_final: bool = True,
+        training_state: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Set the record for PPO checkpoints.
 
@@ -86,6 +87,8 @@ class MAPPOCheckpoint(CheckpointSaver):
             wb_run_name: Weights & Biases run name.
             last_rollout: Last rollout step. Defaults to 0.
             mark_final: Whether to prefix the run name when saving the final checkpoint.
+            training_state: Optional non-module state such as adaptive
+                intervention Lagrange multipliers.
         """
         if mark_final and global_step >= args.total_timesteps - args.n_envs:
             self.run_name = "final_" + self.run_name
@@ -98,3 +101,4 @@ class MAPPOCheckpoint(CheckpointSaver):
         self.record["critic_optim"] = critic_optim.state_dict()
         self.record["wb_run_name"] = wb_run_name
         self.record["last_rollout"] = last_rollout
+        self.record["training_state"] = training_state or {}

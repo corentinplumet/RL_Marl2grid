@@ -126,6 +126,47 @@ def _sparse_intervention_penalty_enabled(args: Namespace) -> bool:
     )
 
 
+def _adaptive_intervention_budget_enabled(args: Namespace) -> bool:
+    return bool(getattr(args, "adaptive_intervention_budget", False))
+
+
+def _intervention_budget_requires_global_rho(args: Namespace) -> bool:
+    return (
+        _adaptive_intervention_budget_enabled(args)
+        and str(getattr(args, "intervention_budget_cost_mode", "local_safe"))
+        == "global_safe"
+    )
+
+
+def _intervention_budget_requires_local_rho(args: Namespace) -> bool:
+    return (
+        _adaptive_intervention_budget_enabled(args)
+        and str(getattr(args, "intervention_budget_cost_mode", "local_safe"))
+        == "local_safe"
+    )
+
+
+def _as_reward_shape(values: Any, reference: np.ndarray) -> np.ndarray:
+    """Convert scalar/vector rho values to the current vector-env reward shape."""
+    reference = np.asarray(reference)
+    values_np = np.asarray(values, dtype=np.float32)
+    if values_np.shape == ():
+        return np.full(reference.shape, float(values_np), dtype=np.float32)
+    return np.broadcast_to(values_np, reference.shape).astype(np.float32, copy=False)
+
+
+def _smooth_safe_weight(
+    max_rho: Any, reference: np.ndarray, args: Namespace
+) -> np.ndarray:
+    """High when the grid is comfortably safe, low when lines approach overload."""
+    rho = _as_reward_shape(max_rho, reference)
+    threshold = float(getattr(args, "intervention_budget_rho_threshold", 0.90))
+    sharpness = float(getattr(args, "intervention_budget_rho_sharpness", 25.0))
+    logits = np.clip(sharpness * (threshold - rho), -60.0, 60.0)
+    weights = 1.0 / (1.0 + np.exp(-logits))
+    return np.where(np.isfinite(rho), weights, 0.0).astype(np.float32)
+
+
 def _apply_sparse_intervention_penalty(
     reward: Dict[str, np.ndarray],
     action: Dict[str, th.Tensor],
@@ -169,6 +210,86 @@ def _apply_sparse_intervention_penalty(
         penalties[agent] = penalty.astype(np.float32)
         reward[agent] = np.asarray(reward[agent], dtype=np.float32) - penalties[agent]
     return reward, penalties, safe_state
+
+
+def _apply_adaptive_intervention_budget(
+    reward: Dict[str, np.ndarray],
+    action: Dict[str, th.Tensor],
+    agent_ids: List[str],
+    args: Namespace,
+    intervention_lambdas: Dict[str, float],
+    pre_action_max_rho: Optional[np.ndarray],
+    pre_action_agent_max_rho: Optional[Dict[str, np.ndarray]],
+) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Dict[str, np.ndarray], Dict[str, np.ndarray]]:
+    """Subtract adaptive Lagrangian intervention costs from per-agent rewards."""
+    mode = str(getattr(args, "intervention_budget_cost_mode", "local_safe"))
+    penalties, costs, weights = {}, {}, {}
+    for agent in agent_ids:
+        reward_np = np.asarray(reward[agent], dtype=np.float32)
+        non_idle = action[agent].detach().cpu().numpy().astype(np.int64) != 0
+        if mode == "nonidle":
+            safety_weight = np.ones_like(reward_np, dtype=np.float32)
+        elif mode == "global_safe":
+            if pre_action_max_rho is None:
+                raise ValueError(
+                    "--adaptive-intervention-budget with "
+                    "--intervention-budget-cost-mode=global_safe requires "
+                    "pre-action max rho values."
+                )
+            safety_weight = _smooth_safe_weight(pre_action_max_rho, reward_np, args)
+        elif mode == "local_safe":
+            if pre_action_agent_max_rho is None:
+                raise ValueError(
+                    "--adaptive-intervention-budget with "
+                    "--intervention-budget-cost-mode=local_safe requires "
+                    "pre-action local max rho values."
+                )
+            safety_weight = _smooth_safe_weight(
+                pre_action_agent_max_rho.get(agent, float("nan")), reward_np, args
+            )
+        else:
+            raise ValueError(f"Unsupported intervention budget cost mode: {mode!r}")
+
+        cost = non_idle.astype(np.float32) * safety_weight
+        penalty = float(intervention_lambdas[agent]) * cost
+        penalties[agent] = penalty.astype(np.float32)
+        costs[agent] = cost.astype(np.float32)
+        weights[agent] = safety_weight.astype(np.float32)
+        reward[agent] = reward_np - penalties[agent]
+    return reward, penalties, costs, weights
+
+
+def _update_adaptive_intervention_lambdas(
+    intervention_lambdas: Dict[str, float],
+    intervention_budget_costs: Dict[str, th.Tensor],
+    agent_ids: List[str],
+    args: Namespace,
+    global_step: int,
+) -> Dict[str, Dict[str, float]]:
+    """Update Lagrange multipliers from rollout-mean intervention cost."""
+    target = float(getattr(args, "intervention_budget_target", 0.25))
+    lr = float(getattr(args, "intervention_budget_lr", 0.01))
+    max_lambda = max(float(getattr(args, "intervention_budget_max_lambda", 10.0)), 0.0)
+    warmup_steps = int(getattr(args, "intervention_budget_warmup_steps", 0))
+    should_update = global_step >= warmup_steps and lr > 0.0
+    stats = {}
+    for agent in agent_ids:
+        observed = float(intervention_budget_costs[agent].mean().item())
+        old_lambda = float(intervention_lambdas[agent])
+        violation = observed - target
+        new_lambda = old_lambda
+        if should_update:
+            new_lambda = float(np.clip(old_lambda + lr * violation, 0.0, max_lambda))
+            intervention_lambdas[agent] = new_lambda
+        stats[agent] = {
+            "cost": observed,
+            "target": target,
+            "violation": violation,
+            "lambda_before": old_lambda,
+            "lambda_after": new_lambda,
+            "updated": float(should_update),
+        }
+    return stats
 
 
 def _should_log_training_action_trace(
@@ -442,6 +563,17 @@ class MAPPO:
         safe_penalty_enabled = (
             float(getattr(args, "safe_intervention_penalty", 0.0)) > 0.0
         )
+        adaptive_budget_enabled = _adaptive_intervention_budget_enabled(args)
+        loaded_training_state = ckpt.loaded_run.get("training_state", {}) if ckpt.resumed else {}
+        loaded_lambdas = loaded_training_state.get("intervention_lambdas", {})
+        intervention_lambdas = {
+            agent: float(
+                loaded_lambdas.get(
+                    agent, getattr(args, "intervention_budget_init_lambda", 0.0)
+                )
+            )
+            for agent in agent_ids
+        }
         sparse_penalties = (
             {
                 agent: th.zeros((args.n_steps, args.n_envs), device=device)
@@ -455,6 +587,34 @@ class MAPPO:
             if sparse_penalty_enabled
             else None
         )
+        intervention_budget_penalties = (
+            {
+                agent: th.zeros((args.n_steps, args.n_envs), device=device)
+                for agent in agent_ids
+            }
+            if adaptive_budget_enabled
+            else {}
+        )
+        intervention_budget_costs = (
+            {
+                agent: th.zeros((args.n_steps, args.n_envs), device=device)
+                for agent in agent_ids
+            }
+            if adaptive_budget_enabled
+            else {}
+        )
+        intervention_budget_weights = (
+            {
+                agent: th.zeros((args.n_steps, args.n_envs), device=device)
+                for agent in agent_ids
+            }
+            if adaptive_budget_enabled
+            else {}
+        )
+
+        def _current_training_state() -> Dict[str, Any]:
+            return {"intervention_lambdas": dict(intervention_lambdas)}
+
         try:
             for iteration in range(init_rollout, n_rollouts + 1):
                 # Annealing the rate if instructed to do so
@@ -505,8 +665,15 @@ class MAPPO:
 
                     pre_action_max_rho = (
                         envs.get_current_max_rho()
-                        if sparse_penalty_enabled
-                        and safe_penalty_enabled
+                        if (
+                            (sparse_penalty_enabled and safe_penalty_enabled)
+                            or _intervention_budget_requires_global_rho(args)
+                        )
+                        else None
+                    )
+                    pre_action_agent_max_rho = (
+                        envs.get_current_agent_max_rho()
+                        if _intervention_budget_requires_local_rho(args)
                         else None
                     )
 
@@ -546,6 +713,34 @@ class MAPPO:
                         safe_intervention_state[step] = th.as_tensor(
                             safe_state, dtype=th.float32, device=device
                         )
+
+                    if adaptive_budget_enabled:
+                        (
+                            reward,
+                            budget_penalty,
+                            budget_cost,
+                            budget_weight,
+                        ) = _apply_adaptive_intervention_budget(
+                            reward,
+                            action,
+                            agent_ids,
+                            args,
+                            intervention_lambdas,
+                            pre_action_max_rho,
+                            pre_action_agent_max_rho,
+                        )
+                        for agent in agent_ids:
+                            intervention_budget_penalties[agent][step] = th.as_tensor(
+                                budget_penalty[agent],
+                                dtype=th.float32,
+                                device=device,
+                            )
+                            intervention_budget_costs[agent][step] = th.as_tensor(
+                                budget_cost[agent], dtype=th.float32, device=device
+                            )
+                            intervention_budget_weights[agent][step] = th.as_tensor(
+                                budget_weight[agent], dtype=th.float32, device=device
+                            )
 
                     if reward_normalizer is not None:
                         done_np = np.logical_or(
@@ -607,6 +802,7 @@ class MAPPO:
                                     "" if not logger else logger.wb_path,
                                     iteration,
                                     mark_final=False,
+                                    training_state=_current_training_state(),
                                 )
                                 ckpt.save_as("best_test_" + run_name)
                         if args.verbose:
@@ -653,10 +849,21 @@ class MAPPO:
                         critic_optim,
                         "" if not logger else logger.wb_path,
                         iteration,
+                        training_state=_current_training_state(),
                     )
                     ckpt.save()  # overwrites the previous checkpoint
                     last_ckpt_time = time()
                 # --------------------------------------
+
+                intervention_budget_stats = {}
+                if adaptive_budget_enabled:
+                    intervention_budget_stats = _update_adaptive_intervention_lambdas(
+                        intervention_lambdas,
+                        intervention_budget_costs,
+                        agent_ids,
+                        args,
+                        global_step,
+                    )
 
                 b_values = values.reshape(-1)
                 b_joint_obs = flatten_rollout_obs(joint_observations)
@@ -852,6 +1059,22 @@ class MAPPO:
                             f"train/non_idle_agents_count_{count}_frac"
                         ] = float(frac)
 
+                    if any(getattr(actor, "intervention_gate", False) for actor in actors.values()):
+                        metrics_to_log[
+                            "train/intervention_gate_entropy_mode_separate"
+                        ] = float(
+                            getattr(args, "intervention_gate_entropy_mode", "coupled")
+                            == "separate"
+                        )
+                        metrics_to_log["train/intervention_gate_entropy_mult"] = float(
+                            getattr(args, "intervention_gate_entropy_mult", 1.0)
+                        )
+                        metrics_to_log[
+                            "train/intervention_nonidle_entropy_mult"
+                        ] = float(
+                            getattr(args, "intervention_nonidle_entropy_mult", 1.0)
+                        )
+
                     if sparse_penalty_enabled:
                         all_penalties = th.stack(
                             [sparse_penalties[ag] for ag in agent_ids], dim=0
@@ -877,6 +1100,62 @@ class MAPPO:
                             metrics_to_log["train/safe_state_frac"] = float(
                                 safe_intervention_state.mean().item()
                             )
+
+                    if adaptive_budget_enabled:
+                        all_budget_costs = th.stack(
+                            [intervention_budget_costs[ag] for ag in agent_ids], dim=0
+                        )
+                        all_budget_penalties = th.stack(
+                            [
+                                intervention_budget_penalties[ag]
+                                for ag in agent_ids
+                            ],
+                            dim=0,
+                        )
+                        all_budget_weights = th.stack(
+                            [
+                                intervention_budget_weights[ag]
+                                for ag in agent_ids
+                            ],
+                            dim=0,
+                        )
+                        metrics_to_log["train/intervention_budget_enabled"] = 1.0
+                        metrics_to_log["train/intervention_budget_target"] = float(
+                            getattr(args, "intervention_budget_target", 0.25)
+                        )
+                        metrics_to_log["train/intervention_budget_lr"] = float(
+                            getattr(args, "intervention_budget_lr", 0.01)
+                        )
+                        metrics_to_log[
+                            "train/intervention_budget_rho_threshold"
+                        ] = float(
+                            getattr(args, "intervention_budget_rho_threshold", 0.90)
+                        )
+                        metrics_to_log[
+                            "train/intervention_budget_rho_sharpness"
+                        ] = float(
+                            getattr(args, "intervention_budget_rho_sharpness", 25.0)
+                        )
+                        metrics_to_log[
+                            "train/intervention_budget_cost_mean"
+                        ] = float(all_budget_costs.mean().item())
+                        metrics_to_log[
+                            "train/intervention_budget_cost_violation_mean"
+                        ] = float(
+                            all_budget_costs.mean().item()
+                            - float(getattr(args, "intervention_budget_target", 0.25))
+                        )
+                        metrics_to_log[
+                            "train/intervention_budget_penalty_mean"
+                        ] = float(all_budget_penalties.mean().item())
+                        metrics_to_log[
+                            "train/intervention_budget_safety_weight_mean"
+                        ] = float(all_budget_weights.mean().item())
+                        metrics_to_log[
+                            "train/intervention_budget_lambda_mean"
+                        ] = float(
+                            np.mean([intervention_lambdas[ag] for ag in agent_ids])
+                        )
 
                     if collect_explain_metrics:
                         metrics_to_log.update(
@@ -910,10 +1189,11 @@ class MAPPO:
                             metrics_to_log[f"train/pg_loss_{ag}"] = float(np.mean(m["pg_loss"]))
                             metrics_to_log[f"train/clipfrac_{ag}"] = float(np.mean(m["clipfrac"]))
                         actions_flat = actions[ag].long().reshape(-1).cpu().numpy()
+                        non_idle_flat = actions_flat != 0
                         metrics_to_log[f"train/frac_action_0_{ag}"] = float(np.mean(actions_flat == 0))
                         metrics_to_log[
                             f"train/explain/action_nonidle_{ag}"
-                        ] = float(np.mean(actions_flat != 0))
+                        ] = float(np.mean(non_idle_flat))
                         if sparse_penalty_enabled:
                             penalty_flat = (
                                 sparse_penalties[ag].reshape(-1).detach().cpu().numpy()
@@ -925,7 +1205,6 @@ class MAPPO:
                                 .numpy()
                                 .astype(bool)
                             )
-                            non_idle_flat = actions_flat != 0
                             metrics_to_log[
                                 f"train/intervention_penalty_mean_{ag}"
                             ] = float(np.mean(penalty_flat))
@@ -938,6 +1217,69 @@ class MAPPO:
                                     metrics_to_log[
                                         f"train/intervention_rate_when_hazard_{ag}"
                                     ] = float(np.mean(non_idle_flat[~safe_flat]))
+                        if adaptive_budget_enabled:
+                            budget_cost_flat = (
+                                intervention_budget_costs[ag]
+                                .reshape(-1)
+                                .detach()
+                                .cpu()
+                                .numpy()
+                            )
+                            budget_penalty_flat = (
+                                intervention_budget_penalties[ag]
+                                .reshape(-1)
+                                .detach()
+                                .cpu()
+                                .numpy()
+                            )
+                            budget_weight_flat = (
+                                intervention_budget_weights[ag]
+                                .reshape(-1)
+                                .detach()
+                                .cpu()
+                                .numpy()
+                            )
+                            stats = intervention_budget_stats.get(ag, {})
+                            metrics_to_log[
+                                f"train/intervention_budget_lambda_{ag}"
+                            ] = float(stats.get("lambda_after", intervention_lambdas[ag]))
+                            metrics_to_log[
+                                f"train/intervention_budget_lambda_before_{ag}"
+                            ] = float(stats.get("lambda_before", intervention_lambdas[ag]))
+                            metrics_to_log[
+                                f"train/intervention_budget_lambda_updated_{ag}"
+                            ] = float(stats.get("updated", 0.0))
+                            metrics_to_log[
+                                f"train/intervention_budget_cost_{ag}"
+                            ] = float(stats.get("cost", np.mean(budget_cost_flat)))
+                            metrics_to_log[
+                                f"train/intervention_budget_cost_violation_{ag}"
+                            ] = float(
+                                stats.get(
+                                    "violation",
+                                    np.mean(budget_cost_flat)
+                                    - float(
+                                        getattr(
+                                            args, "intervention_budget_target", 0.25
+                                        )
+                                    ),
+                                )
+                            )
+                            metrics_to_log[
+                                f"train/intervention_budget_penalty_mean_{ag}"
+                            ] = float(np.mean(budget_penalty_flat))
+                            metrics_to_log[
+                                f"train/intervention_budget_safety_weight_{ag}"
+                            ] = float(np.mean(budget_weight_flat))
+                            costly = budget_weight_flat > 0.5
+                            if np.any(costly):
+                                metrics_to_log[
+                                    f"train/intervention_rate_when_budget_costly_{ag}"
+                                ] = float(np.mean(non_idle_flat[costly]))
+                            if np.any(~costly):
+                                metrics_to_log[
+                                    f"train/intervention_rate_when_budget_free_{ag}"
+                                ] = float(np.mean(non_idle_flat[~costly]))
                         if ag in intervention_gate_metrics:
                             gate_buffers = intervention_gate_metrics[ag]
                             metrics_to_log[
@@ -1036,6 +1378,7 @@ class MAPPO:
                     critic_optim,
                     "" if not logger else logger.wb_path,
                     iteration,
+                    training_state=_current_training_state(),
                 )
                 ckpt.save()
             if logger:

@@ -176,6 +176,36 @@ def get_alg_args() -> Namespace:
         ),
     )
     parser.add_argument(
+        "--intervention-gate-entropy-mode",
+        type=str,
+        default="coupled",
+        choices=["coupled", "separate"],
+        help=(
+            "Entropy formula used by --intervention-gate. 'coupled' preserves "
+            "the original H(gate)+P(intervene)*H(non-idle) objective. "
+            "'separate' uses independent weighted gate and non-idle entropy "
+            "terms, avoiding a direct entropy incentive to raise P(intervene)."
+        ),
+    )
+    parser.add_argument(
+        "--intervention-gate-entropy-mult",
+        type=float,
+        default=1.0,
+        help=(
+            "Multiplier on H(gate) when "
+            "--intervention-gate-entropy-mode=separate."
+        ),
+    )
+    parser.add_argument(
+        "--intervention-nonidle-entropy-mult",
+        type=float,
+        default=1.0,
+        help=(
+            "Multiplier on H(non-idle action head) when "
+            "--intervention-gate-entropy-mode=separate."
+        ),
+    )
+    parser.add_argument(
         "--intervention-penalty",
         type=float,
         default=0.0,
@@ -200,6 +230,83 @@ def get_alg_args() -> Namespace:
         type=float,
         default=0.90,
         help="Grid state is treated as safe for sparse-intervention penalties when max rho is below this value.",
+    )
+    parser.add_argument(
+        "--adaptive-intervention-budget",
+        type=str2bool,
+        default=False,
+        help=(
+            "Enable an adaptive Lagrangian intervention budget. Each agent is "
+            "penalized by lambda_i * cost_i for non-idle actions, and lambda_i "
+            "is updated after each rollout from the observed budget violation."
+        ),
+    )
+    parser.add_argument(
+        "--intervention-budget-target",
+        type=float,
+        default=0.25,
+        help=(
+            "Target mean intervention cost per agent and environment step for "
+            "--adaptive-intervention-budget. With local_safe/global_safe costs, "
+            "this is a target safe-state weighted intervention rate."
+        ),
+    )
+    parser.add_argument(
+        "--intervention-budget-lr",
+        type=float,
+        default=0.01,
+        help="Primal-dual learning rate for adaptive intervention lambdas.",
+    )
+    parser.add_argument(
+        "--intervention-budget-init-lambda",
+        type=float,
+        default=0.0,
+        help="Initial Lagrange multiplier for every agent intervention budget.",
+    )
+    parser.add_argument(
+        "--intervention-budget-max-lambda",
+        type=float,
+        default=10.0,
+        help="Upper clamp for adaptive intervention Lagrange multipliers.",
+    )
+    parser.add_argument(
+        "--intervention-budget-warmup-steps",
+        type=int,
+        default=0,
+        help=(
+            "Do not update adaptive intervention lambdas before this many "
+            "environment steps. Penalties still use the initial lambda."
+        ),
+    )
+    parser.add_argument(
+        "--intervention-budget-cost-mode",
+        type=str,
+        default="local_safe",
+        choices=["nonidle", "global_safe", "local_safe"],
+        help=(
+            "Cost used by --adaptive-intervention-budget. 'nonidle' charges "
+            "every non-idle action equally. 'global_safe' weights non-idle "
+            "actions by a smooth global max-rho safety score. 'local_safe' "
+            "uses each agent's local max-rho score and is decentralized."
+        ),
+    )
+    parser.add_argument(
+        "--intervention-budget-rho-threshold",
+        type=float,
+        default=0.90,
+        help=(
+            "Center of the smooth safety weight used by global_safe/local_safe "
+            "intervention budget costs."
+        ),
+    )
+    parser.add_argument(
+        "--intervention-budget-rho-sharpness",
+        type=float,
+        default=25.0,
+        help=(
+            "Sharpness of sigmoid(threshold - max_rho) used by smooth safety "
+            "weights. Higher values make the budget closer to a hard threshold."
+        ),
     )
 
     parser.add_argument(
