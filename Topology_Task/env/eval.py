@@ -71,9 +71,14 @@ class Evaluator:
         self.eval_action_heuristic = str(
             getattr(args, "eval_action_heuristic", "none")
         )
-        if self.eval_action_heuristic not in {"none", "rho_threshold"}:
+        if self.eval_action_heuristic not in {
+            "none",
+            "rho_threshold",
+            "local_rho_threshold",
+        }:
             raise ValueError(
-                "eval_action_heuristic must be 'none' or 'rho_threshold', "
+                "eval_action_heuristic must be 'none', 'rho_threshold', or "
+                "'local_rho_threshold', "
                 f"got {self.eval_action_heuristic!r}."
             )
         self.eval_action_rho_threshold = float(
@@ -99,17 +104,34 @@ class Evaluator:
         self.chronic_split = chronic_split
         # if self.use_heuristic: self.env.set_n_rewards(len(self.reward_tags))
 
-    def _eval_heuristic_decision(self) -> Tuple[bool, float]:
-        """Return whether eval should force do-nothing and the state max rho."""
+    def _eval_heuristic_decision(
+        self, agent_ids: List[str]
+    ) -> Tuple[Dict[str, bool], Dict[str, float]]:
+        """Return per-agent do-nothing overrides and pre-action max rho values."""
+        force_noop = {agent: False for agent in agent_ids}
+        max_rhos = {agent: float("nan") for agent in agent_ids}
         if self.eval_action_heuristic == "none":
-            return False, float("nan")
+            return force_noop, max_rhos
         if self.eval_action_heuristic == "rho_threshold":
             max_rho = float(self.env.get_current_max_rho())
-            force_noop = (
+            force = (
                 np.isfinite(max_rho)
                 and max_rho < self.eval_action_rho_threshold
             )
-            return bool(force_noop), max_rho
+            return (
+                {agent: bool(force) for agent in agent_ids},
+                {agent: max_rho for agent in agent_ids},
+            )
+        if self.eval_action_heuristic == "local_rho_threshold":
+            local_max_rhos = self.env.get_current_agent_max_rho()
+            for agent in agent_ids:
+                max_rho = float(local_max_rhos.get(agent, float("nan")))
+                max_rhos[agent] = max_rho
+                force_noop[agent] = bool(
+                    np.isfinite(max_rho)
+                    and max_rho < self.eval_action_rho_threshold
+                )
+            return force_noop, max_rhos
         raise ValueError(f"Unsupported eval action heuristic: {self.eval_action_heuristic}")
 
     @staticmethod
@@ -166,8 +188,10 @@ class Evaluator:
         action_nonidle_counts = {agent: 0 for agent in agent_ids}
         heuristic_policy_nonidle_counts = {agent: 0 for agent in agent_ids}
         heuristic_blocked_nonidle_counts = {agent: 0 for agent in agent_ids}
-        heuristic_force_noop_steps = 0
-        heuristic_max_rhos = []
+        heuristic_force_noop_counts = {agent: 0 for agent in agent_ids}
+        heuristic_any_force_noop_steps = 0
+        heuristic_all_force_noop_steps = 0
+        heuristic_max_rhos = {agent: [] for agent in agent_ids}
         explain_eval_arrays = None
         n_eval_steps = 0
         trace_records = []
@@ -183,17 +207,20 @@ class Evaluator:
             policy_action_ids = {
                 agent: tensor_scalar_to_int(action[agent]) for agent in agent_ids
             }
-            force_noop, heuristic_max_rho = self._eval_heuristic_decision()
+            force_noop, heuristic_max_rho = self._eval_heuristic_decision(agent_ids)
             if self.eval_action_heuristic != "none":
-                heuristic_max_rhos.append(heuristic_max_rho)
-                if force_noop:
-                    heuristic_force_noop_steps += 1
-                    for agent in agent_ids:
+                if any(force_noop.values()):
+                    heuristic_any_force_noop_steps += 1
+                if all(force_noop.values()):
+                    heuristic_all_force_noop_steps += 1
+                for agent in agent_ids:
+                    heuristic_max_rhos[agent].append(heuristic_max_rho[agent])
+                    if force_noop[agent]:
+                        heuristic_force_noop_counts[agent] += 1
                         heuristic_blocked_nonidle_counts[agent] += int(
                             policy_action_ids[agent] != 0
                         )
                         action[agent] = self._zero_action_like(action[agent])
-                for agent in agent_ids:
                     heuristic_policy_nonidle_counts[agent] += int(
                         policy_action_ids[agent] != 0
                     )
@@ -306,18 +333,46 @@ class Evaluator:
                             action_nonidle_counts[agent] / max(n_eval_steps, 1)
                         )
                 if self.eval_action_heuristic != "none":
-                    finite_rhos = np.asarray(heuristic_max_rhos, dtype=np.float32)
+                    all_rhos = [
+                        value
+                        for values in heuristic_max_rhos.values()
+                        for value in values
+                    ]
+                    finite_rhos = np.asarray(all_rhos, dtype=np.float32)
                     finite_rhos = finite_rhos[np.isfinite(finite_rhos)]
                     record[f"{eval_label}/heuristic/rho_threshold"] = (
                         self.eval_action_rho_threshold
                     )
+                    record[f"{eval_label}/heuristic/is_local"] = float(
+                        self.eval_action_heuristic == "local_rho_threshold"
+                    )
                     record[f"{eval_label}/heuristic/force_noop_frac"] = (
-                        heuristic_force_noop_steps / max(n_eval_steps, 1)
+                        heuristic_any_force_noop_steps / max(n_eval_steps, 1)
+                    )
+                    record[f"{eval_label}/heuristic/force_noop_any_agent_frac"] = (
+                        heuristic_any_force_noop_steps / max(n_eval_steps, 1)
+                    )
+                    record[f"{eval_label}/heuristic/force_noop_all_agents_frac"] = (
+                        heuristic_all_force_noop_steps / max(n_eval_steps, 1)
                     )
                     record[f"{eval_label}/heuristic/mean_pre_action_max_rho"] = (
                         float(finite_rhos.mean()) if finite_rhos.size else float("nan")
                     )
                     for agent in agent_ids:
+                        agent_rhos = np.asarray(
+                            heuristic_max_rhos[agent], dtype=np.float32
+                        )
+                        agent_rhos = agent_rhos[np.isfinite(agent_rhos)]
+                        record[
+                            f"{eval_label}/heuristic/force_noop_frac_{agent}"
+                        ] = heuristic_force_noop_counts[agent] / max(n_eval_steps, 1)
+                        record[
+                            f"{eval_label}/heuristic/mean_pre_action_max_rho_{agent}"
+                        ] = (
+                            float(agent_rhos.mean())
+                            if agent_rhos.size
+                            else float("nan")
+                        )
                         record[
                             f"{eval_label}/heuristic/policy_nonidle_{agent}"
                         ] = heuristic_policy_nonidle_counts[agent] / max(n_eval_steps, 1)

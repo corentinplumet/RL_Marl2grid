@@ -236,11 +236,13 @@ def get_alg_args() -> Namespace:
         "--eval-action-heuristic",
         type=str,
         default="none",
-        choices=["none", "rho_threshold"],
+        choices=["none", "rho_threshold", "local_rho_threshold"],
         help=(
-            "Evaluation-only action override. 'rho_threshold' forces all agents "
-            "to execute action 0 when the pre-action max rho is below "
-            "--eval-action-rho-threshold, otherwise the learned policy action is used."
+            "Evaluation-only action override. 'rho_threshold' uses the global "
+            "pre-action max rho and forces all agents to action 0 when the grid "
+            "is safe. 'local_rho_threshold' computes a pre-action max rho on "
+            "each agent's local observation domain and independently forces "
+            "only safe agents to action 0."
         ),
     )
     parser.add_argument(
@@ -249,8 +251,9 @@ def get_alg_args() -> Namespace:
         default=0.90,
         help=(
             "Pre-action max rho threshold used by "
-            "--eval-action-heuristic rho_threshold. States below this threshold "
-            "are treated as safe and eval actions are forced to do nothing."
+            "--eval-action-heuristic rho_threshold/local_rho_threshold. States "
+            "below this threshold are treated as safe and eval actions are "
+            "forced to do nothing."
         ),
     )
     parser.add_argument(

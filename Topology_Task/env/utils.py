@@ -478,6 +478,7 @@ class MAEnvWrapper(MAEnv):
                 include_maintenance=env_config[env_id]["maintenance"],
             )
             self.graph_specs = self.graph_builder.specs
+        self.agent_line_domains = self._make_agent_line_domains()
 
         # to avoid "weird" pickle issues
         self.observation_space = {
@@ -695,6 +696,42 @@ class MAEnvWrapper(MAEnv):
         if rho.size == 0 or not np.isfinite(rho).any():
             return float("nan")
         return float(np.nanmax(rho))
+
+    def _make_agent_line_domains(self) -> Dict[str, np.ndarray]:
+        """Return line ids each agent can use for local rho heuristics."""
+        line_or = np.asarray(
+            getattr(self.g2op_env, "line_or_to_subid"), dtype=np.int64
+        )
+        line_ex = np.asarray(
+            getattr(self.g2op_env, "line_ex_to_subid"), dtype=np.int64
+        )
+        line_domains = {}
+        for agent_id, domain_nodes in self.observation_domains.items():
+            domain_nodes = np.asarray(domain_nodes, dtype=np.int64)
+            mask = np.isin(line_or, domain_nodes) | np.isin(line_ex, domain_nodes)
+            line_domains[agent_id] = np.nonzero(mask)[0].astype(np.int64)
+        return line_domains
+
+    def get_current_agent_max_rho(self) -> Dict[str, float]:
+        """Return each agent's local pre-action max rho."""
+        rho = getattr(self._obs, "rho", None)
+        if rho is None:
+            return {agent_id: float("nan") for agent_id in self._agent_ids}
+        rho = np.asarray(rho, dtype=np.float32)
+        result = {}
+        for agent_id in self._agent_ids:
+            line_ids = np.asarray(
+                self.agent_line_domains.get(agent_id, []), dtype=np.int64
+            )
+            if line_ids.size == 0 or rho.size == 0:
+                result[agent_id] = float("nan")
+                continue
+            local_rho = rho[line_ids]
+            finite = np.isfinite(local_rho)
+            result[agent_id] = (
+                float(local_rho[finite].max()) if finite.any() else float("nan")
+            )
+        return result
 
     def get_explainability_state(self) -> Dict[str, Any]:
         """Return lightweight physical diagnostics for the current Grid2Op state."""

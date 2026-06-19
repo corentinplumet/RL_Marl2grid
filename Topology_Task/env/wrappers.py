@@ -123,6 +123,24 @@ class AsyncMultiAgentVecEnv:
             remote.send(("get_current_max_rho", None))
         return np.asarray([remote.recv() for remote in self.remotes], dtype=np.float32)
 
+    def get_current_agent_max_rho(self) -> Dict[str, np.ndarray]:
+        """Collect each worker's per-agent local pre-action max rho."""
+        if self.waiting:
+            raise RuntimeError(
+                "Cannot query local max rho while an async env step is pending."
+            )
+        for remote in self.remotes:
+            remote.send(("get_current_agent_max_rho", None))
+        per_worker = [remote.recv() for remote in self.remotes]
+        agent_ids = per_worker[0].keys() if per_worker else []
+        return {
+            agent_id: np.asarray(
+                [worker.get(agent_id, float("nan")) for worker in per_worker],
+                dtype=np.float32,
+            )
+            for agent_id in agent_ids
+        }
+
     def decode_action_ids(
         self, action_ids_by_agent: Dict[str, List[int]], env_idx: int = 0
     ) -> Dict[str, Dict[int, str]]:
@@ -185,6 +203,8 @@ class AsyncMultiAgentVecEnv:
                     remote.send(None)
                 elif cmd == "get_current_max_rho":
                     remote.send(env.get_current_max_rho())
+                elif cmd == "get_current_agent_max_rho":
+                    remote.send(env.get_current_agent_max_rho())
                 elif cmd == "decode_action_ids":
                     remote.send(env.decode_action_ids(data))
                 else:
@@ -290,6 +310,9 @@ class RecordEpisodeStatistics(gym.Wrapper, gym.utils.RecordConstructorArgs):
 
     def get_current_max_rho(self) -> float:
         return self.env.get_current_max_rho()
+
+    def get_current_agent_max_rho(self) -> Dict[str, float]:
+        return self.env.get_current_agent_max_rho()
 
     def step(self, action):
         """Steps through the environment, recording the episode statistics."""

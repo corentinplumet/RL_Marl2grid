@@ -1,16 +1,21 @@
 # Heuristic vs Gate, Seeds 0-2
 
-This folder compares four variants using `best_00_shared_actor_gnn_gine_a4_concat_flat_critic_gnn_legacy_update` as the base config.
+This folder compares five variants using `best_00_shared_actor_gnn_gine_a4_concat_flat_critic_gnn_legacy_update` as the base config.
 
 Design:
 
 - baseline flat actor
-- baseline flat actor with an evaluation-only rho-threshold heuristic
+- baseline flat actor with a global evaluation-only rho-threshold heuristic
+- baseline flat actor with a local/decentralized evaluation-only rho-threshold heuristic
 - intervention gate with final-action MAP deterministic evaluation
 - intervention gate with hierarchical-greedy deterministic evaluation
 - seeds: `0`, `1`, `2`
 
-The rho heuristic is evaluation-only: the trained policy proposes actions, then evaluation forces all agents to action `0` if the pre-action `max_rho < 0.90`.
+The global rho heuristic is evaluation-only: the trained policy proposes one action per agent, then all agents are forced to action `0` if the global pre-action `max_rho < 0.90`.
+
+The local rho heuristic is also evaluation-only and decentralized: each agent independently checks the pre-action `max_rho` on lines touching its own substations. If that local value is below `0.90`, only that agent is forced to action `0`; otherwise that agent executes its policy action.
+
+For a line connecting two zones, the local heuristic assigns the line to both adjacent agents because it touches both agents' substations. This does not require communication: both agents can independently observe the same boundary line as part of their local physical neighborhood.
 
 Gate evaluation modes:
 
@@ -20,15 +25,18 @@ Gate evaluation modes:
 | Config | Variant | Seed | intervention_gate | gate eval mode | eval_action_heuristic | rho threshold |
 | --- | --- | ---: | --- | --- | --- | ---: |
 | `hvg_00_baseline_s0.toml` | Baseline | 0 | false | `final_action_map` | `none` | 0.90 |
-| `hvg_01_eval_rho090_s0.toml` | Baseline + eval rho heuristic | 0 | false | `final_action_map` | `rho_threshold` | 0.90 |
+| `hvg_01_eval_rho090_s0.toml` | Baseline + global eval rho heuristic | 0 | false | `final_action_map` | `rho_threshold` | 0.90 |
+| `hvg_04_eval_local_rho090_s0.toml` | Baseline + local eval rho heuristic | 0 | false | `final_action_map` | `local_rho_threshold` | 0.90 |
 | `hvg_02_gate_final_map_s0.toml` | Intervention gate final-action MAP | 0 | true | `final_action_map` | `none` | 0.90 |
 | `hvg_03_gate_hierarchical_s0.toml` | Intervention gate hierarchical greedy | 0 | true | `hierarchical_greedy` | `none` | 0.90 |
 | `hvg_00_baseline_s1.toml` | Baseline | 1 | false | `final_action_map` | `none` | 0.90 |
-| `hvg_01_eval_rho090_s1.toml` | Baseline + eval rho heuristic | 1 | false | `final_action_map` | `rho_threshold` | 0.90 |
+| `hvg_01_eval_rho090_s1.toml` | Baseline + global eval rho heuristic | 1 | false | `final_action_map` | `rho_threshold` | 0.90 |
+| `hvg_04_eval_local_rho090_s1.toml` | Baseline + local eval rho heuristic | 1 | false | `final_action_map` | `local_rho_threshold` | 0.90 |
 | `hvg_02_gate_final_map_s1.toml` | Intervention gate final-action MAP | 1 | true | `final_action_map` | `none` | 0.90 |
 | `hvg_03_gate_hierarchical_s1.toml` | Intervention gate hierarchical greedy | 1 | true | `hierarchical_greedy` | `none` | 0.90 |
 | `hvg_00_baseline_s2.toml` | Baseline | 2 | false | `final_action_map` | `none` | 0.90 |
-| `hvg_01_eval_rho090_s2.toml` | Baseline + eval rho heuristic | 2 | false | `final_action_map` | `rho_threshold` | 0.90 |
+| `hvg_01_eval_rho090_s2.toml` | Baseline + global eval rho heuristic | 2 | false | `final_action_map` | `rho_threshold` | 0.90 |
+| `hvg_04_eval_local_rho090_s2.toml` | Baseline + local eval rho heuristic | 2 | false | `final_action_map` | `local_rho_threshold` | 0.90 |
 | `hvg_02_gate_final_map_s2.toml` | Intervention gate final-action MAP | 2 | true | `final_action_map` | `none` | 0.90 |
 | `hvg_03_gate_hierarchical_s2.toml` | Intervention gate hierarchical greedy | 2 | true | `hierarchical_greedy` | `none` | 0.90 |
 
