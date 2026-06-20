@@ -17,3 +17,11 @@ sbatch job_jed.sh configs/phase4_sparse_control_16/sparse16_gated_p000_s1.toml
 sbatch job_jed.sh configs/phase4_sparse_control_16/sparse16_gated_p001_s1.toml
 sbatch job_jed.sh configs/phase4_sparse_control_16/sparse16_gated_p003_s1.toml
 sbatch job_jed.sh configs/phase4_sparse_control_16/sparse16_gated_p010_s1.toml
+sbatch job_jed.sh configs/phase4_sparse_control_16/sparse16_flat_p000_s2.toml
+sbatch job_jed.sh configs/phase4_sparse_control_16/sparse16_flat_p001_s2.toml
+sbatch job_jed.sh configs/phase4_sparse_control_16/sparse16_flat_p003_s2.toml
+sbatch job_jed.sh configs/phase4_sparse_control_16/sparse16_flat_p010_s2.toml
+sbatch job_jed.sh configs/phase4_sparse_control_16/sparse16_gated_p000_s2.toml
+sbatch job_jed.sh configs/phase4_sparse_control_16/sparse16_gated_p001_s2.toml
+sbatch job_jed.sh configs/phase4_sparse_control_16/sparse16_gated_p003_s2.toml
+sbatch job_jed.sh configs/phase4_sparse_control_16/sparse16_gated_p010_s2.toml
