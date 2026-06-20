@@ -2,7 +2,7 @@
 # Uses optimize_critic_updates=false to preserve legacy critic-update behavior.
 
 [run]
-name = "aib_00_flat_local_t020_s3"
+name = "aib_04_flat_nonidle_t020_s0"
 run_dir = "outputs/jed-{config_name}-{job_id}"
 seed_from_slurm_array = false
 extra_args = []
@@ -29,9 +29,9 @@ XDG_CACHE_HOME = "{run_dir}/cache"
 time_limit = 1300
 checkpoint = true
 alg = "MAPPO"
-seed = 3
+seed = 0
 verbose = true
-exp_tag = "aib_00_flat_local_t020_s3"
+exp_tag = "aib_04_flat_nonidle_t020_s0"
 track = true
 wandb_project = "Grid2Op"
 wandb_entity = "corentin-plumet-epfl"
@@ -115,7 +115,7 @@ eval_train_chronics = true
 
 # adaptive sparse-control objective
 adaptive_intervention_budget = true
-intervention_budget_cost_mode = "local_safe"
+intervention_budget_cost_mode = "nonidle"
 intervention_budget_target = 0.20
 intervention_budget_lr = 0.02
 intervention_budget_rho_threshold = 0.90

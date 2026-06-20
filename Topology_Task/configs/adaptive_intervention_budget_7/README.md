@@ -19,20 +19,27 @@ rho threshold.
 | `aib_02_flat_local_t035_s1.toml` | 1 | flat/original | 0.35 | Looser budget repeat |
 | `aib_03_gate_hgreedy_sep_local_t020_s0.toml` | 0 | intervention gate | 0.20 | Diagnostic: does the gate help once sparsity is in the objective? |
 
-## Additional Seed-Expansion Runs
+## Additional 8-Job Batch
 
-These 8 configs extend the same conditions for more robust statistics:
+The first 5 configs complete the existing conditions up to the usual
+`seed = 0,1,2` protocol. The main `t020` flat condition already had seeds
+`0,1,2`, so it does not need extra seed runs.
+
+The last 3 configs add one new 3-seed diagnostic setup: the flat actor with
+`target = 0.20`, but `intervention_budget_cost_mode = "nonidle"`. This tests
+whether a plain intervention budget is enough, or whether the local-safe
+rho-weighted cost is important for preserving survival.
 
 | Config | Seed | Actor | Target | Purpose |
 | --- | ---: | --- | ---: | --- |
-| `aib_00_flat_local_t020_s3.toml` | 3 | flat/original | 0.20 | Main candidate extra seed |
-| `aib_00_flat_local_t020_s4.toml` | 4 | flat/original | 0.20 | Main candidate extra seed |
 | `aib_01_flat_local_t010_s1.toml` | 1 | flat/original | 0.10 | Strict budget extra seed |
 | `aib_01_flat_local_t010_s2.toml` | 2 | flat/original | 0.10 | Strict budget extra seed |
 | `aib_02_flat_local_t035_s2.toml` | 2 | flat/original | 0.35 | Loose budget extra seed |
-| `aib_02_flat_local_t035_s3.toml` | 3 | flat/original | 0.35 | Loose budget extra seed |
 | `aib_03_gate_hgreedy_sep_local_t020_s1.toml` | 1 | intervention gate | 0.20 | Gated diagnostic extra seed |
 | `aib_03_gate_hgreedy_sep_local_t020_s2.toml` | 2 | intervention gate | 0.20 | Gated diagnostic extra seed |
+| `aib_04_flat_nonidle_t020_s0.toml` | 0 | flat/original | 0.20 | Nonidle-cost diagnostic |
+| `aib_04_flat_nonidle_t020_s1.toml` | 1 | flat/original | 0.20 | Nonidle-cost diagnostic |
+| `aib_04_flat_nonidle_t020_s2.toml` | 2 | flat/original | 0.20 | Nonidle-cost diagnostic |
 
 All runs use:
 
@@ -61,10 +68,10 @@ Or submit one run manually:
 sbatch job_jed.sh configs/adaptive_intervention_budget_7/aib_00_flat_local_t020_s0.toml
 ```
 
-Launch only the 8 additional seed-expansion jobs:
+Launch only the 8 additional jobs:
 
 ```bash
-bash Topology_Task/configs/adaptive_intervention_budget_7/launch_new8.sh
+bash Topology_Task/configs/adaptive_intervention_budget_7/launch_next8.sh
 ```
 
 ## First Metrics To Check
