@@ -441,7 +441,12 @@ class MAPPO:
         batch_size = int(args.n_envs * args.n_steps)
         minibatch_size = int(batch_size // args.n_minibatches)
         n_rollouts = args.total_timesteps // batch_size
-        init_rollout = 1 if not ckpt.resumed else ckpt.loaded_run["last_rollout"]
+        if ckpt.resumed:
+            init_rollout = int(ckpt.loaded_run["last_rollout"])
+            if getattr(args, "resume_start_next_rollout", False):
+                init_rollout += 1
+        else:
+            init_rollout = 1
 
         # Determine action space type
         continuous_actions = True if args.action_type == "redispatch" else False

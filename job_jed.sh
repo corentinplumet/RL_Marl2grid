@@ -7,7 +7,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=72
 #SBATCH --mem-per-cpu=7000M
-#SBATCH --time=24:00:00
+#SBATCH --time=1-06:00:00
 #SBATCH --output=Topology_Task/slurm-%x-%j.out
 #SBATCH --error=Topology_Task/slurm-%x-%j.err
 

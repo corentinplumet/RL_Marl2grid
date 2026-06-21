@@ -23,10 +23,28 @@ class CheckpointSaver(ABC):
         if not os.path.exists(self.ckpt_dir):
             os.makedirs(self.ckpt_dir)
         self.loaded_run, self.record = {}, {}
+        self.loaded_checkpoint_path = None
         if self.args.resume_run_name:
-            checkpoint_name = "checkpoint/" + self.args.resume_run_name + ".tar"
+            checkpoint_name = self._resolve_checkpoint_name(self.args.resume_run_name)
+            if not os.path.exists(checkpoint_name):
+                raise FileNotFoundError(
+                    f"Could not find checkpoint '{checkpoint_name}'. "
+                    "Pass either a checkpoint stem from Topology_Task/checkpoint "
+                    "or a path to a .tar checkpoint."
+                )
+            self.loaded_checkpoint_path = checkpoint_name
             self.loaded_run = th.load(checkpoint_name, weights_only=False)
-            os.remove(checkpoint_name)
+            if getattr(self.args, "resume_delete_checkpoint_after_load", False):
+                os.remove(checkpoint_name)
+
+    def _resolve_checkpoint_name(self, resume_run_name: str) -> str:
+        """Resolve a checkpoint stem or path to a .tar path."""
+        checkpoint_name = resume_run_name
+        if not checkpoint_name.endswith(".tar"):
+            checkpoint_name += ".tar"
+        if os.path.isabs(checkpoint_name) or os.path.dirname(checkpoint_name):
+            return checkpoint_name
+        return os.path.join(self.ckpt_dir, checkpoint_name)
 
     @property
     def resumed(self) -> bool:

@@ -59,6 +59,7 @@ DEFAULT_EXPERIMENT_FOLDERS = {
     "intervention_gate_15": CONFIG_ROOT / "intervention_gate_15",
     "phase4_sparse_control_16": CONFIG_ROOT / "phase4_sparse_control_16",
     "heuristic_vs_gate_s0_s1_s2": CONFIG_ROOT / "heuristic_vs_gate_s0_s1_s2",
+    "adaptive_intervention_budget_7": CONFIG_ROOT / "adaptive_intervention_budget_7",
 }
 CACHE_DIR = TASK_DIR / "outputs" / "wandb_cache"
 CACHE_INDEX_PATH = CACHE_DIR / "full_history_cache_index.csv"
@@ -66,6 +67,23 @@ FIG_DIR = TASK_DIR / "outputs" / "action_distribution_figures"
 TRACE_CACHE_DIR = CACHE_DIR / "action_trace_tables"
 for directory in [FIG_DIR, TRACE_CACHE_DIR]:
     directory.mkdir(parents=True, exist_ok=True)
+
+AIB_EXPERIMENT = "adaptive_intervention_budget_7"
+AIB_TITLE = "Adaptive intervention budget 7"
+AIB_FAMILY_LABELS = {
+    "aib_00_flat_local_t020": "AIB flat local target 0.20",
+    "aib_01_flat_local_t010": "AIB flat local target 0.10",
+    "aib_02_flat_local_t035": "AIB flat local target 0.35",
+    "aib_03_gate_hgreedy_sep_local_t020": "AIB gate h-greedy target 0.20",
+    "aib_04_flat_nonidle_t020": "AIB flat non-idle target 0.20",
+}
+AIB_FAMILY_ORDER = {
+    "aib_00_flat_local_t020": 0,
+    "aib_01_flat_local_t010": 1,
+    "aib_02_flat_local_t035": 2,
+    "aib_03_gate_hgreedy_sep_local_t020": 3,
+    "aib_04_flat_nonidle_t020": 4,
+}
 
 _CELL_CONFIG = 'FINAL_WINDOW_STEPS = 10\nSMOOTH_WINDOW = 5\nPLOT_STEP_MAX_M = None\nSAVE_FIGURES = True\nSHOW_FIGURES = True\n\n# Leave as None to use the first available comparison. After running the comparison-spec cell,\n# set this to one of COMPARISON_SPECS["comparison_title"].\nSELECTED_COMPARISON = None\n\n# Optional exact action-id traces. Only useful for runs launched with trace_rollout_actions=true.\nFETCH_TRACE_TABLES_FROM_WANDB = False\nENTITY = os.getenv("WANDB_ENTITY", "corentin-plumet-epfl")\nPROJECT = os.getenv("WANDB_PROJECT", "Grid2Op")\nWANDB_API_TIMEOUT = 300\nTRACE_TOP_K_ACTION_IDS = 10\nTRACE_TABLE_KEYS = (\n    "train/rollout_action_trace",\n    "train/rollout_action_trace_table",\n    "test/rollout_action_trace",\n    "test/rollout_action_trace_table",\n    "eval/rollout_action_trace",\n    "eval/rollout_action_trace_table",\n)\n\nIG15_LABELS = {\n    "ig_00_phase2_base": "IG15 p000 constant entropy",\n    "ig_01_entropy_decay": "IG15 p000 entropy decay",\n    "ig_02_topo001_entropy_decay": "IG15 topo 0.001 + entropy decay",\n    "ig_03_topo005_entropy_decay": "IG15 topo 0.005 + entropy decay",\n    "ig_04_topo010_entropy_decay": "IG15 topo 0.010 + entropy decay",\n}\nSPARSE16_PENALTY_LABELS = {\n    0.000: "p0.000",\n    0.001: "p0.001",\n    0.003: "p0.003",\n    0.010: "p0.010",\n}\n\nHVG_LABELS = {\n    "hvg_00_baseline": "HVG baseline",\n    "hvg_01_eval_rho090": "HVG global rho 0.90",\n    "hvg_04_eval_local_rho090": "HVG local rho 0.90",\n    "hvg_02_gate_final_map": "HVG gate final MAP",\n    "hvg_03_gate_hierarchical": "HVG gate hierarchical",\n}\nHVG_ORDER = {\n    "hvg_00_baseline": 0,\n    "hvg_01_eval_rho090": 1,\n    "hvg_04_eval_local_rho090": 2,\n    "hvg_02_gate_final_map": 3,\n    "hvg_03_gate_hierarchical": 4,\n}\n'
 _CELL_CONFIG_CACHE = 'def safe_name(text):\n    text = re.sub(r"[^A-Za-z0-9._-]+", "_", str(text)).strip("._-")\n    return text or "plot"\n\n\ndef save_figure(fig, name):\n    if not SAVE_FIGURES or fig is None:\n        return None\n    path = FIG_DIR / f"{safe_name(name)}.html"\n    fig.write_html(path, include_plotlyjs="cdn")\n    print(f"Saved: {path}")\n    return path\n\n\nSEED_POINT_MARKER = {\n    "size": 8,\n    "symbol": "circle",\n    "opacity": 0.9,\n    "line": {"color": "white", "width": 0.9},\n}\n\n\ndef _bar_trace_color_map(fig):\n    colors = {}\n    if fig is None:\n        return colors\n    for trace in fig.data:\n        if getattr(trace, "type", None) == "bar" and getattr(trace, "name", None) is not None:\n            colors[str(trace.name)] = trace.marker.color\n    return colors\n\n\ndef _customdata_from_columns(data, columns):\n    if not columns:\n        return None\n    arrays = []\n    for column in columns:\n        values = data[column]\n        if values.dtype == "object":\n            values = values.astype(str)\n        arrays.append(values.to_numpy())\n    return np.stack(arrays, axis=-1)\n\n\ndef _ordered_unique(values):\n    out = []\n    seen = set()\n    for value in values:\n        key = str(value)\n        if key not in seen:\n            seen.add(key)\n            out.append(key)\n    return out\n\n\ndef _seed_jitter_positions(n_points, width):\n    if n_points <= 1:\n        return np.zeros(n_points)\n    spread = min(width * 0.28, 0.08)\n    return np.linspace(-spread, spread, n_points)\n\n\ndef add_seed_point_overlay(fig, seed_data, *, x_col, y_col, group_col="condition_label", customdata_cols=None, hovertemplate=None):\n    if fig is None or seed_data is None or seed_data.empty:\n        return fig\n\n    bar_traces = [trace for trace in fig.data if getattr(trace, "type", None) == "bar"]\n    if not bar_traces:\n        return fig\n\n    grouped_axis = x_col != group_col\n    category_order = _ordered_unique(\n        value\n        for trace in bar_traces\n        for value in list(trace.x)\n    )\n    group_order = _ordered_unique(trace.name for trace in bar_traces)\n    category_to_position = {category: idx for idx, category in enumerate(category_order)}\n\n    if grouped_axis:\n        cluster_width = 0.82\n        group_width = cluster_width / max(len(group_order), 1)\n        group_to_offset = {\n            group: (idx - (len(group_order) - 1) / 2.0) * group_width\n            for idx, group in enumerate(group_order)\n        }\n        bar_width = group_width * 0.86\n    else:\n        group_to_offset = {group: 0.0 for group in group_order}\n        bar_width = 0.64\n\n    colors = _bar_trace_color_map(fig)\n    for trace in bar_traces:\n        group_name = str(trace.name)\n        original_x = [str(value) for value in list(trace.x)]\n        trace.hovertext = original_x\n        if trace.hovertemplate:\n            trace.hovertemplate = trace.hovertemplate.replace("%{x}", "%{hovertext}")\n        trace.x = [category_to_position[value] + group_to_offset.get(group_name, 0.0) for value in original_x]\n        trace.width = bar_width\n\n    seed_points = seed_data.copy()\n    seed_points["__category_label"] = seed_points[x_col].astype(str)\n    seed_points["__group_label"] = seed_points[group_col].astype(str)\n    seed_points["__bar_x"] = seed_points["__category_label"].map(category_to_position)\n    seed_points["__bar_x"] = seed_points["__bar_x"] + seed_points["__group_label"].map(group_to_offset).fillna(0.0)\n    seed_points = seed_points.dropna(subset=["__bar_x", y_col])\n    if seed_points.empty:\n        fig.update_xaxes(tickmode="array", tickvals=list(range(len(category_order))), ticktext=category_order)\n        return fig\n\n    adjusted_hovertemplate = hovertemplate.replace("%{x}", "%{text}") if hovertemplate else None\n    group_keys = ["__group_label", "__category_label"] if grouped_axis else ["__group_label"]\n    plotted_groups = []\n    for group_value, group_data in seed_points.groupby(group_keys, dropna=False, sort=False):\n        if grouped_axis:\n            group_name = str(group_value[0])\n            category_name = str(group_value[1])\n        else:\n            group_name = str(group_value[0] if isinstance(group_value, tuple) else group_value)\n            category_name = None\n        sort_cols = [column for column in ["seed", "run_name"] if column in group_data.columns]\n        group_data = group_data.sort_values(sort_cols).copy() if sort_cols else group_data.copy()\n        group_data["__dot_x"] = group_data["__bar_x"].to_numpy() + _seed_jitter_positions(len(group_data), bar_width)\n        marker = dict(SEED_POINT_MARKER)\n        marker["color"] = colors.get(group_name, "rgba(45,45,45,0.78)")\n        trace_name = f"{group_name} seeds" if category_name is None else f"{group_name} {category_name} seeds"\n        plotted_groups.append(group_name)\n        fig.add_trace(\n            go.Scatter(\n                x=group_data["__dot_x"],\n                y=group_data[y_col],\n                text=group_data["__category_label"],\n                mode="markers",\n                name=trace_name,\n                legendgroup=group_name,\n                showlegend=False,\n                marker=marker,\n                customdata=_customdata_from_columns(group_data, customdata_cols or []),\n                hovertemplate=adjusted_hovertemplate,\n            )\n        )\n\n    fig.update_xaxes(\n        tickmode="array",\n        tickvals=list(range(len(category_order))),\n        ticktext=category_order,\n    )\n    return fig\n\ndef _as_float(value, default=np.nan):\n    if value is None:\n        return default\n    try:\n        return float(value)\n    except (TypeError, ValueError):\n        return default\n\n\ndef _as_bool(value):\n    if isinstance(value, bool):\n        return value\n    if value is None or (isinstance(value, float) and np.isnan(value)):\n        return None\n    lower = str(value).strip().lower()\n    if lower in {"1", "true", "yes", "y", "on"}:\n        return True\n    if lower in {"0", "false", "no", "n", "off"}:\n        return False\n    return None\n\n\ndef _seed_from_stem(stem):\n    match = re.search(r"_s(\\d+)$", stem)\n    return int(match.group(1)) if match else np.nan\n\n\ndef _family_from_stem(stem):\n    return re.sub(r"_s\\d+$", "", stem)\n\n\ndef _sparse_penalty_from_family(family):\n    match = re.search(r"_p(\\d{3})$", family)\n    if not match:\n        return np.nan\n    return int(match.group(1)) / 1000.0\n\n\ndef _sparse_design_from_family(family):\n    match = re.match(r"^sparse16_(flat|gated)_p\\d{3}$", family)\n    return match.group(1) if match else None\n\n\ndef _metadata_from_config(path, experiment):\n    cfg = tomllib.loads(Path(path).read_text(encoding="utf-8"))\n    args = cfg.get("args", {})\n    stem = Path(path).stem\n    family = _family_from_stem(stem)\n    seed = _seed_from_stem(stem)\n    gate_enabled = _as_bool(args.get("intervention_gate"))\n    topology_reward = _as_float(args.get("topology_reward_weight"), 0.0)\n    intervention_penalty = _as_float(args.get("intervention_penalty"), 0.0)\n    entropy_initial = _as_float(args.get("entropy_coef"), np.nan)\n    entropy_final = _as_float(args.get("entropy_coef_final"), np.nan)\n    entropy_schedule = "decay" if entropy_final < entropy_initial else "constant"\n    eval_action_heuristic = args.get("eval_action_heuristic") or "none"\n    eval_action_rho_threshold = _as_float(args.get("eval_action_rho_threshold"), np.nan)\n    intervention_gate_eval_mode = args.get("intervention_gate_eval_mode") or "none"\n\n    if experiment == "intervention_gate_15":\n        family_label = IG15_LABELS.get(family, family.replace("_", " "))\n        design = "gated"\n        control_axis = "topology_reward"\n        control_value = topology_reward\n        control_label = f"topo {topology_reward:g}"\n        comparison_group = "IG15"\n    elif experiment == "phase4_sparse_control_16":\n        design = _sparse_design_from_family(family) or ("gated" if gate_enabled else "flat")\n        control_axis = "intervention_penalty"\n        control_value = intervention_penalty if not np.isnan(intervention_penalty) else _sparse_penalty_from_family(family)\n        control_label = SPARSE16_PENALTY_LABELS.get(control_value, f"p{control_value:g}")\n        family_label = f"Sparse16 {design} {control_label}"\n        comparison_group = "Sparse16"\n    elif experiment == "heuristic_vs_gate_s0_s1_s2":\n        eval_action_heuristic_normalized = str(eval_action_heuristic).strip().lower()\n        family_label = HVG_LABELS.get(family, family.replace("_", " "))\n        if gate_enabled:\n            design = "gated"\n        elif eval_action_heuristic_normalized != "none":\n            design = "eval_heuristic"\n        else:\n            design = "baseline"\n        control_axis = "variant_order"\n        control_value = HVG_ORDER.get(family, np.nan)\n        control_label = family_label.replace("HVG ", "")\n        comparison_group = "HVG"\n    else:\n        family_label = family.replace("_", " ")\n        design = "gated" if gate_enabled else "flat"\n        control_axis = "unknown"\n        control_value = np.nan\n        control_label = "unknown"\n        comparison_group = experiment\n\n    return {\n        "expected_run_name": stem,\n        "config_path": str(path),\n        "experiment": experiment,\n        "comparison_group": comparison_group,\n        "family": family,\n        "family_label": family_label,\n        "seed": seed,\n        "design": design,\n        "gate_enabled": gate_enabled,\n        "control_axis": control_axis,\n        "control_value": control_value,\n        "control_label": control_label,\n        "eval_action_heuristic": eval_action_heuristic,\n        "eval_action_rho_threshold": eval_action_rho_threshold,\n        "intervention_gate_eval_mode": intervention_gate_eval_mode,\n        "topology_reward_weight": topology_reward,\n        "intervention_penalty": intervention_penalty,\n        "entropy_coef": entropy_initial,\n        "entropy_coef_final": entropy_final,\n        "entropy_schedule": entropy_schedule,\n        "total_timesteps": args.get("total_timesteps"),\n        "eval_freq": args.get("eval_freq"),\n        "n_steps": args.get("n_steps"),\n        "n_envs": args.get("n_envs"),\n        "rollout_action_samples": int(args.get("n_steps", 0)) * int(args.get("n_envs", 0)),\n    }\n\n\ndef read_expected_configs():\n    rows = []\n    for experiment, folder in EXPERIMENT_FOLDERS.items():\n        if not folder.exists():\n            print(f"Missing config folder: {folder}")\n            continue\n        for path in sorted(folder.glob("*.toml")):\n            rows.append(_metadata_from_config(path, experiment))\n    if not rows:\n        raise RuntimeError("No expected config TOMLs found.")\n    return pd.DataFrame(rows)\n\n\ndef load_cache_index(path=CACHE_INDEX_PATH):\n    if not Path(path).exists():\n        raise FileNotFoundError(f"Missing {path}. Run the W&B history cache notebook first.")\n    index = pd.read_csv(path)\n    index = index.rename(columns={"name": "run_name", "id": "run_id"}).copy()\n    for col in ["history_parquet", "history_csv"]:\n        if col not in index.columns:\n            index[col] = None\n    index["history_parquet"] = index["history_parquet"].apply(lambda value: Path(value) if pd.notna(value) else None)\n    index["history_csv"] = index["history_csv"].apply(lambda value: Path(value) if pd.notna(value) else None)\n    index["has_history"] = index.apply(\n        lambda row: bool(row["history_parquet"] and row["history_parquet"].exists())\n        or bool(row["history_csv"] and row["history_csv"].exists()),\n        axis=1,\n    )\n    return index[index["has_history"]].reset_index(drop=True)\n\n\nEXPECTED_CONFIGS = read_expected_configs()\ncache_index = load_cache_index()\nselected_runs = cache_index.merge(\n    EXPECTED_CONFIGS,\n    left_on="run_name",\n    right_on="expected_run_name",\n    how="inner",\n)\ncoverage = EXPECTED_CONFIGS.merge(\n    selected_runs[["expected_run_name", "run_id", "rows", "columns"]],\n    on="expected_run_name",\n    how="left",\n)\ncoverage["cached"] = coverage["run_id"].notna()\n\nprint(f"Expected configs: {len(EXPECTED_CONFIGS)}")\nprint(f"Cached expected runs: {coverage[\'cached\'].sum()} / {len(coverage)}")\n# display(coverage.groupby(["experiment", "family_label"], dropna=False).agg(\n#     expected=("expected_run_name", "count"),\n#     cached=("cached", "sum"),\n#     seeds=("seed", lambda values: sorted(pd.Series(values).dropna().astype(int).unique())),\n# ).reset_index())\n\nmissing = coverage[~coverage["cached"]].sort_values(["experiment", "family_label", "seed"])\nif not missing.empty:\n    print("Missing cached histories for these expected configs:")\n    display(missing[["experiment", "expected_run_name", "family_label", "seed", "control_label", "design"]])\n'
@@ -88,6 +106,45 @@ def _experiment_folder_map(experiment_folders=None):
         return {name: Path(path) for name, path in experiment_folders.items()}
     names = list(experiment_folders)
     return {name: CONFIG_ROOT / name for name in names}
+
+
+def _annotate_aib_metadata(df):
+    """Make AIB rows use readable labels and deterministic ordering."""
+    if not isinstance(df, pd.DataFrame) or df.empty or "experiment" not in df.columns:
+        return df
+    if "family" not in df.columns:
+        return df
+    out = df.copy()
+    mask = out["experiment"].astype(str).eq(AIB_EXPERIMENT)
+    if not mask.any():
+        return out
+
+    family = out.loc[mask, "family"].astype(str)
+    order = family.map(AIB_FAMILY_ORDER)
+    labels = family.map(AIB_FAMILY_LABELS)
+    fallback_labels = "AIB " + family.str.replace("_", " ", regex=False)
+
+    if "comparison_group" in out.columns:
+        out.loc[mask, "comparison_group"] = "AIB"
+    if "family_label" in out.columns:
+        out.loc[mask, "family_label"] = labels.fillna(fallback_labels)
+    if "control_axis" in out.columns:
+        out.loc[mask, "control_axis"] = "aib_variant"
+    if "control_value" in out.columns:
+        out.loc[mask, "control_value"] = order.fillna(99).astype(float)
+    if "control_label" in out.columns:
+        out.loc[mask, "control_label"] = labels.fillna(fallback_labels)
+    if "design" in out.columns:
+        gate_mask = family.str.contains("_gate_", regex=False)
+        out.loc[mask, "design"] = np.where(gate_mask, "gated", "flat")
+    return out
+
+
+def _annotate_aib_context(context):
+    for name in ["EXPECTED_CONFIGS", "selected_runs", "coverage"]:
+        if name in context:
+            context[name] = _annotate_aib_metadata(context[name])
+    return context
 
 
 def _base_context(experiment_folders=None):
@@ -224,14 +281,18 @@ def _apply_eval_action_metric_source(history, *, eval_split="test"):
 
             action0_col = f"{split}/explain/frac_action_0_{agent}"
             nonidle_col = f"{split}/explain/action_nonidle_{agent}"
-            action0_values = None
-            nonidle_values = None
-            if action0_col in history.columns:
-                action0_values = pd.to_numeric(history[action0_col], errors="coerce")
-                nonidle_values = 1.0 - action0_values
-            elif nonidle_col in history.columns:
-                nonidle_values = pd.to_numeric(history[nonidle_col], errors="coerce")
-                action0_values = 1.0 - nonidle_values
+            raw_action0 = (
+                pd.to_numeric(history[action0_col], errors="coerce")
+                if action0_col in history.columns
+                else pd.Series(np.nan, index=history.index)
+            )
+            raw_nonidle = (
+                pd.to_numeric(history[nonidle_col], errors="coerce")
+                if nonidle_col in history.columns
+                else pd.Series(np.nan, index=history.index)
+            )
+            action0_values = raw_action0.where(raw_action0.notna(), 1.0 - raw_nonidle)
+            nonidle_values = raw_nonidle.where(raw_nonidle.notna(), 1.0 - raw_action0)
 
             if action0_values is None or action0_values.notna().sum() == 0:
                 continue
@@ -406,6 +467,7 @@ def load_action_distribution_context(
         context["PLOT_STEP_MAX_M"] = plot_step_max_m
 
     _exec_cell(context, _CELL_CONFIG_CACHE, "configs_and_cache")
+    _annotate_aib_context(context)
     if context["ACTION_METRIC_SOURCE"] == "eval":
         context["FIG_DIR"] = FIG_DIR / f"eval_{context['ACTION_EVAL_SPLIT']}"
         context["FIG_DIR"].mkdir(parents=True, exist_ok=True)
@@ -426,14 +488,31 @@ def _figures(context, names):
     return {name: context.get(name) for name in names if context.get(name) is not None}
 
 
+def _plot_aib(context, fig_name, plotter_name, title, save_name):
+    plotter = context.get(plotter_name)
+    if not callable(plotter):
+        return None
+    fig = plotter(AIB_EXPERIMENT, title, save_name)
+    context[fig_name] = fig
+    return fig
+
+
 def last5_logged_action0_fraction_by_agent_all_runs(context):
     _exec_cell(context, _CELL_ACTION0_ALL, "last5_action0_all_runs")
+    _plot_aib(
+        context,
+        "fig_action0_fraction_aib_all_runs",
+        "plot_action0_fraction_all_runs",
+        f"{AIB_TITLE}: action 0 fraction by agent for all runs (mean of last 5 logged)",
+        "final_action0_fraction_by_agent_all_runs_adaptive_intervention_budget_7",
+    )
     return {
         "title": "Last-5logged action 0 fraction by agent for all runs",
         "figures": _figures(context, [
             "fig_action0_fraction_ig15_all_runs",
             "fig_action0_fraction_hvg_all_runs",
             "fig_action0_fraction_sparse16_all_runs",
+            "fig_action0_fraction_aib_all_runs",
         ]),
         "tables": {
             "ACTION0_FINAL_LONG": context.get("ACTION0_FINAL_LONG"),
@@ -447,12 +526,20 @@ def seed_aggregated_last5_logged_action0_fraction_by_agent(context):
     if "ACTION0_FINAL_LONG" not in context:
         last5_logged_action0_fraction_by_agent_all_runs(context)
     _exec_cell(context, _CELL_ACTION0_SEED, "seed_aggregated_action0")
+    _plot_aib(
+        context,
+        "fig_action0_fraction_aib_seed_agg",
+        "plot_action0_fraction_seed_aggregated",
+        f"{AIB_TITLE}: seed-aggregated action 0 fraction by agent (mean of last 5 logged)",
+        "seed_aggregated_final_action0_fraction_by_agent_adaptive_intervention_budget_7",
+    )
     return {
         "title": "Seed-Aggregated Last-5-Logged Action-0 Fraction By Agent",
         "figures": _figures(context, [
             "fig_action0_fraction_ig15_seed_agg",
             "fig_action0_fraction_hvg_seed_agg",
             "fig_action0_fraction_sparse16_seed_agg",
+            "fig_action0_fraction_aib_seed_agg",
         ]),
         "tables": {"ACTION0_SEED_AGG": context.get("ACTION0_SEED_AGG")},
     }
@@ -460,16 +547,378 @@ def seed_aggregated_last5_logged_action0_fraction_by_agent(context):
 
 def survival_vs_action0_non_idle_over_time(context):
     _exec_cell(context, _CELL_SURVIVAL_ACTION, "survival_vs_action_behavior")
+    _plot_aib(
+        context,
+        "fig_survival_vs_action_aib",
+        "plot_survival_vs_action_behavior",
+        f"{AIB_TITLE}: survival vs action-0 / non-idle over evaluation",
+        "survival_vs_action_behavior_adaptive_intervention_budget_7",
+    )
     return {
         "title": "Survival vs Action-0 / Non-Idle Over Time",
         "figures": _figures(context, [
             "fig_survival_vs_action_ig15",
             "fig_survival_vs_action_hvg",
             "fig_survival_vs_action_sparse16",
+            "fig_survival_vs_action_aib",
         ]),
         "tables": {
             "SURVIVAL_SEED_AGG": context.get("SURVIVAL_SEED_AGG"),
             "ACTION_BEHAVIOR_SEED_AGG": context.get("ACTION_BEHAVIOR_SEED_AGG"),
+        },
+    }
+
+
+EXPERIMENT_TITLES = {
+    "intervention_gate_15": "Intervention gate 15",
+    "phase4_sparse_control_16": "Phase4 sparse control 16",
+    "heuristic_vs_gate_s0_s1_s2": "Heuristic vs gate s0/s1/s2",
+    AIB_EXPERIMENT: AIB_TITLE,
+}
+
+
+def _survival_scale_fallback(values):
+    numeric = pd.to_numeric(values, errors="coerce")
+    max_value = numeric.max(skipna=True)
+    if pd.isna(max_value):
+        return 100.0
+    return 100.0 if max_value <= 1.5 else 1.0
+
+
+def _final_survival_per_run_rows(context, last_n_logged=5):
+    history = context.get("history_wide")
+    if not isinstance(history, pd.DataFrame) or history.empty:
+        return pd.DataFrame()
+
+    candidates = context.get("SURVIVAL_METRIC_CANDIDATES") or [
+        "test/charts/episodic_survival",
+        "test/episodic_survival",
+        "validation/episodic_survival",
+        "charts/episodic_survival",
+        "train_eval/charts/episodic_survival",
+        "train_eval/episodic_survival",
+    ]
+    scale_fn = context.get("_survival_scale") or _survival_scale_fallback
+    final_summary_step_m = context.get("FINAL_SUMMARY_STEP_M")
+    rows = []
+
+    meta_cols = [
+        "run_name",
+        "run_id",
+        "experiment",
+        "comparison_group",
+        "family",
+        "family_label",
+        "seed",
+        "design",
+        "control_axis",
+        "control_value",
+        "control_label",
+        "entropy_schedule",
+        "_step",
+        "step_millions",
+    ]
+    meta_cols = [col for col in meta_cols if col in history.columns]
+
+    for _, run_history in history.groupby("run_id", sort=False):
+        metric = next(
+            (
+                candidate
+                for candidate in candidates
+                if candidate in run_history.columns and run_history[candidate].notna().any()
+            ),
+            None,
+        )
+        if metric is None:
+            continue
+
+        values = pd.to_numeric(run_history[metric], errors="coerce")
+        frame = run_history[meta_cols].copy()
+        frame["survival_pct"] = values * scale_fn(values)
+        frame["metric_used"] = metric
+        frame = frame.dropna(subset=["survival_pct", "_step", "step_millions"])
+        frame = _apply_final_summary_step_cutoff(frame, final_summary_step_m)
+        if frame.empty:
+            continue
+
+        tail = frame.sort_values("_step").tail(int(last_n_logged))
+        first = tail.iloc[-1]
+        rows.append(
+            {
+                "run_name": first.get("run_name"),
+                "run_id": first.get("run_id"),
+                "experiment": first.get("experiment"),
+                "comparison_group": first.get("comparison_group"),
+                "family": first.get("family"),
+                "family_label": first.get("family_label"),
+                "seed": first.get("seed"),
+                "design": first.get("design"),
+                "control_axis": first.get("control_axis"),
+                "control_value": first.get("control_value"),
+                "control_label": first.get("control_label"),
+                "entropy_schedule": first.get("entropy_schedule"),
+                "final_survival_pct": tail["survival_pct"].mean(),
+                "std_final_survival_pct": tail["survival_pct"].std(),
+                "final_survival_step_millions": tail["step_millions"].max(),
+                "survival_logged_points": int(tail["survival_pct"].count()),
+                "survival_metric_used": metric,
+            }
+        )
+
+    out = pd.DataFrame(rows)
+    if "std_final_survival_pct" in out.columns:
+        out["std_final_survival_pct"] = out["std_final_survival_pct"].fillna(0.0)
+    return out
+
+
+def _action0_per_run_rows(context):
+    action0 = context.get("ACTION0_FINAL_LONG")
+    if not isinstance(action0, pd.DataFrame) or action0.empty:
+        return pd.DataFrame()
+
+    data = action0.copy()
+    data["final_fraction_action0"] = pd.to_numeric(data["final_fraction_action0"], errors="coerce")
+    data["final_action0_count"] = pd.to_numeric(data.get("final_action0_count"), errors="coerce")
+    data["final_step_millions"] = pd.to_numeric(data.get("final_step_millions"), errors="coerce")
+
+    group_cols = [
+        "run_name",
+        "run_id",
+        "experiment",
+        "comparison_group",
+        "family",
+        "family_label",
+        "seed",
+        "design",
+        "control_axis",
+        "control_value",
+        "control_label",
+        "entropy_schedule",
+    ]
+    group_cols = [col for col in group_cols if col in data.columns]
+    out = data.groupby(group_cols, dropna=False, as_index=False).agg(
+        final_action0_fraction=("final_fraction_action0", "mean"),
+        std_agent_action0_fraction=("final_fraction_action0", "std"),
+        final_action0_count=("final_action0_count", "sum"),
+        final_action0_step_millions=("final_step_millions", "max"),
+        n_agents=("agent", "nunique"),
+    )
+    out["std_agent_action0_fraction"] = out["std_agent_action0_fraction"].fillna(0.0)
+    return out
+
+
+def _action0_survival_tradeoff_rows(context, last_n_logged=5):
+    action0 = _action0_per_run_rows(context)
+    survival = _final_survival_per_run_rows(context, last_n_logged=last_n_logged)
+    if action0.empty or survival.empty:
+        return pd.DataFrame(), pd.DataFrame()
+
+    keep_survival = [
+        "run_id",
+        "run_name",
+        "final_survival_pct",
+        "std_final_survival_pct",
+        "final_survival_step_millions",
+        "survival_logged_points",
+        "survival_metric_used",
+    ]
+    keep_survival = [col for col in keep_survival if col in survival.columns]
+    merged = action0.merge(survival[keep_survival], on=["run_id", "run_name"], how="inner")
+    if merged.empty:
+        return merged, pd.DataFrame()
+
+    merged["condition_label"] = merged["family_label"]
+    merged["step_gap_millions"] = (
+        pd.to_numeric(merged["final_action0_step_millions"], errors="coerce")
+        - pd.to_numeric(merged["final_survival_step_millions"], errors="coerce")
+    ).abs()
+
+    group_cols = [
+        "experiment",
+        "comparison_group",
+        "family",
+        "family_label",
+        "condition_label",
+        "design",
+        "control_axis",
+        "control_value",
+        "control_label",
+        "entropy_schedule",
+    ]
+    group_cols = [col for col in group_cols if col in merged.columns]
+    grouped = merged.groupby(group_cols, dropna=False, as_index=False).agg(
+        mean_action0_fraction=("final_action0_fraction", "mean"),
+        std_action0_fraction=("final_action0_fraction", "std"),
+        mean_survival_pct=("final_survival_pct", "mean"),
+        std_survival_pct=("final_survival_pct", "std"),
+        mean_final_step_millions=("final_survival_step_millions", "mean"),
+        n_seeds=("run_id", "nunique"),
+        seeds=("seed", _seed_list),
+        runs=("run_name", lambda values: sorted(pd.Series(values).dropna().astype(str).unique().tolist())),
+        metrics_used=("survival_metric_used", lambda values: sorted(pd.Series(values).dropna().astype(str).unique().tolist())),
+    )
+    grouped["std_action0_fraction"] = grouped["std_action0_fraction"].fillna(0.0)
+    grouped["std_survival_pct"] = grouped["std_survival_pct"].fillna(0.0)
+    grouped = grouped.sort_values(["experiment", "control_value", "design", "family_label"])
+    return merged, grouped
+
+
+def _plot_action0_survival_tradeoff(context, run_rows, agg_rows, experiment):
+    run_data = run_rows[run_rows["experiment"].astype(str).eq(experiment)].copy()
+    agg_data = agg_rows[agg_rows["experiment"].astype(str).eq(experiment)].copy()
+    if run_data.empty or agg_data.empty:
+        return None
+
+    conditions = agg_data[["family", "condition_label", "control_value", "design"]].drop_duplicates()
+    conditions = conditions.sort_values(["control_value", "design", "condition_label"])
+    palette = px.colors.qualitative.Plotly + px.colors.qualitative.Dark24
+    colors = {row.family: palette[idx % len(palette)] for idx, row in enumerate(conditions.itertuples(index=False))}
+    title = f"{EXPERIMENT_TITLES.get(experiment, experiment)}: final action-0 vs episodic survival tradeoff"
+    save_name = f"final_action0_vs_survival_tradeoff_{experiment}"
+
+    fig = go.Figure()
+    for _, condition in conditions.iterrows():
+        family = condition["family"]
+        label = condition["condition_label"]
+        color = colors[family]
+        seed_points = run_data[run_data["family"].astype(str).eq(str(family))].sort_values("seed")
+        if not seed_points.empty:
+            fig.add_trace(
+                go.Scatter(
+                    x=seed_points["final_action0_fraction"],
+                    y=seed_points["final_survival_pct"],
+                    mode="markers",
+                    name=f"{label} seeds",
+                    legendgroup=family,
+                    showlegend=False,
+                    marker={
+                        "color": color,
+                        "size": 8,
+                        "opacity": 0.55,
+                        "line": {"color": "white", "width": 0.8},
+                    },
+                    customdata=np.stack(
+                        [
+                            seed_points["run_name"].astype(str),
+                            seed_points["seed"],
+                            seed_points["final_action0_count"],
+                            seed_points["n_agents"],
+                            seed_points["final_action0_step_millions"],
+                            seed_points["final_survival_step_millions"],
+                            seed_points["survival_metric_used"].astype(str),
+                        ],
+                        axis=-1,
+                    ),
+                    hovertemplate=(
+                        "seed run=%{customdata[0]}<br>"
+                        "seed=%{customdata[1]}<br>"
+                        "action-0 fraction=%{x:.4f}<br>"
+                        "episodic survival=%{y:.2f}%<br>"
+                        "action-0 count=%{customdata[2]}<br>"
+                        "agents=%{customdata[3]}<br>"
+                        "action step=%{customdata[4]:.2f}M<br>"
+                        "survival step=%{customdata[5]:.2f}M<br>"
+                        "survival metric=%{customdata[6]}<extra></extra>"
+                    ),
+                )
+            )
+
+        mean_row = agg_data[agg_data["family"].astype(str).eq(str(family))].iloc[0]
+        fig.add_trace(
+            go.Scatter(
+                x=[mean_row["mean_action0_fraction"]],
+                y=[mean_row["mean_survival_pct"]],
+                mode="markers",
+                name=label,
+                legendgroup=family,
+                showlegend=True,
+                marker={
+                    "color": color,
+                    "size": 17,
+                    "symbol": "diamond",
+                    "line": {"color": "black", "width": 1.1},
+                },
+                error_x={"type": "data", "array": [float(mean_row["std_action0_fraction"])]},
+                error_y={"type": "data", "array": [float(mean_row["std_survival_pct"])]},
+                customdata=np.array(
+                    [[mean_row["n_seeds"], str(mean_row["seeds"]), str(mean_row["runs"]), str(mean_row["metrics_used"])]],
+                    dtype=object,
+                ),
+                hovertemplate=(
+                    f"<b>{label}</b><br>"
+                    "mean action-0 fraction=%{x:.4f}<br>"
+                    "mean episodic survival=%{y:.2f}%<br>"
+                    "n_seeds=%{customdata[0]}<br>"
+                    "seeds=%{customdata[1]}<br>"
+                    "runs=%{customdata[2]}<br>"
+                    "survival metric=%{customdata[3]}<extra></extra>"
+                ),
+            )
+        )
+
+    fig.add_annotation(
+        text="better: higher survival and more action 0",
+        x=0.98,
+        y=102,
+        xref="x",
+        yref="y",
+        showarrow=True,
+        ax=-90,
+        ay=45,
+        font={"size": 12, "color": "#333"},
+        arrowcolor="#333",
+    )
+    source_label = "eval" if context.get("ACTION_METRIC_SOURCE") == "eval" else "train"
+    final_step = context.get("FINAL_SUMMARY_STEP_M")
+    subtitle = f"action source={source_label}; final window <= {final_step:g}M" if final_step is not None else f"action source={source_label}; final window = run end"
+    fig.update_layout(
+        title=f"{title}<br><sup>{subtitle}; seed dots, diamond/error bars = condition mean/std</sup>",
+        template="plotly_white",
+        height=680,
+        width=1200,
+        hovermode="closest",
+        legend={"orientation": "v", "yanchor": "top", "y": 1, "xanchor": "left", "x": 1.01},
+        margin={"l": 80, "r": 340, "t": 105, "b": 70},
+    )
+    fig.update_xaxes(title_text="mean action-0 fraction across agents", range=[0, 1])
+    fig.update_yaxes(title_text="episodic survival (%)", range=[0, 105])
+
+    save_figure = context.get("save_figure")
+    if callable(save_figure):
+        save_figure(fig, save_name)
+    if context.get("SHOW_FIGURES"):
+        fig.show()
+    return fig
+
+
+def action0_survival_tradeoff(context, survival_last_n_logged=5):
+    if "ACTION0_FINAL_LONG" not in context:
+        last5_logged_action0_fraction_by_agent_all_runs(context)
+    if "SURVIVAL_SEED_AGG" not in context or "ACTION_BEHAVIOR_SEED_AGG" not in context:
+        survival_vs_action0_non_idle_over_time(context)
+
+    run_rows, agg_rows = _action0_survival_tradeoff_rows(
+        context,
+        last_n_logged=survival_last_n_logged,
+    )
+    context["ACTION0_SURVIVAL_TRADEOFF_RUN_LONG"] = run_rows
+    context["ACTION0_SURVIVAL_TRADEOFF_SEED_AGG"] = agg_rows
+
+    figures = {}
+    if run_rows.empty or agg_rows.empty:
+        print("No overlapping action-0 and survival data available for tradeoff plots.")
+    else:
+        for experiment in sorted(run_rows["experiment"].dropna().astype(str).unique()):
+            fig = _plot_action0_survival_tradeoff(context, run_rows, agg_rows, experiment)
+            if fig is not None:
+                figures[f"fig_action0_survival_tradeoff_{experiment}"] = fig
+
+    return {
+        "title": "Action-0 / Survival Tradeoff",
+        "figures": figures,
+        "tables": {
+            "ACTION0_SURVIVAL_TRADEOFF_RUN_LONG": run_rows,
+            "ACTION0_SURVIVAL_TRADEOFF_SEED_AGG": agg_rows,
         },
     }
 
@@ -495,15 +944,31 @@ def entropy_collapse_vs_action0_confidence(context):
             },
         }
     _exec_cell(context, _CELL_ENTROPY_ACTION0, "entropy_vs_action0")
+    _plot_aib(
+        context,
+        "fig_entropy_action0_timeseries_aib",
+        "plot_entropy_action0_timeseries",
+        f"{AIB_TITLE}: entropy collapse vs action-0 confidence over evaluation",
+        "entropy_action0_timeseries_adaptive_intervention_budget_7",
+    )
+    _plot_aib(
+        context,
+        "fig_entropy_action0_final_scatter_aib",
+        "plot_final_action0_entropy_scatter",
+        f"{AIB_TITLE}: final entropy vs action-0 confidence",
+        "final_entropy_action0_scatter_adaptive_intervention_budget_7",
+    )
     return {
         "title": "Entropy Collapse vs Action-0 Confidence",
         "figures": _figures(context, [
             "fig_entropy_action0_timeseries_ig15",
             "fig_entropy_action0_timeseries_hvg",
             "fig_entropy_action0_timeseries_sparse16",
+            "fig_entropy_action0_timeseries_aib",
             "fig_entropy_action0_final_scatter_ig15",
             "fig_entropy_action0_final_scatter_hvg",
             "fig_entropy_action0_final_scatter_sparse16",
+            "fig_entropy_action0_final_scatter_aib",
         ]),
         "tables": {
             "ENTROPY_ACTION0_RUN_LONG": context.get("ENTROPY_ACTION0_RUN_LONG"),
@@ -515,15 +980,31 @@ def entropy_collapse_vs_action0_confidence(context):
 
 def agent_non_idle_imbalance(context):
     _exec_cell(context, _CELL_AGENT_IMBALANCE, "agent_non_idle_imbalance")
+    _plot_aib(
+        context,
+        "fig_agent_imbalance_timeseries_aib",
+        "plot_agent_imbalance_timeseries",
+        f"{AIB_TITLE}: agent non-idle imbalance over evaluation",
+        "agent_non_idle_imbalance_timeseries_adaptive_intervention_budget_7",
+    )
+    _plot_aib(
+        context,
+        "fig_agent_imbalance_final_aib",
+        "plot_final_agent_imbalance",
+        f"{AIB_TITLE}: final agent non-idle imbalance (mean of last 5 logged)",
+        "final_agent_non_idle_imbalance_adaptive_intervention_budget_7",
+    )
     return {
         "title": "Agent Non-Idle Imbalance",
         "figures": _figures(context, [
             "fig_agent_imbalance_timeseries_ig15",
             "fig_agent_imbalance_timeseries_hvg",
             "fig_agent_imbalance_timeseries_sparse16",
+            "fig_agent_imbalance_timeseries_aib",
             "fig_agent_imbalance_final_ig15",
             "fig_agent_imbalance_final_hvg",
             "fig_agent_imbalance_final_sparse16",
+            "fig_agent_imbalance_final_aib",
         ]),
         "tables": {
             "AGENT_IMBALANCE_RUN_LONG": context.get("AGENT_IMBALANCE_RUN_LONG"),
@@ -558,15 +1039,31 @@ def joint_action_coordination(context):
             },
         }
     _exec_cell(context, _CELL_JOINT_COORDINATION, "joint_action_coordination")
+    _plot_aib(
+        context,
+        "fig_joint_coordination_timeseries_aib",
+        "plot_joint_coordination_timeseries",
+        f"{AIB_TITLE}: joint action coordination over evaluation",
+        "joint_action_coordination_timeseries_adaptive_intervention_budget_7",
+    )
+    _plot_aib(
+        context,
+        "fig_joint_coordination_final_aib",
+        "plot_final_joint_coordination",
+        f"{AIB_TITLE}: final joint action coordination",
+        "final_joint_action_coordination_adaptive_intervention_budget_7",
+    )
     return {
         "title": "Joint Action Coordination",
         "figures": _figures(context, [
             "fig_joint_coordination_timeseries_ig15",
             "fig_joint_coordination_timeseries_hvg",
             "fig_joint_coordination_timeseries_sparse16",
+            "fig_joint_coordination_timeseries_aib",
             "fig_joint_coordination_final_ig15",
             "fig_joint_coordination_final_hvg",
             "fig_joint_coordination_final_sparse16",
+            "fig_joint_coordination_final_aib",
         ]),
         "tables": {
             "JOINT_COORDINATION_RUN_LONG": context.get("JOINT_COORDINATION_RUN_LONG"),
@@ -602,15 +1099,31 @@ def gate_probability_vs_actual_intervention_fraction(context):
             },
         }
     _exec_cell(context, _CELL_GATE_CALIBRATION, "gate_probability_vs_actual_intervention")
+    _plot_aib(
+        context,
+        "fig_gate_calibration_timeseries_aib",
+        "plot_gate_probability_vs_intervention_timeseries",
+        f"{AIB_TITLE}: gate probability vs actual intervention fraction over evaluation",
+        "gate_probability_vs_actual_intervention_timeseries_adaptive_intervention_budget_7",
+    )
+    _plot_aib(
+        context,
+        "fig_gate_calibration_final_gap_aib",
+        "plot_gate_calibration_final_gap",
+        f"{AIB_TITLE}: final gate calibration gap by agent",
+        "final_gate_calibration_gap_adaptive_intervention_budget_7",
+    )
     return {
         "title": "Gate Probability vs Actual Intervention Fraction",
         "figures": _figures(context, [
             "fig_gate_calibration_timeseries_ig15",
             "fig_gate_calibration_timeseries_hvg",
             "fig_gate_calibration_timeseries_sparse16",
+            "fig_gate_calibration_timeseries_aib",
             "fig_gate_calibration_final_gap_ig15",
             "fig_gate_calibration_final_gap_hvg",
             "fig_gate_calibration_final_gap_sparse16",
+            "fig_gate_calibration_final_gap_aib",
         ]),
         "tables": {
             "GATE_CALIBRATION_RUN_LONG": context.get("GATE_CALIBRATION_RUN_LONG"),
@@ -625,6 +1138,7 @@ REQUESTED_METRIC_FUNCTIONS = [
     last5_logged_action0_fraction_by_agent_all_runs,
     seed_aggregated_last5_logged_action0_fraction_by_agent,
     survival_vs_action0_non_idle_over_time,
+    action0_survival_tradeoff,
     entropy_collapse_vs_action0_confidence,
     agent_non_idle_imbalance,
     joint_action_coordination,

@@ -1,4 +1,5 @@
 from time import time
+from pathlib import Path
 
 from alg.mappo.core import MAPPO
 from common.checkpoint import MAPPOCheckpoint
@@ -12,6 +13,27 @@ from env.wrappers import AsyncMultiAgentVecEnv
 ALGORITHMS: Dict[str, Type[Any]] = {
     "MAPPO": MAPPO,
 }
+
+
+def _checkpoint_stem(checkpoint_name: str) -> str:
+    stem = Path(checkpoint_name).name
+    return stem[:-4] if stem.endswith(".tar") else stem
+
+
+def _strip_checkpoint_save_prefixes(checkpoint_name: str) -> str:
+    stem = _checkpoint_stem(checkpoint_name)
+    changed = True
+    while changed:
+        changed = False
+        for prefix in ("final_", "best_test_"):
+            if stem.startswith(prefix):
+                stem = stem[len(prefix) :]
+                changed = True
+    return stem
+
+
+def _is_completed_final_checkpoint(checkpoint_name: str) -> bool:
+    return _checkpoint_stem(checkpoint_name).startswith("final_")
 
 
 def main(args: Namespace) -> None:
@@ -31,11 +53,19 @@ def main(args: Namespace) -> None:
     ):
         raise ValueError("Check the constrained version of the alg/env!")
 
-    run_name = (
-        args.resume_run_name
-        if args.resume_run_name
-        else f"{args.alg}_{args.env_id}_{'T' if args.action_type == 'topology' else 'R'}_{args.seed}_{args.difficulty}_{'H' if args.use_heuristic else ''}_{'I' if args.heuristic_type == 'idle' else ''}_{'C1' if args.constraints_type == 1 else 'C2' if args.constraints_type == 2 else ''}_{int(time())}_{np.random.randint(0, 50000)}"
-    )
+    cli_resume_run_name = args.resume_run_name
+    cli_resume_total_timesteps = args.resume_total_timesteps
+    cli_resume_time_limit = args.resume_time_limit
+    cli_resume_wandb_run_name = args.resume_wandb_run_name
+    cli_resume_start_next_rollout = args.resume_start_next_rollout
+    cli_resume_delete_checkpoint_after_load = args.resume_delete_checkpoint_after_load
+
+    if cli_resume_run_name:
+        run_name = cli_resume_wandb_run_name or _strip_checkpoint_save_prefixes(
+            cli_resume_run_name
+        )
+    else:
+        run_name = f"{args.alg}_{args.env_id}_{'T' if args.action_type == 'topology' else 'R'}_{args.seed}_{args.difficulty}_{'H' if args.use_heuristic else ''}_{'I' if args.heuristic_type == 'idle' else ''}_{'C1' if args.constraints_type == 1 else 'C2' if args.constraints_type == 2 else ''}_{int(time())}_{np.random.randint(0, 50000)}"
 
     # Initialize the appropriate checkpoint based on the algorithm
     if alg == "MAPPO":
@@ -50,6 +80,27 @@ def main(args: Namespace) -> None:
     # Resume run if checkpoint was resumed
     if checkpoint.resumed:
         args = checkpoint.loaded_run["args"]
+        current_global_step = int(checkpoint.loaded_run.get("global_step", 0))
+        args.resume_run_name = cli_resume_run_name
+        args.resume_total_timesteps = cli_resume_total_timesteps
+        args.resume_time_limit = cli_resume_time_limit
+        args.resume_wandb_run_name = cli_resume_wandb_run_name
+        args.resume_delete_checkpoint_after_load = cli_resume_delete_checkpoint_after_load
+        args.resume_start_next_rollout = (
+            _is_completed_final_checkpoint(cli_resume_run_name)
+            if cli_resume_start_next_rollout is None
+            else cli_resume_start_next_rollout
+        )
+        if cli_resume_total_timesteps:
+            if cli_resume_total_timesteps <= current_global_step:
+                raise ValueError(
+                    "--resume-total-timesteps must be larger than the checkpoint "
+                    f"global_step ({current_global_step:,}). Got "
+                    f"{cli_resume_total_timesteps:,}."
+                )
+            args.total_timesteps = cli_resume_total_timesteps
+        if cli_resume_time_limit:
+            args.time_limit = cli_resume_time_limit
 
     env_fns = [lambda i=i: MAEnvWrapper(args, idx=i) for i in range(args.n_envs)]
     envs = AsyncMultiAgentVecEnv(env_fns)
@@ -74,6 +125,45 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--resume-run-name", type=str, default="", help="Run name to resume"
+    )
+    parser.add_argument(
+        "--resume-total-timesteps",
+        type=int,
+        default=0,
+        help=(
+            "When resuming, override the checkpoint's total_timesteps target. "
+            "Use this to extend a run to 15M/16M steps."
+        ),
+    )
+    parser.add_argument(
+        "--resume-time-limit",
+        type=float,
+        default=0.0,
+        help="When resuming, override the checkpoint's time_limit in minutes.",
+    )
+    parser.add_argument(
+        "--resume-wandb-run-name",
+        type=str,
+        default="",
+        help=(
+            "Optional WandB id/name to continue. By default final_ and best_test_ "
+            "checkpoint prefixes are stripped from --resume-run-name."
+        ),
+    )
+    parser.add_argument(
+        "--resume-start-next-rollout",
+        type=str2bool,
+        default=None,
+        help=(
+            "When true, start at last_rollout + 1. Defaults to true for final_ "
+            "checkpoints and false for other checkpoints."
+        ),
+    )
+    parser.add_argument(
+        "--resume-delete-checkpoint-after-load",
+        type=str2bool,
+        default=False,
+        help="Delete the loaded checkpoint after a successful load.",
     )
 
     # Reproducibility [MAPPO, QPLEX, LAGRMAPPO]

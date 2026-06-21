@@ -55,6 +55,7 @@ FORCE_REFRESH = False
 USE_LOCAL_CACHE_ONLY = True  # False downloads missing histories from W&B; True only reads local cache.
 REFRESH_SCAN_HISTORY_FALLBACKS = False  # Replace old API fallback caches when downloading from W&B.
 ALLOW_SCAN_HISTORY_FALLBACK = True  # Use W&B scalar history API if the history artifact is unavailable.
+CACHE_STALE_STEP_TOLERANCE = 0.99  # Refresh cache if max cached step is behind run summary by more than this ratio.
 WRITE_FULL_HISTORY_CSV = True
 SKIP_FAILED_DOWNLOADS = True  # Continue when active runs do not have history artifacts yet.
 WANDB_API_TIMEOUT = 300
@@ -588,15 +589,70 @@ def _is_scan_history_fallback_cache(run_name, run_id):
     return artifact == "scan_history:fallback" or "scan_history" in source
 
 
+def _history_max_step(history):
+    if history is None or history.empty:
+        return np.nan
+    step_col = "_step" if "_step" in history.columns else "step" if "step" in history.columns else None
+    if step_col is None:
+        return np.nan
+    return pd.to_numeric(history[step_col], errors="coerce").max()
+
+
+def _cached_history_max_step(run_name, run_id):
+    parquet_path = full_parquet_path(run_name, run_id)
+    csv_path = full_csv_path(run_name, run_id)
+    if not parquet_path.exists() and not csv_path.exists():
+        return np.nan
+    try:
+        history = _read_history_table(parquet_path, csv_path=csv_path)
+    except Exception:
+        return np.nan
+    return _history_max_step(history)
+
+
+def _summary_global_step(row):
+    value = _row_get(row, "global_step")
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return np.nan
+
+
+def _cache_is_stale_for_summary(run_name, run_id, row):
+    summary_step = _summary_global_step(row)
+    if not np.isfinite(summary_step) or summary_step <= 0:
+        return False, np.nan, summary_step
+    cached_step = _cached_history_max_step(run_name, run_id)
+    if not np.isfinite(cached_step):
+        return False, cached_step, summary_step
+    return cached_step < summary_step * float(CACHE_STALE_STEP_TOLERANCE), cached_step, summary_step
+
+
 def _find_downloaded_history(download_dir):
     download_dir = Path(download_dir)
-    direct = download_dir / "0000.parquet"
-    if direct.exists():
-        return direct
-    matches = sorted(download_dir.rglob("0000.parquet"))
+    matches = sorted(download_dir.glob("[0-9][0-9][0-9][0-9].parquet"))
     if not matches:
-        raise FileNotFoundError(f"Could not find 0000.parquet under {download_dir}")
-    return matches[0]
+        matches = sorted(download_dir.rglob("[0-9][0-9][0-9][0-9].parquet"))
+    if not matches:
+        raise FileNotFoundError(f"Could not find W&B history parquet shards under {download_dir}")
+    return matches
+
+
+def _read_downloaded_history_artifact(download_dir):
+    shard_paths = _find_downloaded_history(download_dir)
+    frames = [pd.read_parquet(path) for path in shard_paths]
+    if not frames:
+        raise FileNotFoundError(f"No W&B history parquet shards found under {download_dir}")
+    if len(frames) == 1:
+        return frames[0]
+    history = pd.concat(frames, ignore_index=True, sort=False)
+    step_col = "_step" if "_step" in history.columns else "step" if "step" in history.columns else None
+    if step_col is not None:
+        history[step_col] = pd.to_numeric(history[step_col], errors="coerce")
+        history = history.dropna(subset=[step_col]).sort_values(step_col)
+        history = history.groupby(step_col, as_index=False, dropna=False).last()
+        history = history.sort_values(step_col).reset_index(drop=True)
+    return history
 
 
 wandb_download_run = None
@@ -810,13 +866,20 @@ def download_run_full_history_from_artifact(row, idx=None, total=None):
         and _is_scan_history_fallback_cache(run_name, run_id)
     )
     cache_exists = parquet_path.exists() or csv_path.exists()
-    if cache_exists and not FORCE_REFRESH and not refresh_existing_fallback:
+    cache_is_stale, cached_step, summary_step = _cache_is_stale_for_summary(run_name, run_id, row)
+    if cache_exists and not FORCE_REFRESH and not refresh_existing_fallback and not cache_is_stale:
         return load_cached_full_history(run_name, run_id, idx=idx, total=total)
 
     cache_dir.mkdir(parents=True, exist_ok=True)
     t0 = time.time()
     if refresh_existing_fallback:
         print(f"    refreshing existing scan_history fallback cache for {run_name}", flush=True)
+    if cache_is_stale:
+        print(
+            f"    refreshing stale cache for {run_name}: cached max step "
+            f"{cached_step / 1_000_000:.2f}M < summary {summary_step / 1_000_000:.2f}M",
+            flush=True,
+        )
     print(_progress("downloading history artifact", idx, total, f"{run_name} ({artifact_ref})"), flush=True)
     try:
         artifact, resolved_artifact_ref = _get_history_artifact(run_id)
@@ -835,12 +898,30 @@ def download_run_full_history_from_artifact(row, idx=None, total=None):
             reason="history artifact unavailable",
         )
     download_dir = Path(artifact.download(root=str(cache_dir)))
-    downloaded_parquet = _find_downloaded_history(download_dir)
-    if downloaded_parquet.resolve() != parquet_path.resolve():
-        shutil.copy2(downloaded_parquet, parquet_path)
-
-    history = _read_history_table(parquet_path, csv_path=csv_path)
+    history = _read_downloaded_history_artifact(download_dir)
+    artifact_step = _history_max_step(history)
+    summary_step = _summary_global_step(row)
+    if (
+        ALLOW_SCAN_HISTORY_FALLBACK
+        and np.isfinite(summary_step)
+        and summary_step > 0
+        and np.isfinite(artifact_step)
+        and artifact_step < summary_step * float(CACHE_STALE_STEP_TOLERANCE)
+    ):
+        print(
+            f"    history artifact still behind run summary "
+            f"({artifact_step / 1_000_000:.2f}M < {summary_step / 1_000_000:.2f}M); "
+            "using scalar history API fallback",
+            flush=True,
+        )
+        return download_run_full_history_from_api(
+            row,
+            idx=idx,
+            total=total,
+            reason="history artifact behind run summary",
+        )
     history_with_ids = _ensure_run_columns(history, run_name, run_id)
+    history_with_ids.to_parquet(parquet_path, index=False)
     if WRITE_FULL_HISTORY_CSV:
         history_with_ids.to_csv(csv_path, index=False)
 
@@ -3246,11 +3327,29 @@ def plot_phase4_sparse_control_16_survival():
         missing = coverage.loc[~coverage["cache_exists"], "expected_run_name"].tolist()
         missing_text = "Missing cached histories: " + ", ".join(missing) if missing else "All expected runs are cached."
         skipped_text = "Skipped uncached conditions: " + ", ".join(skipped) if skipped else "Every non-baseline condition has at least one cached run."
+        run_max_steps = (
+            survival.groupby(["condition_key", "condition_label", "run_name", "seed"], dropna=False, as_index=False)
+            .agg(max_step_m=("step_millions", "max"))
+        )
+        if run_max_steps.empty:
+            short_text = ""
+        else:
+            condition_max = run_max_steps.groupby("condition_key", dropna=False)["max_step_m"].transform("max")
+            short_runs = run_max_steps[run_max_steps["max_step_m"] < 0.80 * condition_max].copy()
+            if short_runs.empty:
+                short_text = ""
+            else:
+                examples = ", ".join(
+                    f"{row.run_name} {row.max_step_m:.2f}M"
+                    for row in short_runs.sort_values(["condition_label", "seed"]).head(6).itertuples(index=False)
+                )
+                more = f", +{len(short_runs) - 6} more" if len(short_runs) > 6 else ""
+                short_text = f"<br>Shorter cached histories vs same condition: {examples}{more}."
         fig.add_annotation(
             text=(
                 f"Thin lines are smoothed individual seeds; thick lines average the smoothed seed values. "
                 f"Smooth={PHASE4_SPARSE_SURVIVAL_SMOOTH} logged points.<br>"
-                f"Baseline is {baseline_label}. {missing_text}<br>{skipped_text}"
+                f"Baseline is {baseline_label}. {missing_text}<br>{skipped_text}{short_text}"
             ),
             x=0,
             y=1.12,
