@@ -1,29 +1,30 @@
-# Decentralized Intervention Gate Roadmap
+# Decentralized Sparse Intervention Control
 
-## Motivation
+This document merges the original intervention-gate roadmap with the adaptive
+intervention-budget notes. It describes the sparse-control experiments that were
+implemented around the `best_00` MAPPO/GNN setup:
 
-The current independent MAPPO agents can all choose non-idle topology actions at
-the same environment step. This is powerful on small grids, but it is not very
-operator-like: real grid operation is sparse, and most timesteps should result
-in no topology change. When an intervention is needed, the intervention should
-be local, auditable, and physically meaningful.
+- evaluation-time rho heuristic overrides,
+- intervention-gated actors,
+- fixed sparse-action penalties (`sparse16`),
+- adaptive Lagrangian intervention budgets (`aib_*` and `aibm_*`).
 
-The proposed direction is:
+The common goal is to make decentralized topology-control agents more
+operator-like:
 
 ```text
-We adapt hierarchical topology-control ideas to decentralized MAPPO by giving
-each regional agent an explicit learned intervention gate. Each agent first
-learns whether intervention is necessary in its own region, and only then
-chooses a topology action. This encourages sparse, operator-like control without
-introducing inter-agent communication.
-
-The agents do not just learn high reward.
-They learn when not to act, when to act, and we can explain the physical effect
-of each intervention.
+act rarely,
+act locally,
+act when the local grid state makes action useful,
+and keep the final policy decentralized.
 ```
 
-This is inspired mainly by hierarchical topology-control work that decomposes
-grid operation into:
+## Scientific Motivation
+
+The gate direction was inspired by hierarchical topology-control work, in
+particular "Hierarchical Reinforcement Learning for Power Network Topology
+Control" (Manczak, Viebahn, van Hoof, 2023). The relevant idea is that topology
+control can be decomposed into:
 
 ```text
 do nothing vs propose topology change
@@ -31,55 +32,58 @@ choose where to act
 choose local topology configuration
 ```
 
-Our adaptation keeps the first hierarchy local to each regional agent. There is
-no central coordinator and no message passing between agents at action time.
-
-Relevant papers:
-
-- "Hierarchical Reinforcement Learning for Power Network Topology Control"
-  (Manczak, Viebahn, van Hoof, 2023): source of the hierarchical
-  "do nothing vs topology change" framing.
-- "Multi-Agent Reinforcement Learning for Power Grid Topology Optimization"
-  (van der Sar, Zocca, Bhulai, 2023): related motivation for hierarchical MARL
-  in topology control.
-- "Managing power grids through topology actions: A comparative study between
-  advanced rule-based and reinforcement learning agents" (Lehna et al., 2023):
-  motivation for operational analysis, N-1 reasoning, and topology reversion.
-
-## Design Principle
-
-Each agent owns its decision. At time `t`, agent `i` receives its usual local
-observation and produces two decisions:
+In this repository, only the first level was adapted to decentralized MAPPO:
 
 ```text
-gate_i:
-  0 = do nothing
-  1 = intervene
-
-local_action_i:
-  one non-idle topology action from the agent's local action space
+each regional agent decides locally whether to do nothing or intervene.
 ```
 
-Execution rule:
+The later sparse-control direction is closer to constrained and budgeted RL:
 
-```text
-if gate_i == do nothing:
-    executed_action_i = 0
-else:
-    executed_action_i = sampled non-idle local action
-```
+- constrained MDPs / Constrained Policy Optimization: maximize reward subject to
+  a cost constraint,
+- Lagrangian constrained RL: learn a multiplier for the constraint instead of
+  choosing one fixed penalty by hand,
+- budgeted RL: treat non-idle interventions as a resource that should remain
+  under a budget,
+- power-grid multi-objective topology control: topology switching frequency and
+  topology deviation are operational objectives, not just cosmetic metrics.
 
-This avoids duplicate no-op paths. Action `0` belongs to the gate, while the
-local action head is responsible only for actions `1..n_actions_i-1`.
+## Baseline Action Selection
+
+For the original flat actor, each agent has one categorical policy over its full
+local action space:
+
+$$
+\pi_i(a_i \mid o_i),
+\qquad
+a_i \in \{0,1,\dots,|\mathcal A_i|-1\}.
+$$
+
+Action `0` is the no-op action.
+
+During training, actions are sampled:
+
+$$
+a_{i,t} \sim \pi_i(\cdot \mid o_{i,t}).
+$$
+
+During deterministic evaluation, the default behavior is greedy:
+
+$$
+a_{i,t}^{eval}
+= \arg\max_a \pi_i(a \mid o_{i,t}).
+$$
+
+This distinction matters. Training remains stochastic, while evaluation usually
+uses the most likely action.
 
 ## Phase 0: Baseline Diagnostics
 
-Goal: establish what the current independent MAPPO policy is doing before we
-change the architecture.
+Before modifying the objective or the actor, the first step was to measure how
+often agents actually take non-idle actions.
 
-Status: implemented in the clean intervention branch through W&B training logs.
-
-Add or reuse logs:
+Implemented logs:
 
 ```text
 train/non_idle_agents_count_0_frac
@@ -92,397 +96,989 @@ train/frac_action_0_agent_*
 train/illegal_action_rate_agent_*
 ```
 
-Expected use:
-
-- Quantify how often each agent acts.
-- Quantify how often multiple agents act simultaneously.
-- Identify whether high reward comes from sparse operator-like actions or from
-  frequent topology churn.
-
-Success criterion:
+These logs answer:
 
 ```text
-We can show the current intervention pattern before introducing the gate.
+How often does no agent act?
+How often does exactly one agent act?
+How often do multiple agents act simultaneously?
+Does high survival come from sparse action or frequent topology churn?
 ```
 
-## Phase 1: Add The Intervention-Gated Actor
+## Evaluation-Time Heuristic Override
 
-Goal: replace the single flat categorical action head with a hierarchical local
-policy.
+The heuristic override is evaluation-only. It does not modify the training
+objective and it does not teach the policy to act sparsely. The policy proposes
+actions, then the evaluator may replace some of them by action `0`.
 
-Status: implemented behind `--intervention-gate true`.
+Let:
 
-Current actor:
+$$
+\bar a_{i,t}
+= \arg\max_a \pi_i(a \mid o_{i,t})
+$$
+
+be the policy action proposed by agent $i$ at evaluation time.
+
+### Global Rho Heuristic
+
+The global heuristic uses the pre-action global maximum line loading:
+
+$$
+\rho_t^{global}
+= \max_{\ell \in \mathcal L} \rho_{\ell,t}.
+$$
+
+The executed action is:
+
+$$
+a_{i,t}^{exec}
+=
+\begin{cases}
+0,
+& \text{if } \rho_t^{global} < \rho_{safe},\\
+\bar a_{i,t},
+& \text{otherwise.}
+\end{cases}
+$$
+
+with:
+
+$$
+\rho_{safe}=0.90.
+$$
+
+This forces all agents to no-op when the whole grid is considered safe.
+
+### Local Rho Heuristic
+
+The local heuristic is decentralized. Each agent computes a local maximum rho
+from the lines touching its own regional substations:
+
+$$
+\rho_{i,t}^{local}
+= \max_{\ell \in \mathcal L_i} \rho_{\ell,t}.
+$$
+
+The executed action is:
+
+$$
+a_{i,t}^{exec}
+=
+\begin{cases}
+0,
+& \text{if } \rho_{i,t}^{local} < \rho_{safe},\\
+\bar a_{i,t},
+& \text{otherwise.}
+\end{cases}
+$$
+
+If a line lies between two regions, it belongs to the local neighborhood of both
+adjacent agents because it touches substations from both zones. This does not
+require communication: both agents can independently observe that boundary line
+through their local physical neighborhood.
+
+### Interpretation
+
+The heuristic is useful as a diagnostic because it shows what happens if actions
+are blocked in safe states. However, it is not a learned solution:
 
 ```text
-obs_i -> encoder_i -> logits over [0, 1, ..., n_actions_i-1]
+training: unchanged
+evaluation: hard action override
 ```
 
-New actor:
+Therefore, heuristic action-0 rates must be interpreted as final executed
+evaluation actions, not as proof that the policy learned to prefer action `0`.
+
+## Intervention-Gated Actor
+
+The gated actor changes the actor architecture. Each agent has two heads after
+the encoder:
+
+$$
+\pi_i^{gate}(g_i \mid o_i),
+\qquad
+g_i \in \{0,1\}
+$$
+
+where:
 
 ```text
-obs_i -> encoder_i -> gate_logits over [do_nothing, intervene]
-                 \-> nonidle_action_logits over [1, ..., n_actions_i-1]
+0 = do nothing
+1 = intervene
 ```
 
-Sampling:
+and:
 
-```text
-gate_i ~ Categorical(gate_logits)
+$$
+\pi_i^{nonidle}(b_i \mid o_i),
+\qquad
+b_i \in \{1,\dots,|\mathcal A_i|-1\}.
+$$
 
-if gate_i == do_nothing:
-    action_i = 0
-else:
-    action_i = 1 + Categorical(nonidle_action_logits).sample()
+During training:
+
+$$
+g_{i,t} \sim \pi_i^{gate}(\cdot \mid o_{i,t}).
+$$
+
+If:
+
+$$
+g_{i,t}=0,
+$$
+
+then:
+
+$$
+a_{i,t}=0.
+$$
+
+If:
+
+$$
+g_{i,t}=1,
+$$
+
+then:
+
+$$
+a_{i,t} \sim \pi_i^{nonidle}(\cdot \mid o_{i,t}).
+$$
+
+The PPO log-probability of the final executed action is:
+
+$$
+\log P(a_i=0)
+=
+\log P(g_i=0),
+$$
+
+and for a non-idle action $a_i>0$:
+
+$$
+\log P(a_i)
+=
+\log P(g_i=1)
++
+\log P(b_i=a_i \mid g_i=1).
+$$
+
+### Gated Evaluation Modes
+
+Two deterministic decoders were implemented.
+
+`final_action_map` computes final executed-action probabilities:
+
+$$
+P(a_i=0)=P(g_i=0),
+$$
+
+$$
+P(a_i=a>0)
+=
+P(g_i=1)P(b_i=a \mid g_i=1),
+$$
+
+then returns:
+
+$$
+a_i^{eval}
+=
+\arg\max_a P(a_i=a).
+$$
+
+`hierarchical_greedy` follows the hierarchy strictly:
+
+$$
+\text{if } P(g_i=0) > P(g_i=1),
+\quad
+a_i^{eval}=0,
+$$
+
+otherwise:
+
+$$
+a_i^{eval}
+=
+\arg\max_{a>0} P(b_i=a \mid g_i=1).
+$$
+
+The `sparse16_gated_*` runs use a hierarchical actor, but their evaluation mode
+is `final_action_map`, not `hierarchical_greedy`.
+
+### Entropy Issue
+
+The original coupled entropy was:
+
+$$
+H_i
+=
+H(g_i)
++
+P(g_i=1)H(b_i).
+$$
+
+This can accidentally reward intervention because increasing $P(g_i=1)$
+unlocks more non-idle entropy.
+
+The corrected optional entropy is:
+
+$$
+H_i
+=
+\alpha_{gate}H(g_i)
++
+\alpha_{nonidle}H(b_i).
+$$
+
+This is enabled with:
+
+```bash
+--intervention-gate-entropy-mode separate
+--intervention-gate-entropy-mult 0.2
+--intervention-nonidle-entropy-mult 1.0
 ```
 
-For PPO, the final action log-probability is:
+### Gate Interpretation
+
+The gate can restrict training exploration more strongly than a reward penalty.
+If the gate collapses early to no-op, then the non-idle action head is rarely
+executed and receives little useful learning signal.
+
+Empirically, this made the gate less convincing than the flat actor with a
+sparse objective.
+
+## Sparse16: Fixed Sparse-Action Penalty
+
+The `phase4_sparse_control_16` sweep tests a fixed penalty for non-idle actions.
+
+The reward used for training is:
+
+$$
+r'_{i,t}
+=
+r_{i,t}
+-
+\lambda_{fixed}
+\mathbf{1}[a_{i,t}\neq 0].
+$$
+
+where:
+
+$$
+\lambda_{fixed}
+\in
+\{0.0,0.001,0.003,0.01\}.
+$$
+
+This penalty is applied to the final executed action of each agent, so it works
+for both:
 
 ```text
-if action_i == 0:
-    logprob_i = log P(gate_i = do_nothing)
-else:
-    logprob_i = log P(gate_i = intervene)
-              + log P(nonidle_action_i = action_i - 1)
+flat actors
+gated actors
 ```
 
-The exact entropy of this mixture is:
+All Sparse16 configs set:
 
-```text
-entropy_i = H(gate_i) + P(gate_i = intervene) * H(nonidle_action_i)
+```toml
+safe_intervention_penalty = 0.0
 ```
 
-Implementation notes:
+so there is no rho threshold and no state-dependent weighting.
 
-- Keep the old actor as the default.
-- Add a flag such as `--intervention-gate true`.
-- Do not change the environment action space.
-- Do not add communication between agents.
-- Store only the final executed discrete action in the rollout buffer; the gate
-  decision can be inferred from `action == 0`.
+### Sparse16 Experiment Grid
 
-Success criterion:
+The sweep contains:
 
 ```text
-The gated actor trains with PPO and can reproduce the old behavior when the
-gate strongly prefers intervention.
+actor in {flat, gated}
+lambda_fixed in {0.0, 0.001, 0.003, 0.01}
+seed in {0,1,2}
 ```
 
-## Phase 2: PPO Integration And Logging
+This gives:
 
-Goal: make the gated action distribution fully compatible with rollout sampling,
-PPO log-prob recomputation, entropy regularization, checkpointing, and
-deterministic evaluation.
+$$
+2 \times 4 \times 3 = 24
+$$
 
-Status: implemented through rollout-time gate diagnostics and W&B logs.
+runs.
 
-Training path:
+The key comparison is:
 
 ```text
-actor.get_action(obs_i)
-  -> action_i, logprob_i, entropy_i
+sparse16_flat_p010
+vs
+sparse16_gated_p010
 ```
 
-PPO update path:
+because it asks whether the gate adds value once a simple sparse-action
+objective already exists.
+
+### Training-Time And Evaluation-Time Effect
+
+Sparse16 affects training rewards only:
 
 ```text
-actor.get_action(obs_i, stored_action_i)
-  -> recomputed_logprob_i, entropy_i
+training: reward is changed
+evaluation: no action override
 ```
 
-Deterministic evaluation:
+Actions are still sampled during training. Therefore Sparse16 does not hard-mask
+exploration. It merely says:
 
 ```text
---intervention-gate-eval-mode final_action_map:
-    action_i = argmax over final executed action probabilities
-
---intervention-gate-eval-mode hierarchical_greedy:
-    if gate_argmax == do_nothing:
-        action_i = 0
-    else:
-        action_i = 1 + argmax(nonidle_action_logits)
+a non-idle action must be useful enough to pay its fixed cost.
 ```
 
-New logs:
+## Adaptive Intervention Budget
 
-```text
-train/intervention_gate_do_nothing_frac_agent_*
-train/intervention_gate_intervene_frac_agent_*
-train/intervention_gate_prob_do_nothing_agent_*
-train/intervention_gate_prob_intervene_agent_*
-train/intervention_gate_entropy_agent_*
-train/nonidle_action_entropy_agent_*
+The adaptive intervention budget turns sparse topology control into a local
+constraint.
+
+For each agent $i$, define an intervention cost:
+
+$$
+c_i(s_t,a_{i,t})
+=
+\mathbf{1}[a_{i,t}\neq 0]w_i(s_t).
+$$
+
+The desired constraint is:
+
+$$
+\mathbb E_{\pi_i}
+\left[
+c_i(s_t,a_{i,t})
+\right]
+\leq d.
+$$
+
+The policy should maximize reward while respecting this budget:
+
+$$
+\max_{\pi_i} J_i(\pi_i)
+$$
+
+subject to:
+
+$$
+\bar C_i(\pi_i) \leq d.
+$$
+
+The Lagrangian is:
+
+$$
+\mathcal L_i(\pi_i,\lambda_i)
+=
+J_i(\pi_i)
+-
+\lambda_i
+\left(
+\bar C_i(\pi_i)-d
+\right),
+\qquad
+\lambda_i \geq 0.
+$$
+
+The constant term $\lambda_i d$ does not affect the PPO action-gradient
+inside a rollout, so the implemented reward is:
+
+$$
+r'_{i,t}
+=
+r_{i,t}
+-
+\lambda_i c_i(s_t,a_{i,t}).
+$$
+
+After each rollout, the multiplier is updated as:
+
+$$
+\lambda_i
+\leftarrow
+\mathrm{clip}
+\left(
+\lambda_i
++
+\eta
+\left(
+\hat C_i-d
+\right),
+0,
+\lambda_{\max}
+\right),
+$$
+
+with:
+
+$$
+\hat C_i
+=
+\frac{1}{T}
+\sum_{t=1}^{T}
+c_i(s_t,a_{i,t}).
+$$
+
+If:
+
+$$
+\hat C_i > d,
+$$
+
+then:
+
+$$
+\lambda_i \uparrow,
+$$
+
+and future interventions become more expensive.
+
+If:
+
+$$
+\hat C_i < d,
+$$
+
+then:
+
+$$
+\lambda_i \downarrow,
+$$
+
+and the intervention penalty relaxes.
+
+All AIB runs start from:
+
+$$
+\lambda_i(0)=0.
+$$
+
+The usual settings are:
+
+```toml
+intervention_budget_lr = 0.02
+intervention_budget_init_lambda = 0.0
+intervention_budget_max_lambda = 10.0
 ```
 
-Success criterion:
+## AIB Cost Modes
+
+### Nonidle Cost
+
+The simplest cost mode is:
+
+$$
+w_i(s_t)=1.
+$$
+
+Therefore:
+
+$$
+c_i(s_t,a_{i,t})
+=
+\mathbf{1}[a_{i,t}\neq 0].
+$$
+
+This is used by:
 
 ```text
-We can distinguish "agent did nothing because the gate chose no-op" from
-"agent happened to assign high probability to action 0 inside a flat action
-space."
+aib_04_flat_nonidle_t020
 ```
 
-## Phase 3: Sparse-Intervention Objective
+It has the same cost definition as Sparse16, but an adaptive coefficient:
 
-Status: implemented in MAPPO for both the original flat actor and the gated
-actor. The objective is actor-agnostic: it penalizes the final executed
-environment action id, so it works with or without `--intervention-gate`.
+$$
+\text{Sparse16: } \lambda_i = \lambda_{fixed}
+$$
 
-Goal: make the learned behavior more operator-like without forcing a hard rule.
+$$
+\text{AIB nonidle: } \lambda_i \text{ is updated during training.}
+$$
 
-Start with logging only. Then test one optional reward regularizer:
+For the cached `aib_04` runs, the final learned mean multipliers were roughly:
 
 ```text
-r_t' = r_t - lambda_intervention * I[action_i != 0]
+s0: 0.029
+s1: 0.036
+s2: 0.063
 ```
 
-A more targeted version penalizes unnecessary action in safe states:
+with mean values over training around:
 
 ```text
-r_t' = r_t
-     - lambda_safe_intervention
-       * I[max_rho_t < rho_safe_threshold]
-       * I[action_i != 0]
+0.066, 0.117, 0.076
 ```
 
-Recommended flags:
+So `aib_04` is effectively an automatically tuned sparse penalty.
 
-```text
---intervention-penalty 0.0
---safe-intervention-penalty 0.0
---safe-intervention-rho-threshold 0.90
+### Global-Safe Cost
+
+The global-safe cost uses global pre-action max rho:
+
+$$
+\rho_t^{global}
+=
+\max_{\ell \in \mathcal L}
+\rho_{\ell,t}.
+$$
+
+The safety weight is:
+
+$$
+w^{global}(s_t)
+=
+\sigma
+\left(
+k(\rho_{safe}-\rho_t^{global})
+\right).
+$$
+
+The cost is:
+
+$$
+c_i(s_t,a_{i,t})
+=
+\mathbf{1}[a_{i,t}\neq 0]
+w^{global}(s_t).
+$$
+
+This penalizes non-idle actions mostly when the whole grid is safe.
+
+### Local-Safe Cost
+
+The local-safe cost is the decentralized version. Each agent computes:
+
+$$
+\rho_{i,t}^{local}
+=
+\max_{\ell \in \mathcal L_i}
+\rho_{\ell,t}.
+$$
+
+Then:
+
+$$
+w_i^{local}(s_t)
+=
+\sigma
+\left(
+k(\rho_{safe}-\rho_{i,t}^{local})
+\right).
+$$
+
+The cost is:
+
+$$
+c_i(s_t,a_{i,t})
+=
+\mathbf{1}[a_{i,t}\neq 0]
+w_i^{local}(s_t).
+$$
+
+When the local grid is safe:
+
+$$
+\rho_{i,t}^{local} < \rho_{safe}
+\quad \Rightarrow \quad
+w_i^{local}(s_t) \approx 1,
+$$
+
+so actions are expensive.
+
+When the local grid is stressed:
+
+$$
+\rho_{i,t}^{local} \approx 1
+\quad \Rightarrow \quad
+w_i^{local}(s_t) \approx 0,
+$$
+
+so actions are cheap.
+
+The default settings are:
+
+```toml
+intervention_budget_cost_mode = "local_safe"
+intervention_budget_target = 0.20
+intervention_budget_rho_threshold = 0.90
+intervention_budget_rho_sharpness = 25.0
 ```
 
-Implementation details:
+Important: $\rho_{safe}=0.90$ is not a hard action override in AIB. It is the
+center of a smooth sigmoid.
+
+## AIB First Runs
+
+The first AIB folder is:
 
 ```text
---intervention-penalty
-    subtracts the penalty from agent i only when agent i chose action != 0
-
---safe-intervention-penalty
-    adds an extra penalty only when pre-action max rho is below the safety
-    threshold
+configs/adaptive_intervention_budget_7
 ```
 
-The penalty is applied before reward normalization. When reward normalization is
-enabled, each agent now has its own return normalizer so local sparse penalties
-are preserved instead of being overwritten by a shared normalized reward.
+It should be read as a first ablation around the adaptive budget.
 
-Ablation plan:
+### `aib_00_flat_local_t020`
+
+Flat actor, local-safe cost:
+
+$$
+d=0.20.
+$$
+
+This is the main candidate:
 
 ```text
-baseline MAPPO
-gated MAPPO, no intervention penalty
-gated MAPPO, small safe-intervention penalty
-gated MAPPO, larger safe-intervention penalty
+Can the original flat actor learn sparse behavior from an adaptive local budget?
 ```
 
-Success criterion:
+### `aib_01_flat_local_t010`
+
+Flat actor, local-safe cost:
+
+$$
+d=0.10.
+$$
+
+This is stricter:
+
+$$
+0.10 < 0.20.
+$$
+
+It should increase action `0`, but may reduce survival if the budget is too
+restrictive.
+
+### `aib_02_flat_local_t035`
+
+Flat actor, local-safe cost:
+
+$$
+d=0.35.
+$$
+
+This is looser:
+
+$$
+0.35 > 0.20.
+$$
+
+It should preserve survival more easily, but may allow more non-idle actions.
+
+### `aib_03_gate_hgreedy_sep_local_t020`
+
+Gated actor, local-safe cost:
+
+$$
+d=0.20.
+$$
+
+Evaluation uses:
 
 ```text
-The policy keeps or improves survival while reducing unnecessary non-idle
-actions, especially in safe states.
+hierarchical_greedy
 ```
 
-## Phase 4: Explainability Logs Without Extra Simulation
-
-Status: implemented for train rollouts and eval episodes. The environment
-attaches lightweight before/after physical diagnostics to each real transition;
-MAPPO aggregates them into W&B logs without running extra simulations.
-
-Goal: explain the behavior using quantities already available from real
-transitions.
-
-Per rollout or evaluation episode, log:
+Entropy uses the separated gate/non-idle entropy mode. This tests:
 
 ```text
-explain/pre_max_rho
-explain/post_max_rho
-explain/delta_max_rho
-explain/worst_line_before
-explain/worst_line_after
-explain/topology_distance_before
-explain/topology_distance_after
-explain/topology_distance_delta
-explain/action_nonidle_agent_*
-explain/gate_intervened_agent_*
+Does the gate help once sparsity is already in the objective?
 ```
 
-Implemented metric namespaces:
+Empirically, this was mostly a negative diagnostic because the gate could
+collapse toward no-op.
+
+### `aib_04_flat_nonidle_t020`
+
+Flat actor, nonidle cost:
+
+$$
+d=0.20,
+\qquad
+c_i(s_t,a_{i,t})
+=
+\mathbf{1}[a_{i,t}\neq 0].
+$$
+
+This tests:
 
 ```text
-train/explain/*
+Is an adaptive plain non-idle budget enough, or do we need local rho weighting?
+```
+
+The comparison:
+
+```text
+aib_00_flat_local_t020
+vs
+aib_04_flat_nonidle_t020
+```
+
+isolates the value of the local-safe state-dependent cost.
+
+## Mechanism Ablation: 15 Runs
+
+The folder:
+
+```text
+configs/adaptive_intervention_budget_mechanism_15
+```
+
+contains 15 additional runs, all using the flat actor and seeds `0,1,2`.
+
+The purpose is to isolate which part of AIB matters:
+
+```text
+fixed vs adaptive coefficient
+state-dependent vs plain non-idle cost
+global vs local rho weighting
+rho threshold sensitivity
+```
+
+### `aibm_00_fixed_nonidle_p006`
+
+Fixed plain non-idle penalty:
+
+$$
+r'_{i,t}
+=
+r_{i,t}
+-
+0.06
+\mathbf{1}[a_{i,t}\neq 0].
+$$
+
+No adaptive lambda and no rho weighting.
+
+This tests whether a fixed coefficient near the learned AIB lambda scale is
+enough.
+
+### `aibm_01_fixed_global_safe_p006`
+
+Fixed global-safe penalty:
+
+$$
+r'_{i,t}
+=
+r_{i,t}
+-
+0.06
+\mathbf{1}[a_{i,t}\neq 0]
+\mathbf{1}[\rho_t^{global}<0.90].
+$$
+
+This tests whether state-dependent safety weighting helps without adaptive
+lambda.
+
+### `aibm_02_adaptive_global_t020`
+
+Adaptive global-safe budget:
+
+$$
+c_i(s_t,a_{i,t})
+=
+\mathbf{1}[a_{i,t}\neq 0]
+\sigma(k(0.90-\rho_t^{global})).
+$$
+
+with:
+
+$$
+d=0.20.
+$$
+
+This tests whether global-safe adaptive weighting works, and should be compared
+against local-safe AIB.
+
+### `aibm_03_adaptive_local_t020_r085`
+
+Adaptive local-safe budget with:
+
+$$
+\rho_{safe}=0.85,
+\qquad
+d=0.20.
+$$
+
+This tests a lower safety threshold. Fewer states are considered safe, so fewer
+actions are strongly penalized.
+
+### `aibm_04_adaptive_local_t020_r095`
+
+Adaptive local-safe budget with:
+
+$$
+\rho_{safe}=0.95,
+\qquad
+d=0.20.
+$$
+
+This tests a higher safety threshold. More states are considered safe, so more
+actions are strongly penalized.
+
+## Main Comparisons
+
+| Question | Compare |
+| --- | --- |
+| Does a fixed sparse penalty already work? | baseline vs `sparse16_flat_p010` |
+| Does the gate help beyond a sparse objective? | `sparse16_flat_p010` vs `sparse16_gated_p010` |
+| Fixed vs adaptive coefficient? | `sparse16_flat_p010` or `aibm_00_fixed_nonidle_p006` vs `aib_04_flat_nonidle_t020` |
+| Does local-safe weighting matter? | `aib_00_flat_local_t020` vs `aib_04_flat_nonidle_t020` |
+| Does global-safe weighting matter? | `aibm_02_adaptive_global_t020` vs `aib_00_flat_local_t020` |
+| Is threshold `0.90` special? | `aibm_03` $0.85$, `aib_00` $0.90$, `aibm_04` $0.95$ |
+| Is the heuristic merely an evaluation trick? | heuristic runs vs learned sparse/AIB runs |
+
+## Training-Time vs Evaluation-Time Effects
+
+| Method | Training effect | Evaluation effect | Exploration risk |
+| --- | --- | --- | --- |
+| Baseline | Sample from flat policy | Greedy argmax by default | Standard entropy-controlled exploration |
+| Heuristic override | None | Hard no-op override in safe states | No training restriction, but evaluation is manually changed |
+| Sparse16 | Fixed reward penalty | No action override | Softly discourages non-idle actions |
+| AIB nonidle | Adaptive reward penalty | No action override | Softly discourages non-idle actions, coefficient can grow |
+| AIB local-safe | Adaptive state-dependent reward penalty | No action override | Penalizes safe-state interventions more than stressed-state interventions |
+| Gate | Changes action factorization and sampling | Final-action MAP or hierarchical greedy | Can starve non-idle exploration if the gate collapses |
+
+The safest mechanisms, from an exploration perspective, are the reward-shaping
+ones:
+
+```text
+Sparse16
+AIB nonidle
+AIB local-safe
+```
+
+because they do not hard-mask actions. They still allow the policy to sample
+non-idle actions during training; those actions are simply penalized if they are
+not useful enough.
+
+The heuristic is useful as a diagnostic, but it is not learned. The gate is
+learned, but it can restrict exploration more aggressively than a reward
+penalty.
+
+## Logs To Use
+
+Action sparsity:
+
+```text
+train/frac_action_0_agent_i
+train/explain/action_nonidle_agent_i
+test/explain/frac_action_0_agent_i
+test/explain/action_nonidle_agent_i
+train_eval/explain/frac_action_0_agent_i
+train_eval/explain/action_nonidle_agent_i
+```
+
+Joint action sparsity:
+
+```text
+train/non_idle_agents_count_0_frac
+train/non_idle_agents_count_1_frac
+train/non_idle_agents_count_2_frac
+train/non_idle_agents_count_3_frac
+train/frac_any_non_idle
+train/frac_multi_agent_non_idle
+```
+
+Sparse fixed penalty:
+
+```text
+train/intervention_penalty_coef
+train/intervention_penalty_mean
+train/intervention_penalty_total
+train/intervention_penalty_mean_agent_i
+```
+
+Adaptive budget:
+
+```text
+train/intervention_budget_lambda_agent_i
+train/intervention_budget_lambda_before_agent_i
+train/intervention_budget_lambda_updated_agent_i
+train/intervention_budget_cost_agent_i
+train/intervention_budget_cost_violation_agent_i
+train/intervention_budget_penalty_mean_agent_i
+train/intervention_budget_safety_weight_agent_i
+train/intervention_rate_when_budget_costly_agent_i
+train/intervention_rate_when_budget_free_agent_i
+train/intervention_budget_lambda_mean
+train/intervention_budget_cost_mean
+train/intervention_budget_cost_violation_mean
+train/intervention_budget_penalty_mean
+train/intervention_budget_safety_weight_mean
+```
+
+Heuristic override:
+
+```text
+test/heuristic/rho_threshold
+test/heuristic/is_local
+test/heuristic/force_noop_frac
+test/heuristic/force_noop_any_agent_frac
+```
+
+Gate:
+
+```text
+train/intervention_gate_do_nothing_frac_agent_i
+train/intervention_gate_intervene_frac_agent_i
+train/intervention_gate_prob_do_nothing_agent_i
+train/intervention_gate_prob_intervene_agent_i
+train/intervention_gate_entropy_agent_i
+train/nonidle_action_entropy_agent_i
+```
+
+Physical explainability:
+
+```text
+train/explain/pre_max_rho
+train/explain/post_max_rho
+train/explain/delta_max_rho
+train/explain/topology_distance_before
+train/explain/topology_distance_after
+train/explain/topology_distance_delta
 test/explain/*
 train_eval/explain/*
 ```
 
-Definitions:
+## Current Interpretation
+
+The empirical story so far is:
 
 ```text
-pre_max_rho  = max rho before executing the joint action
-post_max_rho = max rho after executing the joint action
-delta_max_rho = post_max_rho - pre_max_rho
-
-topology_distance = distance from reference topology
-topology_distance_delta = distance_after - distance_before
+The gate is not the strongest contribution.
+Sparse reward shaping already improves action-0 usage.
+The adaptive budget makes the sparse penalty self-tuning.
+The local-safe cost makes the penalty more physically meaningful.
 ```
 
-Interpretation:
-
-- Negative `delta_max_rho`: the step reduced the worst overload.
-- Positive `topology_distance_delta`: the step moved away from reference
-  topology.
-- Negative `topology_distance_delta`: the step restored the grid toward the
-  reference topology.
-
-Success criterion:
+In particular:
 
 ```text
-We can describe each agent's learned strategy in physical terms, not only by
-reward.
+sparse16_flat_p010
 ```
 
-## Phase 5: Counterfactual No-Op Explainability
+is a strong baseline because it shows that a small fixed non-idle cost can
+produce high action-0 usage while preserving survival.
 
-Goal: measure whether an intervention helped compared with doing nothing.
-
-For selected evaluation steps, simulate the no-op joint action from the same
-pre-action observation:
+The most principled learned sparse-control method is:
 
 ```text
-actual_post_risk = max rho after executed action
-noop_post_risk   = max rho after no-op
-
-improvement_vs_noop = noop_post_risk - actual_post_risk
+aib_00_flat_local_t020
 ```
 
-Interpretation:
+because it keeps the original decentralized actor, avoids evaluation-time
+overrides, learns the intervention penalty adaptively, and uses a local
+state-dependent safety weight.
 
-```text
-improvement_vs_noop > 0:
-    the intervention reduced immediate risk compared with no-op
-
-improvement_vs_noop < 0:
-    the intervention made immediate risk worse than no-op
-```
-
-This should be evaluation-only or subsampled during training to avoid slowing
-down PPO.
-
-Recommended flags:
-
-```text
---explain-counterfactual-noop true
---explain-counterfactual-every 20
-```
-
-Logs:
-
-```text
-explain/noop_post_max_rho
-explain/improvement_vs_noop
-explain/helpful_intervention_frac
-explain/harmful_intervention_frac
-explain/noop_equivalent_intervention_frac
-```
-
-Success criterion:
-
-```text
-We can say whether an action was operationally useful relative to doing nothing.
-```
-
-## Phase 6: Strategy Comparison Across Agents
-
-Goal: explain why different agents learn different strategies.
-
-Aggregate per-agent metrics:
-
-```text
-agent_i/intervention_rate
-agent_i/intervention_rate_when_safe
-agent_i/intervention_rate_when_hazard
-agent_i/mean_improvement_vs_noop
-agent_i/helpful_intervention_frac
-agent_i/topology_restoration_frac
-agent_i/most_common_actions
-agent_i/most_common_changed_substations
-```
-
-Useful plots:
-
-- Intervention rate by agent.
-- Gate intervention probability vs `max_rho`.
-- Improvement vs no-op by agent.
-- Topology distance before/after interventions.
-- Most frequently selected local actions.
-
-Success criterion:
-
-```text
-We can explain not only that agents differ, but how they differ physically:
-one restores topology, one handles overloads, one rarely acts, etc.
-```
-
-## Phase 7: Optional Local Action Factorization
-
-Goal: improve scalability further if the local action spaces grow.
-
-Instead of:
-
-```text
-gate_i -> local action id
-```
-
-factor into:
-
-```text
-gate_i -> local substation -> local topology configuration
-```
-
-This is closer to the full hierarchy in the HRL paper, but still decentralized.
-
-Do not implement this until the simpler gate is evaluated.
-
-Success criterion:
-
-```text
-The local action space scales with substations/configurations instead of one
-flat categorical over all local topology actions.
-```
-
-## Recommended First Implementation
-
-Implement only:
-
-```text
-Phase 1: intervention-gated actor
-Phase 2: PPO compatibility and gate logs
-Phase 4: lightweight explainability logs
-```
-
-Then run:
-
-```text
-best_00 baseline, seeds 0/1/2
-best_00 gated actor, no penalty, seeds 0/1/2
-best_00 gated actor, small safe-intervention penalty, seeds 0/1/2
-```
-
-Primary evaluation questions:
-
-```text
-1. Does the gate preserve survival/reward?
-2. Does it reduce unnecessary non-idle actions?
-3. Does it reduce simultaneous multi-agent interventions?
-4. Are actions more explainable in terms of max rho and topology distance?
-```
-
-## Non-Goals For The First Version
+## Non-Goals
 
 - No central coordinator.
-- No communication between agents.
-- No risk-prior surrogate.
-- No hard rule that forbids action in safe states.
-- No TopK action restriction.
-- No exhaustive counterfactual simulation during training.
+- No inter-agent communication.
+- No Gibbs risk-prior surrogate.
+- No action mask during training.
+- No hard TopK action restriction.
+- No evaluation-only heuristic as the final learned method.
