@@ -5,7 +5,7 @@
 #SBATCH --qos=academic
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=20
+#SBATCH --cpus-per-task=72
 #SBATCH --mem-per-cpu=7000M
 #SBATCH --time=12:00:00
 #SBATCH --output=Topology_Task/full_test_eval/slurm-%x-%j.out

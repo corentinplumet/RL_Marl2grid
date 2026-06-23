@@ -149,10 +149,105 @@ def _format_matches(paths: Iterable[Path], max_items: int = 20) -> str:
     return "\n".join(lines)
 
 
+def _format_candidate_steps(
+    candidates: Iterable[Tuple[Path, Dict[str, Any]]],
+    max_items: int = 20,
+) -> str:
+    rows = sorted(
+        (
+            (int(summary["global_step"]), path)
+            for path, summary in candidates
+            if summary.get("global_step") is not None
+        ),
+        reverse=True,
+    )
+    lines = []
+    for step, path in rows[:max_items]:
+        lines.append(f"  - {step}: {_repo_relative(path)}")
+    return "\n".join(lines)
+
+
+def _select_single_candidate(
+    candidates: List[Tuple[Path, Dict[str, Any]]],
+    model: str,
+    step: Optional[int],
+) -> Path:
+    ranked = sorted(
+        candidates,
+        key=lambda item: _candidate_score(item[0], item[1], model, step),
+        reverse=True,
+    )
+    if len(ranked) > 1:
+        best_score = _candidate_score(ranked[0][0], ranked[0][1], model, step)[0]
+        tied = [
+            path
+            for path, summary in ranked
+            if _candidate_score(path, summary, model, step)[0] == best_score
+        ]
+        if len(tied) > 1:
+            raise RuntimeError(
+                "Multiple checkpoints match equally well. Use --checkpoint "
+                "to disambiguate:\n" + _format_matches(tied)
+            )
+    return ranked[0][0].resolve()
+
+
+def _select_by_step_policy(
+    candidates: List[Tuple[Path, Dict[str, Any]]],
+    model: str,
+    requested_step: int,
+    step_policy: str,
+) -> Optional[Path]:
+    with_steps = [
+        (path, summary)
+        for path, summary in candidates
+        if summary.get("global_step") is not None
+    ]
+    if not with_steps:
+        return None
+
+    if step_policy == "before":
+        eligible = [
+            (path, summary)
+            for path, summary in with_steps
+            if int(summary["global_step"]) <= requested_step
+        ]
+        if not eligible:
+            return None
+        target_step = max(int(summary["global_step"]) for _, summary in eligible)
+    elif step_policy == "after":
+        eligible = [
+            (path, summary)
+            for path, summary in with_steps
+            if int(summary["global_step"]) >= requested_step
+        ]
+        if not eligible:
+            return None
+        target_step = min(int(summary["global_step"]) for _, summary in eligible)
+    elif step_policy == "nearest":
+        def nearest_key(item: Tuple[Path, Dict[str, Any]]) -> Tuple[int, int]:
+            candidate_step = int(item[1]["global_step"])
+            # Prefer the previous checkpoint when the distance is tied.
+            is_after = int(candidate_step > requested_step)
+            return (abs(candidate_step - requested_step), is_after)
+
+        target_step = int(min(with_steps, key=nearest_key)[1]["global_step"])
+    else:
+        raise ValueError(f"Unsupported step policy: {step_policy}")
+
+    selected = [
+        (path, summary)
+        for path, summary in with_steps
+        if int(summary["global_step"]) == target_step
+    ]
+    return _select_single_candidate(selected, model, requested_step)
+
+
 def _find_checkpoint_by_model_step(
     model: str,
     step: Optional[int],
     checkpoint_dir: Path,
+    step_policy: str,
 ) -> Path:
     candidates = []
     failures = []
@@ -177,14 +272,14 @@ def _find_checkpoint_by_model_step(
         exact_step_matches = []
         for path, summary in candidates:
             if summary["global_step"] == step:
-                exact_step_matches.append(path)
+                exact_step_matches.append((path, summary))
         if len(exact_step_matches) == 1:
-            return exact_step_matches[0].resolve()
+            return exact_step_matches[0][0].resolve()
         if len(exact_step_matches) > 1:
             raise RuntimeError(
                 "Multiple checkpoints matched the requested global step. "
                 "Use --checkpoint to disambiguate:\n"
-                + _format_matches(exact_step_matches)
+                + _format_matches([path for path, _ in exact_step_matches])
             )
 
         filename_matches = [path for path, _ in candidates if str(step) in path.stem]
@@ -197,9 +292,31 @@ def _find_checkpoint_by_model_step(
                 + _format_matches(filename_matches)
             )
 
+        if step_policy != "exact":
+            selected_path = _select_by_step_policy(
+                candidates, model, step, step_policy
+            )
+            if selected_path is not None:
+                selected_step = _checkpoint_global_step(selected_path)
+                print(
+                    f"Requested step {step} with --step-policy {step_policy}; "
+                    f"using checkpoint step {selected_step}: "
+                    f"{_repo_relative(selected_path)}",
+                    flush=True,
+                )
+                return selected_path
+
+        available_steps = _format_candidate_steps(candidates)
+        available_msg = (
+            "\nAvailable checkpoints for this model:\n" + available_steps
+            if available_steps
+            else ""
+        )
         raise FileNotFoundError(
             f"No checkpoint for model {model!r} matched global_step={step}. "
-            "Use --checkpoint with the exact file if this is a best/final checkpoint."
+            "Use --checkpoint with the exact file, choose one of the listed "
+            "steps, or pass --step-policy before|after|nearest."
+            + available_msg
         )
 
     ranked = sorted(
@@ -365,6 +482,7 @@ def _apply_eval_overrides(args: Namespace, cli: Namespace) -> Namespace:
     args.eval_all_split_chronics = bool(cli.eval_all_split_chronics)
     args.deterministic_eval = bool(cli.deterministic_eval)
     args.trace_rollout_actions = False
+    args.eval_progress_print = bool(cli.progress)
 
     if cli.eval_episodes is not None:
         args.eval_episodes = int(cli.eval_episodes)
@@ -447,6 +565,18 @@ def parse_args() -> Namespace:
         help="Requested checkpoint global_step when using --model.",
     )
     parser.add_argument(
+        "--step-policy",
+        type=str,
+        default="exact",
+        choices=["exact", "before", "after", "nearest"],
+        help=(
+            "How to resolve --step when no checkpoint exists exactly at that "
+            "global_step. 'before' uses the latest checkpoint at or before the "
+            "requested step; 'after' uses the earliest checkpoint at or after it; "
+            "'nearest' uses the closest checkpoint and prefers before on ties."
+        ),
+    )
+    parser.add_argument(
         "--checkpoint-dir",
         type=Path,
         default=TASK_DIR / "checkpoint",
@@ -522,6 +652,12 @@ def parse_args() -> Namespace:
         default=None,
         help="Optional path for the JSON result summary.",
     )
+    parser.add_argument(
+        "--progress",
+        type=str2bool,
+        default=True,
+        help="Print one progress line after each evaluated chronic.",
+    )
     return parser.parse_args()
 
 
@@ -549,7 +685,7 @@ def main() -> None:
         checkpoint_path = _resolve_checkpoint_path(cli.checkpoint, checkpoint_dir)
     else:
         checkpoint_path = _find_checkpoint_by_model_step(
-            cli.model, cli.step, checkpoint_dir
+            cli.model, cli.step, checkpoint_dir, cli.step_policy
         )
 
     first_record = th.load(checkpoint_path, map_location="cpu", weights_only=False)
@@ -597,6 +733,7 @@ def main() -> None:
         "checkpoint_global_step": checkpoint_step,
         "requested_model": cli.model,
         "requested_step": cli.step,
+        "requested_step_policy": cli.step_policy,
         "split": cli.split,
         "split_chronics": bool(args.split_chronics),
         "eval_all_split_chronics": bool(args.eval_all_split_chronics),

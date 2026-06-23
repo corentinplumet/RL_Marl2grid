@@ -43,6 +43,19 @@ If `--model` and `--step` are used, the script scans `--checkpoint-dir`
 `global_step` equals `--step`, then falling back to filenames containing the
 step value.
 
+If the requested step does not exist exactly, choose a policy:
+
+```bash
+sbatch Topology_Task/full_test_eval/job_full_test_eval.sh \
+  --model hvg_04_eval_local_rho090_s0 \
+  --step 10160000 \
+  --step-policy nearest
+```
+
+`before` uses the latest checkpoint at or before the requested step, `after`
+uses the earliest checkpoint at or after it, and `nearest` uses the closest
+available checkpoint.
+
 ## Useful Options
 
 - `--checkpoint PATH_OR_STEM`: exact checkpoint file, or a stem inside
@@ -52,6 +65,8 @@ step value.
   `exp_tag`, or stored W&B run path/name.
 - `--step N`: requested training step. If omitted, the newest matching model
   checkpoint is used.
+- `--step-policy exact|before|after|nearest`: behavior when `--step` does not
+  exist exactly. Defaults to `exact`.
 - `--checkpoint-dir DIR`: directory containing `.tar` checkpoints.
 - `--split test`: chronic split to evaluate. Defaults to `test`.
 - `--eval-all-split-chronics true`: evaluate every chronic in the selected
@@ -65,6 +80,7 @@ step value.
   keep or override the deterministic rule for gated actors.
 - `--deterministic-eval true`: greedy evaluation by default.
 - `--device auto|cpu|cuda|mps`: inference device.
+- `--progress true`: print one line per completed chronic. Enabled by default.
 - `--output-json PATH`: optional explicit JSON summary path.
 
 The default JSON summary is written under:
@@ -79,6 +95,12 @@ The important terminal line looks like:
 
 ```text
 test at step 15000000, survival=97.321%, return=[...]
+```
+
+With progress enabled, the sbatch output also contains lines like:
+
+```text
+test chronic 3/20: 003 survival=100.000% steps=8064/8064 running_mean=96.481%
 ```
 
 The JSON summary also records the checkpoint path, checkpoint step, split,

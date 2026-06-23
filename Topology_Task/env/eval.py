@@ -102,7 +102,28 @@ class Evaluator:
                 self.eval_episodes = split_size
         self.metric_prefix = metric_prefix
         self.chronic_split = chronic_split
+        self.eval_progress_print = bool(getattr(args, "eval_progress_print", False))
         # if self.use_heuristic: self.env.set_n_rewards(len(self.reward_tags))
+
+    def _current_chronic_name(self) -> str:
+        """Best-effort label for the currently evaluated Grid2Op chronic."""
+        handler = getattr(getattr(self.env, "g2op_env", None), "chronics_handler", None)
+        if handler is None:
+            return "unknown"
+        for name in ("get_name", "get_id"):
+            getter = getattr(handler, name, None)
+            if callable(getter):
+                try:
+                    value = getter()
+                except Exception:
+                    continue
+                if value is not None:
+                    return str(value)
+        for name in ("current_chronics", "_current_chronics", "_prev_cache_id"):
+            value = getattr(handler, name, None)
+            if value is not None:
+                return str(value)
+        return "unknown"
 
     def _eval_heuristic_decision(
         self, agent_ids: List[str]
@@ -167,6 +188,14 @@ class Evaluator:
 
         if eval_ep is None:
             eval_ep = self.eval_episodes
+
+        eval_label = self.metric_prefix or "eval"
+        if self.eval_progress_print:
+            print(
+                f"{eval_label} evaluation start: {eval_ep} chronics, "
+                f"max_steps={self.max_steps}",
+                flush=True,
+            )
 
         ep_survivals: Deque[float] = deque(
             maxlen=eval_ep
@@ -280,10 +309,22 @@ class Evaluator:
                 episode_length = max(
                     int(self.env.g2op_ma_env._cent_env.nb_time_step), 1
                 )
-                ep_survivals.append(episode_length / self.max_steps)
+                episode_survival = episode_length / self.max_steps
+                chronic_name = self._current_chronic_name()
+                ep_survivals.append(episode_survival)
                 if not self.use_heuristic:
                     ep_returns.append(ep_rewards)
                     ep_returns_per_step.append(ep_rewards / episode_length)
+                if self.eval_progress_print:
+                    completed = len(ep_survivals)
+                    running_survival = sum(ep_survivals) / max(completed, 1)
+                    print(
+                        f"{eval_label} chronic {completed}/{eval_ep}: "
+                        f"{chronic_name} survival={episode_survival * 100:.3f}% "
+                        f"steps={episode_length}/{self.max_steps} "
+                        f"running_mean={running_survival * 100:.3f}%",
+                        flush=True,
+                    )
                 obs, _ = self.env.reset()
                 obs = cast_np_to_tensors(obs, self.device)
                 if not self.use_heuristic:
@@ -410,7 +451,12 @@ class Evaluator:
                     step=glob_step,
                 )
 
-        eval_label = self.metric_prefix or "eval"
+        if self.eval_progress_print:
+            print(
+                f"{eval_label} evaluation finished: {eval_ep} chronics, "
+                f"mean_survival={avg_survival * 100:.3f}%",
+                flush=True,
+            )
         print(
             f"{eval_label} at step {glob_step}, survival={avg_survival * 100:.3f}%, return={avg_return}"
         )
