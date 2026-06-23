@@ -7,6 +7,11 @@ the same training/evaluation hyperparameters as:
 configs/deterministic_evaluation/rerun_bias_0.toml
 ```
 
+The folder also contains `rerun_a0_known_good.toml`, which keeps the original
+`a0_known_good_det` initialization bias (`init_do_nothing_prob = 0.5`) but uses
+the same split/20M/eval protocol. This isolates the protocol change from the
+zero-bias change.
+
 The only intended changes are:
 
 - `run.name`
@@ -23,6 +28,7 @@ these reruns can later be evaluated faithfully with `full_test_eval` and
 sbatch job_jed.sh configs/rerun_bias0_obsstats_s0_s1_s2/rerun_bias0_obsstats_s0.toml
 sbatch job_jed.sh configs/rerun_bias0_obsstats_s0_s1_s2/rerun_bias0_obsstats_s1.toml
 sbatch job_jed.sh configs/rerun_bias0_obsstats_s0_s1_s2/rerun_bias0_obsstats_s2.toml
+sbatch job_jed.sh configs/rerun_bias0_obsstats_s0_s1_s2/rerun_a0_known_good.toml
 ```
 
 ## What Changed Versus The Earlier `a0_known_good_det` Config
@@ -60,3 +66,15 @@ rerun_bias_0  vs  rerun_bias_05  vs  rerun_bias_07
 ```
 
 not only `rerun_bias_0` versus `a0_known_good_det`.
+
+`rerun_a0_known_good` is the explicit same-folder control for:
+
+```text
+a0_known_good_det + split_chronics + 20M timesteps + eval_freq 80k + train-split eval
+```
+
+while preserving:
+
+```text
+init_do_nothing_prob = 0.5
+```
