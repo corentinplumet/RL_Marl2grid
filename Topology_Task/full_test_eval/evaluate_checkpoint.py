@@ -456,6 +456,12 @@ def _load_checkpoint(path: Path, device: th.device) -> Dict[str, Any]:
     return record
 
 
+def _extract_obs_stats(record: Dict[str, Any]) -> Dict[str, Any]:
+    training_state = record.get("training_state", {}) or {}
+    obs_stats = training_state.get("obs_stats", {})
+    return obs_stats or {}
+
+
 def _resolve_device(args: Namespace, requested: str) -> th.device:
     from common.utils import set_torch
 
@@ -499,6 +505,52 @@ def _apply_eval_overrides(args: Namespace, cli: Namespace) -> Namespace:
         args.n_threads = int(cli.n_threads)
     args.n_threads = max(int(getattr(args, "n_threads", 1)), 1)
     return args
+
+
+def _configure_obs_normalization(
+    args: Namespace,
+    obs_stats: Dict[str, Any],
+    mode: str,
+) -> Tuple[Namespace, Dict[str, Any], str]:
+    """Configure standalone eval observation normalization.
+
+    Training-time eval receives normalization stats from the vectorized train
+    env. Old checkpoints did not store those stats, so standalone eval needs an
+    explicit fallback instead of crashing on missing stats.
+    """
+
+    if not getattr(args, "norm_obs", False):
+        return args, {}, "disabled_by_checkpoint"
+
+    if mode == "disable":
+        args.norm_obs = False
+        return args, {}, "disabled_by_cli"
+
+    if obs_stats:
+        return args, obs_stats, "checkpoint_stats"
+
+    message = (
+        "Checkpoint has norm_obs=True but does not contain training observation "
+        "normalization stats. Old checkpoints were saved before obs_stats were "
+        "included. "
+    )
+    if mode == "require":
+        raise RuntimeError(
+            message
+            + "Use a newer checkpoint, or rerun with --obs-normalization disable "
+            "to evaluate on raw observations."
+        )
+
+    args.norm_obs = False
+    print(
+        "WARNING: "
+        + message
+        + "Proceeding with --obs-normalization auto by disabling obs normalization "
+        "for this standalone eval. This avoids the crash, but the policy was "
+        "trained with normalized observations, so compare the result with care.",
+        flush=True,
+    )
+    return args, {}, "auto_disabled_missing_stats"
 
 
 def _build_actors(record: Dict[str, Any], args: Namespace, evaluator: Any, device: th.device) -> Dict[str, Any]:
@@ -658,6 +710,18 @@ def parse_args() -> Namespace:
         default=True,
         help="Print one progress line after each evaluated chronic.",
     )
+    parser.add_argument(
+        "--obs-normalization",
+        type=str,
+        default="auto",
+        choices=["auto", "disable", "require"],
+        help=(
+            "Standalone eval handling for norm_obs checkpoints. 'auto' uses "
+            "saved obs_stats when present and disables normalization for old "
+            "checkpoints that lack stats. 'require' aborts if stats are missing. "
+            "'disable' always evaluates raw observations."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -691,6 +755,10 @@ def main() -> None:
     first_record = th.load(checkpoint_path, map_location="cpu", weights_only=False)
     args = _merge_missing_defaults(_as_namespace(first_record["args"]))
     args = _apply_eval_overrides(args, cli)
+    obs_stats = _extract_obs_stats(first_record)
+    args, obs_stats, obs_norm_mode = _configure_obs_normalization(
+        args, obs_stats, cli.obs_normalization
+    )
     set_random_seed(getattr(args, "seed", 0))
     device = _resolve_device(args, cli.device)
     record = _load_checkpoint(checkpoint_path, device)
@@ -708,6 +776,8 @@ def main() -> None:
         chronic_split=cli.split,
         metric_prefix=cli.split,
     )
+    if obs_stats:
+        evaluator.env.env.set_obs_stats(obs_stats)
     actors = _build_actors(record, args, evaluator, device)
 
     print(f"Checkpoint: {_repo_relative(checkpoint_path)}")
@@ -715,6 +785,7 @@ def main() -> None:
     print(f"Evaluating split: {cli.split}")
     print(f"Evaluation episodes: {cli.eval_episodes or evaluator.eval_episodes}")
     print(f"Device: {device}")
+    print(f"Obs normalization: {obs_norm_mode}")
     print(f"Eval heuristic: {getattr(args, 'eval_action_heuristic', 'none')}")
     if getattr(args, "eval_action_heuristic", "none") != "none":
         print(f"Eval rho threshold: {getattr(args, 'eval_action_rho_threshold', 0.90)}")
@@ -739,6 +810,9 @@ def main() -> None:
         "eval_all_split_chronics": bool(args.eval_all_split_chronics),
         "eval_episodes": int(cli.eval_episodes or evaluator.eval_episodes),
         "deterministic_eval": bool(args.deterministic_eval),
+        "obs_normalization": obs_norm_mode,
+        "obs_stats_available": bool(obs_stats),
+        "norm_obs_effective": bool(getattr(args, "norm_obs", False)),
         "eval_action_heuristic": getattr(args, "eval_action_heuristic", "none"),
         "eval_action_rho_threshold": float(
             getattr(args, "eval_action_rho_threshold", 0.90)

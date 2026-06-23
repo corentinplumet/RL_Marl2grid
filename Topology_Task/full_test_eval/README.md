@@ -81,6 +81,11 @@ available checkpoint.
 - `--deterministic-eval true`: greedy evaluation by default.
 - `--device auto|cpu|cuda|mps`: inference device.
 - `--progress true`: print one line per completed chronic. Enabled by default.
+- `--obs-normalization auto|disable|require`: handling for checkpoints trained
+  with normalized observations. `auto` uses saved normalization stats when
+  present; for older checkpoints that do not contain stats, it disables
+  normalization with a warning instead of crashing. `require` aborts if stats
+  are missing.
 - `--output-json PATH`: optional explicit JSON summary path.
 
 The default JSON summary is written under:
@@ -106,3 +111,24 @@ test chronic 3/20: 003 survival=100.000% steps=8064/8064 running_mean=96.481%
 The JSON summary also records the checkpoint path, checkpoint step, split,
 number of evaluated episodes, heuristic settings, deterministic mode, and
 survival as both a fraction and a percentage.
+
+## Observation Normalization
+
+Older checkpoints did not store the training observation normalization stats.
+If such a checkpoint has `norm_obs = true`, standalone eval cannot reconstruct
+the exact normalized inputs used during training. By default the script prints a
+warning and evaluates on raw observations so the job still runs:
+
+```bash
+--obs-normalization auto
+```
+
+For strict reproducibility checks, use:
+
+```bash
+--obs-normalization require
+```
+
+Future checkpoints saved by this code include `training_state["obs_stats"]`, so
+standalone full-test eval can use the same normalization stats as training-time
+eval.

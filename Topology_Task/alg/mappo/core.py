@@ -618,7 +618,10 @@ class MAPPO:
         )
 
         def _current_training_state() -> Dict[str, Any]:
-            return {"intervention_lambdas": dict(intervention_lambdas)}
+            state = {"intervention_lambdas": dict(intervention_lambdas)}
+            if getattr(args, "norm_obs", False):
+                state["obs_stats"] = envs.get_obs_stats()
+            return state
 
         try:
             for iteration in range(init_rollout, n_rollouts + 1):
