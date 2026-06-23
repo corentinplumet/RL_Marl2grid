@@ -25,9 +25,9 @@ these reruns can later be evaluated faithfully with `full_test_eval` and
 ## Launch
 
 ```bash
-sbatch job_jed.sh configs/rerun_bias0_obsstats_s0_s1_s2/rerun_bias0_obsstats_s0.toml
-sbatch job_jed.sh configs/rerun_bias0_obsstats_s0_s1_s2/rerun_bias0_obsstats_s1.toml
-sbatch job_jed.sh configs/rerun_bias0_obsstats_s0_s1_s2/rerun_bias0_obsstats_s2.toml
+sbatch job_jed.sh configs/rerun_bias0_obsstats_s0_s1_s2/rerun_bias0_obsstats_nonopt_s0.toml
+sbatch job_jed.sh configs/rerun_bias0_obsstats_s0_s1_s2/rerun_bias0_obsstats_nonopt_s1.toml
+sbatch job_jed.sh configs/rerun_bias0_obsstats_s0_s1_s2/rerun_bias0_obsstats_nonopt_s2.toml
 sbatch job_jed.sh configs/rerun_bias0_obsstats_s0_s1_s2/rerun_a0_known_good.toml
 ```
 

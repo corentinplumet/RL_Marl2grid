@@ -5,7 +5,7 @@
 # Exported survival: 20.04%
 
 [run]
-name = "rerun_bias0_obsstats_s2"
+name = "rerun_bias0_obsstats_opt_s2"
 run_dir = "outputs/jed-{config_name}-{job_id}"
 seed_from_slurm_array = false
 extra_args = []
@@ -34,7 +34,7 @@ checkpoint = true
 alg = "MAPPO"
 seed = 2
 verbose = true
-exp_tag = "rerun_bias0_obsstats_s2"
+exp_tag = "rerun_bias0_obsstats_opt_s2"
 track = true
 wandb_project = "Grid2Op"
 wandb_entity = "corentin-plumet-epfl"
