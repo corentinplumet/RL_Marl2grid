@@ -39,6 +39,7 @@ baseline.
 | `best_08_shared_actor_gnn_weighted_gcn_a4_concat_flat_critic_gnn_legacy_update_s*` | 0, 1, 2 | Same setup with GCN message passing weighted directly by raw `rho`. |
 | `best_09_shared_actor_gnn_light_gine_a4_no_concat_flat_critic_mlp_optcritic_s*` | 0, 1, 2 | Old numbered run-8 light A4 GINE setup with MLP critic and no concat-flat, using the newer baseline evaluation protocol. |
 | `best_10_shared_actor_gnn_light_gine_a4_concat_flat_critic_mlp_optcritic_s*` | 0, 1, 2 | Same old run-8 light A4 MLP-critic setup, but with flat-observation concatenation enabled. |
+| `best_11_shared_actor_gnn_gine_a4_concat_flat_critic_gnn_legacy_update_initbias0_s*` | 0, 1, 2 | Same as `best_00`, but with `init_do_nothing_prob = 0.0` instead of `0.7`. |
 
 Useful controlled comparisons:
 
@@ -52,9 +53,10 @@ Useful controlled comparisons:
 - `best_00` vs `best_07`: GINE message passing vs GAT message passing.
 - `best_00` vs `best_08`: GINE message passing vs raw-`rho` weighted GCN message passing.
 - `best_09` vs `best_10`: old run-8 light MLP setup without vs with flat-observation concatenation.
+- `best_00` vs `best_11`: effect of removing the initial action-0 / do-nothing bias in the same GINE setup.
 
 Launch from the repository root with:
 
 ```bash
-sbatch job_jed.sh configs/gine_best_search2/<config>.toml
+sbatch job_jed.sh configs/gine_s0_s1_s2/<config>.toml
 ```
