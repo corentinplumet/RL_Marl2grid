@@ -1,4 +1,6 @@
 Topology_Task/outputs/
+Topology_Task/checkpoint/
 Topology_Task/notebooks/wandb/
 **/wandb/
 **/.ipynb_checkpoints/
+.DS_Store
