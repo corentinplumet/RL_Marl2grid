@@ -22,9 +22,8 @@ and keep the final policy decentralized.
 ## Scientific Motivation
 
 The gate direction was inspired by hierarchical topology-control work, in
-particular "Hierarchical Reinforcement Learning for Power Network Topology
-Control" (Manczak, Viebahn, van Hoof, 2023). The relevant idea is that topology
-control can be decomposed into:
+particular [Manczak et al., 2023][manczak-hrl]. The relevant idea is that
+topology control can be decomposed into:
 
 ```text
 do nothing vs propose topology change
@@ -38,16 +37,25 @@ In this repository, only the first level was adapted to decentralized MAPPO:
 each regional agent decides locally whether to do nothing or intervene.
 ```
 
+This is also related to hierarchical MARL formulations for topology
+optimization, such as [van der Sar et al., 2023][vandersar-marl], but the
+implementation here deliberately avoids a central coordinator or communication
+between agents at action time.
+
 The later sparse-control direction is closer to constrained and budgeted RL:
 
-- constrained MDPs / Constrained Policy Optimization: maximize reward subject to
-  a cost constraint,
+- constrained MDPs / Constrained Policy Optimization: maximize reward subject
+  to a cost constraint, following the general formulation in
+  [Achiam et al., 2017][achiam-cpo],
 - Lagrangian constrained RL: learn a multiplier for the constraint instead of
-  choosing one fixed penalty by hand,
+  choosing one fixed penalty by hand; the multiplier update used here is the
+  simple integral-style Lagrangian update discussed as the baseline form in
+  [Stooke et al., 2020][stooke-pid],
 - budgeted RL: treat non-idle interventions as a resource that should remain
-  under a budget,
+  under a budget, in the spirit of [Carrara et al., 2019][carrara-budgeted],
 - power-grid multi-objective topology control: topology switching frequency and
-  topology deviation are operational objectives, not just cosmetic metrics.
+  topology deviation are operational objectives, not just cosmetic metrics, as
+  emphasized by [Lautenbacher et al., 2025][lautenbacher-morl].
 
 ## Baseline Action Selection
 
@@ -109,7 +117,12 @@ Does high survival come from sparse action or frequent topology churn?
 
 The heuristic override is evaluation-only. It does not modify the training
 objective and it does not teach the policy to act sparsely. The policy proposes
-actions, then the evaluator may replace some of them by action `0`.
+actions, then the evaluator may replace some of them by action `0`. It should
+be interpreted as a rule-based diagnostic in the style of operational
+topology-control analyses, not as the final learned method. This is closest in
+spirit to using explicit operational rules to filter or revert topology
+actions, as discussed for power-grid agents by [Lehna et al.,
+2023][lehna-comparative].
 
 Let:
 
@@ -193,8 +206,11 @@ evaluation actions, not as proof that the policy learned to prefer action `0`.
 
 ## Intervention-Gated Actor
 
-The gated actor changes the actor architecture. Each agent has two heads after
-the encoder:
+The gated actor is the local decentralized adaptation of the top level of the
+hierarchy in [Manczak et al., 2023][manczak-hrl]: before choosing a topology
+change, the agent first decides whether an intervention is needed at all. The
+gated actor changes the actor architecture. Each agent has two heads after the
+encoder:
 
 $$
 \pi_i^{gate}(g_i \mid o_i),
@@ -353,6 +369,11 @@ sparse objective.
 ## Sparse16: Fixed Sparse-Action Penalty
 
 The `phase4_sparse_control_16` sweep tests a fixed penalty for non-idle actions.
+This is the simplest way to encode that switching frequency is an operational
+objective. It is less principled than a constrained formulation, but it is a
+strong baseline because power-grid topology-control papers explicitly treat
+switching frequency and topology deviation as objectives that trade off against
+congestion relief [Lautenbacher et al., 2025][lautenbacher-morl].
 
 The reward used for training is:
 
@@ -437,7 +458,10 @@ a non-idle action must be useful enough to pay its fixed cost.
 ## Adaptive Intervention Budget
 
 The adaptive intervention budget turns sparse topology control into a local
-constraint.
+constraint. This is the part most directly connected to constrained RL
+[Achiam et al., 2017][achiam-cpo], adaptive Lagrangian methods
+[Stooke et al., 2020][stooke-pid], and budgeted RL
+[Carrara et al., 2019][carrara-budgeted].
 
 For each agent $i$, define an intervention cost:
 
@@ -1074,6 +1098,28 @@ because it keeps the original decentralized actor, avoids evaluation-time
 overrides, learns the intervention penalty adaptively, and uses a local
 state-dependent safety weight.
 
+## References
+
+- [Manczak et al., 2023][manczak-hrl]: hierarchical power-network topology
+  control. Used here to motivate the local `do nothing / intervene` decision.
+- [van der Sar et al., 2023][vandersar-marl]: hierarchical MARL for power-grid
+  topology optimization. Related motivation for decomposing large topology
+  action spaces, though this implementation remains decentralized.
+- [Lehna et al., 2023][lehna-comparative]: rule-based and RL topology-control
+  comparison with operational diagnostics. Used here to contextualize the
+  evaluation-time rho heuristic as a diagnostic rule, not as learned control.
+- [Achiam et al., 2017][achiam-cpo]: constrained policy optimization. Used here
+  for the constrained objective
+  $\mathbb E[c_i(s_t,a_{i,t})]\leq d$.
+- [Stooke et al., 2020][stooke-pid]: PID Lagrangian methods. Used here to
+  justify adapting the multiplier $\lambda_i$ from observed constraint
+  violation; this code implements the simpler integral-style Lagrangian update.
+- [Carrara et al., 2019][carrara-budgeted]: budgeted RL. Used here to frame
+  non-idle interventions as a budgeted resource.
+- [Lautenbacher et al., 2025][lautenbacher-morl]: multi-objective RL for power
+  grid topology control. Used here to justify switching frequency and topology
+  deviation as operational objectives.
+
 ## Non-Goals
 
 - No central coordinator.
@@ -1082,3 +1128,11 @@ state-dependent safety weight.
 - No action mask during training.
 - No hard TopK action restriction.
 - No evaluation-only heuristic as the final learned method.
+
+[manczak-hrl]: https://arxiv.org/abs/2311.02129
+[vandersar-marl]: https://arxiv.org/abs/2310.02605
+[lehna-comparative]: https://arxiv.org/abs/2304.00765
+[achiam-cpo]: https://arxiv.org/abs/1705.10528
+[stooke-pid]: https://arxiv.org/abs/2007.03964
+[carrara-budgeted]: https://arxiv.org/abs/1903.01004
+[lautenbacher-morl]: https://arxiv.org/abs/2502.00040

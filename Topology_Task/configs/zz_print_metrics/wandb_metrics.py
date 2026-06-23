@@ -2236,21 +2236,53 @@ def plot_gine_best2_baseline_comparisons():
     return fig_gine_best2
 
 
-def plot_adaptive_intervention_budget_7_comparisons():
-    """Plot adaptive_intervention_budget_7 conditions against the flat t=0.20 baseline."""
+def plot_adaptive_intervention_budget_7_comparisons(baseline_source="gine_best2"):
+    """Plot adaptive_intervention_budget_7 conditions against the shared main baseline."""
     try:
         import tomllib
     except ModuleNotFoundError:
         import tomli as tomllib
 
     AIB_CONFIG_DIR = TASK_DIR / "configs" / "adaptive_intervention_budget_7"
-    AIB_BASELINE_FAMILY = "aib_00_flat_local_t020"
-    AIB_BASELINE_LABEL = "flat local target 0.20"
+    AIB_BASELINE_SOURCES = {
+        "gine_best2": {
+            "prefix": "best_00_shared_actor_gnn_gine_a4_concat_flat_critic_gnn_legacy_update",
+            "label": "main baseline: GINE 00",
+        },
+        "gine_best_search_2": {
+            "prefix": "best_00_shared_actor_gnn_gine_a4_concat_flat_critic_gnn_legacy_update",
+            "label": "main baseline: GINE 00",
+        },
+        "heuristic_vs_gate": {
+            "prefix": "hvg_00_baseline",
+            "label": "main baseline: HVG baseline",
+        },
+        "hvg": {
+            "prefix": "hvg_00_baseline",
+            "label": "main baseline: HVG baseline",
+        },
+        "phase4_sparse_control_16": {
+            "prefix": "sparse16_flat_p000",
+            "label": "main baseline: Sparse16 flat p0.000",
+        },
+        "phase4_sparse": {
+            "prefix": "sparse16_flat_p000",
+            "label": "main baseline: Sparse16 flat p0.000",
+        },
+    }
+    baseline_source_key = str(baseline_source).strip().lower()
+    if baseline_source_key not in AIB_BASELINE_SOURCES:
+        raise ValueError(
+            "baseline_source must be one of "
+            f"{sorted(AIB_BASELINE_SOURCES)}; got {baseline_source!r}."
+        )
+    AIB_BASELINE_SPEC = AIB_BASELINE_SOURCES[baseline_source_key]
+    AIB_BASELINE_LABEL = AIB_BASELINE_SPEC["label"]
     AIB_BASELINE_COLOR = "#1f77b4"
     AIB_COMPARE_COLOR = "#ff7f0e"
     AIB_GATE_COLOR = "#d62728"
     AIB_FAMILY_LABELS = {
-        "aib_00_flat_local_t020": AIB_BASELINE_LABEL,
+        "aib_00_flat_local_t020": "flat local target 0.20",
         "aib_01_flat_local_t010": "flat local target 0.10",
         "aib_02_flat_local_t035": "flat local target 0.35",
         "aib_03_gate_hgreedy_sep_local_t020": "gate h-greedy separate entropy target 0.20",
@@ -2323,23 +2355,39 @@ def plot_adaptive_intervention_budget_7_comparisons():
                 missing.append(name)
         return resolved, missing
 
+    def _aib_resolve_seeded_prefix(prefix, seeds=(0, 1, 2), history=None):
+        history = _get_history(history)
+        available = available_run_names(history=history)
+        available_set = set(available)
+        resolved = []
+        missing = []
+        for name in [f"{prefix}_s{seed}" for seed in seeds]:
+            if name in available_set:
+                resolved.append(name)
+                continue
+            substring_matches = [candidate for candidate in available if name in candidate or candidate in name]
+            if substring_matches:
+                resolved.append(sorted(substring_matches, key=lambda candidate: (len(candidate), candidate))[0])
+            else:
+                missing.append(name)
+        return resolved, missing
+
     AIB_EXPECTED_CONFIGS = _aib_read_expected_configs()
-    baseline_runs, baseline_missing = _aib_resolve_runs(AIB_EXPECTED_CONFIGS, AIB_BASELINE_FAMILY)
+    baseline_runs, baseline_missing = _aib_resolve_seeded_prefix(AIB_BASELINE_SPEC["prefix"])
     if not baseline_runs:
         raise RuntimeError(
-            f"No cached adaptive-intervention baseline runs found for {AIB_BASELINE_FAMILY}. "
-            "Load/download those W&B histories first."
+            f"No cached shared baseline runs found for {AIB_BASELINE_SPEC['prefix']}. "
+            "Load/download that baseline folder first."
         )
 
     aib_mean_groups = {}
     unresolved_rows = [
-        {"family": AIB_BASELINE_FAMILY, "expected_run_name": name, "reason": "missing baseline run"}
+        {"family": baseline_source_key, "expected_run_name": name, "reason": "missing shared baseline run"}
         for name in baseline_missing
     ]
     comparison_families = (
         AIB_EXPECTED_CONFIGS[["family", "family_label", "family_order"]]
         .drop_duplicates()
-        .query("family != @AIB_BASELINE_FAMILY")
         .sort_values(["family_order", "family"])
     )
     for item in comparison_families.itertuples(index=False):
@@ -2380,17 +2428,22 @@ def plot_adaptive_intervention_budget_7_comparisons():
         aib_mean_groups,
         split="test",
         smooth=5,
-        title="configs/adaptive_intervention_budget_7: adaptive budget comparisons",
+        title=(
+            "configs/adaptive_intervention_budget_7: adaptive budget vs "
+            f"{AIB_BASELINE_LABEL}"
+        ),
         ncols=2,
         subplot_height=380,
         width=1500,
         y_range=[0, 105],
         show_members=True,
         show_std=True,
-        save_name="adaptive_intervention_budget_7_comparisons",
+        save_name=f"adaptive_intervention_budget_7_vs_{baseline_source_key}",
     )
     return {
         "fig": fig_aib,
+        "baseline_source": baseline_source_key,
+        "baseline_runs": baseline_runs,
         "expected_configs": AIB_EXPECTED_CONFIGS,
         "missing_runs": pd.DataFrame(unresolved_rows),
         "mean_groups": aib_mean_groups,
