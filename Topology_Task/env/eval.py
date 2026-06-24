@@ -121,8 +121,11 @@ class Evaluator:
                 ep_rewards += list(info["agent_0"]["rewards"].values())
             # Record rewards for plotting purposes
             if "episode" in info:  # Denote end of an episode
+                episode_length = max(
+                    int(self.env.g2op_ma_env._cent_env.nb_time_step), 1
+                )
                 ep_survivals.append(
-                    self.env.g2op_ma_env._cent_env.nb_time_step / self.max_steps
+                    episode_length / self.max_steps
                 )
                 if not self.use_heuristic:
                     ep_returns.append(ep_rewards)
@@ -238,8 +241,11 @@ class CMDPEvaluator(Evaluator):
 
             # Record rewards for plotting purposes
             if "episode" in info:  # Denote end of an episode
+                episode_length = max(
+                    int(self.env.g2op_ma_env._cent_env.nb_time_step), 1
+                )
                 ep_survivals.append(
-                    self.env.g2op_ma_env._cent_env.nb_time_step / self.max_steps
+                    episode_length / self.max_steps
                 )
                 ep_returns.append(ep_rewards)
                 ep_cost_returns.append(ep_costs)
