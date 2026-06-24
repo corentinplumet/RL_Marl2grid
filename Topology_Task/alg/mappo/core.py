@@ -181,7 +181,9 @@ class MAPPO:
         last_ckpt_time = start_time  # <-- track last checkpoint timestamp
 
         reward_normalizer = (
-            ReturnNormalizer(args.n_envs, args.gamma) if getattr(args, "norm_reward", False) else None
+            {agent: ReturnNormalizer(args.n_envs, args.gamma) for agent in agent_ids}
+            if getattr(args, "norm_reward", False)
+            else None
         )
         next_obs, _ = envs.reset()
         next_obs = cast_np_to_tensors(next_obs, device)
@@ -230,13 +232,10 @@ class MAPPO:
                             next_terminations[agent_ids[0]],
                             next_truncations[agent_ids[0]],
                         )
-                        # Reward is identical across agents in this env (joint reward),
-                        # so normalize once and broadcast to every agent's stream.
-                        normed = reward_normalizer(
-                            np.asarray(reward[agent_ids[0]]), done_np
-                        )
                         for agent in agent_ids:
-                            reward[agent] = normed
+                            reward[agent] = reward_normalizer[agent](
+                                np.asarray(reward[agent]), done_np
+                            )
 
                     reward = cast_np_to_tensors(reward, device)
                     for agent in agent_ids:
