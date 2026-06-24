@@ -3,6 +3,12 @@ from time import time
 from .agent import Actor, Critic
 from .config import get_alg_args
 from common.checkpoint import CheckpointSaver
+from common.explainability import (
+    EXPLAIN_LINE_KEYS,
+    EXPLAIN_SCALAR_KEYS,
+    explain_arrays_from_infos,
+    summarize_explain_arrays,
+)
 from common.imports import *
 from common.logger import Logger
 from common.utils import (
@@ -141,6 +147,15 @@ class MAPPO:
         dones = th.zeros((args.n_steps, args.n_envs), dtype=th.int32).to(device)
         terminations = th.zeros((args.n_steps, args.n_envs), dtype=th.int32).to(device)
         observations, actions, logprobs, rewards = [{} for _ in range(4)]
+        collect_explain_metrics = bool(getattr(args, "track", False))
+        explain_metrics = (
+            {
+                key: th.zeros((args.n_steps, args.n_envs), device=device)
+                for key in EXPLAIN_SCALAR_KEYS + EXPLAIN_LINE_KEYS
+            }
+            if collect_explain_metrics
+            else {}
+        )
         for id in agent_ids:
             observations[id] = th.zeros(
                 (args.n_steps, args.n_envs) + envs.observation_space[id].shape
@@ -226,6 +241,12 @@ class MAPPO:
                     next_obs, reward, next_terminations, next_truncations, infos = (
                         envs.step(action)
                     )
+                    if collect_explain_metrics:
+                        explain_arrays = explain_arrays_from_infos(infos)
+                        for name, values_np in explain_arrays.items():
+                            explain_metrics[name][step] = th.as_tensor(
+                                values_np, dtype=th.float32, device=device
+                            )
 
                     if reward_normalizer is not None:
                         done_np = np.logical_or(
@@ -464,6 +485,17 @@ class MAPPO:
                             metrics_to_log[f"train/clipfrac_{ag}"] = float(np.mean(m["clipfrac"]))
                         actions_flat = actions[ag].long().reshape(-1).cpu().numpy()
                         metrics_to_log[f"train/frac_action_0_{ag}"] = float(np.mean(actions_flat == 0))
+
+                    if collect_explain_metrics:
+                        metrics_to_log.update(
+                            summarize_explain_arrays(
+                                {
+                                    key: value.detach().cpu().numpy()
+                                    for key, value in explain_metrics.items()
+                                },
+                                prefix="train/explain",
+                            )
+                        )
 
                     # Explained variance of the (shared) critic against agent_0's returns
                     # (all agents have identical returns under shared joint reward)

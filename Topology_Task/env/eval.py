@@ -1,5 +1,6 @@
 from collections import deque
 
+from common.explainability import explain_arrays_from_infos, summarize_explain_arrays
 from common.imports import *
 from common.logger import Logger
 from common.utils import cast_np_to_tensors, stack_agent_obs_by_env
@@ -98,6 +99,7 @@ class Evaluator:
         # if self.use_heuristic: ep_rewards += list(info['rewards'].values())
 
         action = {}
+        explain_eval_arrays = None
         while len(ep_survivals) < eval_ep:
             for agent, model in actors.items():
                 action[agent] = model.get_eval_action(
@@ -105,6 +107,14 @@ class Evaluator:
                 )
 
             next_obs, _, _, _, info = self.env.step(action)
+            step_explain = explain_arrays_from_infos(info)
+            if explain_eval_arrays is None:
+                explain_eval_arrays = {
+                    key: [value] for key, value in step_explain.items()
+                }
+            else:
+                for key, value in step_explain.items():
+                    explain_eval_arrays[key].append(value)
 
             obs = cast_np_to_tensors(next_obs, self.device)
             if not self.use_heuristic:
@@ -125,6 +135,7 @@ class Evaluator:
         avg_survival = sum(ep_survivals) / eval_ep
         avg_return = [sum(r) / eval_ep for r in zip(*ep_returns)]
 
+        eval_label = self.metric_prefix or "eval"
         # Log the metrics if logger is available
         if self.logger:
             self.logger.store_metrics(
@@ -134,8 +145,18 @@ class Evaluator:
                 self.reward_tags if self.env_id != "bus118" else self.reward_tags[:-1],
                 prefix=self.metric_prefix,
             )
+            if explain_eval_arrays:
+                wb.log(
+                    summarize_explain_arrays(
+                        {
+                            key: np.concatenate(values)
+                            for key, values in explain_eval_arrays.items()
+                        },
+                        prefix=f"{eval_label}/explain",
+                    ),
+                    step=glob_step,
+                )
 
-        eval_label = self.metric_prefix or "eval"
         print(
             f"{eval_label} at step {glob_step}, survival={avg_survival * 100:.3f}%, return={avg_return}"
         )
@@ -194,6 +215,7 @@ class CMDPEvaluator(Evaluator):
             ep_rewards += list(info["rewards"].values())
 
         action = {}
+        explain_eval_arrays = None
         while len(ep_survivals) < eval_ep:
             for agent, model in actors.items():
                 action[agent] = model.get_eval_action(
@@ -201,6 +223,14 @@ class CMDPEvaluator(Evaluator):
                 )
 
             next_obs, _, _, _, info = self.env.step(action)
+            step_explain = explain_arrays_from_infos(info)
+            if explain_eval_arrays is None:
+                explain_eval_arrays = {
+                    key: [value] for key, value in step_explain.items()
+                }
+            else:
+                for key, value in step_explain.items():
+                    explain_eval_arrays[key].append(value)
 
             obs = cast_np_to_tensors(next_obs, self.device)
             ep_rewards += list(info["agent_0"]["rewards"].values())
@@ -224,6 +254,7 @@ class CMDPEvaluator(Evaluator):
         avg_return = [sum(r) / eval_ep for r in zip(*ep_returns)]
         avg_cost_return = [sum(ep_cost_returns) / eval_ep]
 
+        eval_label = self.metric_prefix or "eval"
         # Log the metrics if logger is available
         if self.logger:
             self.logger.store_metrics(
@@ -234,8 +265,18 @@ class CMDPEvaluator(Evaluator):
                 self.reward_tags if self.env_id != "bus118" else self.reward_tags[:-1],
                 prefix=self.metric_prefix,
             )
+            if explain_eval_arrays:
+                wb.log(
+                    summarize_explain_arrays(
+                        {
+                            key: np.concatenate(values)
+                            for key, values in explain_eval_arrays.items()
+                        },
+                        prefix=f"{eval_label}/explain",
+                    ),
+                    step=glob_step,
+                )
 
-        eval_label = self.metric_prefix or "eval"
         print(
             f"{eval_label} at step {glob_step}, survival={avg_survival * 100:.3f}%, return={avg_return}"
         )
