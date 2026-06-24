@@ -86,6 +86,12 @@ METRICS = [
     "train/approx_kl_agent_2",
     "train/lr_actor",
     "train/lr_critic",
+    "train/intervention_penalty_mean",
+    "train/intervention_budget_lambda_mean",
+    "train/intervention_budget_cost_mean",
+    "train/intervention_budget_cost_violation_mean",
+    "train/intervention_budget_penalty_mean",
+    "train/intervention_budget_safety_weight_mean",
 ]
 
 
@@ -265,6 +271,12 @@ def config_folder_run_names(config_folder):
         if include_neighbors:
             for name in base_names:
                 names.append(_with_inserted_token_after_best_number(name, "neighbors"))
+
+    if folder.name == "no_entropy_decay_s0_s1_s2":
+        names.extend(
+            f"noval20_rerun_mlp_a1_no_entropy_decay_opt_s{seed}_det"
+            for seed in (0, 1, 2)
+        )
 
     names = _unique_text(names)
     if not names:
@@ -2055,11 +2067,17 @@ def _add_run_traces(
 
 def plot_entropy_decay_comparison():
     """Plot the entropy-decay vs no-entropy-decay comparison marked #KEEP."""
+    a1_mean_curves = mean_curves_from_prefixes(
+        "noval20_mlp_a1_entropy_decay",
+        "noval20_mlp_a1_no_entropy_decay",
+    )
+    a1_mean_curves["no entropy decay rerun det"] = mean_curve(
+        _seeded_run_names("noval20_rerun_mlp_a1_no_entropy_decay_opt", (0, 1, 2), "det"),
+        color="#2ca02c",
+        dash="dot",
+    )
     mean_groups = {
-        "A1": mean_curves_from_prefixes(
-            "noval20_mlp_a1_entropy_decay",
-            "noval20_mlp_a1_no_entropy_decay",
-        ),
+        "A1": a1_mean_curves,
         "A3": mean_curves_from_prefixes(
             "noval20_mlp_a3_entropy_decay",
             "noval20_mlp_a3_no_entropy_decay",
@@ -2447,6 +2465,329 @@ def plot_adaptive_intervention_budget_7_comparisons(baseline_source="gine_best2"
         "expected_configs": AIB_EXPECTED_CONFIGS,
         "missing_runs": pd.DataFrame(unresolved_rows),
         "mean_groups": aib_mean_groups,
+    }
+
+
+def plot_adaptive_intervention_budget_mechanism_15():
+    """Plot the adaptive_intervention_budget_mechanism_15 ablation comparisons."""
+    try:
+        import tomllib
+    except ModuleNotFoundError:
+        import tomli as tomllib
+
+    history = _get_history()
+    AIBM_CONFIG_DIR = TASK_DIR / "configs" / "adaptive_intervention_budget_mechanism_15"
+    AIB_CONFIG_DIR = TASK_DIR / "configs" / "adaptive_intervention_budget_7"
+    AIBM_SEEDS = (0, 1, 2)
+    AIBM_SMOOTH = 5
+    AIBM_MEMBER_ALPHA = 0.14
+    AIBM_STD_ALPHA = 0.10
+
+    AIBM_FAMILY_LABELS = {
+        "aib_00_flat_local_t020": "adaptive local rho 0.90 target 0.20",
+        "aib_04_flat_nonidle_t020": "adaptive non-idle target 0.20",
+        "aibm_00_fixed_nonidle_p006": "fixed non-idle p0.06",
+        "aibm_01_fixed_global_safe_p006": "fixed global-safe p0.06",
+        "aibm_02_adaptive_global_t020": "adaptive global rho 0.90 target 0.20",
+        "aibm_03_adaptive_local_t020_r085": "adaptive local rho 0.85 target 0.20",
+        "aibm_04_adaptive_local_t020_r095": "adaptive local rho 0.95 target 0.20",
+    }
+    AIBM_FAMILY_ORDER = {
+        "aibm_00_fixed_nonidle_p006": 0,
+        "aibm_01_fixed_global_safe_p006": 1,
+        "aibm_02_adaptive_global_t020": 2,
+        "aibm_03_adaptive_local_t020_r085": 3,
+        "aib_00_flat_local_t020": 4,
+        "aibm_04_adaptive_local_t020_r095": 5,
+        "aib_04_flat_nonidle_t020": 6,
+    }
+    AIBM_FAMILY_COLORS = {
+        "aib_00_flat_local_t020": "#1f77b4",
+        "aib_04_flat_nonidle_t020": "#9467bd",
+        "aibm_00_fixed_nonidle_p006": "#ff7f0e",
+        "aibm_01_fixed_global_safe_p006": "#2ca02c",
+        "aibm_02_adaptive_global_t020": "#d62728",
+        "aibm_03_adaptive_local_t020_r085": "#8c564b",
+        "aibm_04_adaptive_local_t020_r095": "#17becf",
+    }
+    AIBM_COMPARISONS = [
+        (
+            "Adaptivity beyond fixed non-idle penalty",
+            ["aibm_00_fixed_nonidle_p006", "aib_04_flat_nonidle_t020"],
+        ),
+        (
+            "State-dependent safety weighting without adaptivity",
+            ["aibm_00_fixed_nonidle_p006", "aibm_01_fixed_global_safe_p006"],
+        ),
+        (
+            "Local vs global rho weighting",
+            ["aibm_02_adaptive_global_t020", "aib_00_flat_local_t020"],
+        ),
+        (
+            "Local rho threshold sensitivity",
+            [
+                "aibm_03_adaptive_local_t020_r085",
+                "aib_00_flat_local_t020",
+                "aibm_04_adaptive_local_t020_r095",
+            ],
+        ),
+    ]
+    AIBM_DIAGNOSTIC_METRICS = [
+        (
+            "Realized penalty mean",
+            ["train/intervention_budget_penalty_mean", "train/intervention_penalty_mean"],
+            "Penalty",
+        ),
+        ("Adaptive lambda", ["train/intervention_budget_lambda_mean"], "Lambda"),
+        ("Budget cost", ["train/intervention_budget_cost_mean"], "Cost"),
+        ("Budget cost violation", ["train/intervention_budget_cost_violation_mean"], "Cost - target"),
+        ("Safety weight", ["train/intervention_budget_safety_weight_mean"], "Weight"),
+    ]
+
+    def _aibm_family_from_stem(stem):
+        return re.sub(r"_s\d+$", "", str(stem))
+
+    def _aibm_seed_from_stem(stem, args):
+        if args.get("seed") is not None:
+            return int(args["seed"])
+        match = re.search(r"_s(\d+)$", str(stem))
+        return int(match.group(1)) if match else np.nan
+
+    def _aibm_read_expected_configs():
+        rows = []
+        for config_dir, experiment in [
+            (AIB_CONFIG_DIR, "adaptive_intervention_budget_7"),
+            (AIBM_CONFIG_DIR, "adaptive_intervention_budget_mechanism_15"),
+        ]:
+            for config_path in sorted(Path(config_dir).glob("*.toml")):
+                cfg = tomllib.loads(config_path.read_text(encoding="utf-8"))
+                args = cfg.get("args", {})
+                run = cfg.get("run", {})
+                stem = config_path.stem
+                family = _aibm_family_from_stem(stem)
+                if family not in AIBM_FAMILY_LABELS:
+                    continue
+                rows.append({
+                    "experiment": experiment,
+                    "config_stem": stem,
+                    "family": family,
+                    "family_label": AIBM_FAMILY_LABELS.get(family, family.replace("_", " ")),
+                    "family_order": AIBM_FAMILY_ORDER.get(family, 99),
+                    "seed": _aibm_seed_from_stem(stem, args),
+                    "expected_run_name": str(run.get("name") or args.get("exp_tag") or stem).strip(),
+                    "config_path": str(config_path),
+                    "adaptive_intervention_budget": bool(args.get("adaptive_intervention_budget", False)),
+                    "intervention_budget_cost_mode": args.get("intervention_budget_cost_mode"),
+                    "intervention_budget_target": args.get("intervention_budget_target"),
+                    "intervention_budget_rho_threshold": args.get("intervention_budget_rho_threshold"),
+                    "intervention_penalty": args.get("intervention_penalty"),
+                    "safe_intervention_penalty": args.get("safe_intervention_penalty"),
+                    "total_timesteps": args.get("total_timesteps"),
+                })
+        expected = pd.DataFrame(rows)
+        if expected.empty:
+            raise FileNotFoundError(
+                f"No matching TOML configs found under {AIB_CONFIG_DIR} or {AIBM_CONFIG_DIR}"
+            )
+        return expected.sort_values(["family_order", "seed", "expected_run_name"]).reset_index(drop=True)
+
+    def _aibm_resolve_runs(expected_configs, family):
+        available = available_run_names(history=history)
+        available_set = set(available)
+        resolved = []
+        missing = []
+        family_configs = expected_configs[expected_configs["family"] == family].sort_values("seed")
+        for name in family_configs["expected_run_name"]:
+            if name in available_set:
+                resolved.append(name)
+                continue
+            substring_matches = [
+                candidate for candidate in available
+                if str(name) in candidate or candidate in str(name)
+            ]
+            if substring_matches:
+                resolved.append(sorted(substring_matches, key=lambda candidate: (len(candidate), candidate))[0])
+            else:
+                missing.append(name)
+        return resolved, missing
+
+    def _aibm_condition_specs(expected_configs):
+        specs = {}
+        missing_rows = []
+        families = (
+            expected_configs[["family", "family_label", "family_order"]]
+            .drop_duplicates()
+            .sort_values(["family_order", "family"])
+        )
+        for item in families.itertuples(index=False):
+            runs, missing = _aibm_resolve_runs(expected_configs, item.family)
+            missing_rows.extend(
+                {"family": item.family, "expected_run_name": name, "reason": "missing run"}
+                for name in missing
+            )
+            if not runs:
+                print(f"Skipping {item.family_label}: no cached runs found.")
+                continue
+            specs[item.family] = {
+                "label": item.family_label,
+                "runs": runs[: len(AIBM_SEEDS)],
+                "color": AIBM_FAMILY_COLORS.get(item.family),
+                "family_order": item.family_order,
+            }
+        return specs, pd.DataFrame(missing_rows)
+
+    def _aibm_mean_curve(condition, *, show_members=True):
+        return mean_curve(
+            condition["runs"],
+            label=condition["label"],
+            color=condition["color"],
+            dash="solid",
+            width=3,
+            member_alpha=AIBM_MEMBER_ALPHA,
+            std_alpha=AIBM_STD_ALPHA,
+            show_members=show_members,
+        )
+
+    def _aibm_build_survival_groups(condition_specs):
+        groups = {}
+        skipped = []
+        for title, families in AIBM_COMPARISONS:
+            group = {}
+            for family in families:
+                condition = condition_specs.get(family)
+                if condition is None:
+                    skipped.append(f"{title}: {family}")
+                    continue
+                group[condition["label"]] = _aibm_mean_curve(condition, show_members=True)
+            if len(group) >= 2:
+                groups[title] = group
+            else:
+                print(f"Skipping {title}: fewer than two conditions have cached runs.")
+        return groups, skipped
+
+    def _aibm_metric_has_data(runs, metric_candidates):
+        if isinstance(metric_candidates, str):
+            metric_candidates = [metric_candidates]
+        run_mask = history["run_name"].isin(runs)
+        metric_mask = history["metric"].isin(metric_candidates)
+        return bool(history.loc[run_mask & metric_mask, "value"].notna().any())
+
+    def _aibm_build_diagnostic_specs(condition_specs, metric_candidates):
+        specs = {}
+        for family, condition in sorted(
+            condition_specs.items(),
+            key=lambda item: (item[1]["family_order"], item[0]),
+        ):
+            if not _aibm_metric_has_data(condition["runs"], metric_candidates):
+                continue
+            specs[condition["label"]] = _aibm_mean_curve(condition, show_members=False)
+        return specs
+
+    def _aibm_plot_diagnostics(condition_specs):
+        metric_items = []
+        for title, metric_candidates, yaxis_title in AIBM_DIAGNOSTIC_METRICS:
+            specs = _aibm_build_diagnostic_specs(condition_specs, metric_candidates)
+            if specs:
+                metric_items.append((title, metric_candidates, yaxis_title, specs))
+            else:
+                print(f"Skipping diagnostic metric {title}: no cached metric values found.")
+
+        if not metric_items:
+            print("No intervention-budget diagnostic metrics are present in history_df yet.")
+            return None
+
+        ncols = 2
+        nrows = int(np.ceil(len(metric_items) / ncols))
+        fig = make_subplots(
+            rows=nrows,
+            cols=ncols,
+            subplot_titles=[item[0] for item in metric_items],
+            shared_xaxes=False,
+            shared_yaxes=False,
+        )
+        added = 0
+        legend_layouts = {}
+        for idx, (title, metric_candidates, yaxis_title, mean_runs) in enumerate(metric_items, start=1):
+            row = int(np.ceil(idx / ncols))
+            col = ((idx - 1) % ncols) + 1
+            legend_id = _legend_id(idx)
+            legend_layouts[legend_id] = _subplot_legend_layout(fig, row, col, ncols)
+            specs = _normalize_mean_specs(mean_runs)
+            added += _add_mean_traces(
+                fig,
+                specs,
+                metric_candidates,
+                history=history,
+                smooth=AIBM_SMOOTH,
+                show_members=False,
+                show_std=True,
+                min_members=1,
+                multiply=1.0,
+                row=row,
+                col=col,
+                legend_seen=set(),
+                legend_id=legend_id,
+                legend_group_prefix=f"aibm_diag{idx}:",
+            )
+            fig.update_xaxes(title_text="Steps (M)", row=row, col=col)
+            fig.update_yaxes(title_text=yaxis_title, row=row, col=col)
+
+        if added == 0:
+            fig.add_annotation(
+                text="No intervention-budget diagnostic data found.",
+                x=0.5,
+                y=0.5,
+                xref="paper",
+                yref="paper",
+                showarrow=False,
+            )
+
+        layout = {
+            "title": "configs/adaptive_intervention_budget_mechanism_15: mechanism diagnostics",
+            "template": "plotly_white",
+            "width": 1500,
+            "height": max(620, 360 * nrows),
+            "hovermode": "x unified",
+            "showlegend": True,
+            "margin": {"l": 70, "r": 30, "t": 95, "b": 60},
+        }
+        layout.update(legend_layouts)
+        fig.update_layout(**layout)
+        save_plot(fig, "adaptive_intervention_budget_mechanism_15_diagnostics")
+        return fig
+
+    expected_configs = _aibm_read_expected_configs()
+    condition_specs, missing_runs = _aibm_condition_specs(expected_configs)
+    survival_groups, skipped_survival_comparisons = _aibm_build_survival_groups(condition_specs)
+
+    if not survival_groups:
+        raise RuntimeError(
+            "No adaptive_intervention_budget_mechanism_15 survival comparisons could be built from history_df."
+        )
+
+    survival_fig = plot_run_mean_groups(
+        survival_groups,
+        split="test",
+        smooth=AIBM_SMOOTH,
+        title="configs/adaptive_intervention_budget_mechanism_15: survival mechanism ablations",
+        ncols=2,
+        subplot_height=380,
+        width=1500,
+        y_range=[0, 105],
+        show_members=True,
+        show_std=True,
+        save_name="adaptive_intervention_budget_mechanism_15_survival_ablations",
+    )
+    diagnostic_fig = _aibm_plot_diagnostics(condition_specs)
+    return {
+        "survival_fig": survival_fig,
+        "diagnostic_fig": diagnostic_fig,
+        "fig": survival_fig,
+        "expected_configs": expected_configs,
+        "missing_runs": missing_runs,
+        "condition_specs": condition_specs,
+        "survival_groups": survival_groups,
+        "skipped_survival_comparisons": skipped_survival_comparisons,
     }
 
 
