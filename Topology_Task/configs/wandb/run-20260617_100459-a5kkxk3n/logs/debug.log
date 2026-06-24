@@ -1,0 +1,706 @@
+2026-06-17 10:04:59,586 INFO    MainThread:25381 [wandb_init.py:setup_run_log_directory():717] Logging user logs to /Users/corentinplumet/Documents/RL_Marl2grid/Topology_Task/configs/wandb/run-20260617_100459-a5kkxk3n/logs/debug.log
+2026-06-17 10:04:59,587 INFO    MainThread:25381 [wandb_init.py:setup_run_log_directory():718] Logging internal logs to /Users/corentinplumet/Documents/RL_Marl2grid/Topology_Task/configs/wandb/run-20260617_100459-a5kkxk3n/logs/debug-internal.log
+2026-06-17 10:04:59,588 INFO    MainThread:25381 [wandb_init.py:init():844] calling init triggers
+2026-06-17 10:04:59,588 INFO    MainThread:25381 [wandb_init.py:init():849] wandb.init called with sweep_config: {}
+config: {'_wandb': {}}
+2026-06-17 10:06:36,626 WARNING MainThread:25381 [wandb_init.py:init():1587] [no run ID] interrupted
+Traceback (most recent call last):
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 1578, in init
+    run = wi.init(run_settings, run_config, run_printer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 865, in init
+    self._wl.finish_all_active_runs()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_setup.py", line 166, in finish_all_active_runs
+    run.finish()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_run.py", line 399, in wrapper
+    return func(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_run.py", line 444, in wrapper
+    return func(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_run.py", line 2279, in finish
+    return self._finish(exit_code)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_run.py", line 399, in wrapper
+    return func(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_run.py", line 2307, in _finish
+    self._atexit_cleanup(exit_code=exit_code)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_run.py", line 2501, in _atexit_cleanup
+    self._on_finish()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_run.py", line 2725, in _on_finish
+    wait_with_progress(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/mailbox/wait_with_progress.py", line 24, in wait_with_progress
+    return wait_all_with_progress(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/mailbox/wait_with_progress.py", line 78, in wait_all_with_progress
+    return asyncer.run(progress_loop_with_timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 137, in run
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 451, in result
+    self._condition.wait(timeout)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/threading.py", line 355, in wait
+    waiter.acquire()
+KeyboardInterrupt
+2026-06-17 10:06:48,304 ERROR   MainThread:25381 [wandb_init.py:init():1593] [no run ID] error in wandb.init()
+Traceback (most recent call last):
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 1578, in init
+    run = wi.init(run_settings, run_config, run_printer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 896, in init
+    service.inform_init(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_connection.py", line 255, in inform_init
+    self._asyncer.run(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 137, in run
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 220, in _wrap
+    return await fn()
+           ^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 45, in publish
+    await self._send_server_request(request)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 78, in _send_server_request
+    raise self._broken_exc.with_traceback(self._broken_tb)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 87, in _send_server_request
+    await self._drain_writer()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 96, in _drain_writer
+    await self._writer.drain()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 392, in drain
+    await self._protocol._drain_helper()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 166, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-06-17 10:06:51,846 ERROR   MainThread:25381 [wandb_init.py:init():1593] [no run ID] error in wandb.init()
+Traceback (most recent call last):
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 1578, in init
+    run = wi.init(run_settings, run_config, run_printer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 896, in init
+    service.inform_init(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_connection.py", line 255, in inform_init
+    self._asyncer.run(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 137, in run
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 220, in _wrap
+    return await fn()
+           ^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 45, in publish
+    await self._send_server_request(request)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 78, in _send_server_request
+    raise self._broken_exc.with_traceback(self._broken_tb)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 87, in _send_server_request
+    await self._drain_writer()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 96, in _drain_writer
+    await self._writer.drain()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 392, in drain
+    await self._protocol._drain_helper()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 166, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-06-17 10:06:55,480 ERROR   MainThread:25381 [wandb_init.py:init():1593] [no run ID] error in wandb.init()
+Traceback (most recent call last):
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 1578, in init
+    run = wi.init(run_settings, run_config, run_printer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 896, in init
+    service.inform_init(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_connection.py", line 255, in inform_init
+    self._asyncer.run(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 137, in run
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 220, in _wrap
+    return await fn()
+           ^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 45, in publish
+    await self._send_server_request(request)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 78, in _send_server_request
+    raise self._broken_exc.with_traceback(self._broken_tb)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 87, in _send_server_request
+    await self._drain_writer()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 96, in _drain_writer
+    await self._writer.drain()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 392, in drain
+    await self._protocol._drain_helper()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 166, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-06-17 10:07:03,546 ERROR   MainThread:25381 [wandb_init.py:init():1593] [no run ID] error in wandb.init()
+Traceback (most recent call last):
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 1578, in init
+    run = wi.init(run_settings, run_config, run_printer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 896, in init
+    service.inform_init(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_connection.py", line 255, in inform_init
+    self._asyncer.run(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 137, in run
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 220, in _wrap
+    return await fn()
+           ^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 45, in publish
+    await self._send_server_request(request)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 78, in _send_server_request
+    raise self._broken_exc.with_traceback(self._broken_tb)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 87, in _send_server_request
+    await self._drain_writer()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 96, in _drain_writer
+    await self._writer.drain()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 392, in drain
+    await self._protocol._drain_helper()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 166, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-06-17 10:07:12,987 ERROR   MainThread:25381 [wandb_init.py:init():1593] [no run ID] error in wandb.init()
+Traceback (most recent call last):
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 1578, in init
+    run = wi.init(run_settings, run_config, run_printer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 896, in init
+    service.inform_init(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_connection.py", line 255, in inform_init
+    self._asyncer.run(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 137, in run
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 220, in _wrap
+    return await fn()
+           ^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 45, in publish
+    await self._send_server_request(request)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 78, in _send_server_request
+    raise self._broken_exc.with_traceback(self._broken_tb)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 87, in _send_server_request
+    await self._drain_writer()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 96, in _drain_writer
+    await self._writer.drain()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 392, in drain
+    await self._protocol._drain_helper()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 166, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-06-17 10:07:17,300 ERROR   MainThread:25381 [wandb_init.py:init():1593] [no run ID] error in wandb.init()
+Traceback (most recent call last):
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 1578, in init
+    run = wi.init(run_settings, run_config, run_printer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 896, in init
+    service.inform_init(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_connection.py", line 255, in inform_init
+    self._asyncer.run(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 137, in run
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 220, in _wrap
+    return await fn()
+           ^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 45, in publish
+    await self._send_server_request(request)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 78, in _send_server_request
+    raise self._broken_exc.with_traceback(self._broken_tb)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 87, in _send_server_request
+    await self._drain_writer()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 96, in _drain_writer
+    await self._writer.drain()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 392, in drain
+    await self._protocol._drain_helper()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 166, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-06-17 10:07:31,174 ERROR   MainThread:25381 [wandb_init.py:init():1593] [no run ID] error in wandb.init()
+Traceback (most recent call last):
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 1578, in init
+    run = wi.init(run_settings, run_config, run_printer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 896, in init
+    service.inform_init(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_connection.py", line 255, in inform_init
+    self._asyncer.run(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 137, in run
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 220, in _wrap
+    return await fn()
+           ^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 45, in publish
+    await self._send_server_request(request)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 78, in _send_server_request
+    raise self._broken_exc.with_traceback(self._broken_tb)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 87, in _send_server_request
+    await self._drain_writer()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 96, in _drain_writer
+    await self._writer.drain()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 392, in drain
+    await self._protocol._drain_helper()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 166, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-06-17 10:07:38,068 ERROR   MainThread:25381 [wandb_init.py:init():1593] [no run ID] error in wandb.init()
+Traceback (most recent call last):
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 1578, in init
+    run = wi.init(run_settings, run_config, run_printer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 896, in init
+    service.inform_init(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_connection.py", line 255, in inform_init
+    self._asyncer.run(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 137, in run
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 220, in _wrap
+    return await fn()
+           ^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 45, in publish
+    await self._send_server_request(request)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 78, in _send_server_request
+    raise self._broken_exc.with_traceback(self._broken_tb)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 87, in _send_server_request
+    await self._drain_writer()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 96, in _drain_writer
+    await self._writer.drain()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 392, in drain
+    await self._protocol._drain_helper()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 166, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-06-17 10:07:42,393 ERROR   MainThread:25381 [wandb_init.py:init():1593] [no run ID] error in wandb.init()
+Traceback (most recent call last):
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 1578, in init
+    run = wi.init(run_settings, run_config, run_printer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 896, in init
+    service.inform_init(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_connection.py", line 255, in inform_init
+    self._asyncer.run(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 137, in run
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 220, in _wrap
+    return await fn()
+           ^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 45, in publish
+    await self._send_server_request(request)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 78, in _send_server_request
+    raise self._broken_exc.with_traceback(self._broken_tb)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 87, in _send_server_request
+    await self._drain_writer()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 96, in _drain_writer
+    await self._writer.drain()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 392, in drain
+    await self._protocol._drain_helper()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 166, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-06-17 10:07:46,382 ERROR   MainThread:25381 [wandb_init.py:init():1593] [no run ID] error in wandb.init()
+Traceback (most recent call last):
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 1578, in init
+    run = wi.init(run_settings, run_config, run_printer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 896, in init
+    service.inform_init(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_connection.py", line 255, in inform_init
+    self._asyncer.run(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 137, in run
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 220, in _wrap
+    return await fn()
+           ^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 45, in publish
+    await self._send_server_request(request)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 78, in _send_server_request
+    raise self._broken_exc.with_traceback(self._broken_tb)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 87, in _send_server_request
+    await self._drain_writer()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 96, in _drain_writer
+    await self._writer.drain()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 392, in drain
+    await self._protocol._drain_helper()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 166, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-06-17 10:07:50,198 ERROR   MainThread:25381 [wandb_init.py:init():1593] [no run ID] error in wandb.init()
+Traceback (most recent call last):
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 1578, in init
+    run = wi.init(run_settings, run_config, run_printer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 896, in init
+    service.inform_init(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_connection.py", line 255, in inform_init
+    self._asyncer.run(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 137, in run
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 220, in _wrap
+    return await fn()
+           ^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 45, in publish
+    await self._send_server_request(request)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 78, in _send_server_request
+    raise self._broken_exc.with_traceback(self._broken_tb)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 87, in _send_server_request
+    await self._drain_writer()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 96, in _drain_writer
+    await self._writer.drain()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 392, in drain
+    await self._protocol._drain_helper()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 166, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-06-17 10:07:54,058 ERROR   MainThread:25381 [wandb_init.py:init():1593] [no run ID] error in wandb.init()
+Traceback (most recent call last):
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 1578, in init
+    run = wi.init(run_settings, run_config, run_printer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 896, in init
+    service.inform_init(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_connection.py", line 255, in inform_init
+    self._asyncer.run(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 137, in run
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 220, in _wrap
+    return await fn()
+           ^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 45, in publish
+    await self._send_server_request(request)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 78, in _send_server_request
+    raise self._broken_exc.with_traceback(self._broken_tb)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 87, in _send_server_request
+    await self._drain_writer()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 96, in _drain_writer
+    await self._writer.drain()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 392, in drain
+    await self._protocol._drain_helper()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 166, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-06-17 10:07:57,569 ERROR   MainThread:25381 [wandb_init.py:init():1593] [no run ID] error in wandb.init()
+Traceback (most recent call last):
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 1578, in init
+    run = wi.init(run_settings, run_config, run_printer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 896, in init
+    service.inform_init(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_connection.py", line 255, in inform_init
+    self._asyncer.run(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 137, in run
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 220, in _wrap
+    return await fn()
+           ^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 45, in publish
+    await self._send_server_request(request)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 78, in _send_server_request
+    raise self._broken_exc.with_traceback(self._broken_tb)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 87, in _send_server_request
+    await self._drain_writer()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 96, in _drain_writer
+    await self._writer.drain()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 392, in drain
+    await self._protocol._drain_helper()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 166, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-06-17 10:08:01,215 ERROR   MainThread:25381 [wandb_init.py:init():1593] [no run ID] error in wandb.init()
+Traceback (most recent call last):
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 1578, in init
+    run = wi.init(run_settings, run_config, run_printer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 896, in init
+    service.inform_init(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_connection.py", line 255, in inform_init
+    self._asyncer.run(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 137, in run
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 220, in _wrap
+    return await fn()
+           ^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 45, in publish
+    await self._send_server_request(request)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 78, in _send_server_request
+    raise self._broken_exc.with_traceback(self._broken_tb)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 87, in _send_server_request
+    await self._drain_writer()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 96, in _drain_writer
+    await self._writer.drain()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 392, in drain
+    await self._protocol._drain_helper()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 166, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-06-17 10:08:04,817 ERROR   MainThread:25381 [wandb_init.py:init():1593] [no run ID] error in wandb.init()
+Traceback (most recent call last):
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 1578, in init
+    run = wi.init(run_settings, run_config, run_printer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 896, in init
+    service.inform_init(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_connection.py", line 255, in inform_init
+    self._asyncer.run(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 137, in run
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 220, in _wrap
+    return await fn()
+           ^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 45, in publish
+    await self._send_server_request(request)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 78, in _send_server_request
+    raise self._broken_exc.with_traceback(self._broken_tb)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 87, in _send_server_request
+    await self._drain_writer()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 96, in _drain_writer
+    await self._writer.drain()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 392, in drain
+    await self._protocol._drain_helper()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 166, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-06-17 10:08:08,467 ERROR   MainThread:25381 [wandb_init.py:init():1593] [no run ID] error in wandb.init()
+Traceback (most recent call last):
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 1578, in init
+    run = wi.init(run_settings, run_config, run_printer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 896, in init
+    service.inform_init(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_connection.py", line 255, in inform_init
+    self._asyncer.run(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 137, in run
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 220, in _wrap
+    return await fn()
+           ^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 45, in publish
+    await self._send_server_request(request)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 78, in _send_server_request
+    raise self._broken_exc.with_traceback(self._broken_tb)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 87, in _send_server_request
+    await self._drain_writer()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 96, in _drain_writer
+    await self._writer.drain()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 392, in drain
+    await self._protocol._drain_helper()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 166, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-06-17 10:08:12,580 ERROR   MainThread:25381 [wandb_init.py:init():1593] [no run ID] error in wandb.init()
+Traceback (most recent call last):
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 1578, in init
+    run = wi.init(run_settings, run_config, run_printer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 896, in init
+    service.inform_init(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_connection.py", line 255, in inform_init
+    self._asyncer.run(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 137, in run
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 220, in _wrap
+    return await fn()
+           ^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 45, in publish
+    await self._send_server_request(request)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 78, in _send_server_request
+    raise self._broken_exc.with_traceback(self._broken_tb)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 87, in _send_server_request
+    await self._drain_writer()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 96, in _drain_writer
+    await self._writer.drain()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 392, in drain
+    await self._protocol._drain_helper()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 166, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-06-17 10:08:16,072 ERROR   MainThread:25381 [wandb_init.py:init():1593] [no run ID] error in wandb.init()
+Traceback (most recent call last):
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 1578, in init
+    run = wi.init(run_settings, run_config, run_printer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 896, in init
+    service.inform_init(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_connection.py", line 255, in inform_init
+    self._asyncer.run(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 137, in run
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 220, in _wrap
+    return await fn()
+           ^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 45, in publish
+    await self._send_server_request(request)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 78, in _send_server_request
+    raise self._broken_exc.with_traceback(self._broken_tb)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 87, in _send_server_request
+    await self._drain_writer()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 96, in _drain_writer
+    await self._writer.drain()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 392, in drain
+    await self._protocol._drain_helper()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 166, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-06-17 10:08:20,531 ERROR   MainThread:25381 [wandb_init.py:init():1593] [no run ID] error in wandb.init()
+Traceback (most recent call last):
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 1578, in init
+    run = wi.init(run_settings, run_config, run_printer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 896, in init
+    service.inform_init(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_connection.py", line 255, in inform_init
+    self._asyncer.run(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 137, in run
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 220, in _wrap
+    return await fn()
+           ^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 45, in publish
+    await self._send_server_request(request)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 78, in _send_server_request
+    raise self._broken_exc.with_traceback(self._broken_tb)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 87, in _send_server_request
+    await self._drain_writer()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 96, in _drain_writer
+    await self._writer.drain()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 392, in drain
+    await self._protocol._drain_helper()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 166, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+2026-06-17 17:06:11,802 ERROR   MainThread:25381 [wandb_init.py:init():1593] [no run ID] error in wandb.init()
+Traceback (most recent call last):
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 1578, in init
+    run = wi.init(run_settings, run_config, run_printer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 896, in init
+    service.inform_init(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_connection.py", line 255, in inform_init
+    self._asyncer.run(
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 137, in run
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/asyncio_manager.py", line 220, in _wrap
+    return await fn()
+           ^^^^^^^^^^
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 45, in publish
+    await self._send_server_request(request)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 78, in _send_server_request
+    raise self._broken_exc.with_traceback(self._broken_tb)
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 87, in _send_server_request
+    await self._drain_writer()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/site-packages/wandb/sdk/lib/service/service_client.py", line 96, in _drain_writer
+    await self._writer.drain()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 392, in drain
+    await self._protocol._drain_helper()
+  File "/opt/anaconda3/envs/marl2grid/lib/python3.12/asyncio/streams.py", line 166, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost

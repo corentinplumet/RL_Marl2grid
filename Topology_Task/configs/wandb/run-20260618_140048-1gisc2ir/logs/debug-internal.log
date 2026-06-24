@@ -1,0 +1,7 @@
+{"time":"2026-06-18T14:00:50.331522+08:00","level":"INFO","msg":"stream: starting","core version":"0.25.0"}
+{"time":"2026-06-18T14:00:50.800089+08:00","level":"INFO","msg":"stream: created new stream","id":"1gisc2ir"}
+{"time":"2026-06-18T14:00:50.800137+08:00","level":"INFO","msg":"handler: started","stream_id":"1gisc2ir"}
+{"time":"2026-06-18T14:00:50.801741+08:00","level":"INFO","msg":"writer: started","stream_id":"1gisc2ir"}
+{"time":"2026-06-18T14:00:50.801747+08:00","level":"INFO","msg":"sender: started","stream_id":"1gisc2ir"}
+{"time":"2026-06-18T14:00:50.801875+08:00","level":"INFO","msg":"stream: started","id":"1gisc2ir"}
+{"time":"2026-06-18T16:58:45.240115+08:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/files/corentin-plumet-epfl/Grid2Op/1gisc2ir/file_stream\": read tcp 192.168.68.61:61434->34.8.250.101:443: read: operation timed out"}

@@ -1,0 +1,42 @@
+_wandb:
+    value:
+        cli_version: 0.25.0
+        e:
+            j9pl5a0z7di0872lgei9ulixdfixm94e:
+                apple: {}
+                codePath: /Users/corentinplumet/Documents/RL_Marl2grid/Topology_Task/configs/zz_print_metrics/wandb_run_plots.ipynb
+                codePathLocal: wandb_run_plots.ipynb
+                cpu_count: 8
+                cpu_count_logical: 8
+                disk:
+                    /:
+                        total: "494384795648"
+                        used: "278126354432"
+                email: corentin.plumet@epfl.ch
+                executable: /opt/anaconda3/envs/marl2grid/bin/python
+                git:
+                    commit: fd77beff837b5a8e6532e9b968e0dcf40ac19a16
+                    remote: https://github.com/corentinplumet/RL_Marl2grid.git
+                host: MacBook-Pro-de-Corentin-3.local
+                memory:
+                    total: "8589934592"
+                os: macOS-26.3.1-arm64-arm-64bit
+                program: /Users/corentinplumet/Documents/RL_Marl2grid/Topology_Task/configs/zz_print_metrics/wandb_run_plots.ipynb
+                python: CPython 3.12.2
+                root: /Users/corentinplumet/Documents/RL_Marl2grid/Topology_Task/configs/zz_print_metrics
+                startedAt: "2026-06-21T03:43:59.082002Z"
+                writerId: j9pl5a0z7di0872lgei9ulixdfixm94e
+        m: []
+        python_version: 3.12.2
+        t:
+            "3":
+                - 2
+                - 13
+            "4": 3.12.2
+            "5": 0.25.0
+            "8":
+                - 1
+            "10":
+                - 20
+            "12": 0.25.0
+            "13": darwin-arm64

@@ -1,0 +1,16 @@
+{"time":"2026-06-21T12:03:21.950594+08:00","level":"INFO","msg":"stream: starting","core version":"0.25.0"}
+{"time":"2026-06-21T12:03:22.421694+08:00","level":"INFO","msg":"stream: created new stream","id":"y5okkl0s"}
+{"time":"2026-06-21T12:03:22.421746+08:00","level":"INFO","msg":"handler: started","stream_id":"y5okkl0s"}
+{"time":"2026-06-21T12:03:22.424004+08:00","level":"INFO","msg":"stream: started","id":"y5okkl0s"}
+{"time":"2026-06-21T12:03:22.42401+08:00","level":"INFO","msg":"sender: started","stream_id":"y5okkl0s"}
+{"time":"2026-06-21T12:03:22.424004+08:00","level":"INFO","msg":"writer: started","stream_id":"y5okkl0s"}
+{"time":"2026-06-21T14:18:59.700804+08:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/files/corentin-plumet-epfl/Grid2Op/y5okkl0s/file_stream\": read tcp 192.168.68.61:51065->34.8.250.101:443: read: operation timed out"}
+{"time":"2026-06-21T15:51:31.88979+08:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/files/corentin-plumet-epfl/Grid2Op/y5okkl0s/file_stream\": read tcp 10.250.18.35:52719->34.8.250.101:443: read: can't assign requested address"}
+{"time":"2026-06-21T15:51:34.26007+08:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/files/corentin-plumet-epfl/Grid2Op/y5okkl0s/file_stream\": dial tcp: lookup api.wandb.ai: no such host"}
+{"time":"2026-06-21T17:34:05.82572+08:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/files/corentin-plumet-epfl/Grid2Op/y5okkl0s/file_stream\": read tcp 192.168.68.61:54898->34.8.250.101:443: read: connection reset by peer"}
+{"time":"2026-06-21T17:48:15.925125+08:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/files/corentin-plumet-epfl/Grid2Op/y5okkl0s/file_stream\": read tcp 192.168.68.61:55142->34.8.250.101:443: read: connection reset by peer"}
+{"time":"2026-06-21T21:44:41.2457+08:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/files/corentin-plumet-epfl/Grid2Op/y5okkl0s/file_stream\": read tcp 192.168.68.61:57833->34.8.250.101:443: read: connection reset by peer"}
+{"time":"2026-06-21T22:03:40.460112+08:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/files/corentin-plumet-epfl/Grid2Op/y5okkl0s/file_stream\": read tcp 192.168.68.61:58435->34.8.250.101:443: read: connection reset by peer"}
+{"time":"2026-06-21T23:47:15.283706+08:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/files/corentin-plumet-epfl/Grid2Op/y5okkl0s/file_stream\": read tcp 192.168.68.61:59218->34.8.250.101:443: read: connection reset by peer"}
+{"time":"2026-06-21T23:54:43.72682+08:00","level":"ERROR","msg":"api: HTTP error","status":404,"method":"POST","url":"https://api.wandb.ai/files/corentin-plumet-epfl/Grid2Op/y5okkl0s/file_stream"}
+{"time":"2026-06-21T23:54:43.731963+08:00","level":"ERROR+4","msg":"filestream: fatal error: filestream: failed to upload: 404 Not Found url=https://api.wandb.ai/files/corentin-plumet-epfl/Grid2Op/y5okkl0s/file_stream: {\"error\":\"run Grid2Op/y5okkl0s not found while streaming file\"}"}

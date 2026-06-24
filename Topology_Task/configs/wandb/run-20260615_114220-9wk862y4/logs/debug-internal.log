@@ -1,0 +1,8 @@
+{"time":"2026-06-15T11:42:23.853293+08:00","level":"INFO","msg":"stream: starting","core version":"0.25.0"}
+{"time":"2026-06-15T11:42:24.670207+08:00","level":"INFO","msg":"stream: created new stream","id":"9wk862y4"}
+{"time":"2026-06-15T11:42:24.670328+08:00","level":"INFO","msg":"handler: started","stream_id":"9wk862y4"}
+{"time":"2026-06-15T11:42:24.671297+08:00","level":"INFO","msg":"writer: started","stream_id":"9wk862y4"}
+{"time":"2026-06-15T11:42:24.671312+08:00","level":"INFO","msg":"sender: started","stream_id":"9wk862y4"}
+{"time":"2026-06-15T11:42:24.671519+08:00","level":"INFO","msg":"stream: started","id":"9wk862y4"}
+{"time":"2026-06-15T12:32:01.59815+08:00","level":"ERROR","msg":"api: HTTP error","status":404,"method":"POST","url":"https://api.wandb.ai/files/corentin-plumet-epfl/Grid2Op/9wk862y4/file_stream"}
+{"time":"2026-06-15T12:32:01.607443+08:00","level":"ERROR+4","msg":"filestream: fatal error: filestream: failed to upload: 404 Not Found url=https://api.wandb.ai/files/corentin-plumet-epfl/Grid2Op/9wk862y4/file_stream: {\"error\":\"run Grid2Op/9wk862y4 not found while streaming file\"}"}

@@ -1,0 +1,7 @@
+2026-06-17 10:07:12,887 INFO    MainThread:25381 [wandb_init.py:setup_run_log_directory():717] Logging user logs to /Users/corentinplumet/Documents/RL_Marl2grid/Topology_Task/configs/wandb/run-20260617_100712-auhtnk1o/logs/debug.log
+2026-06-17 10:07:12,904 INFO    MainThread:25381 [wandb_init.py:setup_run_log_directory():718] Logging internal logs to /Users/corentinplumet/Documents/RL_Marl2grid/Topology_Task/configs/wandb/run-20260617_100712-auhtnk1o/logs/debug-internal.log
+2026-06-17 10:07:12,905 INFO    MainThread:25381 [wandb_init.py:init():844] calling init triggers
+2026-06-17 10:07:12,906 INFO    MainThread:25381 [wandb_init.py:init():849] wandb.init called with sweep_config: {}
+config: {'_wandb': {}}
+2026-06-17 10:07:12,906 INFO    MainThread:25381 [wandb_init.py:init():892] starting backend
+2026-06-17 10:07:12,906 INFO    MainThread:25381 [wandb_init.py:init():895] sending inform_init request
