@@ -1,4 +1,5 @@
 import os
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
@@ -24,6 +25,7 @@ class CheckpointSaver(ABC):
             os.makedirs(self.ckpt_dir)
         self.loaded_run, self.record = {}, {}
         self.loaded_checkpoint_path = None
+        self._last_record_is_final = False
         if self.args.resume_run_name:
             checkpoint_name = self._resolve_checkpoint_name(self.args.resume_run_name)
             if not os.path.exists(checkpoint_name):
@@ -47,6 +49,18 @@ class CheckpointSaver(ABC):
         return os.path.join(self.ckpt_dir, checkpoint_name)
 
     @property
+    def checkpoint_base_name(self) -> str:
+        """Base checkpoint filename stem, using exp_tag when available."""
+        exp_tag = str(getattr(self.args, "exp_tag", "") or "").strip()
+        base_name = exp_tag or self.run_name
+        return re.sub(r"[^A-Za-z0-9_.-]+", "_", base_name).strip("_") or self.run_name
+
+    def _checkpoint_path(self, checkpoint_name: str) -> str:
+        """Return the path for a checkpoint stem or filename."""
+        stem = checkpoint_name[:-4] if checkpoint_name.endswith(".tar") else checkpoint_name
+        return os.path.join(self.ckpt_dir, stem + ".tar")
+
+    @property
     def resumed(self) -> bool:
         """Check if a run was resumed from a checkpoint.
 
@@ -67,11 +81,12 @@ class CheckpointSaver(ABC):
 
     def save(self) -> None:
         """Save the current record to a checkpoint file."""
-        th.save(self.record, self.ckpt_dir + "/" + self.run_name + ".tar")
+        prefix = "final_" if self._last_record_is_final else ""
+        th.save(self.record, self._checkpoint_path(prefix + self.checkpoint_base_name))
 
     def save_as(self, checkpoint_name: str) -> None:
         """Save the current record to a specific checkpoint name."""
-        th.save(self.record, self.ckpt_dir + "/" + checkpoint_name + ".tar")
+        th.save(self.record, self._checkpoint_path(checkpoint_name))
 
     @abstractmethod
     def set_record(self) -> None:
@@ -108,8 +123,10 @@ class MAPPOCheckpoint(CheckpointSaver):
             training_state: Optional non-module state such as adaptive
                 intervention Lagrange multipliers.
         """
-        if mark_final and global_step >= args.total_timesteps - args.n_envs:
-            self.run_name = "final_" + self.run_name
+        self.args = args
+        self._last_record_is_final = bool(
+            mark_final and global_step >= args.total_timesteps - args.n_envs
+        )
         self._get_base_record(global_step)
         self.record["args"] = args
         for agent, model in actors.items():

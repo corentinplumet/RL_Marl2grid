@@ -797,7 +797,9 @@ class MAPPO:
                         eval_survival = _evaluate_preserving_training_rng(
                             evaluator, global_step, actors
                         )
-                        if split_chronics and eval_survival > best_test_survival:
+                        # On equal test survival, prefer the later checkpoint: a late
+                        # 100% policy is usually more stable than an early lucky one.
+                        if split_chronics and eval_survival >= best_test_survival:
                             best_test_survival = eval_survival
                             if args.checkpoint:
                                 ckpt.set_record(
@@ -812,7 +814,7 @@ class MAPPO:
                                     mark_final=False,
                                     training_state=_current_training_state(),
                                 )
-                                ckpt.save_as("best_test_" + run_name)
+                                ckpt.save_as("best_test_" + ckpt.checkpoint_base_name)
                         if args.verbose:
                             print(f"SPS={int(global_step / (time() - start_time))}")
 
