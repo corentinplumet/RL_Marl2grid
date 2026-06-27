@@ -1628,6 +1628,290 @@ def _seeded_run_names(prefix, seeds, suffix):
     return [f"{prefix}_s{seed}_{suffix}" for seed in seeds]
 
 
+def _a0_seed_from_stem(stem):
+    match = re.search(r"_s(\d+)$", str(stem))
+    return int(match.group(1)) if match else np.nan
+
+
+def _a0_family_from_stem(stem):
+    return re.sub(r"_s\d+$", "", str(stem))
+
+
+def _a0_sparse_penalty_from_family(family):
+    match = re.search(r"_p(\d{3})$", str(family))
+    return int(match.group(1)) / 1000.0 if match else np.nan
+
+
+def _a0_sparse_design_from_family(family):
+    match = re.match(r"^a0_sparse16_(flat|gated)_p\d{3}$", str(family))
+    return match.group(1) if match else None
+
+
+def _a0_sparse_family_order(family):
+    penalty = _a0_sparse_penalty_from_family(family)
+    design = _a0_sparse_design_from_family(family)
+    design_order = {"flat": 0, "gated": 1}.get(design, 9)
+    if pd.isna(penalty):
+        return 999
+    return int(round(float(penalty) * 1000)) * 2 + design_order
+
+
+def _a0_sparse_family_label(family):
+    design = _a0_sparse_design_from_family(family) or "unknown"
+    penalty = _a0_sparse_penalty_from_family(family)
+    penalty_label = "?" if pd.isna(penalty) else f"{float(penalty):.3f}"
+    return f"{design} p{penalty_label}"
+
+
+A0_HVG_FAMILY_LABELS = {
+    "a0_hvg_00_baseline": "baseline",
+    "a0_hvg_01_eval_rho090": "global rho heuristic",
+    "a0_hvg_04_eval_local_rho090": "local rho heuristic",
+    "a0_hvg_02_gate_final_map": "gate final-action MAP",
+    "a0_hvg_03_gate_hierarchical": "gate hierarchical greedy",
+}
+A0_HVG_FAMILY_ORDER = {
+    "a0_hvg_00_baseline": 0,
+    "a0_hvg_01_eval_rho090": 1,
+    "a0_hvg_04_eval_local_rho090": 2,
+    "a0_hvg_02_gate_final_map": 3,
+    "a0_hvg_03_gate_hierarchical": 4,
+}
+
+A0_AIB_FAMILY_LABELS = {
+    "a0_aib_00_flat_local_t020": "flat local target 0.20",
+    "a0_aib_01_flat_local_t010": "flat local target 0.10",
+    "a0_aib_02_flat_local_t035": "flat local target 0.35",
+    "a0_aib_03_gate_hgreedy_sep_local_t020": "gate h-greedy separate entropy target 0.20",
+    "a0_aib_04_flat_nonidle_t020": "flat non-idle target 0.20",
+}
+A0_AIB_FAMILY_ORDER = {
+    "a0_aib_00_flat_local_t020": 0,
+    "a0_aib_01_flat_local_t010": 1,
+    "a0_aib_02_flat_local_t035": 2,
+    "a0_aib_03_gate_hgreedy_sep_local_t020": 3,
+    "a0_aib_04_flat_nonidle_t020": 4,
+}
+
+
+def _a0_read_expected_configs(config_folder, *, family_labels=None, family_order=None):
+    folder = resolve_config_folder(config_folder)
+    if folder is None:
+        raise ValueError("A0 plotting needs a specific config folder, not all runs.")
+
+    family_labels = family_labels or {}
+    family_order = family_order or {}
+    rows = []
+    for config_path in sorted(Path(folder).glob("*.toml")):
+        cfg = _load_toml(config_path)
+        args = cfg.get("args", {})
+        run = cfg.get("run", {})
+        stem = config_path.stem
+        family = _a0_family_from_stem(stem)
+        seed = args.get("seed")
+        if seed is None:
+            seed = _a0_seed_from_stem(stem)
+        rows.append({
+            "config_stem": stem,
+            "expected_run_name": run.get("name") or args.get("exp_tag") or stem,
+            "config_path": str(config_path),
+            "folder": folder.name,
+            "family": family,
+            "family_label": family_labels.get(family, family.replace("_", " ")),
+            "family_order": family_order.get(family, 99),
+            "seed": int(seed) if not pd.isna(seed) else np.nan,
+            "intervention_gate": bool(args.get("intervention_gate", False)),
+            "intervention_penalty": args.get("intervention_penalty"),
+            "eval_action_heuristic": args.get("eval_action_heuristic"),
+            "intervention_gate_eval_mode": args.get("intervention_gate_eval_mode"),
+            "adaptive_intervention_budget": bool(args.get("adaptive_intervention_budget", False)),
+            "intervention_budget_target": args.get("intervention_budget_target"),
+            "intervention_budget_cost_mode": args.get("intervention_budget_cost_mode"),
+            "total_timesteps": args.get("total_timesteps"),
+        })
+    expected = pd.DataFrame(rows)
+    if expected.empty:
+        raise FileNotFoundError(f"No TOML configs found under {folder}")
+    return expected.sort_values(["family_order", "seed", "expected_run_name"]).reset_index(drop=True)
+
+
+def _a0_resolve_family_runs(expected_configs, family, *, history=None):
+    history = _get_history(history)
+    available = available_run_names(history=history)
+    available_set = set(available)
+    resolved = []
+    missing = []
+    family_configs = expected_configs[expected_configs["family"] == family].sort_values("seed")
+    for name in family_configs["expected_run_name"].astype(str):
+        if name in available_set:
+            resolved.append(name)
+            continue
+        substring_matches = [candidate for candidate in available if name in candidate or candidate in name]
+        if substring_matches:
+            resolved.append(sorted(substring_matches, key=lambda candidate: (len(candidate), candidate))[0])
+        else:
+            missing.append(name)
+    return _unique_text(resolved), missing
+
+
+def _a0_compare_color(family):
+    family_text = str(family)
+    if "gate" in family_text or "gated" in family_text:
+        return "#d62728"
+    if "local" in family_text:
+        return "#ff7f0e"
+    if "nonidle" in family_text:
+        return "#2ca02c"
+    return "#ff7f0e"
+
+
+def plot_a0_config_folder_survival_comparisons(
+    config_folder,
+    *,
+    baseline_family,
+    family_labels=None,
+    family_order=None,
+    title=None,
+    save_name=None,
+    ncols=2,
+    history=None,
+):
+    """Plot one A0 config folder as baseline-vs-alternative survival subplots."""
+    history = _get_history(history)
+    expected = _a0_read_expected_configs(
+        config_folder,
+        family_labels=family_labels,
+        family_order=family_order,
+    )
+    folder_name = expected["folder"].iloc[0]
+    baseline_runs, baseline_missing = _a0_resolve_family_runs(expected, baseline_family, history=history)
+    baseline_rows = expected[expected["family"] == baseline_family]
+    baseline_label = (
+        baseline_rows["family_label"].iloc[0]
+        if not baseline_rows.empty
+        else baseline_family.replace("_", " ")
+    )
+    missing_rows = [
+        {"family": baseline_family, "expected_run_name": name, "reason": "missing baseline run"}
+        for name in baseline_missing
+    ]
+    if not baseline_runs:
+        raise RuntimeError(
+            f"No cached baseline runs found for {baseline_family}. "
+            f"Load/download configs/{folder_name} first."
+        )
+
+    groups = {}
+    comparison_families = (
+        expected[["family", "family_label", "family_order"]]
+        .drop_duplicates()
+        .query("family != @baseline_family")
+        .sort_values(["family_order", "family_label"])
+    )
+    for item in comparison_families.itertuples(index=False):
+        compare_runs, missing = _a0_resolve_family_runs(expected, item.family, history=history)
+        missing_rows.extend(
+            {"family": item.family, "expected_run_name": name, "reason": "missing comparison run"}
+            for name in missing
+        )
+        if not compare_runs:
+            print(f"Skipping {item.family_label}: no cached runs found.")
+            continue
+        groups[f"{item.family_label} vs baseline: {baseline_label}"] = {
+            f"baseline: {baseline_label}": mean_curve(
+                baseline_runs,
+                color="#1f77b4",
+                dash="solid",
+                width=4,
+                member_alpha=0.16,
+                std_alpha=0.10,
+            ),
+            item.family_label: mean_curve(
+                compare_runs,
+                color=_a0_compare_color(item.family),
+                dash="solid",
+                width=3,
+                member_alpha=0.16,
+                std_alpha=0.12,
+            ),
+        }
+
+    if not groups:
+        raise RuntimeError(f"No A0 comparison groups could be built for configs/{folder_name}.")
+
+    fig = plot_run_mean_groups(
+        groups,
+        split="test",
+        smooth=5,
+        title=title or f"configs/{folder_name}: episodic survival baseline comparisons",
+        ncols=ncols,
+        subplot_height=380,
+        width=1500 if ncols <= 2 else 1700,
+        y_range=[0, 105],
+        show_members=True,
+        show_std=True,
+        save_name=save_name or f"{folder_name}_survival_baseline_comparisons",
+        history=history,
+    )
+    return {
+        "fig": fig,
+        "expected_configs": expected,
+        "missing_runs": pd.DataFrame(missing_rows),
+        "mean_groups": groups,
+        "baseline_family": baseline_family,
+        "baseline_runs": baseline_runs,
+    }
+
+
+def plot_a0_hvg_survival():
+    return plot_a0_config_folder_survival_comparisons(
+        "a0_hvg",
+        baseline_family="a0_hvg_00_baseline",
+        family_labels=A0_HVG_FAMILY_LABELS,
+        family_order=A0_HVG_FAMILY_ORDER,
+        title="configs/a0_hvg: A0 heuristic/gate survival vs baseline",
+        save_name="a0_hvg_survival_baseline_comparisons",
+        ncols=2,
+    )
+
+
+def plot_a0_sparse16_survival():
+    sparse_families = [f"a0_sparse16_{design}_p{penalty}" for penalty in ("000", "001", "003", "010") for design in ("flat", "gated")]
+    family_labels = {family: _a0_sparse_family_label(family) for family in sparse_families}
+    family_order = {family: _a0_sparse_family_order(family) for family in sparse_families}
+    return plot_a0_config_folder_survival_comparisons(
+        "a0_sparse16",
+        baseline_family="a0_sparse16_flat_p000",
+        family_labels=family_labels,
+        family_order=family_order,
+        title="configs/a0_sparse16: A0 sparse-action survival vs flat p0.000",
+        save_name="a0_sparse16_survival_baseline_comparisons",
+        ncols=3,
+    )
+
+
+def plot_a0_aib_survival():
+    return plot_a0_config_folder_survival_comparisons(
+        "a0_aib",
+        baseline_family="a0_aib_00_flat_local_t020",
+        family_labels=A0_AIB_FAMILY_LABELS,
+        family_order=A0_AIB_FAMILY_ORDER,
+        title="configs/a0_aib: A0 adaptive budget survival vs flat local target 0.20",
+        save_name="a0_aib_survival_baseline_comparisons",
+        ncols=2,
+    )
+
+
+def plot_a0_survival_comparisons():
+    """Build the three A0 survival figures used by the A0 W&B notebook."""
+    results = {
+        "a0_hvg": plot_a0_hvg_survival(),
+        "a0_sparse16": plot_a0_sparse16_survival(),
+        "a0_aib": plot_a0_aib_survival(),
+    }
+    return results
+
+
 def sto_det_mean_specs(
     runs,
     *,
@@ -2169,6 +2453,11 @@ def plot_gine_best2_baseline_comparisons():
             "best_10_shared_actor_gnn_light_gine_a4_concat_flat_critic_mlp_optcritic",
             "10 light concat MLP critic",
         ),
+        (
+            "00 vs 11: init do-nothing bias 0.7 vs 0.0",
+            "best_11_shared_actor_gnn_gine_a4_concat_flat_critic_gnn_legacy_update_initbias0",
+            "11 init bias 0.0",
+        ),
     ]
 
 
@@ -2482,6 +2771,7 @@ def plot_adaptive_intervention_budget_mechanism_15():
     AIBM_SMOOTH = 5
     AIBM_MEMBER_ALPHA = 0.14
     AIBM_STD_ALPHA = 0.10
+    AIBM_BASELINE_FAMILY = "aib_00_flat_local_t020"
 
     AIBM_FAMILY_LABELS = {
         "aib_00_flat_local_t020": "adaptive local rho 0.90 target 0.20",
@@ -2636,13 +2926,13 @@ def plot_adaptive_intervention_budget_mechanism_15():
             }
         return specs, pd.DataFrame(missing_rows)
 
-    def _aibm_mean_curve(condition, *, show_members=True):
+    def _aibm_mean_curve(condition, *, show_members=True, label=None, width=3):
         return mean_curve(
             condition["runs"],
-            label=condition["label"],
+            label=label or condition["label"],
             color=condition["color"],
             dash="solid",
-            width=3,
+            width=width,
             member_alpha=AIBM_MEMBER_ALPHA,
             std_alpha=AIBM_STD_ALPHA,
             show_members=show_members,
@@ -2651,9 +2941,25 @@ def plot_adaptive_intervention_budget_mechanism_15():
     def _aibm_build_survival_groups(condition_specs):
         groups = {}
         skipped = []
+        baseline = condition_specs.get(AIBM_BASELINE_FAMILY)
+        if baseline is None:
+            print(
+                "Skipping AIBM survival comparisons: no cached runs found for "
+                f"{AIBM_BASELINE_FAMILY}."
+            )
+            return groups, [f"missing baseline: {AIBM_BASELINE_FAMILY}"]
         for title, families in AIBM_COMPARISONS:
-            group = {}
+            group = {
+                f"baseline: {baseline['label']}": _aibm_mean_curve(
+                    baseline,
+                    show_members=True,
+                    label=f"baseline: {baseline['label']}",
+                    width=4,
+                )
+            }
             for family in families:
+                if family == AIBM_BASELINE_FAMILY:
+                    continue
                 condition = condition_specs.get(family)
                 if condition is None:
                     skipped.append(f"{title}: {family}")
@@ -2769,7 +3075,10 @@ def plot_adaptive_intervention_budget_mechanism_15():
         survival_groups,
         split="test",
         smooth=AIBM_SMOOTH,
-        title="configs/adaptive_intervention_budget_mechanism_15: survival mechanism ablations",
+        title=(
+            "configs/adaptive_intervention_budget_mechanism_15: survival mechanism "
+            "ablations vs adaptive local rho 0.90 target 0.20"
+        ),
         ncols=2,
         subplot_height=380,
         width=1500,
