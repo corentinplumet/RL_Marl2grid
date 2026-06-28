@@ -521,6 +521,8 @@ class MAEnvWrapper(MAEnv):
 
         self.eval_env = eval_env
         self.current_chronic_name = "unknown"
+        self.current_chronic_fingerprint = "unknown"
+        self.current_chronic_datetime = "unknown"
         self.current_chronic_reset_count = 0
         self.norm_obs = args.norm_obs
         if self.norm_obs:
@@ -600,6 +602,8 @@ class MAEnvWrapper(MAEnv):
 
         self.current_chronic_reset_count += 1
         self.current_chronic_name = self.get_current_chronic_name()
+        self.current_chronic_fingerprint = self.get_current_chronic_fingerprint()
+        self.current_chronic_datetime = self.get_current_chronic_datetime()
         return self._format_obs(obs), self.get_current_chronic_info()
 
     @staticmethod
@@ -667,9 +671,98 @@ class MAEnvWrapper(MAEnv):
                     return label
         return "unknown"
 
+    @staticmethod
+    def _hash_obs_value(hasher: "hashlib._Hash", name: str, value: Any) -> bool:
+        if value is None:
+            return False
+        try:
+            array = np.asarray(value)
+        except Exception:
+            hasher.update(name.encode("utf-8"))
+            hasher.update(repr(value).encode("utf-8"))
+            return True
+
+        hasher.update(name.encode("utf-8"))
+        hasher.update(str(array.shape).encode("utf-8"))
+        hasher.update(str(array.dtype).encode("utf-8"))
+        try:
+            if array.dtype.kind in ("f", "c"):
+                numeric = np.nan_to_num(
+                    np.round(array.astype(np.float64), 6),
+                    nan=0.0,
+                    posinf=1e9,
+                    neginf=-1e9,
+                )
+                hasher.update(numeric.tobytes())
+            elif array.dtype.kind in ("b", "i", "u"):
+                hasher.update(array.astype(np.int64).tobytes())
+            else:
+                hasher.update(repr(value).encode("utf-8"))
+        except Exception:
+            hasher.update(repr(value).encode("utf-8"))
+        return True
+
+    def get_current_chronic_fingerprint(self) -> str:
+        """Fingerprint the current exogenous grid state seen by the agent.
+
+        The Grid2Op handler label can be stale with some wrapper combinations.
+        This hash is based on observation values such as calendar, loads, and
+        productions, so it changes when the underlying chronic/time series
+        changes even if the public chronic name does not.
+        """
+        try:
+            obs = self._obs
+        except Exception:
+            return "unknown"
+
+        hasher = hashlib.sha256()
+        used_any = False
+        for name in (
+            "year",
+            "month",
+            "day",
+            "hour_of_day",
+            "minute_of_hour",
+            "day_of_week",
+            "load_p",
+            "load_q",
+            "gen_p",
+            "gen_q",
+            "gen_v",
+            "prod_p",
+            "prod_q",
+            "prod_v",
+            "rho",
+        ):
+            used_any = self._hash_obs_value(
+                hasher, name, getattr(obs, name, None)
+            ) or used_any
+        return hasher.hexdigest()[:12] if used_any else "unknown"
+
+    def get_current_chronic_datetime(self) -> str:
+        try:
+            obs = self._obs
+        except Exception:
+            return "unknown"
+
+        getter = getattr(obs, "get_time_stamp", None)
+        if callable(getter):
+            try:
+                return str(getter())
+            except Exception:
+                pass
+        parts = []
+        for name in ("year", "month", "day", "hour_of_day", "minute_of_hour"):
+            value = getattr(obs, name, None)
+            if value is not None:
+                parts.append(f"{name}={value}")
+        return ",".join(parts) if parts else "unknown"
+
     def get_current_chronic_info(self) -> Dict[str, Any]:
         return {
             "chronic_name": self.current_chronic_name,
+            "chronic_fingerprint": self.current_chronic_fingerprint,
+            "chronic_datetime": self.current_chronic_datetime,
             "chronic_reset_count": self.current_chronic_reset_count,
         }
 

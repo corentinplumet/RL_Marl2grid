@@ -76,12 +76,20 @@ def _transition_info(info: Any) -> Any:
     return info
 
 
-def _info_chronic_name(info: Any) -> str:
+def _info_chronic_field(info: Any, field: str) -> str:
     transition = _transition_info(info)
     for candidate in (transition, info):
-        if isinstance(candidate, dict) and candidate.get("chronic_name") is not None:
-            return str(candidate["chronic_name"])
+        if isinstance(candidate, dict) and candidate.get(field) is not None:
+            return str(candidate[field])
     return "unknown"
+
+
+def _info_chronic_name(info: Any) -> str:
+    return _info_chronic_field(info, "chronic_name")
+
+
+def _info_chronic_fingerprint(info: Any) -> str:
+    return _info_chronic_field(info, "chronic_fingerprint")
 
 
 def _format_chronic_counter(labels: List[str], max_items: int = 4) -> str:
@@ -657,6 +665,9 @@ class MAPPO:
                 rollout_chronic_labels_by_env = [
                     [] for _ in range(args.n_envs)
                 ]
+                rollout_chronic_fingerprints_by_env = [
+                    [] for _ in range(args.n_envs)
+                ]
 
                 for step in range(0, args.n_steps):
                     global_step += args.n_envs
@@ -724,6 +735,9 @@ class MAPPO:
                         if done and env_idx < len(step_infos):
                             rollout_chronic_labels_by_env[env_idx].append(
                                 _info_chronic_name(step_infos[env_idx])
+                            )
+                            rollout_chronic_fingerprints_by_env[env_idx].append(
+                                _info_chronic_fingerprint(step_infos[env_idx])
                             )
                     if collect_explain_metrics:
                         explain_arrays = explain_arrays_from_infos(step_infos)
@@ -1218,37 +1232,58 @@ class MAPPO:
                     )
                     chronic_rows = []
                     all_chronic_labels = []
+                    all_chronic_fingerprints = []
                     for env_idx, labels in enumerate(rollout_chronic_labels_by_env):
+                        fingerprints = rollout_chronic_fingerprints_by_env[env_idx]
                         all_chronic_labels.extend(labels)
+                        all_chronic_fingerprints.extend(fingerprints)
                         chronic_rows.append(
                             [
                                 int(env_idx),
                                 int(len(labels)),
                                 int(len(set(labels))),
+                                int(len(set(fingerprints))),
                                 _format_chronic_counter(labels, max_items=8),
+                                _format_chronic_counter(fingerprints, max_items=8),
                             ]
                         )
                     if all_chronic_labels:
                         metrics_to_log["train/chronic_episode_count"] = float(
                             len(all_chronic_labels)
                         )
+                        metrics_to_log["train/chronic_label_unique_count"] = float(
+                            len(set(all_chronic_labels))
+                        )
                         metrics_to_log["train/chronic_unique_count"] = float(
                             len(set(all_chronic_labels))
+                        )
+                        metrics_to_log["train/chronic_fingerprint_unique_count"] = float(
+                            len(set(all_chronic_fingerprints))
                         )
                         metrics_to_log["train/chronic_worker_table"] = wb.Table(
                             data=chronic_rows,
                             columns=[
                                 "env_idx",
                                 "episodes",
-                                "unique_chronics",
-                                "chronic_counts",
+                                "unique_labels",
+                                "unique_fingerprints",
+                                "label_counts",
+                                "fingerprint_counts",
                             ],
                         )
                         if args.verbose:
                             summary = " | ".join(
-                                f"env{env_idx}:{_format_chronic_counter(labels)}"
-                                for env_idx, labels in enumerate(
-                                    rollout_chronic_labels_by_env
+                                (
+                                    f"env{env_idx}:"
+                                    f"labels={_format_chronic_counter(labels)}; "
+                                    "fingerprints="
+                                    f"{_format_chronic_counter(fingerprints)}"
+                                )
+                                for env_idx, (labels, fingerprints) in enumerate(
+                                    zip(
+                                        rollout_chronic_labels_by_env,
+                                        rollout_chronic_fingerprints_by_env,
+                                    )
                                 )
                             )
                             print(

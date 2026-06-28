@@ -180,13 +180,17 @@ class Evaluator:
         return "[" + ", ".join(shown) + "]"
 
     @staticmethod
-    def _chronic_name_from_info(info: Any) -> Optional[str]:
+    def _chronic_field_from_info(info: Any, field: str) -> Optional[str]:
         if isinstance(info, dict) and "final_info" in info:
             info = info["final_info"]
         if not isinstance(info, dict):
             return None
-        value = info.get("chronic_name")
+        value = info.get(field)
         return None if value is None else str(value)
+
+    @classmethod
+    def _chronic_name_from_info(cls, info: Any) -> Optional[str]:
+        return cls._chronic_field_from_info(info, "chronic_name")
 
     def _eval_heuristic_decision(
         self, agent_ids: List[str]
@@ -291,6 +295,7 @@ class Evaluator:
         trace_episode_step = 0
         trace_step = 0
         episode_chronic_names = []
+        episode_chronic_fingerprints = []
         while len(ep_survivals) < eval_ep:
             for agent, model in actors.items():
                 action[agent] = model.get_eval_action(
@@ -378,7 +383,12 @@ class Evaluator:
                     self._chronic_name_from_info(info)
                     or self._current_chronic_name()
                 )
+                chronic_fingerprint = (
+                    self._chronic_field_from_info(info, "chronic_fingerprint")
+                    or "unknown"
+                )
                 episode_chronic_names.append(chronic_name)
+                episode_chronic_fingerprints.append(chronic_fingerprint)
                 ep_survivals.append(episode_survival)
                 if not self.use_heuristic:
                     ep_returns.append(ep_rewards)
@@ -389,6 +399,7 @@ class Evaluator:
                     print(
                         f"{eval_label} chronic {completed}/{eval_ep}: "
                         f"{chronic_name} survival={episode_survival * 100:.3f}% "
+                        f"fingerprint={chronic_fingerprint} "
                         f"steps={episode_length}/{self.max_steps} "
                         f"running_mean={running_survival * 100:.3f}%",
                         flush=True,
@@ -528,6 +539,7 @@ class Evaluator:
         print(
             f"{eval_label} at step {glob_step}, "
             f"chronics={self._format_chronic_names(episode_chronic_names)}, "
+            f"fingerprints={self._format_chronic_names(episode_chronic_fingerprints)}, "
             f"survival={avg_survival * 100:.3f}%, return={avg_return}"
         )
         return avg_survival
