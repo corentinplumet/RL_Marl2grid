@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import re
 import time
 from collections import defaultdict
 from dataclasses import asdict, dataclass
@@ -25,6 +26,7 @@ TASK_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_CHECKPOINT_DIR = TASK_DIR / "checkpoint"
 SAVE_PREFIXES = ("best_test_", "final_final_", "final_")
 OBS_STAT_KEYS = ("count", "mean", "var")
+RUN_ID_RE = re.compile(r"(MAPPO_[A-Za-z0-9_]+?_\d{10}_\d+)")
 
 
 @dataclass
@@ -40,6 +42,8 @@ class FileRecord:
     complete_by_name: bool
     complete_by_step: bool
     has_obs_stats: bool
+    run_id: str
+    wb_run_name: str
     error: str
 
 
@@ -58,6 +62,8 @@ class RunRecord:
     n_with_obs_stats: int
     max_global_step: int | None
     total_timesteps: int | None
+    run_ids: list[str]
+    wb_run_names: list[str]
     files: list[str]
     corrupted_files: list[str]
 
@@ -109,6 +115,11 @@ def _infer_exp_tag(path: Path) -> str:
     return _strip_prefixes(path.stem)
 
 
+def _old_run_id(value: str) -> str:
+    match = RUN_ID_RE.search(value)
+    return match.group(1) if match else ""
+
+
 def _has_complete_obs_stats(state: Any) -> bool:
     if not isinstance(state, dict):
         return False
@@ -133,6 +144,7 @@ def inspect_file(path: Path, root: Path) -> FileRecord:
     try:
         state = _load_checkpoint(path)
     except Exception as exc:  # noqa: BLE001 - report all unreadable files
+        run_id = _old_run_id(path.name)
         return FileRecord(
             file=rel_path,
             filename=path.name,
@@ -145,12 +157,16 @@ def inspect_file(path: Path, root: Path) -> FileRecord:
             complete_by_name=complete_by_name,
             complete_by_step=False,
             has_obs_stats=False,
+            run_id=run_id,
+            wb_run_name="",
             error=f"{type(exc).__name__}: {exc}",
         )
 
     args = state.get("args") if isinstance(state, dict) else None
+    wb_run_name = str(state.get("wb_run_name", "") if isinstance(state, dict) else "")
     exp_tag = str(_namespace_get(args, "exp_tag", "") or "").strip()
     exp_tag = exp_tag or _infer_exp_tag(path)
+    run_id = _old_run_id(path.name) or _old_run_id(wb_run_name)
     global_step = _int_or_none(state.get("global_step") if isinstance(state, dict) else None)
     total_timesteps = _int_or_none(_namespace_get(args, "total_timesteps"))
     n_envs = _int_or_none(_namespace_get(args, "n_envs"))
@@ -172,8 +188,28 @@ def inspect_file(path: Path, root: Path) -> FileRecord:
         complete_by_name=complete_by_name,
         complete_by_step=complete_by_step,
         has_obs_stats=_has_complete_obs_stats(state),
+        run_id=run_id,
+        wb_run_name=wb_run_name,
         error="",
     )
+
+
+def attach_old_run_id_aliases(records: list[FileRecord]) -> None:
+    """Group unreadable old-name files with a readable checkpoint when possible."""
+    run_id_to_tags: dict[str, set[str]] = defaultdict(set)
+    for record in records:
+        if record.status != "readable" or not record.run_id:
+            continue
+        run_id_to_tags[record.run_id].add(record.exp_tag)
+
+    unique_aliases = {
+        run_id: next(iter(tags))
+        for run_id, tags in run_id_to_tags.items()
+        if len(tags) == 1
+    }
+    for record in records:
+        if record.run_id in unique_aliases:
+            record.exp_tag = unique_aliases[record.run_id]
 
 
 def _run_status(complete: bool, has_corruption: bool, n_readable: int) -> str:
@@ -216,6 +252,8 @@ def summarize_runs(records: list[FileRecord]) -> list[RunRecord]:
             if record.total_timesteps is not None
         ]
         status = _run_status(complete, bool(corrupted), len(readable))
+        run_ids = sorted({record.run_id for record in files if record.run_id})
+        wb_run_names = sorted({record.wb_run_name for record in files if record.wb_run_name})
         runs.append(
             RunRecord(
                 exp_tag=exp_tag,
@@ -231,6 +269,8 @@ def summarize_runs(records: list[FileRecord]) -> list[RunRecord]:
                 n_with_obs_stats=sum(record.has_obs_stats for record in readable),
                 max_global_step=max(max_step_values) if max_step_values else None,
                 total_timesteps=max(total_values) if total_values else None,
+                run_ids=run_ids,
+                wb_run_names=wb_run_names,
                 files=sorted(record.file for record in files),
                 corrupted_files=sorted(record.file for record in corrupted),
             )
@@ -289,9 +329,23 @@ def _print_table(runs: list[RunRecord], show_files: bool) -> None:
     for run, row in zip(runs, rows):
         print("  ".join(value.ljust(widths[idx]) for idx, value in enumerate(row)))
         if show_files:
+            for run_id in run.run_ids:
+                print(f"   run_id: {run_id}")
             for file in run.files:
                 marker = " ! " if file in run.corrupted_files else "   "
                 print(f"{marker}{file}")
+
+
+def _matches_run(run: RunRecord, query: str) -> bool:
+    query_lower = query.lower()
+    haystack = [
+        run.exp_tag,
+        *run.run_ids,
+        *run.wb_run_names,
+        *run.files,
+        *run.corrupted_files,
+    ]
+    return any(query_lower in str(value).lower() for value in haystack)
 
 
 def _write_csv(path: Path, runs: list[RunRecord]) -> None:
@@ -313,6 +367,8 @@ def _write_csv(path: Path, runs: list[RunRecord]) -> None:
                 "n_with_obs_stats",
                 "max_global_step",
                 "total_timesteps",
+                "run_ids",
+                "wb_run_names",
                 "files",
                 "corrupted_files",
             ],
@@ -320,6 +376,8 @@ def _write_csv(path: Path, runs: list[RunRecord]) -> None:
         writer.writeheader()
         for run in runs:
             row = asdict(run)
+            row["run_ids"] = "|".join(run.run_ids)
+            row["wb_run_names"] = "|".join(run.wb_run_names)
             row["files"] = "|".join(run.files)
             row["corrupted_files"] = "|".join(run.corrupted_files)
             writer.writerow(row)
@@ -334,6 +392,15 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=DEFAULT_CHECKPOINT_DIR,
         help=f"Checkpoint root directory. Default: {DEFAULT_CHECKPOINT_DIR}",
+    )
+    parser.add_argument(
+        "--run",
+        type=str,
+        default="",
+        help=(
+            "Filter to one run by exp_tag, old MAPPO run id, W&B run path, "
+            "or checkpoint filename substring."
+        ),
     )
     parser.add_argument(
         "--only-problems",
@@ -387,11 +454,13 @@ def main() -> None:
         ]
 
     records = [inspect_file(path, root) for path in paths]
+    attach_old_run_id_aliases(records)
     runs = summarize_runs(records)
     displayed_runs = [
         run
         for run in runs
-        if not args.only_problems or run.status != "complete"
+        if (not args.run or _matches_run(run, args.run))
+        and (not args.only_problems or run.status != "complete")
     ]
 
     n_corrupted_files = sum(record.status == "corrupted" for record in records)
@@ -405,8 +474,10 @@ def main() -> None:
     print(f"Corrupted files: {n_corrupted_files}")
     if args.min_age_seconds > 0:
         print(f"Skipped files younger than {args.min_age_seconds:g}s")
+    if args.run:
+        print(f"Run filter: {args.run}")
     print("")
-    _print_table(displayed_runs, show_files=args.show_files)
+    _print_table(displayed_runs, show_files=args.show_files or bool(args.run))
 
     if args.json:
         json_path = args.json.expanduser().resolve()

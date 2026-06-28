@@ -125,6 +125,18 @@ python Topology_Task/tools/check_checkpoint_health.py \
   --only-problems
 ```
 
+Inspect one run, including regular, `best_test`, `final`, old `MAPPO_...`
+filenames, and readable aliases recovered from checkpoint metadata:
+
+```bash
+python Topology_Task/tools/check_checkpoint_health.py \
+  --checkpoint-dir Topology_Task/checkpoint \
+  --run rerun_a0_opt_s0
+```
+
+The `--run` filter accepts an `exp_tag`, a checkpoint filename substring, a W&B
+run path substring, or an old opaque `MAPPO_...` run id.
+
 Safer check while jobs might still be running:
 
 ```bash
