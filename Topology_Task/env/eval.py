@@ -1,3 +1,4 @@
+import os
 from collections import deque
 
 from common.action_trace import (
@@ -110,19 +111,60 @@ class Evaluator:
         handler = getattr(getattr(self.env, "g2op_env", None), "chronics_handler", None)
         if handler is None:
             return "unknown"
-        for name in ("get_name", "get_id"):
-            getter = getattr(handler, name, None)
-            if callable(getter):
+
+        def label_from(value: Any) -> Optional[str]:
+            if value is None:
+                return None
+            if isinstance(value, (str, bytes, os.PathLike)):
+                text = os.fsdecode(value)
+                if not text:
+                    return None
+                return os.path.basename(os.path.normpath(text))
+            if isinstance(value, (int, np.integer)):
+                return str(int(value))
+            return None
+
+        objects = []
+        seen = set()
+        queue = [handler]
+        while queue:
+            obj = queue.pop(0)
+            if obj is None or id(obj) in seen:
+                continue
+            seen.add(id(obj))
+            objects.append(obj)
+            for attr in ("data", "_data", "real_data", "_real_data"):
+                nested = getattr(obj, attr, None)
+                if nested is not None and id(nested) not in seen:
+                    queue.append(nested)
+
+        # Prefer the deepest active chronic object over the top-level handler,
+        # whose get_name/get_id can stay stale with Grid2Op's MA wrapper.
+        for obj in reversed(objects):
+            for name in ("get_name", "get_id"):
+                getter = getattr(obj, name, None)
+                if not callable(getter):
+                    continue
                 try:
-                    value = getter()
+                    label = label_from(getter())
                 except Exception:
                     continue
-                if value is not None:
-                    return str(value)
-        for name in ("current_chronics", "_current_chronics", "_prev_cache_id"):
-            value = getattr(handler, name, None)
-            if value is not None:
-                return str(value)
+                if label is not None:
+                    return label
+            for name in (
+                "name",
+                "_name",
+                "path",
+                "_path",
+                "chronics_name",
+                "_chronics_name",
+                "current_chronics",
+                "_current_chronics",
+                "_prev_cache_id",
+            ):
+                label = label_from(getattr(obj, name, None))
+                if label is not None:
+                    return label
         return "unknown"
 
     @staticmethod
