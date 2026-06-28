@@ -45,6 +45,7 @@ NO_ENTROPY_DECAY_SEED_SWEEP_REGEX = (
     r"s[0-2]_(?:det|stoch)$"
 )
 RUN_NAME_REGEX = None
+RUN_NAME_CANDIDATES = None  # Exact names when a config-folder/preset chooser is used.
 EXCLUDE_RUN_NAME_REGEX = None
 RUN_STATES = None  # None includes finished, crashed, and killed cached histories.
 MAX_RUNS = None    # None means all matching runs
@@ -59,6 +60,7 @@ CACHE_STALE_STEP_TOLERANCE = 0.99  # Refresh cache if max cached step is behind 
 WRITE_FULL_HISTORY_CSV = True
 SKIP_FAILED_DOWNLOADS = True  # Continue when active runs do not have history artifacts yet.
 WANDB_API_TIMEOUT = 300
+WANDB_EXACT_QUERY_BATCH_SIZE = 20
 HISTORY_ARTIFACT_TYPE = "wandb-history"
 HISTORY_ARTIFACT_VERSION = "latest"
 HISTORY_ARTIFACT_FALLBACK_VERSIONS = ["v0", "v1", "v2", "v3", "v4", "v5"]
@@ -295,15 +297,16 @@ def run_name_regex_from_config_folder(config_folder):
 
 def configure_run_filter_from_config_folder(config_folder, *, verbose=True):
     """Set RUN_NAME_REGEX from config folder choice(s) and return the regex."""
-    global RUN_NAME_REGEX
+    global RUN_NAME_REGEX, RUN_NAME_CANDIDATES
 
-    RUN_NAME_REGEX = run_name_regex_from_config_folder(config_folder)
+    names = config_folder_run_names(config_folder)
+    RUN_NAME_CANDIDATES = None if names is None else _unique_text(names)
+    RUN_NAME_REGEX = None if names is None else run_name_regex_from_names(names)
     refresh_run_filters()
     if verbose:
         if RUN_NAME_REGEX is None:
             print("Config folder filter: all W&B runs")
         else:
-            names = config_folder_run_names(config_folder)
             choices = _normalize_config_folder_choices(config_folder)
             if choices is None:
                 print(f"Config folder filter: {resolve_config_folder(config_folder)}")
@@ -337,13 +340,15 @@ def _ensure_wandb_api():
 
 # Run discovery helpers extracted from the original notebook.
 def run_name_matches(name, exp_tag=""):
+    name = str(name).strip()
+    exp_tag = str(exp_tag).strip()
     if exclude_name_re is not None and (
-        exclude_name_re.search(str(name)) or exclude_name_re.search(str(exp_tag))
+        exclude_name_re.search(name) or exclude_name_re.search(exp_tag)
     ):
         return False
     if name_re is None:
         return True
-    return bool(name_re.search(str(name)) or name_re.search(str(exp_tag)))
+    return bool(name_re.search(name) or name_re.search(exp_tag))
 
 
 def _metadata_json_paths():
@@ -369,9 +374,9 @@ def cached_runs_from_full_history():
             print(f"Skipping invalid metadata {meta_path}: {exc}")
             continue
 
-        name = meta.get("name") or meta.get("run_name") or meta_path.parent.name.split("__", 1)[0]
+        name = str(meta.get("name") or meta.get("run_name") or meta_path.parent.name.split("__", 1)[0]).strip()
         run_id = meta.get("id") or meta.get("run_id") or meta_path.parent.name.split("__")[-1]
-        exp_tag = meta.get("exp_tag") or name
+        exp_tag = str(meta.get("exp_tag") or name).strip()
         parquet_path = _cache_file_from_metadata(meta, meta_path, "history_parquet", "history.parquet")
         csv_path = _cache_file_from_metadata(meta, meta_path, "history_csv", "history.csv.gz")
         if parquet_path is None and csv_path is None:
@@ -402,6 +407,57 @@ def cached_runs_from_full_history():
     return pd.DataFrame(rows)
 
 
+def _current_exact_run_name_candidates():
+    """Return exact run-name candidates when the active regex came from exact names."""
+    if not RUN_NAME_CANDIDATES:
+        return None
+    names = _unique_text(RUN_NAME_CANDIDATES)
+    if not names:
+        return None
+    try:
+        expected_regex = run_name_regex_from_names(names)
+    except ValueError:
+        return None
+    if RUN_NAME_REGEX != expected_regex:
+        return None
+    return names
+
+
+def _chunks(values, size):
+    values = list(values)
+    for start in range(0, len(values), size):
+        yield values[start:start + size]
+
+
+def _wandb_exact_name_filter(names):
+    terms = []
+    for name in names:
+        terms.append({"display_name": name})
+        terms.append({"name": name})
+        terms.append({"config.exp_tag": name})
+    return {"$or": terms}
+
+
+def _query_wandb_runs_by_exact_names(api_obj, names, *, verbose=True):
+    """Query W&B by exact display/config names instead of scanning the project."""
+    names = _unique_text(names)
+    batches = list(_chunks(names, WANDB_EXACT_QUERY_BATCH_SIZE))
+    path = f"{ENTITY}/{PROJECT}"
+    matched_runs = []
+    seen_ids = set()
+    if verbose:
+        print(f"Querying W&B by {len(names)} exact run-name candidate(s)...", flush=True)
+    for idx, batch in enumerate(batches, start=1):
+        if verbose:
+            print(f"  exact-name batch {idx}/{len(batches)}: {len(batch)} candidate(s)", flush=True)
+        for run in api_obj.runs(path, filters=_wandb_exact_name_filter(batch)):
+            if run.id in seen_ids:
+                continue
+            matched_runs.append(run)
+            seen_ids.add(run.id)
+    return matched_runs
+
+
 def load_runs(
     *,
     run_name_regex=_UNSET,
@@ -412,11 +468,12 @@ def load_runs(
     verbose=True,
 ):
     """Load the W&B run manifest from local cache or the W&B API."""
-    global RUN_NAME_REGEX, EXCLUDE_RUN_NAME_REGEX, RUN_STATES, MAX_RUNS, USE_LOCAL_CACHE_ONLY
+    global RUN_NAME_REGEX, RUN_NAME_CANDIDATES, EXCLUDE_RUN_NAME_REGEX, RUN_STATES, MAX_RUNS, USE_LOCAL_CACHE_ONLY
     global api, all_runs, selected_runs, runs_df
 
     if run_name_regex is not _UNSET:
         RUN_NAME_REGEX = run_name_regex
+        RUN_NAME_CANDIDATES = None
     if exclude_run_name_regex is not _UNSET:
         EXCLUDE_RUN_NAME_REGEX = exclude_run_name_regex
     if run_states is not _UNSET:
@@ -451,7 +508,25 @@ def load_runs(
         return runs_df
 
     api = _ensure_wandb_api()
-    all_runs = list(api.runs(f"{ENTITY}/{PROJECT}"))
+    exact_candidates = _current_exact_run_name_candidates()
+    run_source = "full project scan"
+    if exact_candidates is not None:
+        try:
+            all_runs = _query_wandb_runs_by_exact_names(api, exact_candidates, verbose=verbose)
+            run_source = f"exact-name query over {len(exact_candidates)} candidate(s)"
+        except Exception as exc:
+            if verbose:
+                print(
+                    f"Exact-name W&B query failed ({type(exc).__name__}: {exc}); "
+                    "falling back to full project scan.",
+                    flush=True,
+                )
+            exact_candidates = None
+
+    if exact_candidates is None:
+        if verbose:
+            print(f"Querying all W&B runs for {ENTITY}/{PROJECT}...", flush=True)
+        all_runs = list(api.runs(f"{ENTITY}/{PROJECT}"))
 
     def run_matches(run):
         if RUN_STATES is not None and run.state not in RUN_STATES:
@@ -495,7 +570,7 @@ def load_runs(
     runs_df = pd.DataFrame(summary_rows)
     runs_df.to_csv(MANIFEST_PATH, index=False)
     if verbose:
-        print(f"Selected {len(selected_runs)} / {len(all_runs)} runs")
+        print(f"Selected {len(selected_runs)} / {len(all_runs)} runs from {run_source}")
         print(f"Saved manifest: {MANIFEST_PATH}")
     return runs_df
 
@@ -573,10 +648,11 @@ def _read_history_table(parquet_path, csv_path=None):
 
 def _ensure_run_columns(history, run_name, run_id):
     history = history.copy()
+    run_name = str(run_name).strip()
     if "run_name" not in history.columns:
         history.insert(0, "run_name", run_name)
     else:
-        history["run_name"] = history["run_name"].fillna(run_name)
+        history["run_name"] = history["run_name"].fillna(run_name).astype(str).str.strip()
     if "run_id" not in history.columns:
         history.insert(1, "run_id", run_id)
     else:
@@ -963,6 +1039,9 @@ def download_run_full_history_from_artifact(row, idx=None, total=None):
 def full_history_to_long(full_history, metrics):
     if full_history.empty:
         return pd.DataFrame(columns=["run_name", "run_id", "metric", "step", "value"])
+    full_history = full_history.copy()
+    if "run_name" in full_history.columns:
+        full_history["run_name"] = full_history["run_name"].astype(str).str.strip()
     step_col = "_step" if "_step" in full_history.columns else "step"
     if step_col not in full_history.columns:
         raise ValueError("History has neither '_step' nor 'step' column.")
@@ -1076,6 +1155,8 @@ def load_history_df(verbose=True):
     history_df["step"] = pd.to_numeric(history_df["step"], errors="coerce")
     history_df["value"] = pd.to_numeric(history_df["value"], errors="coerce")
     history_df = history_df.dropna(subset=["step", "value"])
+    if "run_name" in history_df.columns:
+        history_df["run_name"] = history_df["run_name"].astype(str).str.strip()
     history_df["step_millions"] = history_df["step"] / 1_000_000
     if verbose:
         print(history_df.shape)
@@ -1739,12 +1820,19 @@ def _a0_resolve_family_runs(expected_configs, family, *, history=None):
     history = _get_history(history)
     available = available_run_names(history=history)
     available_set = set(available)
+    available_by_stripped = {}
+    for candidate in available:
+        available_by_stripped.setdefault(str(candidate).strip(), candidate)
     resolved = []
     missing = []
     family_configs = expected_configs[expected_configs["family"] == family].sort_values("seed")
     for name in family_configs["expected_run_name"].astype(str):
+        name = name.strip()
         if name in available_set:
             resolved.append(name)
+            continue
+        if name in available_by_stripped:
+            resolved.append(available_by_stripped[name])
             continue
         substring_matches = [candidate for candidate in available if name in candidate or candidate in name]
         if substring_matches:
@@ -1771,6 +1859,10 @@ def plot_a0_config_folder_survival_comparisons(
     baseline_family,
     family_labels=None,
     family_order=None,
+    baseline_config_folder=None,
+    baseline_family_labels=None,
+    baseline_family_order=None,
+    baseline_label=None,
     title=None,
     save_name=None,
     ncols=2,
@@ -1784,9 +1876,18 @@ def plot_a0_config_folder_survival_comparisons(
         family_order=family_order,
     )
     folder_name = expected["folder"].iloc[0]
-    baseline_runs, baseline_missing = _a0_resolve_family_runs(expected, baseline_family, history=history)
-    baseline_rows = expected[expected["family"] == baseline_family]
-    baseline_label = (
+    if baseline_config_folder is None:
+        baseline_expected = expected
+    else:
+        baseline_expected = _a0_read_expected_configs(
+            baseline_config_folder,
+            family_labels=baseline_family_labels,
+            family_order=baseline_family_order,
+        )
+    baseline_folder_name = baseline_expected["folder"].iloc[0]
+    baseline_runs, baseline_missing = _a0_resolve_family_runs(baseline_expected, baseline_family, history=history)
+    baseline_rows = baseline_expected[baseline_expected["family"] == baseline_family]
+    resolved_baseline_label = baseline_label or (
         baseline_rows["family_label"].iloc[0]
         if not baseline_rows.empty
         else baseline_family.replace("_", " ")
@@ -1798,7 +1899,7 @@ def plot_a0_config_folder_survival_comparisons(
     if not baseline_runs:
         raise RuntimeError(
             f"No cached baseline runs found for {baseline_family}. "
-            f"Load/download configs/{folder_name} first."
+            f"Load/download configs/{baseline_folder_name} first."
         )
 
     groups = {}
@@ -1817,8 +1918,8 @@ def plot_a0_config_folder_survival_comparisons(
         if not compare_runs:
             print(f"Skipping {item.family_label}: no cached runs found.")
             continue
-        groups[f"{item.family_label} vs baseline: {baseline_label}"] = {
-            f"baseline: {baseline_label}": mean_curve(
+        groups[f"{item.family_label} vs baseline: {resolved_baseline_label}"] = {
+            f"baseline: {resolved_baseline_label}": mean_curve(
                 baseline_runs,
                 color="#1f77b4",
                 dash="solid",
@@ -1860,6 +1961,7 @@ def plot_a0_config_folder_survival_comparisons(
         "mean_groups": groups,
         "baseline_family": baseline_family,
         "baseline_runs": baseline_runs,
+        "baseline_folder": baseline_folder_name,
     }
 
 
@@ -1893,11 +1995,15 @@ def plot_a0_sparse16_survival():
 def plot_a0_aib_survival():
     return plot_a0_config_folder_survival_comparisons(
         "a0_aib",
-        baseline_family="a0_aib_00_flat_local_t020",
+        baseline_config_folder="a0_hvg",
+        baseline_family="a0_hvg_00_baseline",
+        baseline_family_labels=A0_HVG_FAMILY_LABELS,
+        baseline_family_order=A0_HVG_FAMILY_ORDER,
+        baseline_label="plain A0 baseline",
         family_labels=A0_AIB_FAMILY_LABELS,
         family_order=A0_AIB_FAMILY_ORDER,
-        title="configs/a0_aib: A0 adaptive budget survival vs flat local target 0.20",
-        save_name="a0_aib_survival_baseline_comparisons",
+        title="configs/a0_aib: A0 adaptive budget survival vs plain A0 baseline",
+        save_name="a0_aib_survival_vs_plain_a0_baseline",
         ncols=2,
     )
 
@@ -1910,6 +2016,352 @@ def plot_a0_survival_comparisons():
         "a0_aib": plot_a0_aib_survival(),
     }
     return results
+
+
+RERUN_GINE_BEST00_PREFIX = "best_00_shared_actor_gnn_gine_a4_concat_flat_critic_gnn_legacy_update"
+RERUN_GINE_COMPARISONS = [
+    (
+        "00 vs 10: light GINE + MLP critic optcritic",
+        "best_10_shared_actor_gnn_light_gine_a4_concat_flat_critic_mlp_optcritic",
+        "10 light GINE MLP critic",
+    ),
+    (
+        "00 vs 11: legacy critic + init bias 0.0",
+        "best_11_shared_actor_gnn_gine_a4_concat_flat_critic_gnn_legacy_update_initbias0",
+        "11 legacy init bias 0.0",
+    ),
+    (
+        "00 vs 12: optimized critic + init bias 0.0",
+        "best_12_shared_actor_gnn_gine_a4_concat_flat_critic_gnn_opt_initbias0",
+        "12 optcritic init bias 0.0",
+    ),
+    (
+        "00 vs 13: GINE A0 + GNN critic optcritic",
+        "best_13_shared_actor_gnn_gine_a0_concat_flat_critic_gnn_opt",
+        "13 GINE A0 GNN critic",
+    ),
+    (
+        "00 vs 14: light GINE A0 + MLP critic optcritic",
+        "best_14_shared_actor_gnn_light_gine_a0_no_concat_flat_critic_mlp_optcritic",
+        "14 light GINE A0 MLP critic",
+    ),
+]
+
+RERUN_A0_COMPARISONS = [
+    ("rerun_a0_opt", "rerun_a0_opt", "#1f77b4"),
+    ("rerun_a0_nonopt", "rerun_a0_nonopt", "#ff7f0e"),
+    ("rerun_a01_opt", "rerun_a01_opt", "#2ca02c"),
+    ("rerun_a02_opt", "rerun_a02_opt", "#d62728"),
+    ("a0_nonopt", "a0_nonopt", "#9467bd"),
+]
+
+RERUN_A0_BIAS_COMPARISONS = [
+    ("rerun_bias_05", "rerun_bias_05", "#ff7f0e"),
+    ("rerun_bias_07", "rerun_bias_07", "#d62728"),
+]
+
+
+def _seeded_prefix_names(prefix, seeds=(0, 1, 2)):
+    return [f"{prefix}_s{seed}" for seed in seeds]
+
+
+def _rerun_a0_comparison_names(prefix, seeds=(0, 1, 2)):
+    if prefix == "a0_nonopt":
+        return [f"noval20_mlp_a1_no_entropy_decay_nonopt_s{seed}_det" for seed in seeds]
+    return _seeded_prefix_names(prefix, seeds=seeds)
+
+
+def rerun_wandb_run_names(seeds=(0, 1, 2)):
+    """Exact run names needed by rerun_wandb_run_plot.ipynb."""
+    names = []
+    names.extend(_seeded_prefix_names(RERUN_GINE_BEST00_PREFIX, seeds=seeds))
+    for _, prefix, _ in RERUN_GINE_COMPARISONS:
+        names.extend(_seeded_prefix_names(prefix, seeds=seeds))
+    names.extend(rerun_a0_run_names(seeds=seeds))
+    return _unique_text(names)
+
+
+def rerun_gine_run_names(seeds=(0, 1, 2)):
+    """Run names for the GINE best_00 vs best_10-14 panel."""
+    names = list(_seeded_prefix_names(RERUN_GINE_BEST00_PREFIX, seeds=seeds))
+    for _, prefix, _ in RERUN_GINE_COMPARISONS:
+        names.extend(_seeded_prefix_names(prefix, seeds=seeds))
+    return _unique_text(names)
+
+
+def rerun_a0_run_names(seeds=(0, 1, 2)):
+    """Run names for the A0 rerun comparison panels."""
+    names = []
+    for prefix, _, _ in RERUN_A0_COMPARISONS:
+        names.extend(_rerun_a0_comparison_names(prefix, seeds=seeds))
+    names.extend(rerun_a0_bias_run_names())
+    return _unique_text(names)
+
+
+def rerun_a0_bias_run_names():
+    """Single-run bias controls used against the rerun_a0_opt baseline."""
+    names = []
+    for run_name, _, _ in RERUN_A0_BIAS_COMPARISONS:
+        names.append(run_name)
+    return _unique_text(names)
+
+
+def resolve_rerun_wandb_run_selection(selection, *, seeds=(0, 1, 2)):
+    """Resolve notebook run selections into exact W&B run names.
+
+    Accepted values:
+    - None, "None", or "all": no filtering
+    - "gine_rerun": GINE best_00 plus best_10-14 only
+    - "a0_rerun": A0 rerun families plus bias controls
+    - "a0_bias_rerun": rerun_bias_05 and rerun_bias_07 only
+    - any config folder accepted by config_folder_run_names
+    - any exact W&B run name
+    - a list/tuple/set or comma-separated string combining the above
+    """
+    if _is_all_config_choice(selection):
+        return None
+
+    choices = _normalize_config_folder_choices(selection)
+    if choices is None:
+        choices = [selection]
+
+    names = []
+    for choice in choices:
+        if _is_all_config_choice(choice):
+            return None
+        text = str(choice).strip()
+        key = text.lower()
+        if key in {"gine", "gine_rerun", "rerun_gine", "gine_best00_10_14", "best00_10_14"}:
+            names.extend(rerun_gine_run_names(seeds=seeds))
+        elif key in {"a0", "a0_rerun", "rerun_a0", "a0_test"}:
+            names.extend(rerun_a0_run_names(seeds=seeds))
+        elif key in {"a0_bias", "a0_bias_rerun", "rerun_a0_bias", "bias_rerun"}:
+            names.extend(rerun_a0_bias_run_names())
+        else:
+            try:
+                folder = resolve_config_folder(text)
+            except FileNotFoundError:
+                names.append(text)
+            else:
+                folder_names = config_folder_run_names(folder)
+                if folder_names is None:
+                    return None
+                names.extend(folder_names)
+
+    names = _unique_text(str(name).strip() for name in names)
+    if not names:
+        raise ValueError("No run names were resolved from the requested selection.")
+    return names
+
+
+def run_name_regex_from_names(names):
+    """Build a RUN_NAME_REGEX from an explicit iterable of W&B run names."""
+    names = _unique_text(str(name).strip() for name in names)
+    if not names:
+        raise ValueError("Pass at least one run name.")
+    escaped = [re.escape(name) for name in names]
+    return r"^\s*(?:" + "|".join(escaped) + r")\s*$"
+
+
+def configure_run_filter_from_names(names, *, verbose=True):
+    """Set RUN_NAME_REGEX from exact run names and return the regex."""
+    global RUN_NAME_REGEX, RUN_NAME_CANDIDATES
+
+    names = _unique_text(str(name).strip() for name in names)
+    RUN_NAME_CANDIDATES = names
+    RUN_NAME_REGEX = run_name_regex_from_names(names)
+    refresh_run_filters()
+    if verbose:
+        print(f"Explicit run-name filter: {len(names)} candidates")
+    return RUN_NAME_REGEX
+
+
+def configure_run_filter_from_rerun_selection(selection, *, seeds=(0, 1, 2), verbose=True):
+    """Set RUN_NAME_REGEX from rerun notebook presets/folders/exact run names."""
+    names = resolve_rerun_wandb_run_selection(selection, seeds=seeds)
+    if names is None:
+        return configure_run_filter_from_config_folder("all", verbose=verbose)
+    regex = configure_run_filter_from_names(names, verbose=verbose)
+    if verbose:
+        print("Resolved rerun selection:")
+        for name in names:
+            print(f"  - {name}")
+    return regex
+
+
+def _resolve_seeded_prefix(prefix, seeds=(0, 1, 2), history=None):
+    return _resolve_exact_run_names(_seeded_prefix_names(prefix, seeds=seeds), label=prefix, history=history)
+
+
+def _resolve_exact_run_names(expected_names, *, label=None, history=None):
+    history = _get_history(history)
+    available = available_run_names(history=history)
+    available_set = set(available)
+    stripped = {}
+    for candidate in available:
+        stripped.setdefault(str(candidate).strip(), candidate)
+
+    resolved = []
+    missing = []
+    for name in expected_names:
+        if name in available_set:
+            resolved.append(name)
+        elif name in stripped:
+            resolved.append(stripped[name])
+        else:
+            substring_matches = [candidate for candidate in available if name in candidate or candidate in name]
+            if substring_matches:
+                resolved.append(sorted(substring_matches, key=lambda candidate: (len(candidate), candidate))[0])
+            else:
+                missing.append(name)
+    if missing:
+        print(f"Missing {len(missing)} run(s) for {label or 'requested runs'}:")
+        for name in missing:
+            print(f"  - {name}")
+    return _unique_text(resolved)
+
+
+def plot_rerun_gine_best00_comparisons(seeds=(0, 1, 2)):
+    """Compare GINE best_00 against best_10, best_11, best_12, best_13, and best_14."""
+    baseline_runs = _resolve_seeded_prefix(RERUN_GINE_BEST00_PREFIX, seeds=seeds)
+    if not baseline_runs:
+        raise RuntimeError("No cached runs found for GINE best_00 baseline.")
+
+    groups = {}
+    for title, prefix, label in RERUN_GINE_COMPARISONS:
+        compare_runs = _resolve_seeded_prefix(prefix, seeds=seeds)
+        if not compare_runs:
+            print(f"Skipping {title}: no cached comparison runs found.")
+            continue
+        groups[title] = {
+            "00 baseline": mean_curve(
+                baseline_runs,
+                color="#1f77b4",
+                dash="solid",
+                width=4,
+                member_alpha=0.16,
+                std_alpha=0.10,
+            ),
+            label: mean_curve(
+                compare_runs,
+                color="#ff7f0e",
+                dash="solid",
+                width=3,
+                member_alpha=0.16,
+                std_alpha=0.12,
+            ),
+        }
+
+    if not groups:
+        raise RuntimeError("No GINE rerun comparison groups could be built from history_df.")
+
+    fig = plot_run_mean_groups(
+        groups,
+        split="test",
+        smooth=5,
+        title="configs/gine_s0_s1_s2: best_00 vs best_10-14",
+        ncols=2,
+        subplot_height=380,
+        width=1500,
+        y_range=[0, 105],
+        show_members=True,
+        show_std=True,
+        save_name="rerun_gine_best00_vs_best10_14",
+    )
+    return {"fig": fig, "mean_groups": groups, "baseline_runs": baseline_runs}
+
+
+def plot_rerun_a0_opt_comparison(seeds=(0, 1, 2)):
+    """Compare rerun_a0_opt against nonopt/a0.1/a0.2 alternatives."""
+    mean_runs = {}
+    for prefix, label, color in RERUN_A0_COMPARISONS:
+        runs = _resolve_exact_run_names(
+            _rerun_a0_comparison_names(prefix, seeds=seeds),
+            label=prefix,
+        )
+        if not runs:
+            print(f"Skipping {label}: no cached runs found.")
+            continue
+        mean_runs[label] = mean_curve(
+            runs,
+            color=color,
+            dash="solid",
+            width=4 if prefix == "rerun_a0_opt" else 3,
+            member_alpha=0.16,
+            std_alpha=0.12,
+        )
+
+    if "rerun_a0_opt" not in mean_runs:
+        raise RuntimeError("No cached runs found for rerun_a0_opt baseline.")
+    if len(mean_runs) < 2:
+        raise RuntimeError("No A0 rerun alternatives could be built from history_df.")
+
+    fig = plot_run_mean_groups(
+        {"A0 reruns: opt vs nonopt / a0.1 / a0.2 / old a0_nonopt": mean_runs},
+        split="test",
+        smooth=5,
+        title="configs/a0_test_rerun: rerun_a0_opt vs alternatives + a0_nonopt",
+        ncols=1,
+        subplot_height=520,
+        width=1300,
+        y_range=[0, 105],
+        show_members=True,
+        show_std=True,
+        save_name="rerun_a0_opt_vs_alternatives",
+    )
+    return {"fig": fig, "mean_runs": mean_runs}
+
+
+def plot_rerun_a0_bias_comparison(seeds=(0, 1, 2)):
+    """Compare rerun_a0_opt against rerun_bias_05 and rerun_bias_07."""
+    baseline_runs = _resolve_exact_run_names(
+        _rerun_a0_comparison_names("rerun_a0_opt", seeds=seeds),
+        label="rerun_a0_opt",
+    )
+    if not baseline_runs:
+        raise RuntimeError("No cached runs found for rerun_a0_opt baseline.")
+
+    mean_runs = {
+        "rerun_a0_opt": mean_curve(
+            baseline_runs,
+            color="#1f77b4",
+            dash="solid",
+            width=4,
+            member_alpha=0.16,
+            std_alpha=0.12,
+        )
+    }
+    for run_name, label, color in RERUN_A0_BIAS_COMPARISONS:
+        runs = _resolve_exact_run_names([run_name], label=run_name)
+        if not runs:
+            print(f"Skipping {label}: no cached runs found.")
+            continue
+        mean_runs[label] = mean_curve(
+            runs,
+            color=color,
+            dash="solid",
+            width=3,
+            member_alpha=0.16,
+            std_alpha=0.12,
+        )
+
+    if len(mean_runs) < 2:
+        raise RuntimeError("No rerun_bias_05/rerun_bias_07 runs could be built from history_df.")
+
+    fig = plot_run_mean_groups(
+        {"A0 opt baseline vs init-bias controls": mean_runs},
+        split="test",
+        smooth=5,
+        title="rerun_a0_opt baseline vs rerun_bias_05 / rerun_bias_07",
+        ncols=1,
+        subplot_height=520,
+        width=1300,
+        y_range=[0, 105],
+        show_members=True,
+        show_std=True,
+        save_name="rerun_a0_opt_vs_bias05_bias07",
+    )
+    return {"fig": fig, "mean_runs": mean_runs, "baseline_runs": baseline_runs}
 
 
 def sto_det_mean_specs(
