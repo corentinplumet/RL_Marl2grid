@@ -3,6 +3,9 @@
 This roadmap describes how to turn the strong `hvg` rho-threshold heuristic
 results into a fully learned decentralized policy.
 
+Status: design roadmap only. This document does not change the training
+algorithm yet.
+
 The motivation is:
 
 ```text
@@ -11,6 +14,25 @@ but it overwrites the action proposed by the trained agent at evaluation time.
 The goal is to distill this behavior into a student policy that outputs action
 0 directly, without a deployment-time heuristic.
 ```
+
+## One-Sentence Objective
+
+Train a student actor that behaves like:
+
+```text
+MAPPO teacher policy + local rho heuristic
+```
+
+but executes as:
+
+```text
+student MAPPO actor alone, with eval_action_heuristic = none
+```
+
+The scientific claim should not be that a hand-coded rule is deployed. The
+claim should be that a strong rule-assisted teacher is used to generate
+supervision, and the final deployed policy is again a decentralized learned
+policy.
 
 This is a teacher-student imitation-learning direction. It is connected to:
 
@@ -89,6 +111,82 @@ a_{i,t}^{S}
 $$
 
 with no heuristic override.
+
+## Training-Time vs Evaluation-Time Behavior
+
+This point matters because it avoids a lot of conceptual confusion.
+
+### Teacher Rollout
+
+During dataset collection, the teacher is executed in closed loop:
+
+$$
+o_t
+\rightarrow
+\pi^{base}
+\rightarrow
+\bar a_t
+\rightarrow
+H_{\rho}
+\rightarrow
+a_t^T
+\rightarrow
+\mathrm{env.step}(a_t^T).
+$$
+
+The environment sees the final teacher action:
+
+$$
+a_t^T.
+$$
+
+The dataset stores both the original policy proposal and the executed action:
+
+$$
+\bar a_t,\quad a_t^T.
+$$
+
+### Student Supervised Training
+
+During behavior cloning, the environment is not stepped. The student only sees
+saved observations and learns:
+
+$$
+o_{i,t}
+\mapsto
+a_{i,t}^T.
+$$
+
+This is a supervised learning phase:
+
+$$
+\theta_S
+\leftarrow
+\arg\min_\theta
+\mathcal L_{\mathrm{student}}(\theta).
+$$
+
+### Student Evaluation
+
+During final evaluation, no heuristic is applied:
+
+$$
+o_{i,t}
+\rightarrow
+\pi_i^S(\cdot\mid o_{i,t})
+\rightarrow
+a_{i,t}^S
+\rightarrow
+\mathrm{env.step}(a_t^S).
+$$
+
+The command must explicitly use:
+
+```text
+eval_action_heuristic = none
+```
+
+or no teacher-student claim is valid.
 
 ## Why This Is Interesting
 
@@ -283,6 +381,62 @@ outputs/teacher_student_datasets/
 or use HDF5/Zarr if the graph observations become too large for convenient
 `.npz` shards.
 
+### Important Data-Collection Rules
+
+Use pre-action observations:
+
+$$
+o_{i,t}
+\quad\text{before}\quad
+a_{i,t}^{T}
+\text{ is applied}.
+$$
+
+Use the final teacher action as the supervised label:
+
+$$
+y_{i,t}=a_{i,t}^{T}.
+$$
+
+Do not use the policy proposal as the label unless the experiment is explicitly
+called "imitate base policy":
+
+$$
+\bar a_{i,t}
+\neq
+a_{i,t}^{T}
+\quad
+\text{when the heuristic overwrites.}
+$$
+
+For the main decentralized experiment, collect with:
+
+```text
+eval_action_heuristic = local_rho_threshold
+eval_action_rho_threshold = 0.90
+deterministic_eval = true
+```
+
+The local rho value can be saved as metadata for analysis, but the default
+student should not receive an extra manually injected `local_max_rho` feature
+unless that feature is already present in the agent's local observation. The
+point is to make the student learn from the same observation space used by the
+actor.
+
+### Minimum Dataset Variants
+
+Collect at least:
+
+| Dataset | Teacher | Purpose |
+| --- | --- | --- |
+| `ts_local_rho090_s0` | local rho 0.90, seed 0 | Main smoke test. |
+| `ts_local_rho090_s1` | local rho 0.90, seed 1 | Robustness. |
+| `ts_local_rho090_s2` | local rho 0.90, seed 2 | Robustness. |
+| `ts_global_rho090_s0` | global rho 0.90, seed 0 | Privileged upper-bound analysis. |
+
+The first implementation should support collecting one teacher checkpoint at a
+time. Multi-checkpoint dataset merging can come later.
+
 ## Phase 2: Dataset Quality Checks
 
 Before training a student, inspect the dataset. The key risk is class imbalance:
@@ -405,6 +559,39 @@ This prevents the student from learning the trivial solution:
 $$
 \pi_i^S(a_i=0 \mid o_i) \approx 1.
 $$
+
+### Recommended Weighting
+
+Start with a two-class weighting:
+
+$$
+w(a)
+=
+\begin{cases}
+1,
+& a=0,\\
+\gamma,
+& a\neq 0,
+\end{cases}
+$$
+
+with:
+
+$$
+\gamma \in \{2,5,10\}.
+$$
+
+Then report:
+
+```text
+student/action0_accuracy
+student/nonidle_accuracy
+student/false_noop_rate
+student/false_intervention_rate
+```
+
+Do not optimize only global accuracy. If the teacher outputs no-op 95 percent
+of the time, a useless always-no-op model can still reach 95 percent accuracy.
 
 ## Phase 4: Add An Auxiliary Intervention Loss
 
@@ -754,6 +941,263 @@ If this works, then full student distillation is likely promising.
 6. Add auxiliary intervention loss if the student collapses to action `0`.
 7. Fine-tune with MAPPO and sparse/AIB objective.
 8. Add DAgger only if closed-loop covariate shift is severe.
+
+## Concrete Repository Implementation Plan
+
+Recommended new folder:
+
+```text
+Topology_Task/teacher_student/
+  README.md
+  collect_teacher_dataset.py
+  summarize_dataset.py
+  train_student_bc.py
+  evaluate_student_bc.py
+  dataset.py
+  losses.py
+```
+
+### `collect_teacher_dataset.py`
+
+Purpose: load a checkpoint, run the teacher policy with the chosen heuristic,
+and write sharded examples.
+
+Recommended command shape:
+
+```bash
+python Topology_Task/teacher_student/collect_teacher_dataset.py \
+  --checkpoint checkpoint/with_obs_stats/best_test_a0_hvg_04_eval_local_rho090_s0.tar \
+  --split train \
+  --eval-action-heuristic local_rho_threshold \
+  --eval-action-rho-threshold 0.90 \
+  --obs-normalization require \
+  --max-episodes 803 \
+  --output-dir outputs/teacher_student_datasets/local_rho090_s0
+```
+
+Implementation reuse:
+
+```text
+full_test_eval/evaluate_checkpoint.py
+  - checkpoint loading
+  - obs_stats loading
+  - actor reconstruction
+  - eval heuristic override args
+
+env.eval.Evaluator
+  - policy action computation
+  - local/global heuristic decision
+  - env stepping
+```
+
+The collector should not train anything. It only records:
+
+```text
+observation before action
+base policy action
+teacher final action
+heuristic diagnostics
+transition metadata
+```
+
+For MLP actors, save flat observations as `float32`.
+
+For GNN actors, save the nested graph observation in a format that can be
+reconstructed exactly. The first implementation can support only MLP students
+if the selected strong teacher is MLP; graph support can be added in a second
+pass.
+
+### `summarize_dataset.py`
+
+Purpose: fail fast before spending GPU time.
+
+Recommended command:
+
+```bash
+python Topology_Task/teacher_student/summarize_dataset.py \
+  --dataset outputs/teacher_student_datasets/local_rho090_s0
+```
+
+Required checks:
+
+```text
+can load every shard
+all action ids are inside each agent action space
+all obs shapes match the checkpoint actor obs space
+no NaN/Inf in observations
+teacher_action_0_frac per agent
+teacher_nonidle_frac per agent
+overwrite_frac per agent
+number of unique chronic fingerprints
+episode survival distribution
+```
+
+### `train_student_bc.py`
+
+Purpose: train a student actor with supervised imitation.
+
+Recommended command:
+
+```bash
+python Topology_Task/teacher_student/train_student_bc.py \
+  --dataset outputs/teacher_student_datasets/local_rho090_s0 \
+  --teacher-checkpoint checkpoint/with_obs_stats/best_test_a0_hvg_04_eval_local_rho090_s0.tar \
+  --output checkpoint/teacher_student/local_bc_s0.tar \
+  --nonidle-weight 5.0 \
+  --aux-intervention-loss true \
+  --aux-weight 0.5 \
+  --epochs 20 \
+  --batch-size 4096
+```
+
+Implementation details:
+
+```text
+1. Rebuild the actor architecture from the teacher checkpoint args.
+2. Initialize student weights either:
+   a. from scratch, or
+   b. from the base teacher actor.
+3. Train each decentralized actor on its own agent examples.
+4. Save a checkpoint compatible with existing full-test eval.
+```
+
+The first run should use initialization from the base teacher actor:
+
+$$
+\theta_S^0 = \theta_{\mathrm{base}}.
+$$
+
+That makes the student learn mostly the override behavior instead of learning
+the whole policy from scratch.
+
+### `evaluate_student_bc.py`
+
+Purpose: evaluate the supervised checkpoint without heuristic.
+
+This can either be a thin wrapper around `full_test_eval/evaluate_checkpoint.py`
+or simply use the existing full-test evaluator once the BC checkpoint is saved
+in the normal MAPPO checkpoint format.
+
+Mandatory evaluation command:
+
+```bash
+python Topology_Task/full_test_eval/evaluate_checkpoint.py \
+  --checkpoint checkpoint/teacher_student/local_bc_s0.tar \
+  --split test \
+  --eval-all-split-chronics true \
+  --eval-action-heuristic none \
+  --obs-normalization require \
+  --progress true
+```
+
+If the student only works when `eval_action_heuristic` is enabled, the
+distillation failed.
+
+## Checkpoint Format For Student Compatibility
+
+The BC student checkpoint should save the same keys expected by the current
+evaluator:
+
+```text
+args
+global_step
+agent_0
+agent_1
+agent_2
+training_state.obs_stats
+```
+
+`args.eval_action_heuristic` should be set to:
+
+```text
+none
+```
+
+even if the teacher used `local_rho_threshold`.
+
+Add explicit metadata:
+
+```json
+{
+  "teacher_checkpoint": "...",
+  "teacher_eval_action_heuristic": "local_rho_threshold",
+  "teacher_eval_action_rho_threshold": 0.90,
+  "student_training_objective": "weighted_ce_plus_intervention_bce",
+  "dataset_path": "..."
+}
+```
+
+This avoids confusing the student checkpoint with the heuristic teacher.
+
+## Implementation Phases In Code
+
+### Phase A: Collector Only
+
+Deliverables:
+
+```text
+teacher_student/collect_teacher_dataset.py
+teacher_student/summarize_dataset.py
+teacher_student/README.md
+```
+
+Acceptance test:
+
+```text
+collect 2 episodes
+summary loads the dataset
+teacher_action has high action-0 fraction
+teacher_action differs from policy_action on safe non-idle proposals
+```
+
+### Phase B: Offline BC Training
+
+Deliverables:
+
+```text
+teacher_student/dataset.py
+teacher_student/losses.py
+teacher_student/train_student_bc.py
+```
+
+Acceptance test:
+
+```text
+training loss decreases
+nonidle accuracy is reported
+checkpoint can be loaded by full_test_eval
+full_test_eval runs with eval_action_heuristic none
+```
+
+### Phase C: MAPPO Fine-Tuning From BC
+
+Deliverables:
+
+```text
+main.py / MAPPO checkpoint loading path accepts BC init
+config files for BC-init + no sparse loss
+config files for BC-init + sparse p0.010
+config files for BC-init + local AIB
+```
+
+Acceptance test:
+
+```text
+initial policy behavior matches BC student before PPO updates
+training does not silently re-enable eval heuristic
+obs_stats are preserved or recomputed correctly
+```
+
+### Phase D: DAgger
+
+Deliver only if needed. DAgger is more expensive and should be justified by:
+
+```text
+high offline imitation accuracy
+low closed-loop full-test survival
+```
+
+Then collect states from the student and label them with the teacher.
 
 ## Recommended First Experiments
 
