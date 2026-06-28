@@ -1,3 +1,4 @@
+from collections import Counter
 from time import time
 
 from .agent import Actor, Critic
@@ -73,6 +74,25 @@ def _transition_info(info: Any) -> Any:
     if isinstance(info, dict) and "final_info" in info:
         return info["final_info"]
     return info
+
+
+def _info_chronic_name(info: Any) -> str:
+    transition = _transition_info(info)
+    for candidate in (transition, info):
+        if isinstance(candidate, dict) and candidate.get("chronic_name") is not None:
+            return str(candidate["chronic_name"])
+    return "unknown"
+
+
+def _format_chronic_counter(labels: List[str], max_items: int = 4) -> str:
+    if not labels:
+        return "-"
+    counts = Counter(labels)
+    items = counts.most_common(max_items)
+    text = ", ".join(f"{label}x{count}" for label, count in items)
+    if len(counts) > max_items:
+        text += f", ... ({len(counts)} unique)"
+    return text
 
 
 def _agent_took_illegal_action(info: Any, agent_id: str) -> bool:
@@ -634,6 +654,9 @@ class MAPPO:
                 action0_bonus = _scheduled_action0_bonus(args, global_step)
                 illegal_action_counts = {agent: 0 for agent in agent_ids}
                 illegal_action_totals = {agent: 0 for agent in agent_ids}
+                rollout_chronic_labels_by_env = [
+                    [] for _ in range(args.n_envs)
+                ]
 
                 for step in range(0, args.n_steps):
                     global_step += args.n_envs
@@ -693,6 +716,15 @@ class MAPPO:
                         if isinstance(infos, (list, tuple))
                         else [infos]
                     )
+                    done_np = np.logical_or(
+                        next_terminations[agent_ids[0]],
+                        next_truncations[agent_ids[0]],
+                    )
+                    for env_idx, done in enumerate(done_np):
+                        if done and env_idx < len(step_infos):
+                            rollout_chronic_labels_by_env[env_idx].append(
+                                _info_chronic_name(step_infos[env_idx])
+                            )
                     if collect_explain_metrics:
                         explain_arrays = explain_arrays_from_infos(step_infos)
                         for name, values_np in explain_arrays.items():
@@ -751,10 +783,6 @@ class MAPPO:
                             )
 
                     if reward_normalizer is not None:
-                        done_np = np.logical_or(
-                            next_terminations[agent_ids[0]],
-                            next_truncations[agent_ids[0]],
-                        )
                         for agent in agent_ids:
                             reward[agent] = reward_normalizer[agent](
                                 np.asarray(reward[agent]), done_np
@@ -765,10 +793,7 @@ class MAPPO:
                         rewards[agent][step] = reward[agent]
 
                     dones[step] = th.tensor(
-                        np.logical_or(
-                            next_terminations[agent_ids[0]],
-                            next_truncations[agent_ids[0]],
-                        )
+                        done_np
                     ).to(device)
                     terminations[step] = th.tensor(next_terminations[agent_ids[0]]).to(
                         device
@@ -1191,6 +1216,45 @@ class MAPPO:
                         "fraction",
                         title="Non-idle agents per environment step",
                     )
+                    chronic_rows = []
+                    all_chronic_labels = []
+                    for env_idx, labels in enumerate(rollout_chronic_labels_by_env):
+                        all_chronic_labels.extend(labels)
+                        chronic_rows.append(
+                            [
+                                int(env_idx),
+                                int(len(labels)),
+                                int(len(set(labels))),
+                                _format_chronic_counter(labels, max_items=8),
+                            ]
+                        )
+                    if all_chronic_labels:
+                        metrics_to_log["train/chronic_episode_count"] = float(
+                            len(all_chronic_labels)
+                        )
+                        metrics_to_log["train/chronic_unique_count"] = float(
+                            len(set(all_chronic_labels))
+                        )
+                        metrics_to_log["train/chronic_worker_table"] = wb.Table(
+                            data=chronic_rows,
+                            columns=[
+                                "env_idx",
+                                "episodes",
+                                "unique_chronics",
+                                "chronic_counts",
+                            ],
+                        )
+                        if args.verbose:
+                            summary = " | ".join(
+                                f"env{env_idx}:{_format_chronic_counter(labels)}"
+                                for env_idx, labels in enumerate(
+                                    rollout_chronic_labels_by_env
+                                )
+                            )
+                            print(
+                                f"train rollout chronics at step {global_step}: "
+                                f"{summary}"
+                            )
                     for ag in agent_ids:
                         m = train_metrics[ag]
                         if m["entropy"]:

@@ -520,6 +520,8 @@ class MAEnvWrapper(MAEnv):
         self.constraints_type = args.constraints_type
 
         self.eval_env = eval_env
+        self.current_chronic_name = "unknown"
+        self.current_chronic_reset_count = 0
         self.norm_obs = args.norm_obs
         if self.norm_obs:
             self.epsilon = 1e-8
@@ -596,7 +598,80 @@ class MAEnvWrapper(MAEnv):
                 done["agent_0"] if isinstance(done, Dict) else False
             )  # Manage the case when self._risk_overflow directly after reset
 
-        return self._format_obs(obs), {}
+        self.current_chronic_reset_count += 1
+        self.current_chronic_name = self.get_current_chronic_name()
+        return self._format_obs(obs), self.get_current_chronic_info()
+
+    @staticmethod
+    def _chronic_label_from(value: Any) -> Optional[str]:
+        if value is None:
+            return None
+        if isinstance(value, (str, bytes, os.PathLike)):
+            text = os.fsdecode(value)
+            if not text:
+                return None
+            return os.path.basename(os.path.normpath(text))
+        if isinstance(value, (int, np.integer)):
+            return str(int(value))
+        return None
+
+    def get_current_chronic_name(self) -> str:
+        """Best-effort label for the current Grid2Op chronic.
+
+        This is instrumentation only. Some Grid2Op / multi-agent wrapper
+        combinations expose a stale top-level handler label, so we inspect nested
+        handler data first and fall back conservatively.
+        """
+        handler = getattr(self.g2op_env, "chronics_handler", None)
+        if handler is None:
+            return "unknown"
+
+        objects = []
+        seen = set()
+        queue = [handler]
+        while queue:
+            obj = queue.pop(0)
+            if obj is None or id(obj) in seen:
+                continue
+            seen.add(id(obj))
+            objects.append(obj)
+            for attr in ("data", "_data", "real_data", "_real_data"):
+                nested = getattr(obj, attr, None)
+                if nested is not None and id(nested) not in seen:
+                    queue.append(nested)
+
+        for obj in reversed(objects):
+            for name in ("get_name", "get_id"):
+                getter = getattr(obj, name, None)
+                if not callable(getter):
+                    continue
+                try:
+                    label = self._chronic_label_from(getter())
+                except Exception:
+                    continue
+                if label is not None:
+                    return label
+            for name in (
+                "name",
+                "_name",
+                "path",
+                "_path",
+                "chronics_name",
+                "_chronics_name",
+                "current_chronics",
+                "_current_chronics",
+                "_prev_cache_id",
+            ):
+                label = self._chronic_label_from(getattr(obj, name, None))
+                if label is not None:
+                    return label
+        return "unknown"
+
+    def get_current_chronic_info(self) -> Dict[str, Any]:
+        return {
+            "chronic_name": self.current_chronic_name,
+            "chronic_reset_count": self.current_chronic_reset_count,
+        }
 
     def seed(self, seed):
         return self.g2op_ma_env.seed(seed)
@@ -814,6 +889,7 @@ class MAEnvWrapper(MAEnv):
 
         self._get_cost(done, info)
         if isinstance(info, dict):
+            info.update(self.get_current_chronic_info())
             info[EXPLAIN_INFO_KEY] = {
                 "pre": explain_pre,
                 "post": self.get_explainability_state(),

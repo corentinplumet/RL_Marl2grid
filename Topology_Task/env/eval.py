@@ -179,6 +179,15 @@ class Evaluator:
         shown = names[:n_head] + [f"... ({len(names)} total)"] + names[-n_tail:]
         return "[" + ", ".join(shown) + "]"
 
+    @staticmethod
+    def _chronic_name_from_info(info: Any) -> Optional[str]:
+        if isinstance(info, dict) and "final_info" in info:
+            info = info["final_info"]
+        if not isinstance(info, dict):
+            return None
+        value = info.get("chronic_name")
+        return None if value is None else str(value)
+
     def _eval_heuristic_decision(
         self, agent_ids: List[str]
     ) -> Tuple[Dict[str, bool], Dict[str, float]]:
@@ -365,7 +374,10 @@ class Evaluator:
                     int(self.env.g2op_ma_env._cent_env.nb_time_step), 1
                 )
                 episode_survival = episode_length / self.max_steps
-                chronic_name = self._current_chronic_name()
+                chronic_name = (
+                    self._chronic_name_from_info(info)
+                    or self._current_chronic_name()
+                )
                 episode_chronic_names.append(chronic_name)
                 ep_survivals.append(episode_survival)
                 if not self.use_heuristic:
