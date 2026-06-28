@@ -125,6 +125,18 @@ class Evaluator:
                 return str(value)
         return "unknown"
 
+    @staticmethod
+    def _format_chronic_names(chronic_names: List[str], max_items: int = 12) -> str:
+        names = [str(name) for name in chronic_names]
+        if not names:
+            return "[]"
+        if len(names) <= max_items:
+            return "[" + ", ".join(names) + "]"
+        n_head = max_items // 2
+        n_tail = max_items - n_head
+        shown = names[:n_head] + [f"... ({len(names)} total)"] + names[-n_tail:]
+        return "[" + ", ".join(shown) + "]"
+
     def _eval_heuristic_decision(
         self, agent_ids: List[str]
     ) -> Tuple[Dict[str, bool], Dict[str, float]]:
@@ -227,6 +239,7 @@ class Evaluator:
         trace_episode = 0
         trace_episode_step = 0
         trace_step = 0
+        episode_chronic_names = []
         while len(ep_survivals) < eval_ep:
             for agent, model in actors.items():
                 action[agent] = model.get_eval_action(
@@ -311,6 +324,7 @@ class Evaluator:
                 )
                 episode_survival = episode_length / self.max_steps
                 chronic_name = self._current_chronic_name()
+                episode_chronic_names.append(chronic_name)
                 ep_survivals.append(episode_survival)
                 if not self.use_heuristic:
                     ep_returns.append(ep_rewards)
@@ -458,7 +472,9 @@ class Evaluator:
                 flush=True,
             )
         print(
-            f"{eval_label} at step {glob_step}, survival={avg_survival * 100:.3f}%, return={avg_return}"
+            f"{eval_label} at step {glob_step}, "
+            f"chronics={self._format_chronic_names(episode_chronic_names)}, "
+            f"survival={avg_survival * 100:.3f}%, return={avg_return}"
         )
         return avg_survival
 
