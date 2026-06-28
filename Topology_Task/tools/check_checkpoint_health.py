@@ -65,6 +65,7 @@ class RunRecord:
     run_ids: list[str]
     wb_run_names: list[str]
     files: list[str]
+    file_rows: list[str]
     corrupted_files: list[str]
 
 
@@ -254,6 +255,7 @@ def summarize_runs(records: list[FileRecord]) -> list[RunRecord]:
         status = _run_status(complete, bool(corrupted), len(readable))
         run_ids = sorted({record.run_id for record in files if record.run_id})
         wb_run_names = sorted({record.wb_run_name for record in files if record.wb_run_name})
+        sorted_files = sorted(files, key=lambda record: record.file)
         runs.append(
             RunRecord(
                 exp_tag=exp_tag,
@@ -271,7 +273,8 @@ def summarize_runs(records: list[FileRecord]) -> list[RunRecord]:
                 total_timesteps=max(total_values) if total_values else None,
                 run_ids=run_ids,
                 wb_run_names=wb_run_names,
-                files=sorted(record.file for record in files),
+                files=[record.file for record in sorted_files],
+                file_rows=[_file_row(record) for record in sorted_files],
                 corrupted_files=sorted(record.file for record in corrupted),
             )
         )
@@ -294,6 +297,13 @@ def _format_step(max_step: int | None, total: int | None) -> str:
     if max_step is None:
         return f"-/{total:,}"
     return f"{max_step:,}/{total:,}"
+
+
+def _file_row(record: FileRecord) -> str:
+    marker = "!" if record.status == "corrupted" else " "
+    obs = "yes" if record.has_obs_stats else "no"
+    step = _format_step(record.global_step, record.total_timesteps)
+    return f"{marker} {record.kind:<11} step={step:<21} obs={obs:<3} {record.file}"
 
 
 def _print_table(runs: list[RunRecord], show_files: bool) -> None:
@@ -331,9 +341,8 @@ def _print_table(runs: list[RunRecord], show_files: bool) -> None:
         if show_files:
             for run_id in run.run_ids:
                 print(f"   run_id: {run_id}")
-            for file in run.files:
-                marker = " ! " if file in run.corrupted_files else "   "
-                print(f"{marker}{file}")
+            for file_row in run.file_rows:
+                print(f"   {file_row}")
 
 
 def _matches_run(run: RunRecord, query: str) -> bool:
@@ -370,6 +379,7 @@ def _write_csv(path: Path, runs: list[RunRecord]) -> None:
                 "run_ids",
                 "wb_run_names",
                 "files",
+                "file_rows",
                 "corrupted_files",
             ],
         )
@@ -379,6 +389,7 @@ def _write_csv(path: Path, runs: list[RunRecord]) -> None:
             row["run_ids"] = "|".join(run.run_ids)
             row["wb_run_names"] = "|".join(run.wb_run_names)
             row["files"] = "|".join(run.files)
+            row["file_rows"] = "|".join(run.file_rows)
             row["corrupted_files"] = "|".join(run.corrupted_files)
             writer.writerow(row)
 

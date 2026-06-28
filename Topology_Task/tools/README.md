@@ -135,7 +135,9 @@ python Topology_Task/tools/check_checkpoint_health.py \
 ```
 
 The `--run` filter accepts an `exp_tag`, a checkpoint filename substring, a W&B
-run path substring, or an old opaque `MAPPO_...` run id.
+run path substring, or an old opaque `MAPPO_...` run id. When filtering one
+run, the script prints each matching checkpoint file with its own
+`global_step / total_timesteps`.
 
 Safer check while jobs might still be running:
 
