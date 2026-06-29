@@ -107,6 +107,28 @@ sbatch Topology_Task/teacher_student/job_collect_teacher_dataset.sh \
   --output-dir outputs/teacher_student_datasets/action_outcomes_rho090_s0
 ```
 
+On EPFL JED, you can use the shorter dedicated wrapper:
+
+```bash
+CHECKPOINT=checkpoint/with_obs_stats/best_test_a0_hvg_04_eval_local_rho090_s0.tar \
+OUTPUT_DIR=outputs/teacher_student_datasets/smoke_action_outcomes_rho090_s0 \
+MAX_EPISODES=2 \
+OUTCOME_ACTION_SAMPLE_SIZE=32 \
+TIMING_EVERY_ENV_STEPS=1 \
+sbatch Topology_Task/teacher_student/job_collect_action_outcomes_jed.sh
+```
+
+After the calibration run gives a reasonable `avg_sec_per_sim_action`, launch
+the full collection:
+
+```bash
+CHECKPOINT=checkpoint/with_obs_stats/best_test_a0_hvg_04_eval_local_rho090_s0.tar \
+OUTPUT_DIR=outputs/teacher_student_datasets/action_outcomes_rho090_s0 \
+MAX_EPISODES=803 \
+TIMING_EVERY_ENV_STEPS=100 \
+sbatch Topology_Task/teacher_student/job_collect_action_outcomes_jed.sh
+```
+
 `--outcome-rollout-policy best_simulated` advances the environment with the
 valid unilateral action that produced the lowest simulated `rho_after_action`.
 You can switch it to `teacher` to advance with the existing checkpoint policy
