@@ -4,9 +4,10 @@ from common.imports import *
 from common.utils import str2bool
 
 
-def _reject_removed_validation_split_args() -> None:
+def _reject_removed_validation_split_args(argv: Optional[List[str]] = None) -> None:
     removed_flags = ("--validation-chronics-pct", "--val-chronics-pct")
-    for arg in sys.argv[1:]:
+    args_to_check = sys.argv[1:] if argv is None else argv
+    for arg in args_to_check:
         flag = arg.split("=", 1)[0]
         if flag in removed_flags:
             raise ValueError(
@@ -15,14 +16,14 @@ def _reject_removed_validation_split_args() -> None:
             )
 
 
-def get_env_args() -> Namespace:
+def get_env_args(argv: Optional[List[str]] = None) -> Namespace:
     """
     Parse and return the command-line arguments for configuring the environment.
 
     Returns:
         Namespace: A namespace containing the parsed arguments.
     """
-    _reject_removed_validation_split_args()
+    _reject_removed_validation_split_args(argv)
 
     parser = ap.ArgumentParser()
 
@@ -164,6 +165,6 @@ def get_env_args() -> Namespace:
     )
 
     # Parse the arguments
-    params, _ = parser.parse_known_args()
+    params, _ = parser.parse_known_args(argv)
 
     return params

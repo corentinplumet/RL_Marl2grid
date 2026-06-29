@@ -375,7 +375,7 @@ def parse_args() -> Namespace:
 
 
 def _build_env_args(cli: Namespace) -> Namespace:
-    env_args = get_env_args()
+    env_args = get_env_args([])
     env_args.env_id = cli.env_id
     env_args.action_type = "topology"
     env_args.reduced_action_space = ""
