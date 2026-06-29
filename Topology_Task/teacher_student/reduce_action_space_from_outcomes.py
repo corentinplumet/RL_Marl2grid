@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
@@ -124,7 +125,16 @@ def parse_args() -> argparse.Namespace:
             "dataset shards by keeping frequent useful actions."
         )
     )
-    parser.add_argument("--dataset", type=Path, required=True)
+    parser.add_argument(
+        "--dataset",
+        type=Path,
+        nargs="+",
+        required=True,
+        help=(
+            "One or more action_outcomes dataset directories. For sharded "
+            "SLURM array runs, pass every parts/part_* directory."
+        ),
+    )
     parser.add_argument(
         "--output",
         type=Path,
@@ -167,6 +177,29 @@ def _str_to_bool(value: str) -> bool:
     return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
 
 
+def _default_output_for_datasets(dataset_dirs: List[Path]) -> Path:
+    if len(dataset_dirs) == 1:
+        return metadata_dir(dataset_dirs[0]) / "reduced_action_space.json"
+
+    parents = {dataset.parent.resolve() for dataset in dataset_dirs}
+    if len(parents) == 1:
+        parent = next(iter(parents))
+        if parent.name == "parts":
+            return parent.parent / "metadata" / "reduced_action_space.json"
+        return parent / "metadata" / "reduced_action_space.json"
+
+    common = Path(os.path.commonpath([str(path.resolve()) for path in dataset_dirs]))
+    return common / "metadata" / "reduced_action_space.json"
+
+
+def _list_shards_or_empty(dataset_dir: Path, max_shards: Optional[int]) -> List[Path]:
+    try:
+        return list_shards(dataset_dir, max_shards)
+    except FileNotFoundError:
+        print(f"warning: no shards found in {task_relative(dataset_dir)}; skipping")
+        return []
+
+
 def main() -> None:
     cli = parse_args()
     if cli.top_k <= 0:
@@ -174,23 +207,45 @@ def main() -> None:
     if cli.min_count <= 0:
         raise ValueError("--min-count must be positive.")
 
-    dataset_dir = resolve_dataset_dir(cli.dataset)
-    metadata = load_metadata(dataset_dir)
-    if metadata.get("dataset_mode") != "action_outcomes":
-        raise ValueError(
-            f"{task_relative(dataset_dir)} does not look like an action_outcomes "
-            "dataset. Collect with --dataset-mode action_outcomes first."
-        )
+    dataset_dirs = [resolve_dataset_dir(path) for path in cli.dataset]
+    metadatas = []
+    for dataset_dir in dataset_dirs:
+        metadata = load_metadata(dataset_dir)
+        if metadata.get("dataset_mode") != "action_outcomes":
+            raise ValueError(
+                f"{task_relative(dataset_dir)} does not look like an "
+                "action_outcomes dataset."
+            )
+        metadatas.append(metadata)
+    metadata = metadatas[0]
+    agent_ids: List[str] = list(metadata["agent_ids"])
+    action_sizes = {
+        agent: int(size) for agent, size in metadata.get("action_sizes", {}).items()
+    }
+    for dataset_dir, other_metadata in zip(dataset_dirs[1:], metadatas[1:]):
+        if list(other_metadata["agent_ids"]) != agent_ids:
+            raise ValueError(
+                f"Agent ids in {task_relative(dataset_dir)} do not match the "
+                "first dataset."
+            )
+        other_action_sizes = {
+            agent: int(size)
+            for agent, size in other_metadata.get("action_sizes", {}).items()
+        }
+        if other_action_sizes != action_sizes:
+            raise ValueError(
+                f"Action sizes in {task_relative(dataset_dir)} do not match the "
+                "first dataset."
+            )
 
     output = cli.output
     if output is None:
-        output = metadata_dir(dataset_dir) / "reduced_action_space.json"
+        output = _default_output_for_datasets(dataset_dirs)
     output = output.expanduser()
     if not output.is_absolute():
         output = (TASK_DIR / output).resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
 
-    agent_ids: List[str] = list(metadata["agent_ids"])
     include_action_zero = _str_to_bool(cli.include_action_zero)
     require_improvement = _str_to_bool(cli.require_improvement)
 
@@ -199,49 +254,62 @@ def main() -> None:
         agent: defaultdict(int) for agent in agent_ids
     }
 
-    for shard in list_shards(dataset_dir, cli.max_shards):
-        with np.load(shard) as data:
-            for agent in agent_ids:
-                prefix = f"outcome_{agent}"
-                action_key = f"{prefix}_action_id"
-                metric_key = f"{prefix}_{cli.metric}"
-                valid_key = f"{prefix}_action_is_valid"
-                if action_key not in data.files:
-                    continue
-                if metric_key not in data.files:
-                    raise KeyError(f"Missing {metric_key} in {task_relative(shard)}")
+    datasets_with_shards = 0
+    for dataset_dir in dataset_dirs:
+        shards = _list_shards_or_empty(dataset_dir, cli.max_shards)
+        if shards:
+            datasets_with_shards += 1
+        for shard in shards:
+            with np.load(shard) as data:
+                for agent in agent_ids:
+                    prefix = f"outcome_{agent}"
+                    action_key = f"{prefix}_action_id"
+                    metric_key = f"{prefix}_{cli.metric}"
+                    valid_key = f"{prefix}_action_is_valid"
+                    if action_key not in data.files:
+                        continue
+                    if metric_key not in data.files:
+                        raise KeyError(
+                            f"Missing {metric_key} in {task_relative(shard)}"
+                        )
 
-                kwargs = {
-                    "action_ids": data[action_key],
-                    "metric": data[metric_key],
-                    "valid": data[valid_key],
-                    "require_improvement": require_improvement,
-                    "improvement_tolerance": cli.improvement_tolerance,
-                }
-                if cli.selection_method == "best_per_state":
-                    counts, stats = _best_per_state_counts(
-                        **kwargs,
-                        episode_ids=data[f"{prefix}_episode_id"],
-                        dataset_steps=data[f"{prefix}_dataset_step"],
-                    )
-                else:
-                    counts, stats = _all_improving_counts(**kwargs)
-                _merge_counter(counts_by_agent[agent], counts)
-                for key, value in stats.items():
-                    if value is not None:
-                        stats_by_agent[agent][key] += int(value)
+                    kwargs = {
+                        "action_ids": data[action_key],
+                        "metric": data[metric_key],
+                        "valid": data[valid_key],
+                        "require_improvement": require_improvement,
+                        "improvement_tolerance": cli.improvement_tolerance,
+                    }
+                    if cli.selection_method == "best_per_state":
+                        counts, stats = _best_per_state_counts(
+                            **kwargs,
+                            episode_ids=data[f"{prefix}_episode_id"],
+                            dataset_steps=data[f"{prefix}_dataset_step"],
+                        )
+                    else:
+                        counts, stats = _all_improving_counts(**kwargs)
+                    _merge_counter(counts_by_agent[agent], counts)
+                    for key, value in stats.items():
+                        if value is not None:
+                            stats_by_agent[agent][key] += int(value)
 
-    action_sizes = {
-        agent: int(size) for agent, size in metadata.get("action_sizes", {}).items()
-    }
+    total_candidate_states = sum(
+        int(metadata.get("n_candidate_states") or 0) for metadata in metadatas
+    )
+    total_outcome_examples = sum(
+        int(metadata.get("n_outcome_examples") or 0) for metadata in metadatas
+    )
     reduced: Dict[str, Any] = {
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "source_dataset": task_relative(dataset_dir),
+        "source_dataset": task_relative(dataset_dirs[0]),
+        "source_datasets": [task_relative(dataset_dir) for dataset_dir in dataset_dirs],
         "source_metadata": {
             "env_id": metadata.get("env_id"),
             "collection_rho_threshold": metadata.get("collection_rho_threshold"),
-            "n_candidate_states": metadata.get("n_candidate_states"),
-            "n_outcome_examples": metadata.get("n_outcome_examples"),
+            "n_candidate_states": total_candidate_states,
+            "n_outcome_examples": total_outcome_examples,
+            "n_parts": len(dataset_dirs),
+            "n_parts_with_shards": datasets_with_shards,
         },
         "metric": cli.metric,
         "selection_method": cli.selection_method,
@@ -291,7 +359,8 @@ def main() -> None:
         f.write("\n")
 
     print("========== Reduced action space ==========")
-    print(f"Dataset: {task_relative(dataset_dir)}")
+    print(f"Datasets: {len(dataset_dirs)}")
+    print(f"First dataset: {task_relative(dataset_dirs[0])}")
     print(f"Output: {task_relative(output)}")
     print(
         f"Total selected: {total_reduced}/{total_original} "

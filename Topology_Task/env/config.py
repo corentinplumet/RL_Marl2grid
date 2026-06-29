@@ -144,6 +144,21 @@ def get_env_args(argv: Optional[List[str]] = None) -> Namespace:
         help="Seed used to create the chronic split. Defaults to --seed.",
     )
     parser.add_argument(
+        "--chronic-shard-count",
+        type=int,
+        default=1,
+        help=(
+            "Optional number of disjoint chronic shards. Use with "
+            "--chronic-shard-index to split collection across SLURM array tasks."
+        ),
+    )
+    parser.add_argument(
+        "--chronic-shard-index",
+        type=int,
+        default=0,
+        help="Zero-based chronic shard index for this worker.",
+    )
+    parser.add_argument(
         "--actor-encoder",
         type=str,
         default="mlp",

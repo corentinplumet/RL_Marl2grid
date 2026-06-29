@@ -182,6 +182,34 @@ def _hash_chronic_split(chronic_path: Any, args: Dict[str, Any]) -> str:
     return "train"
 
 
+def _chronic_shard_count(args: Dict[str, Any]) -> int:
+    count = int(getattr(args, "chronic_shard_count", 1) or 1)
+    if count <= 0:
+        raise ValueError(f"chronic_shard_count must be positive. Got {count}.")
+    return count
+
+
+def _chronic_shard_index(args: Dict[str, Any]) -> int:
+    count = _chronic_shard_count(args)
+    index = int(getattr(args, "chronic_shard_index", 0) or 0)
+    if index < 0 or index >= count:
+        raise ValueError(
+            f"chronic_shard_index must be in [0, {count}). Got {index}."
+        )
+    return index
+
+
+def _chronic_shard_hash(chronic_path: Any, args: Dict[str, Any]) -> int:
+    seed = _chronic_split_seed(args)
+    text = f"{seed}:shard:{chronic_path}".encode("utf-8")
+    digest = hashlib.sha256(text).hexdigest()
+    return int(digest[:16], 16)
+
+
+def _hash_chronic_shard(chronic_path: Any, args: Dict[str, Any]) -> int:
+    return _chronic_shard_hash(chronic_path, args) % _chronic_shard_count(args)
+
+
 def _resolve_chronic_split(
     args: Dict[str, Any], eval_env: bool, chronic_split: Optional[str]
 ) -> Optional[str]:
@@ -205,11 +233,22 @@ def _apply_chronic_split(
         raise AttributeError("Grid2Op chronics handler does not expose set_filter().")
 
     available_chronics = _get_available_chronics(chronics_handler)
+    shard_count = _chronic_shard_count(args)
+    shard_index = _chronic_shard_index(args)
     if available_chronics:
         splits = _build_chronic_splits(available_chronics, args)
         selected_chronics = splits[split_name]
+        if shard_count > 1:
+            selected_chronics = [
+                chronic
+                for idx, chronic in enumerate(selected_chronics)
+                if idx % shard_count == shard_index
+            ]
         if not selected_chronics:
-            raise ValueError(f"Chronic split '{split_name}' is empty.")
+            raise ValueError(
+                f"Chronic split '{split_name}' shard "
+                f"{shard_index}/{shard_count} is empty."
+            )
         selected_keys = set()
         for chronic in selected_chronics:
             selected_keys.update(_chronic_key_variants(chronic))
@@ -222,16 +261,23 @@ def _apply_chronic_split(
             "split": split_name,
             "selected": len(selected_chronics),
             "total": len(available_chronics),
+            "shard_index": shard_index,
+            "shard_count": shard_count,
             "exact": True,
         }
 
     chronics_handler.set_filter(
-        lambda chronic_path: _hash_chronic_split(chronic_path, args) == split_name
+        lambda chronic_path: (
+            _hash_chronic_split(chronic_path, args) == split_name
+            and _hash_chronic_shard(chronic_path, args) == shard_index
+        )
     )
     return {
         "split": split_name,
         "selected": None,
         "total": None,
+        "shard_index": shard_index,
+        "shard_count": shard_count,
         "exact": False,
     }
 
@@ -414,14 +460,21 @@ class MAEnvWrapper(MAEnv):
             self.chronic_split_size = split_summary["selected"]
             self.chronic_split_total = split_summary["total"]
             if idx == 0 or eval_env:
+                shard_text = (
+                    f" shard {split_summary['shard_index']}/"
+                    f"{split_summary['shard_count']}"
+                    if split_summary["shard_count"] > 1
+                    else ""
+                )
                 if split_summary["exact"]:
                     print(
-                        f"Chronic split '{self.chronic_split}': "
+                        f"Chronic split '{self.chronic_split}'{shard_text}: "
                         f"{self.chronic_split_size}/{self.chronic_split_total} chronics"
                     )
                 else:
                     print(
-                        f"Chronic split '{self.chronic_split}': using hash filter "
+                        f"Chronic split '{self.chronic_split}'{shard_text}: "
+                        "using hash filter "
                         "(exact split size unavailable from Grid2Op handler)"
                     )
         self.g2op_env.chronics_handler.shuffle()

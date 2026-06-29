@@ -275,6 +275,8 @@ def _metadata(
         "seed": int(env_args.seed),
         "split": cli.split,
         "split_chronics": bool(env_args.split_chronics),
+        "chronic_shard_index": int(cli.chronic_shard_index),
+        "chronic_shard_count": int(cli.chronic_shard_count),
         "collection_rho_threshold": float(cli.collection_rho_threshold),
         "outcome_delta_tolerance": float(cli.outcome_delta_tolerance),
         "outcome_time_step": int(cli.outcome_time_step),
@@ -328,6 +330,8 @@ def parse_args() -> Namespace:
     parser.add_argument("--split-chronics", type=str2bool, default=True)
     parser.add_argument("--test-chronics-pct", type=float, default=0.2)
     parser.add_argument("--chronic-split-seed", type=int, default=None)
+    parser.add_argument("--chronic-shard-count", type=int, default=1)
+    parser.add_argument("--chronic-shard-index", type=int, default=0)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--difficulty", type=int, default=0, choices=[0, 1])
     parser.add_argument("--decentralized", type=str2bool, default=True)
@@ -385,6 +389,8 @@ def _build_env_args(cli: Namespace) -> Namespace:
     env_args.split_chronics = bool(cli.split_chronics and cli.split != "all")
     env_args.test_chronics_pct = cli.test_chronics_pct
     env_args.chronic_split_seed = cli.chronic_split_seed
+    env_args.chronic_shard_count = cli.chronic_shard_count
+    env_args.chronic_shard_index = cli.chronic_shard_index
     env_args.seed = int(cli.seed)
     env_args.norm_obs = False
     env_args.use_heuristic = False
@@ -429,6 +435,13 @@ def main() -> None:
         raise ValueError("--shard-size must be positive.")
     if cli.timing_every_env_steps <= 0:
         raise ValueError("--timing-every-env-steps must be positive.")
+    if cli.chronic_shard_count <= 0:
+        raise ValueError("--chronic-shard-count must be positive.")
+    if cli.chronic_shard_index < 0 or cli.chronic_shard_index >= cli.chronic_shard_count:
+        raise ValueError(
+            "--chronic-shard-index must be in "
+            f"[0, {cli.chronic_shard_count})."
+        )
 
     output_dir = cli.output_dir.expanduser()
     if not output_dir.is_absolute():
@@ -467,6 +480,10 @@ def main() -> None:
     print("========== Brute-force action-outcome collection ==========")
     print(f"Env id: {env_args.env_id}")
     print(f"Split: {cli.split}")
+    print(
+        f"Chronic shard: {cli.chronic_shard_index}/"
+        f"{cli.chronic_shard_count}"
+    )
     print(f"Output dir: {_safe_path(output_dir)}")
     print(f"Target episodes: {target_episodes}")
     print(f"Max env steps: {cli.max_env_steps or 'none'}")

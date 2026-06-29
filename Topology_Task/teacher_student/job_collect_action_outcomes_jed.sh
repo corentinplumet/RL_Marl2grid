@@ -8,7 +8,7 @@
 #SBATCH --qos=academic
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=72
+#SBATCH --cpus-per-task=4
 #SBATCH --mem-per-cpu=7000M
 #SBATCH --time=1-06:00:00
 #SBATCH --output=Topology_Task/teacher_student/slurm-%x-%j.out
@@ -30,9 +30,10 @@ Common overrides:
   ENV_ID=bus36
   OUTPUT_DIR=outputs/teacher_student_datasets/bus36_bruteforce_rho090
   COLLECTION_RHO_THRESHOLD=0.90
-  MAX_EPISODES=803
+  CHRONIC_SHARD_COUNT=16      # or submit with: sbatch --array=0-15 ...
+  MAX_EPISODES=               # leave empty for one pass over this shard
   MAX_ENV_STEPS=
-  OUTCOME_ACTION_SAMPLE_SIZE=32   # omit / leave empty to evaluate every action
+  OUTCOME_ACTION_SAMPLE_SIZE=64   # set to all to evaluate every action
   TIMING_EVERY_ENV_STEPS=1
   ACTION_REDUCTION_TOP_K=208
   OVERWRITE=false
@@ -47,8 +48,11 @@ Examples:
   sbatch Topology_Task/teacher_student/job_collect_action_outcomes_jed.sh
 
   # Full bus36 brute-force reduction over every action.
+  sbatch --array=0-15 Topology_Task/teacher_student/job_collect_action_outcomes_jed.sh
+
+  # Exhaustive action evaluation is usually infeasible, but still available.
   OUTPUT_DIR=outputs/teacher_student_datasets/bus36_bruteforce_rho090 \
-  MAX_EPISODES=803 \
+  OUTCOME_ACTION_SAMPLE_SIZE=all \
   ACTION_REDUCTION_TOP_K=208 \
   sbatch Topology_Task/teacher_student/job_collect_action_outcomes_jed.sh
 
@@ -100,25 +104,50 @@ DECENTRALIZED="${DECENTRALIZED:-true}"
 COLLECTION_RHO_THRESHOLD="${COLLECTION_RHO_THRESHOLD:-0.90}"
 MAX_EPISODES="${MAX_EPISODES:-}"
 MAX_ENV_STEPS="${MAX_ENV_STEPS:-}"
-OUTCOME_ACTION_SAMPLE_SIZE="${OUTCOME_ACTION_SAMPLE_SIZE:-}"
+OUTCOME_ACTION_SAMPLE_SIZE="${OUTCOME_ACTION_SAMPLE_SIZE:-64}"
 OUTCOME_ROLLOUT_POLICY="${OUTCOME_ROLLOUT_POLICY:-best_simulated}"
 OUTCOME_DELTA_TOLERANCE="${OUTCOME_DELTA_TOLERANCE:-1e-3}"
 TIMING_EVERY_ENV_STEPS="${TIMING_EVERY_ENV_STEPS:-100}"
 SHARD_SIZE="${SHARD_SIZE:-50000}"
 COMPRESS="${COMPRESS:-true}"
 OVERWRITE="${OVERWRITE:-false}"
-REDUCE_AFTER="${REDUCE_AFTER:-true}"
+REDUCE_AFTER_WAS_SET="${REDUCE_AFTER+x}"
 ACTION_REDUCTION_TOP_K="${ACTION_REDUCTION_TOP_K:-208}"
 ACTION_REDUCTION_MIN_COUNT="${ACTION_REDUCTION_MIN_COUNT:-1}"
 ACTION_REDUCTION_METRIC="${ACTION_REDUCTION_METRIC:-delta_vs_do_nothing}"
 ACTION_REDUCTION_METHOD="${ACTION_REDUCTION_METHOD:-best_per_state}"
 ACTION_REDUCTION_REQUIRE_IMPROVEMENT="${ACTION_REDUCTION_REQUIRE_IMPROVEMENT:-true}"
 
+if [ -n "${CHRONIC_SHARD_INDEX:-}" ]; then
+    CHRONIC_SHARD_INDEX="${CHRONIC_SHARD_INDEX}"
+elif [ -n "${SLURM_ARRAY_TASK_ID:-}" ]; then
+    CHRONIC_SHARD_INDEX="$((SLURM_ARRAY_TASK_ID - ${SLURM_ARRAY_TASK_MIN:-0}))"
+else
+    CHRONIC_SHARD_INDEX=0
+fi
+CHRONIC_SHARD_COUNT="${CHRONIC_SHARD_COUNT:-${SLURM_ARRAY_TASK_COUNT:-1}}"
+
+if [ "${CHRONIC_SHARD_COUNT}" -gt 1 ]; then
+    if [ -z "${REDUCE_AFTER_WAS_SET}" ]; then
+        REDUCE_AFTER=false
+    fi
+    BASE_OUTPUT_DIR="${OUTPUT_DIR}"
+    if [ "${OUTPUT_DIR_IS_PART:-false}" != "true" ]; then
+        PART_NAME="$(printf "part_%03d" "${CHRONIC_SHARD_INDEX}")"
+        OUTPUT_DIR="${BASE_OUTPUT_DIR}/parts/${PART_NAME}"
+    fi
+else
+    BASE_OUTPUT_DIR="${OUTPUT_DIR}"
+fi
+REDUCE_AFTER="${REDUCE_AFTER:-true}"
+
 collector_args=(
     --env-id "${ENV_ID}"
     --split "${SPLIT}"
     --split-chronics "${SPLIT_CHRONICS}"
     --test-chronics-pct "${TEST_CHRONICS_PCT}"
+    --chronic-shard-count "${CHRONIC_SHARD_COUNT}"
+    --chronic-shard-index "${CHRONIC_SHARD_INDEX}"
     --seed "${SEED}"
     --difficulty "${DIFFICULTY}"
     --decentralized "${DECENTRALIZED}"
@@ -146,7 +175,7 @@ if [ -n "${MAX_ENV_STEPS}" ]; then
     collector_args+=(--max-env-steps "${MAX_ENV_STEPS}")
 fi
 
-if [ -n "${OUTCOME_ACTION_SAMPLE_SIZE}" ]; then
+if [ -n "${OUTCOME_ACTION_SAMPLE_SIZE}" ] && [ "${OUTCOME_ACTION_SAMPLE_SIZE}" != "all" ]; then
     collector_args+=(--outcome-action-sample-size "${OUTCOME_ACTION_SAMPLE_SIZE}")
 fi
 
@@ -158,12 +187,15 @@ cd "${TASK_DIR}"
 echo "Launching brute-force action-space reduction on JED"
 echo "Conda env: ${CONDA_ENV}"
 echo "Env id: ${ENV_ID}"
+echo "Chronic shard: ${CHRONIC_SHARD_INDEX}/${CHRONIC_SHARD_COUNT}"
+echo "Base output dir: ${BASE_OUTPUT_DIR}"
 echo "Output dir: ${OUTPUT_DIR}"
 echo "Collection rho threshold: ${COLLECTION_RHO_THRESHOLD}"
 echo "Max episodes: ${MAX_EPISODES:-collector default}"
 echo "Max env steps: ${MAX_ENV_STEPS:-none}"
 echo "Action sample size: ${OUTCOME_ACTION_SAMPLE_SIZE:-all}"
 echo "Action reduction top-k: ${ACTION_REDUCTION_TOP_K}"
+echo "Reduce after: ${REDUCE_AFTER}"
 echo "Extra args: $*"
 
 python -u teacher_student/collect_bruteforce_action_outcomes.py "${collector_args[@]}" "$@"

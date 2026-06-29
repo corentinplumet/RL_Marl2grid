@@ -89,14 +89,31 @@ ACTION_REDUCTION_TOP_K=64 \
 sbatch Topology_Task/teacher_student/job_collect_action_outcomes_jed.sh
 ```
 
-Full bus36 reduction over every local discrete action:
+Full bus36 sampled reduction, targeting roughly a 24h-scale run from the smoke
+timing:
 
 ```bash
 OUTPUT_DIR=outputs/teacher_student_datasets/bus36_bruteforce_rho090 \
-MAX_EPISODES=803 \
+OUTCOME_ACTION_SAMPLE_SIZE=64 \
 ACTION_REDUCTION_TOP_K=208 \
 TIMING_EVERY_ENV_STEPS=100 \
-sbatch Topology_Task/teacher_student/job_collect_action_outcomes_jed.sh
+sbatch --array=0-15 Topology_Task/teacher_student/job_collect_action_outcomes_jed.sh
+```
+
+This runs 16 independent chronic shards. Each task writes to:
+
+```text
+outputs/teacher_student_datasets/bus36_bruteforce_rho090/parts/part_000
+outputs/teacher_student_datasets/bus36_bruteforce_rho090/parts/part_001
+...
+```
+
+After the array completes, merge all parts into one reduced action-space file:
+
+```bash
+DATASET_ROOT=outputs/teacher_student_datasets/bus36_bruteforce_rho090 \
+ACTION_REDUCTION_TOP_K=208 \
+sbatch Topology_Task/teacher_student/job_reduce_action_space_jed.sh
 ```
 
 The dedicated JED wrapper defaults to:
@@ -104,8 +121,9 @@ The dedicated JED wrapper defaults to:
 ```text
 ENV_ID=bus36
 COLLECTION_RHO_THRESHOLD=0.90
+OUTCOME_ACTION_SAMPLE_SIZE=64
 OUTCOME_ROLLOUT_POLICY=best_simulated
-REDUCE_AFTER=true
+REDUCE_AFTER=true for single jobs, false for SLURM arrays
 ```
 
 Override the rho gate or the final reduced size like this:
