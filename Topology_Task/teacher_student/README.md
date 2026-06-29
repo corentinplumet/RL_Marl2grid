@@ -106,3 +106,51 @@ This Phase 1 implementation supports flat MLP observations. If a checkpoint
 uses graph observations, the collector fails clearly instead of saving an
 ambiguous graph object format. Graph student datasets can be added after the MLP
 teacher-student path is validated.
+
+## Train A Behavior-Cloned Student
+
+Smoke test one shard first:
+
+```bash
+python Topology_Task/teacher_student/train_student_bc.py \
+  --dataset outputs/teacher_student_datasets/local_rho090_s0 \
+  --teacher-checkpoint checkpoint/with_obs_stats/a0_hvg_04_eval_local_rho090_s0.tar \
+  --output checkpoint/teacher_student/smoke_local_bc_s0.tar \
+  --epochs 1 \
+  --max-shards 1 \
+  --batch-size 4096 \
+  --balanced-nonidle-frac 0.5 \
+  --nonidle-weight 5.0 \
+  --aux-intervention-loss true \
+  --aux-weight 0.5
+```
+
+Full cluster run:
+
+```bash
+sbatch Topology_Task/teacher_student/job_train_student_bc.sh \
+  --dataset outputs/teacher_student_datasets/local_rho090_s0 \
+  --teacher-checkpoint checkpoint/with_obs_stats/a0_hvg_04_eval_local_rho090_s0.tar \
+  --output checkpoint/teacher_student/local_bc_s0.tar \
+  --epochs 3 \
+  --batch-size 4096 \
+  --balanced-nonidle-frac 0.5 \
+  --nonidle-weight 5.0 \
+  --aux-intervention-loss true \
+  --aux-weight 0.5
+```
+
+The trainer initializes the student from the teacher actor weights by default
+and then trains each decentralized actor on its own agent labels.
+
+The saved checkpoint is intended to run without a heuristic:
+
+```bash
+python Topology_Task/full_test_eval/evaluate_checkpoint.py \
+  --checkpoint checkpoint/teacher_student/local_bc_s0.tar \
+  --split test \
+  --eval-all-split-chronics true \
+  --eval-action-heuristic none \
+  --obs-normalization require \
+  --progress true
+```
