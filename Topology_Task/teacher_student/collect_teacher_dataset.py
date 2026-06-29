@@ -36,6 +36,13 @@ from full_test_eval.evaluate_checkpoint import (
     _resolve_checkpoint_path,
     _resolve_device,
 )
+from teacher_student.dataset import (
+    METADATA_DIR_NAME,
+    SHARDS_DIR_NAME,
+    metadata_dir,
+    metadata_path,
+    shards_dir,
+)
 
 
 def _safe_path(path: Path) -> str:
@@ -127,13 +134,15 @@ def _prepare_output_dir(path: Path, overwrite: bool) -> None:
                 child.unlink()
             elif child.name.startswith("shard_") and child.suffix == ".npz":
                 child.unlink()
-            elif child.is_dir() and child.name == "tmp":
+            elif child.is_dir() and child.name in {"tmp", SHARDS_DIR_NAME, METADATA_DIR_NAME}:
                 shutil.rmtree(child)
             else:
                 raise FileExistsError(
                     f"Refusing to delete unexpected file in output dir: {child}"
                 )
     path.mkdir(parents=True, exist_ok=True)
+    shards_dir(path).mkdir(parents=True, exist_ok=True)
+    metadata_dir(path).mkdir(parents=True, exist_ok=True)
 
 
 class ShardWriter:
@@ -309,6 +318,13 @@ def _metadata(
         "obs_shapes": obs_shapes,
         "shard_size": int(cli.shard_size),
         "compress": bool(cli.compress),
+        "layout": {
+            "version": 2,
+            "shards_dir": SHARDS_DIR_NAME,
+            "metadata_dir": METADATA_DIR_NAME,
+            "metadata_file": f"{METADATA_DIR_NAME}/metadata.json",
+            "summary_file": f"{METADATA_DIR_NAME}/summary.json",
+        },
         "max_episodes_requested": cli.max_episodes,
         "max_env_steps_requested": cli.max_env_steps,
         "n_shards": int(len(writer.paths)),
@@ -454,14 +470,17 @@ def main() -> None:
     action_space = evaluator.env.env.action_space
     obs_shapes = {agent: list(obs_space[agent].shape) for agent in agent_ids}
     action_sizes = {agent: int(action_space[agent].n) for agent in agent_ids}
-    writer = ShardWriter(output_dir, agent_ids, cli.shard_size, cli.compress)
-    metadata_path = output_dir / "metadata.json"
+    shard_output_dir = shards_dir(output_dir)
+    writer = ShardWriter(shard_output_dir, agent_ids, cli.shard_size, cli.compress)
+    metadata_file = metadata_path(output_dir)
 
     target_episodes = cli.max_episodes or int(evaluator.eval_episodes)
     print("========== Teacher dataset collection ==========")
     print(f"Checkpoint: {_repo_relative(checkpoint_path)}")
     print(f"Checkpoint global_step: {checkpoint_step}")
     print(f"Output dir: {_safe_path(output_dir)}")
+    print(f"Shard dir: {_safe_path(shard_output_dir)}")
+    print(f"Metadata dir: {_safe_path(metadata_dir(output_dir))}")
     print(f"Split: {cli.split}")
     print(f"Target episodes: {target_episodes}")
     print(f"Max env steps: {cli.max_env_steps or 'none'}")
@@ -576,7 +595,7 @@ def main() -> None:
 
         if flushed is not None:
             _write_metadata(
-                metadata_path,
+                metadata_file,
                 _metadata(
                     status="running",
                     cli=cli,
@@ -637,11 +656,13 @@ def main() -> None:
         episode_lengths=episode_lengths,
         agent_metrics=agent_metrics,
     )
-    _write_metadata(metadata_path, final_metadata)
+    _write_metadata(metadata_file, final_metadata)
     evaluator.env.close()
 
     print("========== Teacher dataset complete ==========")
     print(f"Output dir: {_safe_path(output_dir)}")
+    print(f"Shard dir: {_safe_path(shard_output_dir)}")
+    print(f"Metadata dir: {_safe_path(metadata_dir(output_dir))}")
     print(f"Shards: {len(writer.paths)}")
     print(f"Env steps: {env_steps}")
     print(f"Agent examples: {env_steps * len(agent_ids)}")
@@ -654,7 +675,7 @@ def main() -> None:
             f"teacher_nonidle={summary['teacher_nonidle_frac']:.4f} "
             f"overwritten={summary['was_overwritten_frac']:.4f}"
         )
-    print(f"Metadata: {_safe_path(metadata_path)}")
+    print(f"Metadata: {_safe_path(metadata_file)}")
 
 
 if __name__ == "__main__":

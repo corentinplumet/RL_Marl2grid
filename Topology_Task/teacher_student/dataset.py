@@ -9,6 +9,8 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 import numpy as np
 
 TASK_DIR = Path(__file__).resolve().parents[1]
+SHARDS_DIR_NAME = "shards"
+METADATA_DIR_NAME = "metadata"
 
 
 def resolve_dataset_dir(path: Path) -> Path:
@@ -29,20 +31,56 @@ def task_relative(path: Path) -> str:
         return str(path.resolve())
 
 
+def metadata_dir(dataset_dir: Path) -> Path:
+    return dataset_dir / METADATA_DIR_NAME
+
+
+def shards_dir(dataset_dir: Path) -> Path:
+    return dataset_dir / SHARDS_DIR_NAME
+
+
+def metadata_path(dataset_dir: Path) -> Path:
+    new_path = metadata_dir(dataset_dir) / "metadata.json"
+    if new_path.exists():
+        return new_path
+    old_path = dataset_dir / "metadata.json"
+    if old_path.exists():
+        return old_path
+    if metadata_dir(dataset_dir).exists():
+        return new_path
+    return old_path
+
+
+def summary_path(dataset_dir: Path) -> Path:
+    new_dir = metadata_dir(dataset_dir)
+    if new_dir.exists():
+        return new_dir / "summary.json"
+    return dataset_dir / "summary.json"
+
+
 def load_metadata(dataset_dir: Path) -> Dict[str, Any]:
-    path = dataset_dir / "metadata.json"
+    path = metadata_path(dataset_dir)
     if not path.exists():
-        raise FileNotFoundError(f"Missing metadata.json in {task_relative(dataset_dir)}")
+        raise FileNotFoundError(
+            f"Missing metadata.json in {task_relative(dataset_dir)} "
+            f"or {task_relative(metadata_dir(dataset_dir))}"
+        )
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def list_shards(dataset_dir: Path, max_shards: Optional[int] = None) -> List[Path]:
-    shards = sorted(dataset_dir.glob("shard_*.npz"))
+    shard_root = shards_dir(dataset_dir)
+    shards = sorted(shard_root.glob("shard_*.npz")) if shard_root.exists() else []
+    if not shards:
+        shards = sorted(dataset_dir.glob("shard_*.npz"))
     if max_shards is not None:
         shards = shards[: int(max_shards)]
     if not shards:
-        raise FileNotFoundError(f"No shard_*.npz files found in {task_relative(dataset_dir)}")
+        raise FileNotFoundError(
+            f"No shard_*.npz files found in {task_relative(shard_root)} "
+            f"or {task_relative(dataset_dir)}"
+        )
     return shards
 
 

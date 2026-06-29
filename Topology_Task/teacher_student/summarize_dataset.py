@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List
@@ -12,6 +13,16 @@ from typing import Any, Dict, List
 import numpy as np
 
 TASK_DIR = Path(__file__).resolve().parents[1]
+if str(TASK_DIR) not in sys.path:
+    sys.path.insert(0, str(TASK_DIR))
+
+from teacher_student.dataset import (
+    list_shards,
+    load_metadata,
+    metadata_dir,
+    summary_path,
+    task_relative,
+)
 
 
 def _resolve_dataset(path: Path) -> Path:
@@ -26,18 +37,11 @@ def _resolve_dataset(path: Path) -> Path:
 
 
 def _safe_path(path: Path) -> str:
-    try:
-        return str(path.resolve().relative_to(TASK_DIR))
-    except ValueError:
-        return str(path.resolve())
+    return task_relative(path)
 
 
 def _load_metadata(dataset_dir: Path) -> Dict[str, Any]:
-    path = dataset_dir / "metadata.json"
-    if not path.exists():
-        raise FileNotFoundError(f"Missing metadata.json in {_safe_path(dataset_dir)}")
-    with path.open("r", encoding="utf-8") as f:
-        return json.load(f)
+    return load_metadata(dataset_dir)
 
 
 def _metric_template() -> Dict[str, int]:
@@ -81,9 +85,7 @@ def _frac(num: int, den: int) -> float:
 def summarize(dataset_dir: Path) -> Dict[str, Any]:
     metadata = _load_metadata(dataset_dir)
     agent_ids: List[str] = list(metadata["agent_ids"])
-    shards = sorted(dataset_dir.glob("shard_*.npz"))
-    if not shards:
-        raise FileNotFoundError(f"No shard_*.npz files found in {_safe_path(dataset_dir)}")
+    shards = list_shards(dataset_dir)
 
     agent_metrics = {agent: _metric_template() for agent in agent_ids}
     action_counts = {
@@ -227,7 +229,10 @@ def parse_args() -> argparse.Namespace:
         "--output-json",
         type=Path,
         default=None,
-        help="Optional summary JSON path. Defaults to DATASET/summary.json.",
+        help=(
+            "Optional summary JSON path. Defaults to "
+            "DATASET/metadata/summary.json for split-layout datasets."
+        ),
     )
     return parser.parse_args()
 
@@ -237,7 +242,8 @@ def main() -> None:
     dataset_dir = _resolve_dataset(args.dataset)
     summary = summarize(dataset_dir)
     _print_table(summary)
-    output_json = args.output_json or (dataset_dir / "summary.json")
+    metadata_dir(dataset_dir).mkdir(parents=True, exist_ok=True)
+    output_json = args.output_json or summary_path(dataset_dir)
     output_json = output_json.expanduser()
     if not output_json.is_absolute():
         output_json = (TASK_DIR / output_json).resolve()

@@ -54,11 +54,32 @@ python Topology_Task/teacher_student/collect_teacher_dataset.py \
 By default, the collector refuses to write into a non-empty output directory.
 Use a unique `--output-dir` per checkpoint/seed.
 
+New collections use a split layout:
+
+```text
+outputs/teacher_student_datasets/local_rho090_s0/
+  shards/
+    shard_00000.npz
+    shard_00001.npz
+    ...
+  metadata/
+    metadata.json
+```
+
+This keeps the heavy `.npz` files separate from the lightweight files you might
+want to copy locally for plotting.
+
 ## Summarize A Dataset
 
 ```bash
 python Topology_Task/teacher_student/summarize_dataset.py \
   --dataset outputs/teacher_student_datasets/local_rho090_s0
+```
+
+By default the summary is written to:
+
+```text
+outputs/teacher_student_datasets/local_rho090_s0/metadata/summary.json
 ```
 
 The summary reports:
@@ -78,11 +99,35 @@ shard readability
 Each dataset directory contains:
 
 ```text
-metadata.json
-summary.json
-shard_00000.npz
-shard_00001.npz
-...
+metadata/
+  metadata.json
+  summary.json
+shards/
+  shard_00000.npz
+  shard_00001.npz
+  ...
+```
+
+The loader remains backward compatible with the previous flat layout where
+`metadata.json`, `summary.json`, and `shard_*.npz` were all directly under the
+dataset directory.
+
+## Organize Existing Datasets
+
+For datasets already collected with the old flat layout, run this on the
+cluster. It moves files in place, so it does not duplicate the heavy shards:
+
+```bash
+python Topology_Task/teacher_student/organize_dataset_layout.py \
+  --root outputs/teacher_student_datasets
+```
+
+Dry run first if you want to inspect the moves:
+
+```bash
+python Topology_Task/teacher_student/organize_dataset_layout.py \
+  --root outputs/teacher_student_datasets \
+  --dry-run true
 ```
 
 Each shard stores one row per environment step. Per-agent arrays are stored with
