@@ -1445,6 +1445,10 @@ def load_teacher_student_checkpoints(
                 "nonidle_weight": args.get("nonidle_weight"),
                 "aux_intervention_loss": args.get("aux_intervention_loss"),
                 "aux_weight": args.get("aux_weight"),
+                "soft_distillation_loss": args.get("soft_distillation_loss"),
+                "soft_weight": args.get("soft_weight"),
+                "soft_temperature": args.get("soft_temperature"),
+                "student_training_objective": ts.get("student_training_objective"),
                 "dataset_n_env_steps": dataset_meta.get("n_env_steps"),
                 "dataset_n_agent_examples": dataset_meta.get("n_agent_examples"),
             }

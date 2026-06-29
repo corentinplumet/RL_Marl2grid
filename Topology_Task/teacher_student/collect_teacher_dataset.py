@@ -125,6 +125,31 @@ def _flat_obs_for_storage(obs: Dict[str, Any], agent_id: str) -> np.ndarray:
     return np.asarray(value, dtype=np.float32).copy()
 
 
+def _policy_logits_for_storage(actor: Any, obs_tensor: th.Tensor, agent_id: str) -> np.ndarray:
+    if bool(getattr(actor, "intervention_gate", False)):
+        raise NotImplementedError(
+            "Soft-label collection currently supports flat non-gated actors only. "
+            f"The selected checkpoint uses intervention_gate=True for {agent_id}."
+        )
+    if getattr(actor, "encoder_type", "mlp") != "mlp":
+        raise NotImplementedError(
+            "Soft-label collection currently supports actor_encoder='mlp' only. "
+            f"The selected checkpoint uses actor_encoder={actor.encoder_type!r} "
+            f"for {agent_id}."
+        )
+    logits = actor.actor(actor._encode(obs_tensor))
+    if logits.ndim == 0:
+        raise ValueError(f"Actor logits for {agent_id} are scalar; expected actions.")
+    if logits.ndim > 1:
+        if logits.shape[0] != 1:
+            raise ValueError(
+                f"Actor logits for {agent_id} have unexpected shape "
+                f"{tuple(logits.shape)}."
+            )
+        logits = logits[0]
+    return logits.detach().cpu().numpy().astype(np.float32, copy=True)
+
+
 def _prepare_output_dir(path: Path, overwrite: bool) -> None:
     if path.exists() and any(path.iterdir()):
         if not overwrite:
@@ -235,6 +260,10 @@ class ShardWriter:
             arrays[f"local_max_rho_{agent}"] = np.asarray(
                 values["local_max_rho"], dtype=np.float32
             )
+            if "policy_logits" in values:
+                arrays[f"policy_logits_{agent}"] = np.stack(
+                    values["policy_logits"]
+                ).astype(np.float32)
 
         path = self.output_dir / f"shard_{self.shard_idx:05d}.npz"
         if self.compress:
@@ -321,6 +350,8 @@ def _metadata(
         "obs_shapes": obs_shapes,
         "shard_size": int(cli.shard_size),
         "compress": bool(cli.compress),
+        "save_policy_logits": bool(cli.save_policy_logits),
+        "soft_labels_available": bool(cli.save_policy_logits),
         "layout": {
             "version": 2,
             "shards_dir": SHARDS_DIR_NAME,
@@ -413,6 +444,15 @@ def parse_args() -> Namespace:
     parser.add_argument("--overwrite", type=str2bool, default=False)
     parser.add_argument("--shard-size", type=int, default=50000)
     parser.add_argument("--compress", type=str2bool, default=True)
+    parser.add_argument(
+        "--save-policy-logits",
+        type=str2bool,
+        default=False,
+        help=(
+            "Save base-policy action logits for optional soft-label "
+            "distillation. This can substantially increase dataset size."
+        ),
+    )
     parser.add_argument("--progress-every", type=int, default=1000)
     return parser.parse_args()
 
@@ -499,6 +539,7 @@ def main() -> None:
     print(f"Max env steps: {cli.max_env_steps or 'none'}")
     print(f"Eval heuristic: {args.eval_action_heuristic}")
     print(f"Eval rho threshold: {args.eval_action_rho_threshold}")
+    print(f"Save policy logits: {cli.save_policy_logits}")
     print(f"Obs normalization: {obs_norm_mode}")
     print(f"Device: {device}")
     print("================================================")
@@ -527,8 +568,13 @@ def main() -> None:
         obs_tensors = cast_np_to_tensors(obs, device)
 
         policy_actions = {}
+        policy_logits = {}
         with th.no_grad():
             for agent, actor in actors.items():
+                if cli.save_policy_logits:
+                    policy_logits[agent] = _policy_logits_for_storage(
+                        actor, obs_tensors[agent], agent
+                    )
                 policy_actions[agent] = actor.get_eval_action(
                     obs_tensors[agent],
                     deterministic=args.deterministic_eval,
@@ -601,6 +647,8 @@ def main() -> None:
                 "was_overwritten": was_overwritten,
                 "local_max_rho": local_max_rhos[agent],
             }
+            if cli.save_policy_logits:
+                agent_values[agent]["policy_logits"] = policy_logits[agent]
 
         flushed = writer.append(row=row, agent_values=agent_values)
         env_steps += 1

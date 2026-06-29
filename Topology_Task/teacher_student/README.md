@@ -38,6 +38,25 @@ sbatch Topology_Task/teacher_student/job_collect_teacher_dataset.sh \
   --output-dir outputs/teacher_student_datasets/local_rho090_s0
 ```
 
+For Phase 5 soft-label distillation, collect a new dataset with base-policy
+logits saved:
+
+```bash
+sbatch Topology_Task/teacher_student/job_collect_teacher_dataset.sh \
+  --checkpoint checkpoint/with_obs_stats/best_test_a0_hvg_04_eval_local_rho090_s0.tar \
+  --split train \
+  --eval-all-split-chronics true \
+  --eval-action-heuristic local_rho_threshold \
+  --eval-action-rho-threshold 0.90 \
+  --obs-normalization require \
+  --max-episodes 803 \
+  --save-policy-logits true \
+  --output-dir outputs/teacher_student_datasets/local_rho090_s0_logits
+```
+
+Saving logits can substantially increase dataset size. Keep a separate
+`--output-dir` from the hard-label datasets.
+
 Useful smoke test:
 
 ```bash
@@ -111,6 +130,12 @@ heuristic overwrite fraction
 unique chronic fingerprints
 episode length statistics
 shard readability
+invalid action ids
+observation shape / NaN / Inf checks
+teacher survival by chronic
+local max-rho histograms split by teacher action-0 vs non-idle
+most common teacher non-idle actions
+policy-logit availability for soft-label distillation
 ```
 
 ## Output Format
@@ -210,6 +235,29 @@ sbatch Topology_Task/teacher_student/job_train_student_bc.sh \
 
 The trainer initializes the student from the teacher actor weights by default
 and then trains each decentralized actor on its own agent labels.
+
+Soft-label distillation can be added when the dataset was collected with
+`--save-policy-logits true`:
+
+```bash
+sbatch Topology_Task/teacher_student/job_train_student_bc.sh \
+  --dataset outputs/teacher_student_datasets/local_rho090_s0_logits \
+  --teacher-checkpoint checkpoint/with_obs_stats/a0_hvg_04_eval_local_rho090_s0.tar \
+  --output checkpoint/teacher_student/local_bc_soft_s0.tar \
+  --epochs 3 \
+  --batch-size 4096 \
+  --balanced-nonidle-frac 0.20 \
+  --nonidle-weight 3.0 \
+  --aux-intervention-loss true \
+  --aux-weight 0.25 \
+  --soft-distillation-loss true \
+  --soft-weight 1.0 \
+  --soft-temperature 1.0
+```
+
+For non-overwritten states, the KL target is the base teacher policy softmax.
+For heuristic-overwritten states, the KL target is the final hard teacher
+action, usually action 0.
 
 The saved checkpoint is intended to run without a heuristic:
 

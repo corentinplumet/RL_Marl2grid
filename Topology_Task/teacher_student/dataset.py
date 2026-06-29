@@ -112,6 +112,28 @@ def load_agent_arrays(shard: Path, agent_id: str) -> Tuple[np.ndarray, np.ndarra
     return obs, target
 
 
+def shard_has_policy_logits(shard: Path, agent_id: str) -> bool:
+    with np.load(shard) as data:
+        return f"policy_logits_{agent_id}" in data.files
+
+
+def load_agent_policy_logits(shard: Path, agent_id: str) -> np.ndarray:
+    with np.load(shard) as data:
+        key = f"policy_logits_{agent_id}"
+        if key not in data.files:
+            raise KeyError(
+                f"Missing {key} in {task_relative(shard)}. Recollect the "
+                "dataset with --save-policy-logits true to use soft-label "
+                "distillation."
+            )
+        return np.asarray(data[key], dtype=np.float32)
+
+
+def load_agent_was_overwritten(shard: Path, agent_id: str) -> np.ndarray:
+    with np.load(shard) as data:
+        return np.asarray(data[f"was_overwritten_{agent_id}"], dtype=bool)
+
+
 def make_minibatches(
     targets: np.ndarray,
     batch_size: int,

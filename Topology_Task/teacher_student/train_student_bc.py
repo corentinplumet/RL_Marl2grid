@@ -34,14 +34,18 @@ from full_test_eval.evaluate_checkpoint import (
 from teacher_student.dataset import (
     list_shards,
     load_agent_arrays,
+    load_agent_policy_logits,
+    load_agent_was_overwritten,
     load_metadata,
     make_minibatches,
     resolve_dataset_dir,
+    shard_has_policy_logits,
     task_relative,
 )
 from teacher_student.losses import (
     classification_metrics,
     intervention_bce_loss,
+    soft_label_kl_loss,
     weighted_action_cross_entropy,
 )
 
@@ -248,6 +252,17 @@ def parse_args() -> Namespace:
     parser.add_argument("--aux-intervention-loss", type=str2bool, default=True)
     parser.add_argument("--aux-weight", type=float, default=0.5)
     parser.add_argument("--aux-pos-weight", type=float, default=1.0)
+    parser.add_argument(
+        "--soft-distillation-loss",
+        type=str2bool,
+        default=False,
+        help=(
+            "Add KL distillation from saved teacher policy logits. Requires "
+            "datasets collected with --save-policy-logits true."
+        ),
+    )
+    parser.add_argument("--soft-weight", type=float, default=1.0)
+    parser.add_argument("--soft-temperature", type=float, default=1.0)
     parser.add_argument("--init-from-teacher", type=str2bool, default=True)
     parser.add_argument("--max-shards", type=int, default=None)
     parser.add_argument("--eval-batches", type=int, default=50)
@@ -266,11 +281,29 @@ def main() -> None:
         raise ValueError("--batch-size must be positive.")
     if not 0.0 <= cli.balanced_nonidle_frac <= 1.0:
         raise ValueError("--balanced-nonidle-frac must be in [0, 1].")
+    if cli.soft_temperature <= 0.0:
+        raise ValueError("--soft-temperature must be positive.")
+    if cli.soft_distillation_loss and cli.soft_weight <= 0.0:
+        raise ValueError("--soft-weight must be positive when soft distillation is enabled.")
 
     dataset_dir = resolve_dataset_dir(cli.dataset)
     metadata = load_metadata(dataset_dir)
     shards = list_shards(dataset_dir, cli.max_shards)
     agent_ids = list(metadata["agent_ids"])
+    if cli.soft_distillation_loss:
+        missing = [
+            f"{task_relative(shard)}:{agent}"
+            for shard in shards
+            for agent in agent_ids
+            if not shard_has_policy_logits(shard, agent)
+        ]
+        if missing:
+            sample = "\n".join(missing[:10])
+            raise FileNotFoundError(
+                "Soft-label distillation requires policy logits in every shard. "
+                "Recollect with --save-policy-logits true. Missing examples:\n"
+                f"{sample}"
+            )
     checkpoint_dir = cli.checkpoint_dir.expanduser()
     if not checkpoint_dir.is_absolute():
         checkpoint_dir = (TASK_DIR / checkpoint_dir).resolve()
@@ -338,6 +371,11 @@ def main() -> None:
     print(f"Balanced nonidle frac: {cli.balanced_nonidle_frac}")
     print(f"CE weights: action0={cli.action0_weight} nonidle={cli.nonidle_weight}")
     print(f"Aux intervention loss: {cli.aux_intervention_loss} weight={cli.aux_weight}")
+    print(
+        "Soft distillation loss: "
+        f"{cli.soft_distillation_loss} weight={cli.soft_weight} "
+        f"temperature={cli.soft_temperature}"
+    )
     print(f"Init from teacher: {cli.init_from_teacher}")
     print(f"Device: {device}")
     print("=================================================")
@@ -346,7 +384,13 @@ def main() -> None:
     history = []
     for epoch in range(1, cli.epochs + 1):
         epoch_metric_sums = {
-            agent: {"n": 0.0, "loss": 0.0, "action_loss": 0.0, "aux_loss": 0.0}
+            agent: {
+                "n": 0.0,
+                "loss": 0.0,
+                "action_loss": 0.0,
+                "aux_loss": 0.0,
+                "soft_loss": 0.0,
+            }
             for agent in agent_ids
         }
         epoch_shards = list(shards)
@@ -354,6 +398,16 @@ def main() -> None:
         for shard_idx, shard in enumerate(epoch_shards, start=1):
             for agent in agent_ids:
                 obs_np, target_np = load_agent_arrays(shard, agent)
+                policy_logits_np = (
+                    load_agent_policy_logits(shard, agent)
+                    if cli.soft_distillation_loss
+                    else None
+                )
+                was_overwritten_np = (
+                    load_agent_was_overwritten(shard, agent)
+                    if cli.soft_distillation_loss
+                    else None
+                )
                 actor = actors[agent]
                 optimizer = optimizers[agent]
                 for batch_idx in make_minibatches(
@@ -388,7 +442,33 @@ def main() -> None:
                         if cli.aux_intervention_loss
                         else logits.sum() * 0.0
                     )
-                    loss = action_loss + float(cli.aux_weight) * aux_loss
+                    if cli.soft_distillation_loss:
+                        assert policy_logits_np is not None
+                        assert was_overwritten_np is not None
+                        teacher_policy_logits = th.as_tensor(
+                            policy_logits_np[batch_idx],
+                            dtype=th.float32,
+                            device=device,
+                        )
+                        was_overwritten = th.as_tensor(
+                            was_overwritten_np[batch_idx],
+                            dtype=th.bool,
+                            device=device,
+                        )
+                        soft_loss = soft_label_kl_loss(
+                            logits,
+                            teacher_policy_logits,
+                            target,
+                            was_overwritten,
+                            temperature=cli.soft_temperature,
+                        )
+                    else:
+                        soft_loss = logits.sum() * 0.0
+                    loss = (
+                        action_loss
+                        + float(cli.aux_weight) * aux_loss
+                        + float(cli.soft_weight) * soft_loss
+                    )
                     optimizer.zero_grad(set_to_none=True)
                     loss.backward()
                     if cli.max_grad_norm > 0.0:
@@ -402,6 +482,7 @@ def main() -> None:
                     sums["loss"] += float(loss.detach().cpu().item()) * n
                     sums["action_loss"] += float(action_loss.detach().cpu().item()) * n
                     sums["aux_loss"] += float(aux_loss.detach().cpu().item()) * n
+                    sums["soft_loss"] += float(soft_loss.detach().cpu().item()) * n
 
             if shard_idx % max(cli.progress_every, 1) == 0 or shard_idx == len(epoch_shards):
                 print(
@@ -437,6 +518,8 @@ def main() -> None:
             print(
                 f"{agent}: train_loss={t['loss']:.6f} "
                 f"eval_acc={e['accuracy']:.4f} "
+                f"eval_a0_acc={e['action0_accuracy']:.4f} "
+                f"eval_nonidle_acc={e['nonidle_accuracy']:.4f} "
                 f"eval_pred_nonidle={e['pred_nonidle_frac']:.4f} "
                 f"eval_false_noop={e['false_noop_rate']:.4f} "
                 f"eval_false_intervention={e['false_intervention_rate']:.4f}"
@@ -460,6 +543,15 @@ def main() -> None:
                     "n_unique_chronic_fingerprints"
                 ),
             },
+            "student_training_objective": (
+                "weighted_ce_plus_intervention_bce_plus_soft_kl"
+                if cli.soft_distillation_loss and cli.aux_intervention_loss
+                else "weighted_ce_plus_soft_kl"
+                if cli.soft_distillation_loss
+                else "weighted_ce_plus_intervention_bce"
+                if cli.aux_intervention_loss
+                else "weighted_ce"
+            ),
             "args": vars(cli),
             "history": history,
         }

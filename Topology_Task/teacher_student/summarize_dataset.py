@@ -8,7 +8,7 @@ import json
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 
@@ -25,6 +25,9 @@ from teacher_student.dataset import (
     summary_path,
     task_relative,
 )
+
+
+RHO_HIST_BINS = [0.0, 0.5, 0.7, 0.8, 0.85, 0.9, 0.95, 1.0, 1.05, 1.1, 1.2, 1.5, 2.0]
 
 
 def _resolve_dataset(path: Path) -> Path:
@@ -57,6 +60,14 @@ def _metric_template() -> Dict[str, int]:
         "was_overwritten": 0,
         "overwrite_to_action0": 0,
         "obs_nan_or_inf": 0,
+        "obs_bad_examples": 0,
+        "obs_shape_mismatch_shards": 0,
+        "invalid_policy_actions": 0,
+        "invalid_teacher_actions": 0,
+        "policy_logits_examples": 0,
+        "policy_logits_nan_or_inf": 0,
+        "policy_logits_missing_shards": 0,
+        "policy_logits_shape_mismatch_shards": 0,
     }
 
 
@@ -66,6 +77,10 @@ def _add_action_metrics(
     teacher_action: np.ndarray,
     force_noop: np.ndarray,
     obs: np.ndarray,
+    *,
+    action_size: Optional[int],
+    expected_obs_shape: Optional[List[int]],
+    policy_logits: Optional[np.ndarray],
 ) -> None:
     n = int(teacher_action.size)
     overwritten = policy_action != teacher_action
@@ -78,10 +93,73 @@ def _add_action_metrics(
     metrics["was_overwritten"] += int(np.sum(overwritten))
     metrics["overwrite_to_action0"] += int(np.sum(overwritten & (teacher_action == 0)))
     metrics["obs_nan_or_inf"] += int(np.sum(~np.isfinite(obs)))
+    if obs.ndim <= 1:
+        metrics["obs_bad_examples"] += int(np.sum(~np.isfinite(obs)))
+    else:
+        metrics["obs_bad_examples"] += int(
+            np.sum(np.any(~np.isfinite(obs), axis=tuple(range(1, obs.ndim))))
+        )
+    if expected_obs_shape is not None and tuple(obs.shape[1:]) != tuple(expected_obs_shape):
+        metrics["obs_shape_mismatch_shards"] += 1
+    if action_size is not None:
+        metrics["invalid_policy_actions"] += int(
+            np.sum((policy_action < 0) | (policy_action >= int(action_size)))
+        )
+        metrics["invalid_teacher_actions"] += int(
+            np.sum((teacher_action < 0) | (teacher_action >= int(action_size)))
+        )
+    if policy_logits is None:
+        metrics["policy_logits_missing_shards"] += 1
+    else:
+        metrics["policy_logits_examples"] += int(policy_logits.shape[0])
+        metrics["policy_logits_nan_or_inf"] += int(np.sum(~np.isfinite(policy_logits)))
+        if action_size is not None and (
+            policy_logits.ndim != 2
+            or policy_logits.shape[0] != n
+            or policy_logits.shape[1] != int(action_size)
+        ):
+            metrics["policy_logits_shape_mismatch_shards"] += 1
 
 
 def _frac(num: int, den: int) -> float:
     return float(num) / float(max(den, 1))
+
+
+def _empty_histogram() -> Dict[str, Any]:
+    return {
+        "bin_edges": list(RHO_HIST_BINS),
+        "counts": [0 for _ in range(len(RHO_HIST_BINS) - 1)],
+        "underflow": 0,
+        "overflow": 0,
+        "nan_or_inf": 0,
+    }
+
+
+def _add_histogram(histogram: Dict[str, Any], values: np.ndarray) -> None:
+    values = np.asarray(values, dtype=np.float32).reshape(-1)
+    if values.size == 0:
+        return
+    finite = values[np.isfinite(values)]
+    histogram["nan_or_inf"] += int(values.size - finite.size)
+    if finite.size == 0:
+        return
+    edges = np.asarray(histogram["bin_edges"], dtype=np.float32)
+    histogram["underflow"] += int(np.sum(finite < edges[0]))
+    histogram["overflow"] += int(np.sum(finite >= edges[-1]))
+    in_range = finite[(finite >= edges[0]) & (finite < edges[-1])]
+    counts, _ = np.histogram(in_range, bins=edges)
+    histogram["counts"] = [
+        int(old + new) for old, new in zip(histogram["counts"], counts.tolist())
+    ]
+
+
+def _top_actions(counts: Dict[int, int], n: int, *, limit: int = 10) -> List[Dict[str, Any]]:
+    return [
+        {"action": int(action), "count": int(count), "frac": _frac(int(count), n)}
+        for action, count in sorted(counts.items(), key=lambda item: item[1], reverse=True)[
+            :limit
+        ]
+    ]
 
 
 def summarize(dataset_dir: Path) -> Dict[str, Any]:
@@ -94,11 +172,27 @@ def summarize(dataset_dir: Path) -> Dict[str, Any]:
         agent: defaultdict(int)
         for agent in agent_ids
     }
+    nonidle_action_counts = {
+        agent: defaultdict(int)
+        for agent in agent_ids
+    }
+    rho_histograms = {
+        agent: {
+            "local_max_rho_when_teacher_action0": _empty_histogram(),
+            "local_max_rho_when_teacher_nonidle": _empty_histogram(),
+        }
+        for agent in agent_ids
+    }
     unique_fingerprints = set()
     n_env_steps = 0
     n_done = 0
     episode_lengths = []
+    episode_records = []
+    chronic_lengths: Dict[str, List[int]] = defaultdict(list)
+    chronic_names: Dict[str, str] = {}
     bad_shards = []
+    action_sizes = metadata.get("action_sizes", {}) or {}
+    obs_shapes = metadata.get("obs_shapes", {}) or {}
 
     for shard in shards:
         try:
@@ -107,6 +201,25 @@ def summarize(dataset_dir: Path) -> Dict[str, Any]:
                 n_env_steps += n
                 n_done += int(np.sum(data["done"]))
                 unique_fingerprints.update(map(str, data["chronic_fingerprint"]))
+                done_mask = np.asarray(data["done"], dtype=bool)
+                done_indices = np.flatnonzero(done_mask)
+                for idx in done_indices:
+                    episode_length = int(data["done_episode_length"][idx])
+                    if episode_length <= 0:
+                        continue
+                    fingerprint = str(data["chronic_fingerprint"][idx])
+                    chronic_name = str(data["chronic_name"][idx])
+                    episode_id = int(data["episode_id"][idx])
+                    chronic_names[fingerprint] = chronic_name
+                    chronic_lengths[fingerprint].append(episode_length)
+                    episode_records.append(
+                        {
+                            "episode_id": episode_id,
+                            "chronic_name": chronic_name,
+                            "chronic_fingerprint": fingerprint,
+                            "episode_length": episode_length,
+                        }
+                    )
                 episode_lengths.extend(
                     int(x) for x in data["done_episode_length"] if int(x) > 0
                 )
@@ -115,18 +228,47 @@ def summarize(dataset_dir: Path) -> Dict[str, Any]:
                     teacher = data[f"teacher_action_{agent}"]
                     force = data[f"force_noop_{agent}"]
                     obs = data[f"obs_{agent}"]
-                    _add_action_metrics(agent_metrics[agent], policy, teacher, force, obs)
+                    logits_key = f"policy_logits_{agent}"
+                    policy_logits = data[logits_key] if logits_key in data.files else None
+                    _add_action_metrics(
+                        agent_metrics[agent],
+                        policy,
+                        teacher,
+                        force,
+                        obs,
+                        action_size=action_sizes.get(agent),
+                        expected_obs_shape=obs_shapes.get(agent),
+                        policy_logits=policy_logits,
+                    )
                     for action_id, count in zip(*np.unique(teacher, return_counts=True)):
                         action_counts[agent][int(action_id)] += int(count)
+                    teacher_nonidle = teacher[teacher != 0]
+                    if teacher_nonidle.size:
+                        for action_id, count in zip(
+                            *np.unique(teacher_nonidle, return_counts=True)
+                        ):
+                            nonidle_action_counts[agent][int(action_id)] += int(count)
+                    rho_key = f"local_max_rho_{agent}"
+                    if rho_key in data.files:
+                        local_rho = data[rho_key]
+                        _add_histogram(
+                            rho_histograms[agent][
+                                "local_max_rho_when_teacher_action0"
+                            ],
+                            local_rho[teacher == 0],
+                        )
+                        _add_histogram(
+                            rho_histograms[agent][
+                                "local_max_rho_when_teacher_nonidle"
+                            ],
+                            local_rho[teacher != 0],
+                        )
         except Exception as exc:
             bad_shards.append({"path": _safe_path(shard), "error": repr(exc)})
 
     agent_summary = {}
     for agent, metrics in agent_metrics.items():
         n = metrics["n"]
-        top_actions = sorted(
-            action_counts[agent].items(), key=lambda item: item[1], reverse=True
-        )[:10]
         agent_summary[agent] = {
             **metrics,
             "policy_action_0_frac": _frac(metrics["policy_action_0"], n),
@@ -136,11 +278,45 @@ def summarize(dataset_dir: Path) -> Dict[str, Any]:
             "force_noop_frac": _frac(metrics["force_noop"], n),
             "was_overwritten_frac": _frac(metrics["was_overwritten"], n),
             "overwrite_to_action0_frac": _frac(metrics["overwrite_to_action0"], n),
-            "top_teacher_actions": [
-                {"action": action, "count": count, "frac": _frac(count, n)}
-                for action, count in top_actions
-            ],
+            "invalid_policy_action_frac": _frac(metrics["invalid_policy_actions"], n),
+            "invalid_teacher_action_frac": _frac(metrics["invalid_teacher_actions"], n),
+            "obs_bad_example_frac": _frac(metrics["obs_bad_examples"], n),
+            "policy_logits_available_frac": _frac(
+                metrics["policy_logits_examples"], n
+            ),
+            "top_teacher_actions": _top_actions(action_counts[agent], n),
+            "top_teacher_nonidle_actions": _top_actions(
+                nonidle_action_counts[agent], max(metrics["teacher_nonidle"], 1)
+            ),
+            "rho_histograms": rho_histograms[agent],
         }
+
+    survival_denominator = metadata.get("episode_length_max")
+    if survival_denominator is None and episode_lengths:
+        survival_denominator = max(episode_lengths)
+    survival_denominator = int(survival_denominator or 0)
+    survival_by_chronic = []
+    for fingerprint, lengths in sorted(chronic_lengths.items()):
+        mean_length = float(np.mean(lengths))
+        row = {
+            "chronic_fingerprint": fingerprint,
+            "chronic_name": chronic_names.get(fingerprint, "unknown"),
+            "n_episodes": int(len(lengths)),
+            "survival_step_mean": mean_length,
+            "survival_step_min": int(min(lengths)),
+            "survival_step_max": int(max(lengths)),
+        }
+        if survival_denominator > 0:
+            row["survival_rate_mean"] = mean_length / float(survival_denominator)
+        survival_by_chronic.append(row)
+    teacher_survival_step_mean = (
+        float(np.mean(episode_lengths)) if episode_lengths else None
+    )
+    teacher_survival_rate_mean = (
+        teacher_survival_step_mean / float(survival_denominator)
+        if teacher_survival_step_mean is not None and survival_denominator > 0
+        else None
+    )
 
     return {
         "dataset": str(dataset_dir),
@@ -157,6 +333,12 @@ def summarize(dataset_dir: Path) -> Dict[str, Any]:
         "n_agent_examples": n_env_steps * len(agent_ids),
         "n_completed_episodes": n_done,
         "n_unique_chronic_fingerprints": len(unique_fingerprints),
+        "teacher_survival_step_mean": teacher_survival_step_mean,
+        "teacher_survival_rate_mean": teacher_survival_rate_mean,
+        "teacher_survival_mean": teacher_survival_rate_mean,
+        "teacher_survival_denominator_steps": survival_denominator or None,
+        "teacher_survival_by_chronic": survival_by_chronic,
+        "teacher_survival_episodes": episode_records,
         "episode_length_mean": (
             float(np.mean(episode_lengths)) if episode_lengths else None
         ),
@@ -188,6 +370,11 @@ def _print_table(summary: Dict[str, Any]) -> None:
         f"min={summary['episode_length_min']} "
         f"max={summary['episode_length_max']}"
     )
+    print(
+        "Teacher survival: "
+        f"mean_step={summary['teacher_survival_step_mean']} "
+        f"mean_rate={summary['teacher_survival_rate_mean']}"
+    )
     print()
     headers = [
         "agent",
@@ -198,6 +385,8 @@ def _print_table(summary: Dict[str, Any]) -> None:
         "overwrite",
         "force_noop",
         "obs_bad",
+        "bad_actions",
+        "logits_frac",
     ]
     rows = []
     for agent, metrics in summary["agent_summary"].items():
@@ -211,6 +400,11 @@ def _print_table(summary: Dict[str, Any]) -> None:
                 f"{metrics['was_overwritten_frac']:.4f}",
                 f"{metrics['force_noop_frac']:.4f}",
                 str(metrics["obs_nan_or_inf"]),
+                str(
+                    metrics["invalid_policy_actions"]
+                    + metrics["invalid_teacher_actions"]
+                ),
+                f"{metrics['policy_logits_available_frac']:.4f}",
             ]
         )
     widths = [

@@ -3,8 +3,10 @@
 This roadmap describes how to turn the strong `hvg` rho-threshold heuristic
 results into a fully learned decentralized policy.
 
-Status: design roadmap only. This document does not change the training
-algorithm yet.
+Status: phases 1-4 are implemented for flat MLP actors; phase 5 soft-label
+distillation is implemented for datasets collected with saved policy logits.
+MAPPO fine-tuning, DAgger, learned override classifiers, and graph-observation
+teacher-student datasets remain future work.
 
 The motivation is:
 
