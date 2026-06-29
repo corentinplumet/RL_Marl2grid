@@ -1320,7 +1320,8 @@ def load_teacher_dataset_summaries(root: Path = TEACHER_DATASET_ROOT) -> Tuple[p
     agent_rows = []
     if not root.exists():
         return pd.DataFrame(), pd.DataFrame()
-    metadata_paths = list(root.glob("*/metadata/metadata.json"))
+    metadata_paths = list(root.glob("metadata_exports/*_metadata.json"))
+    metadata_paths.extend(root.glob("*/metadata/metadata.json"))
     metadata_paths.extend(path for path in root.glob("*/metadata.json"))
     seen = set()
     for metadata_path in sorted(metadata_paths):
@@ -1328,18 +1329,34 @@ def load_teacher_dataset_summaries(root: Path = TEACHER_DATASET_ROOT) -> Tuple[p
         if metadata_path in seen:
             continue
         seen.add(metadata_path)
-        dataset_dir = metadata_path.parent.parent if metadata_path.parent.name == "metadata" else metadata_path.parent
+        if metadata_path.parent.name == "metadata_exports":
+            dataset_name = re.sub(r"_metadata\.json$", "", metadata_path.name)
+            dataset_dir = root / dataset_name
+        elif metadata_path.parent.name == "metadata":
+            dataset_dir = metadata_path.parent.parent
+            dataset_name = dataset_dir.name
+        else:
+            dataset_dir = metadata_path.parent
+            dataset_name = dataset_dir.name
         try:
             metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
         except Exception as exc:
-            dataset_rows.append({"dataset": dataset_dir.name, "bad": True, "error": repr(exc)})
+            dataset_rows.append({"dataset": dataset_name, "bad": True, "error": repr(exc)})
             continue
-        dataset_name = dataset_dir.name
+        shard_count = 0
+        shard_dir = dataset_dir / "shards"
+        if shard_dir.exists():
+            shard_count = len(list(shard_dir.glob("shard_*.npz")))
+        elif dataset_dir.exists():
+            shard_count = len(list(dataset_dir.glob("shard_*.npz")))
+        else:
+            shard_count = metadata.get("n_shards")
         dataset_rows.append(
             {
                 "dataset": dataset_name,
                 "bad": False,
                 "path": str(dataset_dir),
+                "metadata_path": str(metadata_path),
                 "status": metadata.get("status"),
                 "checkpoint": metadata.get("checkpoint"),
                 "checkpoint_global_step": metadata.get("checkpoint_global_step"),
@@ -1350,7 +1367,7 @@ def load_teacher_dataset_summaries(root: Path = TEACHER_DATASET_ROOT) -> Tuple[p
                 "n_agent_examples": metadata.get("n_agent_examples"),
                 "n_completed_episodes": metadata.get("n_completed_episodes"),
                 "n_unique_chronic_fingerprints": metadata.get("n_unique_chronic_fingerprints"),
-                "n_shards": len(list(dataset_dir.glob("shard_*.npz"))),
+                "n_shards": shard_count,
             }
         )
         agent_rows.extend(_dataset_agent_rows(metadata, dataset_name))

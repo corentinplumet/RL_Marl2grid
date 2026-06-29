@@ -38,8 +38,11 @@ from full_test_eval.evaluate_checkpoint import (
 )
 from teacher_student.dataset import (
     METADATA_DIR_NAME,
+    METADATA_EXPORT_DIR_NAME,
     SHARDS_DIR_NAME,
+    export_metadata_file,
     metadata_dir,
+    metadata_export_dir,
     metadata_path,
     shards_dir,
 )
@@ -322,8 +325,11 @@ def _metadata(
             "version": 2,
             "shards_dir": SHARDS_DIR_NAME,
             "metadata_dir": METADATA_DIR_NAME,
+            "metadata_export_dir": f"../{METADATA_EXPORT_DIR_NAME}",
             "metadata_file": f"{METADATA_DIR_NAME}/metadata.json",
             "summary_file": f"{METADATA_DIR_NAME}/summary.json",
+            "metadata_export_file": f"../{METADATA_EXPORT_DIR_NAME}/{cli.output_dir.name}_metadata.json",
+            "summary_export_file": f"../{METADATA_EXPORT_DIR_NAME}/{cli.output_dir.name}_summary.json",
         },
         "max_episodes_requested": cli.max_episodes,
         "max_env_steps_requested": cli.max_env_steps,
@@ -346,6 +352,12 @@ def _write_metadata(path: Path, payload: Dict[str, Any]) -> None:
     with path.open("w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2, sort_keys=True)
         f.write("\n")
+
+
+def _write_dataset_metadata(dataset_dir: Path, path: Path, payload: Dict[str, Any]) -> Path:
+    _write_metadata(path, payload)
+    export_metadata_file(dataset_dir, path, "metadata")
+    return path
 
 
 def parse_args() -> Namespace:
@@ -481,6 +493,7 @@ def main() -> None:
     print(f"Output dir: {_safe_path(output_dir)}")
     print(f"Shard dir: {_safe_path(shard_output_dir)}")
     print(f"Metadata dir: {_safe_path(metadata_dir(output_dir))}")
+    print(f"Metadata export dir: {_safe_path(metadata_export_dir(output_dir))}")
     print(f"Split: {cli.split}")
     print(f"Target episodes: {target_episodes}")
     print(f"Max env steps: {cli.max_env_steps or 'none'}")
@@ -594,7 +607,8 @@ def main() -> None:
         episode_step += 1
 
         if flushed is not None:
-            _write_metadata(
+            _write_dataset_metadata(
+                output_dir,
                 metadata_file,
                 _metadata(
                     status="running",
@@ -656,13 +670,14 @@ def main() -> None:
         episode_lengths=episode_lengths,
         agent_metrics=agent_metrics,
     )
-    _write_metadata(metadata_file, final_metadata)
+    _write_dataset_metadata(output_dir, metadata_file, final_metadata)
     evaluator.env.close()
 
     print("========== Teacher dataset complete ==========")
     print(f"Output dir: {_safe_path(output_dir)}")
     print(f"Shard dir: {_safe_path(shard_output_dir)}")
     print(f"Metadata dir: {_safe_path(metadata_dir(output_dir))}")
+    print(f"Metadata export dir: {_safe_path(metadata_export_dir(output_dir))}")
     print(f"Shards: {len(writer.paths)}")
     print(f"Env steps: {env_steps}")
     print(f"Agent examples: {env_steps * len(agent_ids)}")
@@ -676,6 +691,8 @@ def main() -> None:
             f"overwritten={summary['was_overwritten_frac']:.4f}"
         )
     print(f"Metadata: {_safe_path(metadata_file)}")
+    export_path = metadata_export_dir(output_dir) / f"{output_dir.name}_metadata.json"
+    print(f"Metadata export: {_safe_path(export_path)}")
 
 
 if __name__ == "__main__":

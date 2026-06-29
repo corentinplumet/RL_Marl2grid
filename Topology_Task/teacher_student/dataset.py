@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
@@ -11,6 +12,7 @@ import numpy as np
 TASK_DIR = Path(__file__).resolve().parents[1]
 SHARDS_DIR_NAME = "shards"
 METADATA_DIR_NAME = "metadata"
+METADATA_EXPORT_DIR_NAME = "metadata_exports"
 
 
 def resolve_dataset_dir(path: Path) -> Path:
@@ -33,6 +35,25 @@ def task_relative(path: Path) -> str:
 
 def metadata_dir(dataset_dir: Path) -> Path:
     return dataset_dir / METADATA_DIR_NAME
+
+
+def metadata_export_dir(dataset_dir: Path) -> Path:
+    return dataset_dir.parent / METADATA_EXPORT_DIR_NAME
+
+
+def metadata_export_path(dataset_dir: Path, kind: str) -> Path:
+    if kind not in {"metadata", "summary"}:
+        raise ValueError("kind must be 'metadata' or 'summary'.")
+    return metadata_export_dir(dataset_dir) / f"{dataset_dir.name}_{kind}.json"
+
+
+def export_metadata_file(dataset_dir: Path, source_path: Path, kind: str) -> Optional[Path]:
+    if not source_path.exists():
+        return None
+    export_path = metadata_export_path(dataset_dir, kind)
+    export_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source_path, export_path)
+    return export_path
 
 
 def shards_dir(dataset_dir: Path) -> Path:

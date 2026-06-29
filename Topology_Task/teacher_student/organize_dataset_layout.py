@@ -25,8 +25,11 @@ if str(TASK_DIR) not in sys.path:
 
 from teacher_student.dataset import (
     METADATA_DIR_NAME,
+    METADATA_EXPORT_DIR_NAME,
     SHARDS_DIR_NAME,
+    export_metadata_file,
     metadata_dir,
+    metadata_export_dir,
     shards_dir,
     task_relative,
 )
@@ -121,6 +124,23 @@ def organize_dataset(dataset_dir: Path, *, dry_run: bool, overwrite: bool) -> di
             overwrite=overwrite,
         )
     )
+    metadata_export = None
+    summary_export = None
+    if not dry_run:
+        metadata_export = export_metadata_file(
+            dataset_dir,
+            meta_root / "metadata.json",
+            "metadata",
+        )
+        summary_export = export_metadata_file(
+            dataset_dir,
+            meta_root / "summary.json",
+            "summary",
+        )
+        if metadata_export is not None:
+            print(f"export {task_relative(metadata_export)}")
+        if summary_export is not None:
+            print(f"export {task_relative(summary_export)}")
     return {
         "dataset": task_relative(dataset_dir),
         "moved_shards": moved_shards,
@@ -128,6 +148,8 @@ def organize_dataset(dataset_dir: Path, *, dry_run: bool, overwrite: bool) -> di
         "moved_summary": moved_summary,
         "shards_dir": task_relative(shard_root),
         "metadata_dir": task_relative(meta_root),
+        "metadata_export": task_relative(metadata_export) if metadata_export else "",
+        "summary_export": task_relative(summary_export) if summary_export else "",
     }
 
 
@@ -161,6 +183,7 @@ def main() -> None:
     print("========== Organize teacher-student datasets ==========")
     print(f"Root: {task_relative(root)}")
     print(f"Layout: {SHARDS_DIR_NAME}/ for shards, {METADATA_DIR_NAME}/ for metadata")
+    print(f"Export: {METADATA_EXPORT_DIR_NAME}/ for uniquely named JSON files")
     print(f"Dry run: {args.dry_run}")
     print("=======================================================")
 

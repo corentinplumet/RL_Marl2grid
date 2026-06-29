@@ -66,8 +66,21 @@ outputs/teacher_student_datasets/local_rho090_s0/
     metadata.json
 ```
 
+They also write uniquely named lightweight copies next to all datasets:
+
+```text
+outputs/teacher_student_datasets/metadata_exports/
+  local_rho090_s0_metadata.json
+  local_rho090_s0_summary.json
+  local_rho090_s1_metadata.json
+  local_rho090_s1_summary.json
+  ...
+```
+
 This keeps the heavy `.npz` files separate from the lightweight files you might
-want to copy locally for plotting.
+want to copy locally for plotting. If you only want dataset summary plots on
+your laptop, download `outputs/teacher_student_datasets/metadata_exports/` and
+skip the per-dataset `shards/` folders.
 
 ## Summarize A Dataset
 
@@ -80,6 +93,12 @@ By default the summary is written to:
 
 ```text
 outputs/teacher_student_datasets/local_rho090_s0/metadata/summary.json
+```
+
+and copied to:
+
+```text
+outputs/teacher_student_datasets/metadata_exports/local_rho090_s0_summary.json
 ```
 
 The summary reports:
@@ -99,6 +118,9 @@ shard readability
 Each dataset directory contains:
 
 ```text
+../metadata_exports/
+  local_rho090_s0_metadata.json
+  local_rho090_s0_summary.json
 metadata/
   metadata.json
   summary.json
@@ -115,7 +137,8 @@ dataset directory.
 ## Organize Existing Datasets
 
 For datasets already collected with the old flat layout, run this on the
-cluster. It moves files in place, so it does not duplicate the heavy shards:
+cluster. It moves files in place, so it does not duplicate the heavy shards,
+and it creates/refreshes the uniquely named `metadata_exports/*.json` files:
 
 ```bash
 python Topology_Task/teacher_student/organize_dataset_layout.py \

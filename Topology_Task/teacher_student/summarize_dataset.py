@@ -17,9 +17,11 @@ if str(TASK_DIR) not in sys.path:
     sys.path.insert(0, str(TASK_DIR))
 
 from teacher_student.dataset import (
+    export_metadata_file,
     list_shards,
     load_metadata,
     metadata_dir,
+    metadata_export_dir,
     summary_path,
     task_relative,
 )
@@ -252,6 +254,10 @@ def main() -> None:
         json.dump(summary, f, indent=2, sort_keys=True)
         f.write("\n")
     print(f"Saved summary: {_safe_path(output_json)}")
+    export_path = export_metadata_file(dataset_dir, output_json, "summary")
+    if export_path is not None:
+        print(f"Saved summary export: {_safe_path(export_path)}")
+        print(f"Metadata export dir: {_safe_path(metadata_export_dir(dataset_dir))}")
 
 
 if __name__ == "__main__":
