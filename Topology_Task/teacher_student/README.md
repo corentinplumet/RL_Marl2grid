@@ -70,69 +70,80 @@ python Topology_Task/teacher_student/collect_teacher_dataset.py \
   --output-dir outputs/teacher_student_datasets/smoke_local_rho090_s0
 ```
 
-## Collect Action-Outcome Data
+## Brute-Force Action-Space Reduction
 
-To build the richer Teacher-style dataset where every candidate action is
-labelled by its simulated effect on `rho_max`, use `--dataset-mode
-action_outcomes`. The collector only evaluates candidate actions when the
-current global `rho_max` is at least `--collection-rho-threshold`.
+This stage does not need a checkpoint. It is the pre-RL brute-force teacher:
+instantiate the `bus36` Grid2Op environment, simulate candidate topology actions
+from high-rho states, log how each action changes `rho_max`, then keep the
+actions that are often useful. Train the RL model after this stage with the
+reduced action list.
 
-Smoke test:
-
-```bash
-python Topology_Task/teacher_student/collect_teacher_dataset.py \
-  --checkpoint checkpoint/with_obs_stats/best_test_a0_hvg_04_eval_local_rho090_s0.tar \
-  --split train \
-  --dataset-mode action_outcomes \
-  --collection-rho-threshold 0.90 \
-  --obs-normalization require \
-  --max-episodes 2 \
-  --outcome-action-sample-size 32 \
-  --timing-every-env-steps 1 \
-  --output-dir outputs/teacher_student_datasets/smoke_action_outcomes_rho090
-```
-
-Full collection over every local discrete action:
+Smoke test on EPFL JED:
 
 ```bash
-sbatch Topology_Task/teacher_student/job_collect_teacher_dataset.sh \
-  --checkpoint checkpoint/with_obs_stats/best_test_a0_hvg_04_eval_local_rho090_s0.tar \
-  --split train \
-  --eval-all-split-chronics true \
-  --dataset-mode action_outcomes \
-  --collection-rho-threshold 0.90 \
-  --outcome-rollout-policy best_simulated \
-  --obs-normalization require \
-  --max-episodes 803 \
-  --output-dir outputs/teacher_student_datasets/action_outcomes_rho090_s0
-```
-
-On EPFL JED, you can use the shorter dedicated wrapper:
-
-```bash
-CHECKPOINT=checkpoint/with_obs_stats/best_test_a0_hvg_04_eval_local_rho090_s0.tar \
-OUTPUT_DIR=outputs/teacher_student_datasets/smoke_action_outcomes_rho090_s0 \
+OUTPUT_DIR=outputs/teacher_student_datasets/smoke_bus36_bruteforce_rho090 \
 MAX_EPISODES=2 \
 OUTCOME_ACTION_SAMPLE_SIZE=32 \
 TIMING_EVERY_ENV_STEPS=1 \
+ACTION_REDUCTION_TOP_K=64 \
 sbatch Topology_Task/teacher_student/job_collect_action_outcomes_jed.sh
 ```
 
-After the calibration run gives a reasonable `avg_sec_per_sim_action`, launch
-the full collection:
+Full bus36 reduction over every local discrete action:
 
 ```bash
-CHECKPOINT=checkpoint/with_obs_stats/best_test_a0_hvg_04_eval_local_rho090_s0.tar \
-OUTPUT_DIR=outputs/teacher_student_datasets/action_outcomes_rho090_s0 \
+OUTPUT_DIR=outputs/teacher_student_datasets/bus36_bruteforce_rho090 \
 MAX_EPISODES=803 \
+ACTION_REDUCTION_TOP_K=208 \
 TIMING_EVERY_ENV_STEPS=100 \
 sbatch Topology_Task/teacher_student/job_collect_action_outcomes_jed.sh
 ```
 
-`--outcome-rollout-policy best_simulated` advances the environment with the
-valid unilateral action that produced the lowest simulated `rho_after_action`.
-You can switch it to `teacher` to advance with the existing checkpoint policy
-plus heuristic, or `do_nothing` for a passive rollout.
+The dedicated JED wrapper defaults to:
+
+```text
+ENV_ID=bus36
+COLLECTION_RHO_THRESHOLD=0.90
+OUTCOME_ROLLOUT_POLICY=best_simulated
+REDUCE_AFTER=true
+```
+
+Override the rho gate or the final reduced size like this:
+
+```bash
+COLLECTION_RHO_THRESHOLD=0.95 \
+ACTION_REDUCTION_TOP_K=64 \
+sbatch Topology_Task/teacher_student/job_collect_action_outcomes_jed.sh
+```
+
+The wrapper runs `reduce_action_space_from_outcomes.py` after collection by
+default and writes:
+
+```text
+outputs/teacher_student_datasets/bus36_bruteforce_rho090/metadata/reduced_action_space.json
+```
+
+The reducer mimics the paper's action-set reduction: for each collected state,
+it picks the valid action with the best simulated `delta_vs_do_nothing`, counts
+how often each action wins, and keeps the top `ACTION_REDUCTION_TOP_K` actions
+per agent. `OUTCOME_ROLLOUT_POLICY=best_simulated` advances the real environment
+with the valid unilateral action that produced the lowest simulated
+`rho_after_action`; use `OUTCOME_ROLLOUT_POLICY=do_nothing` for a passive
+rollout.
+
+To train MAPPO with this reduced action space, pass the generated JSON to the
+environment:
+
+```bash
+python Topology_Task/main.py \
+  --env-id bus36 \
+  --action-type topology \
+  --reduced-action-space outputs/teacher_student_datasets/bus36_bruteforce_rho090/metadata/reduced_action_space.json
+```
+
+With this flag, each agent's policy head is sized to the selected actions only.
+Reduced action id `0` is always mapped to original action id `0` so do-nothing
+keeps the usual convention.
 
 Each action-outcome shard stores per-agent arrays with keys like:
 
@@ -163,12 +174,12 @@ Labels use this integer encoding:
 
 The timing print reports `last_step`, `avg_step`, `last_sec_per_sim_action`,
 `avg_sec_per_sim_action`, elapsed time, and ETA. Use
-`--timing-every-env-steps 1` for a small calibration run, then multiply
+`TIMING_EVERY_ENV_STEPS=1` for a small calibration run, then multiply
 `avg_sec_per_sim_action` by the number of candidate actions and expected
 high-rho states to estimate the full job size.
 
 By default, the collector refuses to write into a non-empty output directory.
-Use a unique `--output-dir` per checkpoint/seed.
+Use a unique `OUTPUT_DIR` per environment/threshold/seed.
 
 New collections use a split layout:
 

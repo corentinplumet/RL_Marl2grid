@@ -42,6 +42,16 @@ def get_env_args() -> Namespace:
         help="Type of environment: topology (discrete) or redispatch (continuous)",
     )
     parser.add_argument(
+        "--reduced-action-space",
+        type=str,
+        default="",
+        help=(
+            "Optional path to a teacher_student reduced_action_space.json file. "
+            "When set for topology actions, each agent exposes only the selected "
+            "actions and maps reduced ids back to original Grid2Op action ids."
+        ),
+    )
+    parser.add_argument(
         "--difficulty",
         type=int,
         default=0,

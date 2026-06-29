@@ -251,6 +251,83 @@ def load_config(file_path: str) -> Dict:
     return config
 
 
+def _resolve_optional_task_path(path: str) -> Optional[str]:
+    path = os.path.expanduser(str(path or "").strip())
+    if not path:
+        return None
+    if os.path.isabs(path):
+        return path
+
+    candidates = [
+        os.path.abspath(path),
+        os.path.abspath(os.path.join(os.path.dirname(ENV_DIR), path)),
+    ]
+    for candidate in candidates:
+        if os.path.exists(candidate):
+            return candidate
+    return candidates[0]
+
+
+def _load_reduced_action_id_mapping(
+    path: str,
+    agent_ids,
+    original_action_sizes: Dict[str, int],
+) -> Tuple[Dict[str, List[int]], str]:
+    resolved_path = _resolve_optional_task_path(path)
+    if resolved_path is None:
+        return {}, ""
+    if not os.path.exists(resolved_path):
+        raise FileNotFoundError(
+            f"Reduced action-space file does not exist: {resolved_path}"
+        )
+
+    with open(resolved_path, "r", encoding="utf-8") as file:
+        payload = json.load(file)
+
+    agents_payload = payload.get("agents", {})
+    if not isinstance(agents_payload, dict):
+        raise ValueError(
+            f"Reduced action-space file {resolved_path} is missing an 'agents' object."
+        )
+
+    mapping: Dict[str, List[int]] = {}
+    for agent_id in agent_ids:
+        agent_payload = agents_payload.get(agent_id)
+        if not isinstance(agent_payload, dict):
+            raise ValueError(
+                f"Reduced action-space file {resolved_path} has no entry for {agent_id}."
+            )
+        selected = agent_payload.get("selected_action_ids")
+        if not selected:
+            raise ValueError(
+                f"Reduced action-space file {resolved_path} has no selected actions "
+                f"for {agent_id}."
+            )
+
+        deduped = []
+        seen = set()
+        for action_id in selected:
+            original_action_id = int(action_id)
+            if original_action_id in seen:
+                continue
+            original_size = int(original_action_sizes[agent_id])
+            if original_action_id < 0 or original_action_id >= original_size:
+                raise ValueError(
+                    f"Reduced action id {original_action_id} for {agent_id} is "
+                    f"outside the original action space [0, {original_size})."
+                )
+            deduped.append(original_action_id)
+            seen.add(original_action_id)
+
+        if 0 not in seen:
+            deduped.insert(0, 0)
+        elif deduped[0] != 0:
+            deduped = [0] + [action_id for action_id in deduped if action_id != 0]
+        mapping[agent_id] = deduped
+
+    return mapping, resolved_path
+
+
 class MAEnvWrapper(MAEnv):
     def __init__(
         self,
@@ -508,12 +585,39 @@ class MAEnvWrapper(MAEnv):
                 )
                 for agent_id in self.g2op_ma_env.agents
             }
+            self._original_action_space_sizes = {
+                agent_id: int(self._conv_action_space[agent_id].n)
+                for agent_id in self.g2op_ma_env.agents
+            }
+            (
+                self._reduced_action_id_mapping,
+                self._reduced_action_space_path,
+            ) = _load_reduced_action_id_mapping(
+                getattr(args, "reduced_action_space", ""),
+                self.g2op_ma_env.agents,
+                self._original_action_space_sizes,
+            )
 
             # to avoid "weird" pickle issues
             self.action_space = {
-                agent_id: Discrete(n=self._conv_action_space[agent_id].n)
+                agent_id: Discrete(
+                    n=len(self._reduced_action_id_mapping[agent_id])
+                    if self._reduced_action_id_mapping
+                    else self._conv_action_space[agent_id].n
+                )
                 for agent_id in self.g2op_ma_env.agents
             }
+            if self._reduced_action_id_mapping:
+                print(
+                    "Loaded reduced action space from "
+                    f"{self._reduced_action_space_path}: "
+                    + ", ".join(
+                        f"{agent_id}={self.action_space[agent_id].n}/"
+                        f"{self._original_action_space_sizes[agent_id]}"
+                        for agent_id in self.g2op_ma_env.agents
+                    ),
+                    flush=True,
+                )
         else:
             raise NotImplementedError("Make the implementation in this case")
 
@@ -939,11 +1043,23 @@ class MAEnvWrapper(MAEnv):
             action_id = action_id.reshape(-1)[0].item()
         return int(action_id)
 
+    def _map_action_id_for_agent(self, agent_id: str, action_id: Any) -> int:
+        action_id = self._action_id_to_int(action_id)
+        mapping = getattr(self, "_reduced_action_id_mapping", {}).get(agent_id)
+        if not mapping:
+            return action_id
+        if action_id < 0 or action_id >= len(mapping):
+            raise ValueError(
+                f"Reduced action id {action_id} for {agent_id} is outside "
+                f"[0, {len(mapping)})."
+            )
+        return int(mapping[action_id])
+
     def _get_grid2op_act(self, actions):
         actions = actions or {}
         return {
             agent_id: self._conv_action_space[agent_id].from_gym(
-                self._action_id_to_int(actions.get(agent_id, 0))
+                self._map_action_id_for_agent(agent_id, actions.get(agent_id, 0))
             )
             for agent_id in self.g2op_ma_env.agents
         }
@@ -1082,23 +1198,28 @@ class MAEnvWrapper(MAEnv):
         action_id = int(action_id)
         if agent_id not in self._conv_action_space:
             return f"unknown agent {agent_id}"
-        if action_id < 0 or action_id >= self._conv_action_space[agent_id].n:
+        exposed_size = int(self.action_space[agent_id].n)
+        if action_id < 0 or action_id >= exposed_size:
             return f"invalid action id {action_id}"
-        if action_id == 0:
-            return "DO-NOTHING"
-        try:
-            action = self._conv_action_space[agent_id].from_gym(action_id)
-            text = " | ".join(
-                line.strip() for line in str(action).splitlines() if line.strip()
-            )
-            text = re.sub(r"\s+", " ", text).strip()
-            if not text:
-                text = str(action).strip() or f"action {action_id}"
-            if len(text) > max_chars:
-                text = text[: max_chars - 3] + "..."
-            return text
-        except Exception as exc:
-            return f"decode error: {type(exc).__name__}: {exc}"
+        original_action_id = self._map_action_id_for_agent(agent_id, action_id)
+        if original_action_id == 0:
+            text = "DO-NOTHING"
+        else:
+            try:
+                action = self._conv_action_space[agent_id].from_gym(original_action_id)
+                text = " | ".join(
+                    line.strip() for line in str(action).splitlines() if line.strip()
+                )
+                text = re.sub(r"\s+", " ", text).strip()
+                if not text:
+                    text = str(action).strip() or f"action {original_action_id}"
+            except Exception as exc:
+                return f"decode error: {type(exc).__name__}: {exc}"
+        if getattr(self, "_reduced_action_id_mapping", None):
+            text = f"reduced {action_id} -> original {original_action_id}: {text}"
+        if len(text) > max_chars:
+            text = text[: max_chars - 3] + "..."
+        return text
 
     def decode_action_ids(
         self, action_ids_by_agent: Dict[str, List[int]]
