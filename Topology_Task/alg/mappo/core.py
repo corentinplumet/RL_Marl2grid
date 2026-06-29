@@ -578,7 +578,7 @@ class MAPPO:
             if split_chronics and getattr(args, "eval_train_chronics", False)
             else None
         )
-        best_test_survival = -np.inf
+        best_checkpoint_score = -np.inf
 
         global_step = 0 if not ckpt.resumed else ckpt.loaded_run["global_step"]
         start_time = start_time
@@ -827,19 +827,25 @@ class MAPPO:
 
                     if global_step % args.eval_freq == 0:
                         obs_stats = envs.get_obs_stats()
+                        train_eval_survival = None
                         if train_evaluator is not None:
                             train_evaluator.env.env.set_obs_stats(obs_stats)
-                            _evaluate_preserving_training_rng(
+                            train_eval_survival = _evaluate_preserving_training_rng(
                                 train_evaluator, global_step, actors
                             )
                         evaluator.env.env.set_obs_stats(obs_stats)
                         eval_survival = _evaluate_preserving_training_rng(
                             evaluator, global_step, actors
                         )
-                        # On equal test survival, prefer the later checkpoint: a late
-                        # 100% policy is usually more stable than an early lucky one.
-                        if split_chronics and eval_survival >= best_test_survival:
-                            best_test_survival = eval_survival
+                        checkpoint_score = eval_survival
+                        if train_eval_survival is not None:
+                            checkpoint_score += train_eval_survival
+                        # On equal score, prefer the later checkpoint: a late policy
+                        # with the same train+test survival is usually more stable
+                        # than an early lucky one. The filename keeps best_test_ for
+                        # backward compatibility with existing scripts.
+                        if split_chronics and checkpoint_score >= best_checkpoint_score:
+                            best_checkpoint_score = checkpoint_score
                             if args.checkpoint:
                                 ckpt.set_record(
                                     args,

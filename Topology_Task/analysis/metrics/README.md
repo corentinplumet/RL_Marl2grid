@@ -13,6 +13,8 @@ clearer:
   distribution analysis.
 - `notebooks/teacher_student/`: teacher-student dataset, BC checkpoint, and
   full-test comparison analysis.
+- `notebooks/custom/`: configurable dashboard where you can type config names,
+  run names, or teacher-student checkpoint names and compare the matching logs.
 
 The notebooks locate `helpers/` automatically whether they are run from this
 folder, the repository root, or inside `Topology_Task`.
