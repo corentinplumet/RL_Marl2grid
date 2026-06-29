@@ -192,9 +192,12 @@ def str2bool(s: str) -> bool:
     Raises:
         ArgumentTypeError: If the string does not represent a boolean value.
     """
-    if s.lower() == "true":
+    if isinstance(s, bool):
+        return s
+    value = str(s).strip().lower()
+    if value in {"true", "1", "yes", "y", "on"}:
         return True
-    elif s.lower() == "false":
+    elif value in {"false", "0", "no", "n", "off"}:
         return False
     raise ArgumentTypeError("Boolean value expected.")
 
