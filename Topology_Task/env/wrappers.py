@@ -151,6 +151,26 @@ class AsyncMultiAgentVecEnv:
         self.remotes[env_idx].send(("decode_action_ids", action_ids_by_agent))
         return self.remotes[env_idx].recv()
 
+    def simulate_action_outcomes(
+        self,
+        requests: List[Dict[str, Any]],
+        env_idx: int = 0,
+        time_step: int = 1,
+    ) -> List[Dict[str, Any]]:
+        """Simulate unilateral action requests in one worker environment."""
+        if self.waiting:
+            raise RuntimeError(
+                "Cannot simulate actions while an async env step is pending."
+            )
+        env_idx = int(np.clip(env_idx, 0, self.num_envs - 1))
+        self.remotes[env_idx].send(
+            (
+                "simulate_action_outcomes",
+                {"requests": requests, "time_step": time_step},
+            )
+        )
+        return self.remotes[env_idx].recv()
+
     def _stack_dicts(self, dicts: List[Dict[str, Any]]) -> Dict[str, np.ndarray]:
         # Transpose list of dicts into dict of lists, then stack
         stacked = {}
@@ -207,6 +227,13 @@ class AsyncMultiAgentVecEnv:
                     remote.send(env.get_current_agent_max_rho())
                 elif cmd == "decode_action_ids":
                     remote.send(env.decode_action_ids(data))
+                elif cmd == "simulate_action_outcomes":
+                    remote.send(
+                        env.simulate_action_outcomes(
+                            data["requests"],
+                            time_step=data.get("time_step", 1),
+                        )
+                    )
                 else:
                     raise NotImplementedError(f"Unknown command: {cmd}")
         except KeyboardInterrupt:
@@ -313,6 +340,14 @@ class RecordEpisodeStatistics(gym.Wrapper, gym.utils.RecordConstructorArgs):
 
     def get_current_agent_max_rho(self) -> Dict[str, float]:
         return self.env.get_current_agent_max_rho()
+
+    def simulate_action_outcomes(
+        self,
+        requests: List[Dict[str, Any]],
+        *,
+        time_step: int = 1,
+    ) -> List[Dict[str, Any]]:
+        return self.env.simulate_action_outcomes(requests, time_step=time_step)
 
     def step(self, action):
         """Steps through the environment, recording the episode statistics."""

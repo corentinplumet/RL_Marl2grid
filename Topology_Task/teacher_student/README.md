@@ -70,6 +70,81 @@ python Topology_Task/teacher_student/collect_teacher_dataset.py \
   --output-dir outputs/teacher_student_datasets/smoke_local_rho090_s0
 ```
 
+## Collect Action-Outcome Data
+
+To build the richer Teacher-style dataset where every candidate action is
+labelled by its simulated effect on `rho_max`, use `--dataset-mode
+action_outcomes`. The collector only evaluates candidate actions when the
+current global `rho_max` is at least `--collection-rho-threshold`.
+
+Smoke test:
+
+```bash
+python Topology_Task/teacher_student/collect_teacher_dataset.py \
+  --checkpoint checkpoint/with_obs_stats/best_test_a0_hvg_04_eval_local_rho090_s0.tar \
+  --split train \
+  --dataset-mode action_outcomes \
+  --collection-rho-threshold 0.90 \
+  --obs-normalization require \
+  --max-episodes 2 \
+  --outcome-action-sample-size 32 \
+  --timing-every-env-steps 1 \
+  --output-dir outputs/teacher_student_datasets/smoke_action_outcomes_rho090
+```
+
+Full collection over every local discrete action:
+
+```bash
+sbatch Topology_Task/teacher_student/job_collect_teacher_dataset.sh \
+  --checkpoint checkpoint/with_obs_stats/best_test_a0_hvg_04_eval_local_rho090_s0.tar \
+  --split train \
+  --eval-all-split-chronics true \
+  --dataset-mode action_outcomes \
+  --collection-rho-threshold 0.90 \
+  --outcome-rollout-policy best_simulated \
+  --obs-normalization require \
+  --max-episodes 803 \
+  --output-dir outputs/teacher_student_datasets/action_outcomes_rho090_s0
+```
+
+`--outcome-rollout-policy best_simulated` advances the environment with the
+valid unilateral action that produced the lowest simulated `rho_after_action`.
+You can switch it to `teacher` to advance with the existing checkpoint policy
+plus heuristic, or `do_nothing` for a passive rollout.
+
+Each action-outcome shard stores per-agent arrays with keys like:
+
+```text
+obs_agent_0
+outcome_agent_0_action_id
+outcome_agent_0_global_max_rho_before
+outcome_agent_0_local_max_rho_before
+outcome_agent_0_rho_before
+outcome_agent_0_rho_after_action
+outcome_agent_0_rho_after_do_nothing
+outcome_agent_0_delta_vs_now
+outcome_agent_0_delta_vs_do_nothing
+outcome_agent_0_label_vs_now
+outcome_agent_0_label_vs_do_nothing
+outcome_agent_0_action_is_valid
+outcome_agent_0_sim_done
+```
+
+Labels use this integer encoding:
+
+```text
+-1 improved
+ 0 neutral
+ 1 worsened
+ 2 invalid
+```
+
+The timing print reports `last_step`, `avg_step`, `last_sec_per_sim_action`,
+`avg_sec_per_sim_action`, elapsed time, and ETA. Use
+`--timing-every-env-steps 1` for a small calibration run, then multiply
+`avg_sec_per_sim_action` by the number of candidate actions and expected
+high-rho states to estimate the full job size.
+
 By default, the collector refuses to write into a non-empty output directory.
 Use a unique `--output-dir` per checkpoint/seed.
 

@@ -904,17 +904,7 @@ class MAEnvWrapper(MAEnv):
     def get_explainability_state(self) -> Dict[str, Any]:
         """Return lightweight physical diagnostics for the current Grid2Op state."""
         obs = self._obs
-        rho = getattr(obs, "rho", None)
-        rho = np.asarray([] if rho is None else rho, dtype=np.float32)
-        finite_rho = np.isfinite(rho)
-        if rho.size > 0 and finite_rho.any():
-            masked_rho = np.where(finite_rho, rho, -np.inf)
-            worst_line = int(np.argmax(masked_rho))
-            max_rho = float(masked_rho[worst_line])
-        else:
-            worst_line = -1
-            max_rho = float("nan")
-
+        max_rho, worst_line = self._rho_summary_from_obs(obs)
         topo_vect = getattr(obs, "topo_vect", None)
         topo_vect = np.asarray([] if topo_vect is None else topo_vect)
         topology_distance = (
@@ -926,13 +916,166 @@ class MAEnvWrapper(MAEnv):
             "topology_distance": topology_distance,
         }
 
+    @staticmethod
+    def _rho_summary_from_obs(obs: Any) -> Tuple[float, int]:
+        """Return max rho and its line id for a Grid2Op observation-like object."""
+        rho = getattr(obs, "rho", None)
+        rho = np.asarray([] if rho is None else rho, dtype=np.float32)
+        finite_rho = np.isfinite(rho)
+        if rho.size > 0 and finite_rho.any():
+            masked_rho = np.where(finite_rho, rho, -np.inf)
+            worst_line = int(np.argmax(masked_rho))
+            max_rho = float(masked_rho[worst_line])
+        else:
+            worst_line = -1
+            max_rho = float("nan")
+        return max_rho, worst_line
+
+    @staticmethod
+    def _action_id_to_int(action_id: Any) -> int:
+        if isinstance(action_id, th.Tensor):
+            action_id = action_id.detach().cpu().item()
+        elif isinstance(action_id, np.ndarray):
+            action_id = action_id.reshape(-1)[0].item()
+        return int(action_id)
+
     def _get_grid2op_act(self, actions):
+        actions = actions or {}
         return {
             agent_id: self._conv_action_space[agent_id].from_gym(
-                actions[agent_id] if actions else 0
+                self._action_id_to_int(actions.get(agent_id, 0))
             )
             for agent_id in self.g2op_ma_env.agents
         }
+
+    def _build_global_action_for_simulation(
+        self, actions: Dict[str, Any]
+    ) -> Tuple[Any, Dict[str, Any]]:
+        local_actions = self._get_grid2op_act(actions)
+        cent_env = self.g2op_ma_env._cent_env
+        proposed_action = cent_env.action_space({})
+
+        for agent_id in self.g2op_ma_env.agent_order:
+            proposed_action += self.g2op_ma_env._local_action_to_global(
+                local_actions[agent_id]
+            )
+
+        validation = {
+            "action_is_ambiguous": False,
+            "action_is_legal": False,
+            "action_is_valid": False,
+            "validation_error": "",
+        }
+        try:
+            ambiguous, ambiguous_reason = proposed_action.is_ambiguous()
+            validation["action_is_ambiguous"] = bool(ambiguous)
+            if ambiguous:
+                validation["validation_error"] = str(ambiguous_reason)[:500]
+                return proposed_action, validation
+
+            proposed_action.get_topological_impact(
+                cent_env.get_current_line_status(),
+                _store_in_cache=True,
+                _read_from_cache=False,
+            )
+            is_legal, legal_reason = cent_env._game_rules(
+                action=proposed_action,
+                env=cent_env,
+            )
+            validation["action_is_legal"] = bool(is_legal)
+            validation["action_is_valid"] = bool(is_legal)
+            if not is_legal:
+                validation["validation_error"] = str(legal_reason)[:500]
+        except Exception as exc:
+            validation["validation_error"] = f"{type(exc).__name__}: {exc}"[:500]
+        return proposed_action, validation
+
+    def simulate_joint_action_outcome(
+        self,
+        actions: Dict[str, Any],
+        *,
+        time_step: int = 1,
+    ) -> Dict[str, Any]:
+        """Simulate a multi-agent action without advancing the environment."""
+        rho_before, worst_line_before = self._rho_summary_from_obs(self._obs)
+        result = {
+            "rho_before": rho_before,
+            "worst_line_before": worst_line_before,
+            "rho_after": float("nan"),
+            "worst_line_after": -1,
+            "sim_reward": float("nan"),
+            "sim_done": False,
+            "simulation_succeeded": False,
+            "simulation_exception": False,
+            "simulation_error": "",
+            "action_is_ambiguous": False,
+            "action_is_legal": False,
+            "action_is_valid": False,
+            "validation_error": "",
+        }
+
+        global_action, validation = self._build_global_action_for_simulation(actions)
+        result.update(validation)
+        if not validation["action_is_valid"]:
+            return result
+
+        try:
+            try:
+                sim_obs, sim_reward, sim_done, sim_info = self._obs.simulate(
+                    global_action,
+                    time_step=time_step,
+                )
+            except TypeError:
+                sim_obs, sim_reward, sim_done, sim_info = self._obs.simulate(
+                    global_action
+                )
+            rho_after, worst_line_after = self._rho_summary_from_obs(sim_obs)
+            result["rho_after"] = rho_after
+            result["worst_line_after"] = worst_line_after
+            result["sim_reward"] = float(sim_reward)
+            result["sim_done"] = bool(sim_done)
+            if isinstance(sim_info, dict):
+                exception = sim_info.get("exception", None)
+                result["simulation_exception"] = bool(exception)
+                if exception:
+                    result["simulation_error"] = str(exception)[:500]
+            result["simulation_succeeded"] = not result["simulation_exception"]
+            result["action_is_valid"] = bool(result["simulation_succeeded"])
+        except Exception as exc:
+            result["simulation_exception"] = True
+            result["simulation_error"] = f"{type(exc).__name__}: {exc}"[:500]
+            result["action_is_valid"] = False
+        return result
+
+    def simulate_action_outcome(
+        self,
+        agent_id: str,
+        action_id: Any,
+        *,
+        time_step: int = 1,
+    ) -> Dict[str, Any]:
+        """Simulate one agent's action while all other agents do nothing."""
+        if agent_id not in self.g2op_ma_env.agents:
+            raise KeyError(f"Unknown agent_id {agent_id!r}.")
+        actions = {other_agent: 0 for other_agent in self.g2op_ma_env.agents}
+        actions[agent_id] = self._action_id_to_int(action_id)
+        return self.simulate_joint_action_outcome(actions, time_step=time_step)
+
+    def simulate_action_outcomes(
+        self,
+        requests: List[Dict[str, Any]],
+        *,
+        time_step: int = 1,
+    ) -> List[Dict[str, Any]]:
+        """Simulate many unilateral agent/action requests at the current state."""
+        return [
+            self.simulate_action_outcome(
+                str(request["agent_id"]),
+                request["action_id"],
+                time_step=time_step,
+            )
+            for request in requests
+        ]
 
     def decode_action(self, agent_id: str, action_id: int, max_chars: int = 600) -> str:
         """Return a compact human-readable Grid2Op action description."""

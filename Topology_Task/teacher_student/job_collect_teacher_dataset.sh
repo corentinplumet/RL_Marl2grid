@@ -23,6 +23,16 @@ Usage:
     --eval-action-rho-threshold 0.90 \
     --output-dir outputs/teacher_student_datasets/local_rho090_s0
 
+Action-outcome dataset:
+  sbatch Topology_Task/teacher_student/job_collect_teacher_dataset.sh \
+    --checkpoint checkpoint/with_obs_stats/best_test_run.tar \
+    --split train \
+    --dataset-mode action_outcomes \
+    --collection-rho-threshold 0.90 \
+    --outcome-rollout-policy best_simulated \
+    --timing-every-env-steps 1 \
+    --output-dir outputs/teacher_student_datasets/action_outcomes_rho090_s0
+
 Environment:
   CONDA_ENV       Conda env to activate. Default: marl2grid
   CONDA_BASE      Conda installation path, if conda is not on PATH.
