@@ -10,7 +10,7 @@
 #SBATCH --mem=128G
 #SBATCH --time=00:30:00
 #SBATCH --partition=gpu
-#SBATCH --qos=normal
+#SBATCH --qos=long
 #SBATCH --gres=gpu:1
 
 set -euo pipefail
