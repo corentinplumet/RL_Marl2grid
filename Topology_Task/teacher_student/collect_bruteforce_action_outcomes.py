@@ -268,7 +268,20 @@ def _metadata(
     completed_episodes: int,
     unique_fingerprints: set,
     episode_lengths: List[int],
+    covered_action_ids_by_agent: Dict[str, set],
 ) -> Dict[str, Any]:
+    unique_actions_by_agent = {
+        agent: int(len(covered_action_ids_by_agent.get(agent, set())))
+        for agent in agent_ids
+    }
+    action_coverage_by_agent = {
+        agent: (
+            unique_actions_by_agent[agent] / int(action_sizes[agent])
+            if int(action_sizes[agent]) > 0
+            else float("nan")
+        )
+        for agent in agent_ids
+    }
     return {
         "status": status,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -288,6 +301,9 @@ def _metadata(
         "outcome_rollout_policy": cli.outcome_rollout_policy,
         "outcome_action_sample_size": cli.outcome_action_sample_size,
         "outcome_include_action_zero": bool(cli.outcome_include_action_zero),
+        "outcome_resample_actions_per_state": bool(
+            cli.outcome_resample_actions_per_state
+        ),
         "outcome_sim_workers": int(cli.outcome_sim_workers),
         "outcome_sim_backend": (
             "process_pool" if int(cli.outcome_sim_workers) > 1 else "sequential"
@@ -318,6 +334,8 @@ def _metadata(
         "n_candidate_states": int(candidate_states),
         "n_skipped_states_below_threshold": int(skipped_states),
         "n_outcome_examples": int(writer.total_rows),
+        "n_unique_actions_by_agent": unique_actions_by_agent,
+        "action_coverage_by_agent": action_coverage_by_agent,
         "n_completed_episodes": int(completed_episodes),
         "n_unique_chronic_fingerprints": int(len(unique_fingerprints)),
         "episode_length_mean": (
@@ -359,6 +377,16 @@ def parse_args() -> Namespace:
     )
     parser.add_argument("--outcome-action-sample-size", type=int, default=None)
     parser.add_argument("--outcome-include-action-zero", type=str2bool, default=True)
+    parser.add_argument(
+        "--outcome-resample-actions-per-state",
+        type=str2bool,
+        default=True,
+        help=(
+            "If true, draw a fresh random candidate-action subset at every "
+            "collected high-rho state. If false, reuse one fixed subset for the "
+            "whole job."
+        ),
+    )
     parser.add_argument(
         "--outcome-sim-workers",
         type=int,
@@ -759,7 +787,7 @@ def main() -> None:
         cli.compress,
     )
     rng = np.random.default_rng(env_args.seed)
-    candidate_ids_by_agent = {
+    fixed_candidate_ids_by_agent = {
         agent: _candidate_action_ids(
             action_size=action_sizes[agent],
             include_action_zero=cli.outcome_include_action_zero,
@@ -788,6 +816,10 @@ def main() -> None:
     print(f"Rollout policy: {cli.outcome_rollout_policy}")
     print(f"Action sample size: {cli.outcome_action_sample_size or 'all'}")
     print(
+        "Resample actions per collected state: "
+        f"{cli.outcome_resample_actions_per_state}"
+    )
+    print(
         "Simulation workers: "
         f"{cli.outcome_sim_workers} "
         f"({'process_pool' if cli.outcome_sim_workers > 1 else 'sequential'})"
@@ -797,7 +829,7 @@ def main() -> None:
     print(f"Reduce after: {cli.reduce_after}")
     for agent in agent_ids:
         print(
-            f"{agent}: evaluating {len(candidate_ids_by_agent[agent])}/"
+            f"{agent}: evaluating {len(fixed_candidate_ids_by_agent[agent])}/"
             f"{action_sizes[agent]} actions per collected state"
         )
     print("===========================================================")
@@ -824,6 +856,7 @@ def main() -> None:
     skipped_states = 0
     unique_fingerprints = set()
     episode_lengths: List[int] = []
+    covered_action_ids_by_agent = {agent: set() for agent in agent_ids}
     pending_worker_actions: List[Dict[str, int]] = []
     run_start_time = time.perf_counter()
     timed_env_steps = 0
@@ -873,6 +906,22 @@ def main() -> None:
             )[0]
             rho_after_do_nothing = float(do_nothing["rho_after"])
             worst_line_after_do_nothing = int(do_nothing["worst_line_after"])
+            if cli.outcome_resample_actions_per_state:
+                candidate_ids_by_agent = {
+                    agent: _candidate_action_ids(
+                        action_size=action_sizes[agent],
+                        include_action_zero=cli.outcome_include_action_zero,
+                        sample_size=cli.outcome_action_sample_size,
+                        rng=rng,
+                    )
+                    for agent in agent_ids
+                }
+            else:
+                candidate_ids_by_agent = fixed_candidate_ids_by_agent
+            for agent, action_ids in candidate_ids_by_agent.items():
+                covered_action_ids_by_agent[agent].update(
+                    int(action_id) for action_id in action_ids
+                )
             requests = [
                 {"agent_id": agent, "action_id": int(action_id)}
                 for agent in agent_ids
@@ -963,6 +1012,7 @@ def main() -> None:
                             completed_episodes=completed_episodes,
                             unique_fingerprints=unique_fingerprints,
                             episode_lengths=episode_lengths,
+                            covered_action_ids_by_agent=covered_action_ids_by_agent,
                         ),
                     )
                     print(f"wrote {_safe_path(flushed)} at env_step={env_steps}")
@@ -1059,6 +1109,7 @@ def main() -> None:
         completed_episodes=completed_episodes,
         unique_fingerprints=unique_fingerprints,
         episode_lengths=episode_lengths,
+        covered_action_ids_by_agent=covered_action_ids_by_agent,
     )
     metadata_file = _write_metadata(output_dir, final_metadata)
     if sim_pool is not None:
@@ -1079,6 +1130,14 @@ def main() -> None:
     print(f"Candidate states: {candidate_states}")
     print(f"Outcome examples: {writer.total_rows}")
     print(f"Completed episodes: {completed_episodes}")
+    for agent in agent_ids:
+        covered = len(covered_action_ids_by_agent.get(agent, set()))
+        total = int(action_sizes[agent])
+        frac = covered / total if total > 0 else float("nan")
+        print(
+            f"{agent}: unique_actions_tested={covered}/{total} "
+            f"({frac:.4%})"
+        )
     print("====================================================")
 
     if cli.reduce_after:

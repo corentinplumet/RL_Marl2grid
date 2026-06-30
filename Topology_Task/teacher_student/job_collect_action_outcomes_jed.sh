@@ -34,6 +34,7 @@ Common overrides:
   MAX_EPISODES=               # leave empty for one pass over this shard
   MAX_ENV_STEPS=
   OUTCOME_ACTION_SAMPLE_SIZE=64   # set to all to evaluate every action
+  OUTCOME_RESAMPLE_ACTIONS_PER_STATE=true
   OUTCOME_SIM_WORKERS=71          # parallel sims; defaults to cpus-per-task minus 1
   OUTCOME_SIM_START_METHOD=spawn
   TIMING_EVERY_ENV_STEPS=1
@@ -115,6 +116,7 @@ OUTCOME_SIM_WORKERS="${OUTCOME_SIM_WORKERS:-${DEFAULT_OUTCOME_SIM_WORKERS}}"
 OUTCOME_SIM_START_METHOD="${OUTCOME_SIM_START_METHOD:-spawn}"
 OUTCOME_ROLLOUT_POLICY="${OUTCOME_ROLLOUT_POLICY:-best_simulated}"
 OUTCOME_DELTA_TOLERANCE="${OUTCOME_DELTA_TOLERANCE:-1e-3}"
+OUTCOME_RESAMPLE_ACTIONS_PER_STATE="${OUTCOME_RESAMPLE_ACTIONS_PER_STATE:-true}"
 TIMING_EVERY_ENV_STEPS="${TIMING_EVERY_ENV_STEPS:-100}"
 SHARD_SIZE="${SHARD_SIZE:-50000}"
 COMPRESS="${COMPRESS:-true}"
@@ -162,6 +164,7 @@ collector_args=(
     --collection-rho-threshold "${COLLECTION_RHO_THRESHOLD}"
     --outcome-rollout-policy "${OUTCOME_ROLLOUT_POLICY}"
     --outcome-delta-tolerance "${OUTCOME_DELTA_TOLERANCE}"
+    --outcome-resample-actions-per-state "${OUTCOME_RESAMPLE_ACTIONS_PER_STATE}"
     --outcome-sim-workers "${OUTCOME_SIM_WORKERS}"
     --outcome-sim-start-method "${OUTCOME_SIM_START_METHOD}"
     --timing-every-env-steps "${TIMING_EVERY_ENV_STEPS}"
@@ -209,6 +212,7 @@ echo "Collection rho threshold: ${COLLECTION_RHO_THRESHOLD}"
 echo "Max episodes: ${MAX_EPISODES:-collector default}"
 echo "Max env steps: ${MAX_ENV_STEPS:-none}"
 echo "Action sample size: ${OUTCOME_ACTION_SAMPLE_SIZE:-all}"
+echo "Resample actions per collected state: ${OUTCOME_RESAMPLE_ACTIONS_PER_STATE}"
 echo "Simulation workers: ${OUTCOME_SIM_WORKERS}"
 echo "Simulation start method: ${OUTCOME_SIM_START_METHOD}"
 echo "Action reduction top-k: ${ACTION_REDUCTION_TOP_K}"
