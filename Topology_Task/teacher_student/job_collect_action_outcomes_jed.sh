@@ -34,7 +34,8 @@ Common overrides:
   MAX_EPISODES=               # leave empty for one pass over this shard
   MAX_ENV_STEPS=
   OUTCOME_ACTION_SAMPLE_SIZE=64   # set to all to evaluate every action
-  OUTCOME_SIM_WORKERS=72          # parallel action simulations per collected state
+  OUTCOME_SIM_WORKERS=71          # parallel sims; defaults to cpus-per-task minus 1
+  OUTCOME_SIM_START_METHOD=spawn
   TIMING_EVERY_ENV_STEPS=1
   ACTION_REDUCTION_TOP_K=208
   OVERWRITE=false
@@ -106,7 +107,12 @@ COLLECTION_RHO_THRESHOLD="${COLLECTION_RHO_THRESHOLD:-0.90}"
 MAX_EPISODES="${MAX_EPISODES:-}"
 MAX_ENV_STEPS="${MAX_ENV_STEPS:-}"
 OUTCOME_ACTION_SAMPLE_SIZE="${OUTCOME_ACTION_SAMPLE_SIZE:-64}"
-OUTCOME_SIM_WORKERS="${OUTCOME_SIM_WORKERS:-${SLURM_CPUS_PER_TASK:-1}}"
+DEFAULT_OUTCOME_SIM_WORKERS="${SLURM_CPUS_PER_TASK:-1}"
+if [ "${DEFAULT_OUTCOME_SIM_WORKERS}" -gt 1 ]; then
+    DEFAULT_OUTCOME_SIM_WORKERS="$((DEFAULT_OUTCOME_SIM_WORKERS - 1))"
+fi
+OUTCOME_SIM_WORKERS="${OUTCOME_SIM_WORKERS:-${DEFAULT_OUTCOME_SIM_WORKERS}}"
+OUTCOME_SIM_START_METHOD="${OUTCOME_SIM_START_METHOD:-spawn}"
 OUTCOME_ROLLOUT_POLICY="${OUTCOME_ROLLOUT_POLICY:-best_simulated}"
 OUTCOME_DELTA_TOLERANCE="${OUTCOME_DELTA_TOLERANCE:-1e-3}"
 TIMING_EVERY_ENV_STEPS="${TIMING_EVERY_ENV_STEPS:-100}"
@@ -157,6 +163,7 @@ collector_args=(
     --outcome-rollout-policy "${OUTCOME_ROLLOUT_POLICY}"
     --outcome-delta-tolerance "${OUTCOME_DELTA_TOLERANCE}"
     --outcome-sim-workers "${OUTCOME_SIM_WORKERS}"
+    --outcome-sim-start-method "${OUTCOME_SIM_START_METHOD}"
     --timing-every-env-steps "${TIMING_EVERY_ENV_STEPS}"
     --shard-size "${SHARD_SIZE}"
     --compress "${COMPRESS}"
@@ -203,6 +210,7 @@ echo "Max episodes: ${MAX_EPISODES:-collector default}"
 echo "Max env steps: ${MAX_ENV_STEPS:-none}"
 echo "Action sample size: ${OUTCOME_ACTION_SAMPLE_SIZE:-all}"
 echo "Simulation workers: ${OUTCOME_SIM_WORKERS}"
+echo "Simulation start method: ${OUTCOME_SIM_START_METHOD}"
 echo "Action reduction top-k: ${ACTION_REDUCTION_TOP_K}"
 echo "Reduce after: ${REDUCE_AFTER}"
 echo "Extra args: $*"

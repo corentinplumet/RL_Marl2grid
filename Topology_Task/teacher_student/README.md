@@ -84,7 +84,8 @@ Smoke test on EPFL JED:
 OUTPUT_DIR=outputs/teacher_student_datasets/smoke_bus36_bruteforce_rho090 \
 MAX_EPISODES=2 \
 OUTCOME_ACTION_SAMPLE_SIZE=32 \
-OUTCOME_SIM_WORKERS=72 \
+OUTCOME_SIM_WORKERS=71 \
+OUTCOME_SIM_START_METHOD=spawn \
 TIMING_EVERY_ENV_STEPS=1 \
 ACTION_REDUCTION_TOP_K=64 \
 sbatch Topology_Task/teacher_student/job_collect_action_outcomes_jed.sh
@@ -96,7 +97,8 @@ timing:
 ```bash
 OUTPUT_DIR=outputs/teacher_student_datasets/bus36_bruteforce_rho090 \
 OUTCOME_ACTION_SAMPLE_SIZE=64 \
-OUTCOME_SIM_WORKERS=72 \
+OUTCOME_SIM_WORKERS=71 \
+OUTCOME_SIM_START_METHOD=spawn \
 ACTION_REDUCTION_TOP_K=208 \
 TIMING_EVERY_ENV_STEPS=100 \
 sbatch --array=0-15 Topology_Task/teacher_student/job_collect_action_outcomes_jed.sh
@@ -124,7 +126,8 @@ The dedicated JED wrapper defaults to:
 ENV_ID=bus36
 COLLECTION_RHO_THRESHOLD=0.90
 OUTCOME_ACTION_SAMPLE_SIZE=64
-OUTCOME_SIM_WORKERS=$SLURM_CPUS_PER_TASK
+OUTCOME_SIM_WORKERS=$((SLURM_CPUS_PER_TASK - 1))
+OUTCOME_SIM_START_METHOD=spawn
 OUTCOME_ROLLOUT_POLICY=best_simulated
 REDUCE_AFTER=true for single jobs, false for SLURM arrays
 ```

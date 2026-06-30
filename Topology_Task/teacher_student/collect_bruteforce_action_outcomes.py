@@ -5,10 +5,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import multiprocessing as mp
 import shutil
 import subprocess
 import sys
 import time
+import traceback
 from argparse import Namespace
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -284,6 +286,10 @@ def _metadata(
         "outcome_action_sample_size": cli.outcome_action_sample_size,
         "outcome_include_action_zero": bool(cli.outcome_include_action_zero),
         "outcome_sim_workers": int(cli.outcome_sim_workers),
+        "outcome_sim_backend": (
+            "process_pool" if int(cli.outcome_sim_workers) > 1 else "sequential"
+        ),
+        "outcome_sim_start_method": cli.outcome_sim_start_method,
         "agent_ids": agent_ids,
         "action_sizes": action_sizes,
         "obs_shapes": obs_shapes,
@@ -355,9 +361,17 @@ def parse_args() -> Namespace:
         type=int,
         default=1,
         help=(
-            "Number of worker threads used to simulate candidate actions at one "
-            "collected state. The default 1 preserves the original sequential path."
+            "Number of process-owned Grid2Op environment replicas used to simulate "
+            "candidate actions at one collected state. The default 1 preserves the "
+            "original sequential path."
         ),
+    )
+    parser.add_argument(
+        "--outcome-sim-start-method",
+        type=str,
+        default="spawn",
+        choices=["spawn", "fork", "forkserver"],
+        help="Multiprocessing start method for --outcome-sim-workers > 1.",
     )
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--overwrite", type=str2bool, default=False)
@@ -433,6 +447,220 @@ def _run_reducer(cli: Namespace, output_dir: Path) -> None:
     subprocess.run(cmd, cwd=str(TASK_DIR), check=True)
 
 
+def _simulation_worker_main(remote, env_args: Namespace, chronic_split: Optional[str]) -> None:
+    env = None
+    try:
+        set_random_seed(int(env_args.seed))
+        env = MAEnvWrapper(env_args, eval_env=True, chronic_split=chronic_split)
+        agent_ids = list(env.g2op_ma_env.agents)
+
+        while True:
+            cmd, data = remote.recv()
+            if cmd == "close":
+                remote.send({"ok": True})
+                break
+
+            if cmd == "reset":
+                env.reset()
+                remote.send(
+                    {
+                        "ok": True,
+                        "max_rho": float(env.get_current_max_rho()),
+                    }
+                )
+                continue
+
+            if cmd == "simulate":
+                indexed_requests = list(data["indexed_requests"])
+                requests = [request for _, request in indexed_requests]
+                outcomes = env.simulate_action_outcomes(
+                    requests,
+                    time_step=int(data.get("time_step", 1)),
+                    num_workers=1,
+                )
+                remote.send(
+                    {
+                        "ok": True,
+                        "outcomes": [
+                            (int(idx), outcome)
+                            for (idx, _), outcome in zip(indexed_requests, outcomes)
+                        ],
+                    }
+                )
+                continue
+
+            if cmd == "step":
+                _, _, terminations, truncations, _ = env.step(data["actions"])
+                done = bool(terminations[agent_ids[0]] or truncations[agent_ids[0]])
+                remote.send(
+                    {
+                        "ok": True,
+                        "done": done,
+                        "max_rho": (
+                            float("nan") if done else float(env.get_current_max_rho())
+                        ),
+                    }
+                )
+                continue
+
+            raise NotImplementedError(f"Unknown worker command: {cmd}")
+    except Exception:
+        try:
+            remote.send({"ok": False, "error": traceback.format_exc()})
+        except Exception:
+            pass
+    finally:
+        if env is not None:
+            env.close()
+        remote.close()
+
+
+class SimulationWorkerPool:
+    def __init__(
+        self,
+        *,
+        env_args: Namespace,
+        chronic_split: Optional[str],
+        num_workers: int,
+        start_method: str,
+        sync_tolerance: float = 1e-5,
+    ) -> None:
+        self.num_workers = max(0, int(num_workers))
+        self.sync_tolerance = float(sync_tolerance)
+        self.ctx = mp.get_context(start_method)
+        self.remotes = []
+        self.processes = []
+
+        for _ in range(self.num_workers):
+            parent_remote, child_remote = self.ctx.Pipe()
+            process = self.ctx.Process(
+                target=_simulation_worker_main,
+                args=(child_remote, env_args, chronic_split),
+            )
+            process.daemon = True
+            process.start()
+            child_remote.close()
+            self.remotes.append(parent_remote)
+            self.processes.append(process)
+
+    def _recv(self, remote) -> Dict[str, Any]:
+        response = remote.recv()
+        if not response.get("ok", False):
+            raise RuntimeError(response.get("error", "Unknown simulation worker error"))
+        return response
+
+    def reset(self, reference_max_rho: float) -> None:
+        for remote in self.remotes:
+            remote.send(("reset", {}))
+        responses = [self._recv(remote) for remote in self.remotes]
+        self._check_rhos(
+            [float(response["max_rho"]) for response in responses],
+            reference_max_rho,
+            context="reset",
+        )
+
+    def simulate(
+        self,
+        requests: List[Dict[str, Any]],
+        *,
+        time_step: int,
+    ) -> List[Dict[str, Any]]:
+        if not requests:
+            return []
+        worker_count = min(self.num_workers, len(requests))
+        chunks = [[] for _ in range(worker_count)]
+        for idx, request in enumerate(requests):
+            chunks[idx % worker_count].append((idx, request))
+
+        active_remotes = self.remotes[:worker_count]
+        for remote, chunk in zip(active_remotes, chunks):
+            remote.send(
+                (
+                    "simulate",
+                    {
+                        "indexed_requests": chunk,
+                        "time_step": int(time_step),
+                    },
+                )
+            )
+
+        outcomes: List[Optional[Dict[str, Any]]] = [None] * len(requests)
+        for remote in active_remotes:
+            response = self._recv(remote)
+            for idx, outcome in response["outcomes"]:
+                outcomes[int(idx)] = outcome
+
+        if any(outcome is None for outcome in outcomes):
+            raise RuntimeError("Internal error: missing worker simulation outcome.")
+        return [outcome for outcome in outcomes if outcome is not None]
+
+    def step(
+        self,
+        actions: Dict[str, int],
+        *,
+        main_done: bool,
+        reference_max_rho: Optional[float],
+    ) -> None:
+        for remote in self.remotes:
+            remote.send(("step", {"actions": actions}))
+        responses = [self._recv(remote) for remote in self.remotes]
+        worker_dones = [bool(response["done"]) for response in responses]
+        if any(done != bool(main_done) for done in worker_dones):
+            raise RuntimeError(
+                "Simulation worker desynchronized from collector: "
+                f"main_done={main_done}, worker_dones={worker_dones[:8]}..."
+            )
+        if not main_done and reference_max_rho is not None:
+            self._check_rhos(
+                [float(response["max_rho"]) for response in responses],
+                float(reference_max_rho),
+                context="step",
+            )
+
+    def _check_rhos(
+        self,
+        worker_rhos: List[float],
+        reference_max_rho: float,
+        *,
+        context: str,
+    ) -> None:
+        reference = float(reference_max_rho)
+        for idx, value in enumerate(worker_rhos):
+            if np.isfinite(reference) or np.isfinite(value):
+                if not np.isclose(
+                    value,
+                    reference,
+                    rtol=0.0,
+                    atol=self.sync_tolerance,
+                    equal_nan=True,
+                ):
+                    raise RuntimeError(
+                        "Simulation worker desynchronized from collector during "
+                        f"{context}: worker={idx} rho={value}, main rho={reference}."
+                    )
+
+    def close(self) -> None:
+        for remote in self.remotes:
+            try:
+                remote.send(("close", {}))
+            except Exception:
+                pass
+        for remote in self.remotes:
+            try:
+                self._recv(remote)
+            except Exception:
+                pass
+            try:
+                remote.close()
+            except Exception:
+                pass
+        for process in self.processes:
+            process.join(timeout=5)
+            if process.is_alive():
+                process.terminate()
+                process.join(timeout=5)
+
+
 def main() -> None:
     cli = parse_args()
     if cli.max_episodes is not None and cli.max_episodes <= 0:
@@ -502,7 +730,13 @@ def main() -> None:
     print(f"Collection rho threshold: {cli.collection_rho_threshold}")
     print(f"Rollout policy: {cli.outcome_rollout_policy}")
     print(f"Action sample size: {cli.outcome_action_sample_size or 'all'}")
-    print(f"Simulation workers: {cli.outcome_sim_workers}")
+    print(
+        "Simulation workers: "
+        f"{cli.outcome_sim_workers} "
+        f"({'process_pool' if cli.outcome_sim_workers > 1 else 'sequential'})"
+    )
+    if cli.outcome_sim_workers > 1:
+        print(f"Simulation start method: {cli.outcome_sim_start_method}")
     print(f"Reduce after: {cli.reduce_after}")
     for agent in agent_ids:
         print(
@@ -512,6 +746,20 @@ def main() -> None:
     print("===========================================================")
 
     obs, _ = env.reset()
+    sim_pool = None
+    if cli.outcome_sim_workers > 1:
+        print(
+            "Starting process simulation workers: "
+            f"{cli.outcome_sim_workers}",
+            flush=True,
+        )
+        sim_pool = SimulationWorkerPool(
+            env_args=env_args,
+            chronic_split=chronic_split,
+            num_workers=cli.outcome_sim_workers,
+            start_method=cli.outcome_sim_start_method,
+        )
+        sim_pool.reset(float(env.get_current_max_rho()))
     env_steps = 0
     completed_episodes = 0
     episode_step = 0
@@ -555,7 +803,7 @@ def main() -> None:
             do_nothing = env.simulate_action_outcomes(
                 [{"agent_id": agent_ids[0], "action_id": 0}],
                 time_step=cli.outcome_time_step,
-                num_workers=cli.outcome_sim_workers,
+                num_workers=1,
             )[0]
             rho_after_do_nothing = float(do_nothing["rho_after"])
             worst_line_after_do_nothing = int(do_nothing["worst_line_after"])
@@ -564,11 +812,17 @@ def main() -> None:
                 for agent in agent_ids
                 for action_id in candidate_ids_by_agent[agent]
             ]
-            outcomes = env.simulate_action_outcomes(
-                requests,
-                time_step=cli.outcome_time_step,
-                num_workers=cli.outcome_sim_workers,
-            )
+            if sim_pool is None:
+                outcomes = env.simulate_action_outcomes(
+                    requests,
+                    time_step=cli.outcome_time_step,
+                    num_workers=1,
+                )
+            else:
+                outcomes = sim_pool.simulate(
+                    requests,
+                    time_step=cli.outcome_time_step,
+                )
             sim_action_seconds = time.perf_counter() - sim_start_time
             sim_action_count = len(requests) + 1
 
@@ -663,6 +917,15 @@ def main() -> None:
         if done:
             done_episode_length = max(int(env.g2op_ma_env._cent_env.nb_time_step), 1)
 
+        if sim_pool is not None:
+            sim_pool.step(
+                rollout_actions,
+                main_done=done,
+                reference_max_rho=(
+                    None if done else float(env.get_current_max_rho())
+                ),
+            )
+
         env_steps += 1
         episode_step += 1
         wall_step_seconds = time.perf_counter() - step_start_time
@@ -713,6 +976,8 @@ def main() -> None:
                     flush=True,
                 )
             obs, _ = env.reset()
+            if sim_pool is not None:
+                sim_pool.reset(float(env.get_current_max_rho()))
             episode_step = 0
         else:
             obs = next_obs
@@ -736,6 +1001,8 @@ def main() -> None:
         episode_lengths=episode_lengths,
     )
     metadata_file = _write_metadata(output_dir, final_metadata)
+    if sim_pool is not None:
+        sim_pool.close()
     env.close()
 
     print("========== Brute-force collection complete ==========")

@@ -2,10 +2,7 @@ import os
 import re
 import json
 import hashlib
-import copy
-from concurrent.futures import ThreadPoolExecutor
 from collections import defaultdict
-from threading import Lock
 from packaging import version
 
 from gymnasium.spaces import Discrete, Box
@@ -1184,15 +1181,6 @@ class MAEnvWrapper(MAEnv):
             time_step=time_step,
         )
 
-    @staticmethod
-    def _copy_for_simulation(value: Any) -> Any:
-        # Grid2Op observations can share internal simulation state after .copy().
-        # Deep copies are slower, but they isolate parallel obs.simulate calls.
-        try:
-            return copy.deepcopy(value)
-        except Exception:
-            return value.copy()
-
     def _empty_action_outcome(
         self,
         rho_before: float,
@@ -1272,68 +1260,19 @@ class MAEnvWrapper(MAEnv):
         num_workers: int = 1,
     ) -> List[Dict[str, Any]]:
         """Simulate many unilateral agent/action requests at the current state."""
-        num_workers = max(1, int(num_workers))
-        if num_workers == 1 or len(requests) <= 1:
-            return [
-                self.simulate_action_outcome(
-                    str(request["agent_id"]),
-                    request["action_id"],
-                    time_step=time_step,
-                )
-                for request in requests
-            ]
-
-        rho_before, worst_line_before = self._rho_summary_from_obs(self._obs)
-        results: List[Optional[Dict[str, Any]]] = [None] * len(requests)
-        jobs = []
-
-        for idx, request in enumerate(requests):
-            agent_id = str(request["agent_id"])
-            if agent_id not in self.g2op_ma_env.agents:
-                raise KeyError(f"Unknown agent_id {agent_id!r}.")
-            actions = {other_agent: 0 for other_agent in self.g2op_ma_env.agents}
-            actions[agent_id] = self._action_id_to_int(request["action_id"])
-
-            result = self._empty_action_outcome(rho_before, worst_line_before)
-            global_action, validation = self._build_global_action_for_simulation(
-                actions
+        if int(num_workers) > 1:
+            # Grid2Op / LightSim simulation is not thread-safe on copied
+            # observations. Parallel brute-force collection uses process-owned
+            # environment replicas in collect_bruteforce_action_outcomes.py.
+            pass
+        return [
+            self.simulate_action_outcome(
+                str(request["agent_id"]),
+                request["action_id"],
+                time_step=time_step,
             )
-            result.update(validation)
-            if not validation["action_is_valid"]:
-                results[idx] = result
-                continue
-
-            jobs.append(
-                (
-                    idx,
-                    global_action,
-                    result,
-                )
-            )
-
-        if jobs:
-            workers = min(num_workers, len(jobs))
-            copy_lock = Lock()
-
-            def _run(job):
-                idx, global_action, result = job
-                with copy_lock:
-                    obs_copy = self._copy_for_simulation(self._obs)
-                    action_copy = self._copy_for_simulation(global_action)
-                return idx, self._simulate_prebuilt_action_outcome(
-                    obs=obs_copy,
-                    global_action=action_copy,
-                    result=result,
-                    time_step=time_step,
-                )
-
-            with ThreadPoolExecutor(max_workers=workers) as executor:
-                for idx, outcome in executor.map(_run, jobs):
-                    results[idx] = outcome
-
-        if any(result is None for result in results):
-            raise RuntimeError("Internal error: missing simulated action outcome.")
-        return [result for result in results if result is not None]
+            for request in requests
+        ]
 
     def decode_action(self, agent_id: str, action_id: int, max_chars: int = 600) -> str:
         """Return a compact human-readable Grid2Op action description."""
