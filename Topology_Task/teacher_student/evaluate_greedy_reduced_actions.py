@@ -339,6 +339,7 @@ def _write_outputs(
         "do_nothing_chronic_name",
         "greedy_chronic_fingerprint",
         "do_nothing_chronic_fingerprint",
+        "same_chronic_fingerprint",
         "greedy_steps",
         "do_nothing_steps",
         "max_steps",
@@ -479,6 +480,8 @@ def main() -> None:
                 "do_nothing_chronic_fingerprint": do_nothing_result[
                     "chronic_fingerprint"
                 ],
+                "same_chronic_fingerprint": greedy_result["chronic_fingerprint"]
+                == do_nothing_result["chronic_fingerprint"],
                 "greedy_steps": greedy_result["steps"],
                 "do_nothing_steps": do_nothing_result["steps"],
                 "max_steps": greedy_result["max_steps"],
@@ -508,6 +511,9 @@ def main() -> None:
                     f"do_nothing={100 * row['do_nothing_survival']:.2f}% "
                     f"delta={100 * row['survival_delta']:.2f}% "
                     f"nonidle={row['greedy_nonidle_actions']} "
+                    f"same_chronic={row['same_chronic_fingerprint']} "
+                    f"fp={str(row['greedy_chronic_fingerprint'])[:8]}/"
+                    f"{str(row['do_nothing_chronic_fingerprint'])[:8]} "
                     f"elapsed={_format_duration(elapsed)} "
                     f"eta={_format_duration(eta)}",
                     flush=True,
@@ -532,6 +538,9 @@ def main() -> None:
         [row["do_nothing_full_survival"] for row in rows], dtype=bool
     )
     deltas = greedy_survivals - noop_survivals
+    same_fingerprints = np.asarray(
+        [bool(row["same_chronic_fingerprint"]) for row in rows], dtype=bool
+    )
     summary = {
         "created_at": datetime.now(timezone.utc).isoformat(),
         "env_id": env_args.env_id,
@@ -552,6 +561,9 @@ def main() -> None:
         "greedy_better_episodes": int((deltas > 0).sum()) if rows else 0,
         "greedy_equal_episodes": int(np.isclose(deltas, 0.0).sum()) if rows else 0,
         "greedy_worse_episodes": int((deltas < 0).sum()) if rows else 0,
+        "same_chronic_fingerprint_rate": (
+            float(same_fingerprints.mean()) if rows else float("nan")
+        ),
         "episodes": rows,
     }
     json_path, csv_path = _write_outputs(
@@ -569,6 +581,10 @@ def main() -> None:
     print(
         "Do-nothing full survival rate: "
         f"{100 * summary['do_nothing_full_survival_rate']:.3f}%"
+    )
+    print(
+        "Same chronic fingerprint rate: "
+        f"{100 * summary['same_chronic_fingerprint_rate']:.3f}%"
     )
     print(f"JSON: {_safe_path(json_path)}")
     print(f"CSV: {_safe_path(csv_path)}")
