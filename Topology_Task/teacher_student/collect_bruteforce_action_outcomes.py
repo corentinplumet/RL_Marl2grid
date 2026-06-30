@@ -41,6 +41,7 @@ from teacher_student.dataset import (
 )
 
 
+STATE_CONTEXTS_DIR_NAME = "state_contexts"
 OUTCOME_LABEL_IMPROVED = -1
 OUTCOME_LABEL_NEUTRAL = 0
 OUTCOME_LABEL_WORSENED = 1
@@ -108,6 +109,7 @@ def _prepare_output_dir(path: Path, overwrite: bool) -> None:
                 "tmp",
                 SHARDS_DIR_NAME,
                 METADATA_DIR_NAME,
+                STATE_CONTEXTS_DIR_NAME,
             }:
                 shutil.rmtree(child)
             else:
@@ -117,6 +119,7 @@ def _prepare_output_dir(path: Path, overwrite: bool) -> None:
     path.mkdir(parents=True, exist_ok=True)
     shards_dir(path).mkdir(parents=True, exist_ok=True)
     metadata_dir(path).mkdir(parents=True, exist_ok=True)
+    state_contexts_dir(path).mkdir(parents=True, exist_ok=True)
 
 
 def _candidate_action_ids(
@@ -136,6 +139,156 @@ def _candidate_action_ids(
         ).astype(np.int32)
         action_ids.sort()
     return action_ids
+
+
+def _parse_sample_size(value: str) -> Optional[int]:
+    value = str(value).strip().lower()
+    if value in {"", "all", "none"}:
+        return None
+    size = int(value)
+    if size <= 0:
+        raise ValueError("Action sample sizes must be positive integers or 'all'.")
+    return size
+
+
+def _parse_agent_sample_sizes(
+    *,
+    value: Optional[str],
+    agent_ids: List[str],
+    default_sample_size: Optional[int],
+) -> Dict[str, Optional[int]]:
+    sample_sizes = {agent: default_sample_size for agent in agent_ids}
+    if value is None or not str(value).strip():
+        return sample_sizes
+
+    tokens = [token.strip() for token in str(value).split(",") if token.strip()]
+    if not tokens:
+        return sample_sizes
+
+    if all("=" not in token for token in tokens):
+        if len(tokens) != len(agent_ids):
+            raise ValueError(
+                "--outcome-action-sample-sizes without agent names must provide "
+                f"exactly {len(agent_ids)} comma-separated values."
+            )
+        return {
+            agent: _parse_sample_size(token)
+            for agent, token in zip(agent_ids, tokens)
+        }
+
+    for token in tokens:
+        if "=" not in token:
+            raise ValueError(
+                "--outcome-action-sample-sizes must be either all positional "
+                "values or all agent=value entries."
+            )
+        agent, size = [part.strip() for part in token.split("=", 1)]
+        if agent.isdigit():
+            agent = f"agent_{int(agent)}"
+        if agent not in sample_sizes:
+            raise ValueError(
+                f"Unknown agent '{agent}' in --outcome-action-sample-sizes. "
+                f"Known agents: {', '.join(agent_ids)}"
+            )
+        sample_sizes[agent] = _parse_sample_size(size)
+    return sample_sizes
+
+
+def _sample_size_for_metadata(sample_size: Optional[int]) -> Any:
+    return "all" if sample_size is None else int(sample_size)
+
+
+def state_contexts_dir(dataset_dir: Path) -> Path:
+    return dataset_dir / STATE_CONTEXTS_DIR_NAME
+
+
+def _current_rho_vector(env: MAEnvWrapper) -> np.ndarray:
+    obs = getattr(env, "_obs", None)
+    rho = getattr(obs, "rho", None)
+    return np.asarray([] if rho is None else rho, dtype=np.float32).copy()
+
+
+def _line_endpoint_subids(env: MAEnvWrapper) -> Dict[str, List[int]]:
+    g2op_env = getattr(env, "g2op_env", None)
+    if g2op_env is None:
+        return {"line_or_to_subid": [], "line_ex_to_subid": []}
+    return {
+        "line_or_to_subid": [
+            int(x) for x in np.asarray(getattr(g2op_env, "line_or_to_subid", []))
+        ],
+        "line_ex_to_subid": [
+            int(x) for x in np.asarray(getattr(g2op_env, "line_ex_to_subid", []))
+        ],
+    }
+
+
+def _agent_line_domains(env: MAEnvWrapper, agent_ids: List[str]) -> Dict[str, List[int]]:
+    domains = getattr(env, "agent_line_domains", {})
+    return {
+        agent: [int(x) for x in np.asarray(domains.get(agent, []), dtype=np.int64)]
+        for agent in agent_ids
+    }
+
+
+def _state_context_values(
+    *,
+    env: MAEnvWrapper,
+    agent_ids: List[str],
+    agent_line_domains: Dict[str, List[int]],
+    state_id: int,
+    completed_episodes: int,
+    episode_step: int,
+    env_steps: int,
+    global_max_rho: float,
+    local_max_rhos: Dict[str, float],
+    collection_rho_threshold: float,
+    chronic_info: Dict[str, str],
+) -> Dict[str, Any]:
+    rho = _current_rho_vector(env)
+    finite = np.isfinite(rho)
+    high_rho_line_mask = finite & (rho >= float(collection_rho_threshold))
+    overloaded_line_mask = finite & (rho >= 1.0)
+    if rho.size > 0 and finite.any():
+        masked_rho = np.where(finite, rho, -np.inf)
+        worst_line_before = int(np.argmax(masked_rho))
+    else:
+        worst_line_before = -1
+
+    values: Dict[str, Any] = {
+        "state_id": int(state_id),
+        "episode_id": int(completed_episodes),
+        "episode_step": int(episode_step),
+        "dataset_step": int(env_steps),
+        "global_max_rho_before": float(global_max_rho),
+        "worst_line_before": int(worst_line_before),
+        "rho_before_vector": rho,
+        "high_rho_line_mask": high_rho_line_mask,
+        "overloaded_line_mask": overloaded_line_mask,
+        "n_high_rho_lines": int(high_rho_line_mask.sum()),
+        "n_overloaded_lines": int(overloaded_line_mask.sum()),
+        **chronic_info,
+    }
+    for agent in agent_ids:
+        line_ids = np.asarray(agent_line_domains.get(agent, []), dtype=np.int64)
+        line_ids = line_ids[(line_ids >= 0) & (line_ids < rho.size)]
+        if line_ids.size > 0:
+            local_high = high_rho_line_mask[line_ids]
+            local_overloaded = overloaded_line_mask[line_ids]
+            worst_line_visible = bool(worst_line_before in set(line_ids.tolist()))
+        else:
+            local_high = np.asarray([], dtype=bool)
+            local_overloaded = np.asarray([], dtype=bool)
+            worst_line_visible = False
+        prefix = f"{agent}_"
+        values[f"{prefix}local_max_rho_before"] = float(
+            local_max_rhos.get(agent, np.nan)
+        )
+        values[f"{prefix}n_high_rho_lines"] = int(local_high.sum())
+        values[f"{prefix}n_overloaded_lines"] = int(local_overloaded.sum())
+        values[f"{prefix}has_high_rho_line"] = bool(local_high.any())
+        values[f"{prefix}has_overloaded_line"] = bool(local_overloaded.any())
+        values[f"{prefix}worst_line_visible"] = bool(worst_line_visible)
+    return values
 
 
 def _outcome_label(delta: float, *, valid: bool, tolerance: float) -> int:
@@ -188,7 +341,7 @@ class BruteForceOutcomeWriter:
             if not values:
                 continue
             prefix = f"outcome_{agent}"
-            int64_keys = {"episode_id", "dataset_step"}
+            int64_keys = {"state_id", "episode_id", "dataset_step"}
             int32_keys = {
                 "episode_step",
                 "action_id",
@@ -240,6 +393,71 @@ class BruteForceOutcomeWriter:
         return path
 
 
+class StateContextWriter:
+    def __init__(
+        self,
+        output_dir: Path,
+        agent_ids: List[str],
+        shard_size: int,
+        compress: bool,
+    ) -> None:
+        self.output_dir = output_dir
+        self.agent_ids = agent_ids
+        self.shard_size = int(shard_size)
+        self.compress = bool(compress)
+        self.shard_idx = 0
+        self.rows: List[Dict[str, Any]] = []
+        self.total_rows = 0
+        self.paths: List[Path] = []
+
+    def append(self, values: Dict[str, Any]) -> Optional[Path]:
+        self.rows.append(values)
+        self.total_rows += 1
+        if len(self.rows) >= self.shard_size:
+            return self.flush()
+        return None
+
+    def flush(self) -> Optional[Path]:
+        if not self.rows:
+            return None
+
+        arrays: Dict[str, Any] = {}
+        int64_keys = {"state_id", "episode_id", "dataset_step"}
+        int32_keys = {"episode_step", "worst_line_before"}
+        str_keys = {"chronic_name", "chronic_fingerprint", "chronic_datetime"}
+        for key in self.rows[0].keys():
+            items = [row[key] for row in self.rows]
+            if key in {"rho_before_vector"}:
+                arrays[f"state_{key}"] = np.stack(items).astype(np.float32)
+            elif key in {"high_rho_line_mask", "overloaded_line_mask"}:
+                arrays[f"state_{key}"] = np.stack(items).astype(bool)
+            elif key in int64_keys:
+                arrays[f"state_{key}"] = np.asarray(items, dtype=np.int64)
+            elif key in int32_keys or key.endswith("_n_high_rho_lines") or key.endswith(
+                "_n_overloaded_lines"
+            ) or key in {"n_high_rho_lines", "n_overloaded_lines"}:
+                arrays[f"state_{key}"] = np.asarray(items, dtype=np.int32)
+            elif key.endswith("_has_high_rho_line") or key.endswith(
+                "_has_overloaded_line"
+            ) or key.endswith("_worst_line_visible"):
+                arrays[f"state_{key}"] = np.asarray(items, dtype=bool)
+            elif key in str_keys:
+                arrays[f"state_{key}"] = np.asarray(items, dtype=str)
+            else:
+                arrays[f"state_{key}"] = np.asarray(items, dtype=np.float32)
+
+        path = self.output_dir / f"state_context_{self.shard_idx:05d}.npz"
+        if self.compress:
+            np.savez_compressed(path, **arrays)
+        else:
+            np.savez(path, **arrays)
+
+        self.paths.append(path)
+        self.shard_idx += 1
+        self.rows = []
+        return path
+
+
 def _write_json(path: Path, payload: Dict[str, Any]) -> None:
     with path.open("w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2, sort_keys=True)
@@ -260,8 +478,12 @@ def _metadata(
     env_args: Namespace,
     agent_ids: List[str],
     action_sizes: Dict[str, int],
+    action_sample_sizes_by_agent: Dict[str, Optional[int]],
+    agent_line_domains: Dict[str, List[int]],
+    line_endpoint_subids: Dict[str, List[int]],
     obs_shapes: Dict[str, List[int]],
     writer: BruteForceOutcomeWriter,
+    state_writer: StateContextWriter,
     env_steps: int,
     candidate_states: int,
     skipped_states: int,
@@ -300,10 +522,20 @@ def _metadata(
         "outcome_time_step": int(cli.outcome_time_step),
         "outcome_rollout_policy": cli.outcome_rollout_policy,
         "outcome_action_sample_size": cli.outcome_action_sample_size,
+        "outcome_action_sample_sizes_by_agent": {
+            agent: _sample_size_for_metadata(action_sample_sizes_by_agent[agent])
+            for agent in agent_ids
+        },
         "outcome_include_action_zero": bool(cli.outcome_include_action_zero),
         "outcome_resample_actions_per_state": bool(
             cli.outcome_resample_actions_per_state
         ),
+        "outcome_action_sampling_seed_material": [
+            int(env_args.seed),
+            int(cli.chronic_shard_count),
+            int(cli.chronic_shard_index),
+            20260630,
+        ],
         "outcome_sim_workers": int(cli.outcome_sim_workers),
         "outcome_sim_backend": (
             "process_pool" if int(cli.outcome_sim_workers) > 1 else "sequential"
@@ -311,6 +543,9 @@ def _metadata(
         "outcome_sim_start_method": cli.outcome_sim_start_method,
         "agent_ids": agent_ids,
         "action_sizes": action_sizes,
+        "agent_line_domains": agent_line_domains,
+        "line_or_to_subid": line_endpoint_subids.get("line_or_to_subid", []),
+        "line_ex_to_subid": line_endpoint_subids.get("line_ex_to_subid", []),
         "obs_shapes": obs_shapes,
         "label_encoding": {
             "improved": OUTCOME_LABEL_IMPROVED,
@@ -323,6 +558,7 @@ def _metadata(
         "layout": {
             "version": 2,
             "shards_dir": SHARDS_DIR_NAME,
+            "state_contexts_dir": STATE_CONTEXTS_DIR_NAME,
             "metadata_dir": METADATA_DIR_NAME,
             "metadata_export_dir": f"../{METADATA_EXPORT_DIR_NAME}",
         },
@@ -330,8 +566,11 @@ def _metadata(
         "max_env_steps_requested": cli.max_env_steps,
         "n_shards": int(len(writer.paths)),
         "shards": [_safe_path(path) for path in writer.paths],
+        "n_state_context_shards": int(len(state_writer.paths)),
+        "state_context_shards": [_safe_path(path) for path in state_writer.paths],
         "n_env_steps": int(env_steps),
         "n_candidate_states": int(candidate_states),
+        "n_state_contexts": int(state_writer.total_rows),
         "n_skipped_states_below_threshold": int(skipped_states),
         "n_outcome_examples": int(writer.total_rows),
         "n_unique_actions_by_agent": unique_actions_by_agent,
@@ -376,6 +615,17 @@ def parse_args() -> Namespace:
         choices=["best_simulated", "do_nothing"],
     )
     parser.add_argument("--outcome-action-sample-size", type=int, default=None)
+    parser.add_argument(
+        "--outcome-action-sample-sizes",
+        type=str,
+        default=None,
+        help=(
+            "Optional per-agent action sample sizes. Use either positional "
+            "values in agent order, e.g. 'all,2048,all,1024', or named values, "
+            "e.g. 'agent_0=all,agent_1=2048,agent_2=all,agent_3=1024'. "
+            "Unspecified named agents fall back to --outcome-action-sample-size."
+        ),
+    )
     parser.add_argument("--outcome-include-action-zero", type=str2bool, default=True)
     parser.add_argument(
         "--outcome-resample-actions-per-state",
@@ -780,18 +1030,39 @@ def main() -> None:
     agent_ids = list(env.g2op_ma_env.agents)
     action_sizes = {agent: int(env.action_space[agent].n) for agent in agent_ids}
     obs_shapes = {agent: list(env.observation_space[agent].shape) for agent in agent_ids}
+    action_sample_sizes_by_agent = _parse_agent_sample_sizes(
+        value=cli.outcome_action_sample_sizes,
+        agent_ids=agent_ids,
+        default_sample_size=cli.outcome_action_sample_size,
+    )
+    agent_line_domains = _agent_line_domains(env, agent_ids)
+    line_endpoint_subids = _line_endpoint_subids(env)
     writer = BruteForceOutcomeWriter(
         shards_dir(output_dir),
         agent_ids,
         cli.shard_size,
         cli.compress,
     )
-    rng = np.random.default_rng(env_args.seed)
+    state_writer = StateContextWriter(
+        state_contexts_dir(output_dir),
+        agent_ids,
+        cli.shard_size,
+        cli.compress,
+    )
+    action_sampling_seed = np.random.SeedSequence(
+        [
+            int(env_args.seed),
+            int(cli.chronic_shard_count),
+            int(cli.chronic_shard_index),
+            20260630,
+        ]
+    )
+    rng = np.random.default_rng(action_sampling_seed)
     fixed_candidate_ids_by_agent = {
         agent: _candidate_action_ids(
             action_size=action_sizes[agent],
             include_action_zero=cli.outcome_include_action_zero,
-            sample_size=cli.outcome_action_sample_size,
+            sample_size=action_sample_sizes_by_agent[agent],
             rng=rng,
         )
         for agent in agent_ids
@@ -815,6 +1086,8 @@ def main() -> None:
     print(f"Collection rho threshold: {cli.collection_rho_threshold}")
     print(f"Rollout policy: {cli.outcome_rollout_policy}")
     print(f"Action sample size: {cli.outcome_action_sample_size or 'all'}")
+    if cli.outcome_action_sample_sizes:
+        print(f"Per-agent action sample sizes: {cli.outcome_action_sample_sizes}")
     print(
         "Resample actions per collected state: "
         f"{cli.outcome_resample_actions_per_state}"
@@ -830,7 +1103,8 @@ def main() -> None:
     for agent in agent_ids:
         print(
             f"{agent}: evaluating {len(fixed_candidate_ids_by_agent[agent])}/"
-            f"{action_sizes[agent]} actions per collected state"
+            f"{action_sizes[agent]} actions per collected state "
+            f"(sample_size={_sample_size_for_metadata(action_sample_sizes_by_agent[agent])})"
         )
     print("===========================================================")
 
@@ -889,6 +1163,7 @@ def main() -> None:
 
         if should_collect:
             candidate_states += 1
+            state_id = candidate_states - 1
             if sim_pool is not None:
                 sync_start_time = time.perf_counter()
                 sim_pool.sync(
@@ -911,7 +1186,7 @@ def main() -> None:
                     agent: _candidate_action_ids(
                         action_size=action_sizes[agent],
                         include_action_zero=cli.outcome_include_action_zero,
-                        sample_size=cli.outcome_action_sample_size,
+                        sample_size=action_sample_sizes_by_agent[agent],
                         rng=rng,
                     )
                     for agent in agent_ids
@@ -922,6 +1197,23 @@ def main() -> None:
                 covered_action_ids_by_agent[agent].update(
                     int(action_id) for action_id in action_ids
                 )
+            state_flushed = state_writer.append(
+                _state_context_values(
+                    env=env,
+                    agent_ids=agent_ids,
+                    agent_line_domains=agent_line_domains,
+                    state_id=state_id,
+                    completed_episodes=completed_episodes,
+                    episode_step=episode_step,
+                    env_steps=env_steps,
+                    global_max_rho=global_max_rho,
+                    local_max_rhos=local_max_rhos,
+                    collection_rho_threshold=cli.collection_rho_threshold,
+                    chronic_info=chronic_info,
+                )
+            )
+            if state_flushed is not None:
+                print(f"wrote {_safe_path(state_flushed)} at env_step={env_steps}")
             requests = [
                 {"agent_id": agent, "action_id": int(action_id)}
                 for agent in agent_ids
@@ -950,6 +1242,7 @@ def main() -> None:
                 delta_vs_now = rho_after_action - rho_before
                 delta_vs_do_nothing = rho_after_action - rho_after_do_nothing
                 values = {
+                    "state_id": state_id,
                     "episode_id": completed_episodes,
                     "episode_step": episode_step,
                     "dataset_step": env_steps,
@@ -996,6 +1289,12 @@ def main() -> None:
                     best_rollout_action = {other_agent: 0 for other_agent in agent_ids}
                     best_rollout_action[agent] = action_id
                 if flushed is not None:
+                    context_flushed = state_writer.flush()
+                    if context_flushed is not None:
+                        print(
+                            f"wrote {_safe_path(context_flushed)} "
+                            f"at env_step={env_steps}"
+                        )
                     _write_metadata(
                         output_dir,
                         _metadata(
@@ -1004,8 +1303,12 @@ def main() -> None:
                             env_args=env_args,
                             agent_ids=agent_ids,
                             action_sizes=action_sizes,
+                            action_sample_sizes_by_agent=action_sample_sizes_by_agent,
+                            agent_line_domains=agent_line_domains,
+                            line_endpoint_subids=line_endpoint_subids,
                             obs_shapes=obs_shapes,
                             writer=writer,
+                            state_writer=state_writer,
                             env_steps=env_steps,
                             candidate_states=candidate_states,
                             skipped_states=skipped_states,
@@ -1095,14 +1398,24 @@ def main() -> None:
     final_shard = writer.flush()
     if final_shard is not None:
         print(f"wrote {_safe_path(final_shard)} at env_step={env_steps}")
+    final_state_context_shard = state_writer.flush()
+    if final_state_context_shard is not None:
+        print(
+            f"wrote {_safe_path(final_state_context_shard)} "
+            f"at env_step={env_steps}"
+        )
     final_metadata = _metadata(
         status="complete",
         cli=cli,
         env_args=env_args,
         agent_ids=agent_ids,
         action_sizes=action_sizes,
+        action_sample_sizes_by_agent=action_sample_sizes_by_agent,
+        agent_line_domains=agent_line_domains,
+        line_endpoint_subids=line_endpoint_subids,
         obs_shapes=obs_shapes,
         writer=writer,
+        state_writer=state_writer,
         env_steps=env_steps,
         candidate_states=candidate_states,
         skipped_states=skipped_states,
@@ -1126,8 +1439,10 @@ def main() -> None:
     print(f"Output dir: {_safe_path(output_dir)}")
     print(f"Metadata: {_safe_path(metadata_file)}")
     print(f"Shards: {len(writer.paths)}")
+    print(f"State context shards: {len(state_writer.paths)}")
     print(f"Env steps: {env_steps}")
     print(f"Candidate states: {candidate_states}")
+    print(f"State contexts: {state_writer.total_rows}")
     print(f"Outcome examples: {writer.total_rows}")
     print(f"Completed episodes: {completed_episodes}")
     for agent in agent_ids:

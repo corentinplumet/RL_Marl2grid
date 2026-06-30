@@ -84,6 +84,7 @@ Smoke test on EPFL JED:
 OUTPUT_DIR=outputs/teacher_student_datasets/smoke_bus36_bruteforce_rho090 \
 MAX_EPISODES=2 \
 OUTCOME_ACTION_SAMPLE_SIZE=32 \
+OUTCOME_ACTION_SAMPLE_SIZES=agent_0=all,agent_1=64,agent_2=all,agent_3=all \
 OUTCOME_RESAMPLE_ACTIONS_PER_STATE=true \
 OUTCOME_SIM_WORKERS=71 \
 OUTCOME_SIM_START_METHOD=spawn \
@@ -92,12 +93,12 @@ ACTION_REDUCTION_TOP_K=64 \
 sbatch Topology_Task/teacher_student/job_collect_action_outcomes_jed.sh
 ```
 
-Full bus36 sampled reduction, targeting roughly a 24h-scale run from the smoke
-timing:
+Full bus36 sampled reduction over multiple chronic shards:
 
 ```bash
 OUTPUT_DIR=outputs/teacher_student_datasets/bus36_bruteforce_rho090 \
 OUTCOME_ACTION_SAMPLE_SIZE=64 \
+OUTCOME_ACTION_SAMPLE_SIZES=agent_0=all,agent_1=2048,agent_2=all,agent_3=all \
 OUTCOME_RESAMPLE_ACTIONS_PER_STATE=true \
 OUTCOME_SIM_WORKERS=71 \
 OUTCOME_SIM_START_METHOD=spawn \
@@ -114,6 +115,17 @@ outputs/teacher_student_datasets/bus36_bruteforce_rho090/parts/part_001
 ...
 ```
 
+With `OUTCOME_RESAMPLE_ACTIONS_PER_STATE=true`, each collected high-rho state
+draws a fresh candidate-action subset. The sampler seed also includes the
+chronic shard index, so array parts do not reuse the same random action stream.
+Use `OUTCOME_ACTION_SAMPLE_SIZES` when agents have very different action-space
+sizes. For bus36, a useful pattern is to evaluate the small agents exhaustively
+and sample the large agent more heavily:
+
+```bash
+OUTCOME_ACTION_SAMPLE_SIZES=agent_0=all,agent_1=2048,agent_2=all,agent_3=all
+```
+
 After the array completes, merge all parts into one reduced action-space file:
 
 ```bash
@@ -128,6 +140,7 @@ The dedicated JED wrapper defaults to:
 ENV_ID=bus36
 COLLECTION_RHO_THRESHOLD=0.90
 OUTCOME_ACTION_SAMPLE_SIZE=64
+OUTCOME_ACTION_SAMPLE_SIZES=
 OUTCOME_RESAMPLE_ACTIONS_PER_STATE=true
 OUTCOME_SIM_WORKERS=$((SLURM_CPUS_PER_TASK - 1))
 OUTCOME_SIM_START_METHOD=spawn
@@ -177,6 +190,7 @@ Each action-outcome shard stores per-agent arrays with keys like:
 ```text
 obs_agent_0
 outcome_agent_0_action_id
+outcome_agent_0_state_id
 outcome_agent_0_global_max_rho_before
 outcome_agent_0_local_max_rho_before
 outcome_agent_0_rho_before
@@ -189,6 +203,29 @@ outcome_agent_0_label_vs_do_nothing
 outcome_agent_0_action_is_valid
 outcome_agent_0_sim_done
 ```
+
+The collector also writes one state-context row per collected high-rho state in
+`state_contexts/state_context_*.npz`. These rows can be joined with outcome rows
+through `state_id` and contain keys like:
+
+```text
+state_state_id
+state_global_max_rho_before
+state_worst_line_before
+state_rho_before_vector
+state_high_rho_line_mask
+state_overloaded_line_mask
+state_n_high_rho_lines
+state_n_overloaded_lines
+state_agent_0_local_max_rho_before
+state_agent_0_has_high_rho_line
+state_agent_0_has_overloaded_line
+state_agent_0_worst_line_visible
+```
+
+Metadata stores `agent_line_domains`, `line_or_to_subid`, and
+`line_ex_to_subid`, so downstream analysis can test whether a stressed line is
+inside each agent's observation domain.
 
 Labels use this integer encoding:
 

@@ -34,6 +34,7 @@ Common overrides:
   MAX_EPISODES=               # leave empty for one pass over this shard
   MAX_ENV_STEPS=
   OUTCOME_ACTION_SAMPLE_SIZE=64   # set to all to evaluate every action
+  OUTCOME_ACTION_SAMPLE_SIZES=    # optional: agent_0=all,agent_1=2048,...
   OUTCOME_RESAMPLE_ACTIONS_PER_STATE=true
   OUTCOME_SIM_WORKERS=71          # parallel sims; defaults to cpus-per-task minus 1
   OUTCOME_SIM_START_METHOD=spawn
@@ -108,6 +109,7 @@ COLLECTION_RHO_THRESHOLD="${COLLECTION_RHO_THRESHOLD:-0.90}"
 MAX_EPISODES="${MAX_EPISODES:-}"
 MAX_ENV_STEPS="${MAX_ENV_STEPS:-}"
 OUTCOME_ACTION_SAMPLE_SIZE="${OUTCOME_ACTION_SAMPLE_SIZE:-64}"
+OUTCOME_ACTION_SAMPLE_SIZES="${OUTCOME_ACTION_SAMPLE_SIZES:-}"
 DEFAULT_OUTCOME_SIM_WORKERS="${SLURM_CPUS_PER_TASK:-1}"
 if [ "${DEFAULT_OUTCOME_SIM_WORKERS}" -gt 1 ]; then
     DEFAULT_OUTCOME_SIM_WORKERS="$((DEFAULT_OUTCOME_SIM_WORKERS - 1))"
@@ -192,6 +194,10 @@ if [ -n "${OUTCOME_ACTION_SAMPLE_SIZE}" ] && [ "${OUTCOME_ACTION_SAMPLE_SIZE}" !
     collector_args+=(--outcome-action-sample-size "${OUTCOME_ACTION_SAMPLE_SIZE}")
 fi
 
+if [ -n "${OUTCOME_ACTION_SAMPLE_SIZES}" ]; then
+    collector_args+=(--outcome-action-sample-sizes "${OUTCOME_ACTION_SAMPLE_SIZES}")
+fi
+
 source "${CONDA_BASE}/etc/profile.d/conda.sh"
 conda activate "${CONDA_ENV}"
 
@@ -212,6 +218,7 @@ echo "Collection rho threshold: ${COLLECTION_RHO_THRESHOLD}"
 echo "Max episodes: ${MAX_EPISODES:-collector default}"
 echo "Max env steps: ${MAX_ENV_STEPS:-none}"
 echo "Action sample size: ${OUTCOME_ACTION_SAMPLE_SIZE:-all}"
+echo "Per-agent action sample sizes: ${OUTCOME_ACTION_SAMPLE_SIZES:-global default}"
 echo "Resample actions per collected state: ${OUTCOME_RESAMPLE_ACTIONS_PER_STATE}"
 echo "Simulation workers: ${OUTCOME_SIM_WORKERS}"
 echo "Simulation start method: ${OUTCOME_SIM_START_METHOD}"
