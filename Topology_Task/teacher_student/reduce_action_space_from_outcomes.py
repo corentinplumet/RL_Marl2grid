@@ -118,6 +118,56 @@ def _merge_counter(dst: Counter, src: Counter) -> None:
         dst[int(key)] += int(value)
 
 
+def _improvement_rate_counts(
+    *,
+    action_ids: np.ndarray,
+    metric: np.ndarray,
+    valid: np.ndarray,
+    improvement_tolerance: float,
+) -> Tuple[Dict[int, Dict[str, int]], Dict[str, Any]]:
+    action_ids = np.asarray(action_ids, dtype=np.int64)
+    metric = np.asarray(metric, dtype=np.float32)
+    valid = np.asarray(valid, dtype=bool)
+
+    seen = Counter(int(action_id) for action_id in action_ids)
+    improved_mask = valid & _finite_metric(metric) & (
+        metric < -float(improvement_tolerance)
+    )
+    improved = Counter(int(action_id) for action_id in action_ids[improved_mask])
+    valid_finite = Counter(
+        int(action_id) for action_id in action_ids[valid & _finite_metric(metric)]
+    )
+
+    stats_by_action: Dict[int, Dict[str, int]] = {}
+    for action_id, seen_count in seen.items():
+        stats_by_action[int(action_id)] = {
+            "seen_count": int(seen_count),
+            "improved_count": int(improved.get(action_id, 0)),
+            "valid_finite_count": int(valid_finite.get(action_id, 0)),
+        }
+
+    return stats_by_action, {
+        "candidate_rows": int(action_ids.size),
+        "seen_action_ids": int(len(seen)),
+        "improved_rows": int(improved_mask.sum()),
+        "valid_finite_rows": int(sum(valid_finite.values())),
+    }
+
+
+def _merge_action_stats(
+    dst: Dict[int, Dict[str, int]],
+    src: Dict[int, Dict[str, int]],
+) -> None:
+    for action_id, values in src.items():
+        target = dst.setdefault(
+            int(action_id),
+            {"seen_count": 0, "improved_count": 0, "valid_finite_count": 0},
+        )
+        target["seen_count"] += int(values.get("seen_count", 0))
+        target["improved_count"] += int(values.get("improved_count", 0))
+        target["valid_finite_count"] += int(values.get("valid_finite_count", 0))
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
@@ -158,10 +208,11 @@ def parse_args() -> argparse.Namespace:
         "--selection-method",
         type=str,
         default="best_per_state",
-        choices=["best_per_state", "all_improving"],
+        choices=["best_per_state", "all_improving", "improvement_rate"],
         help=(
             "best_per_state mimics the paper's teacher: one winning action per "
-            "state. all_improving counts every action that improves the metric."
+            "state. all_improving counts every action that improves the metric. "
+            "improvement_rate ranks actions by improved_count / seen_count."
         ),
     )
     parser.add_argument("--top-k", type=int, default=208)
@@ -250,6 +301,9 @@ def main() -> None:
     require_improvement = _str_to_bool(cli.require_improvement)
 
     counts_by_agent: Dict[str, Counter] = {agent: Counter() for agent in agent_ids}
+    rate_stats_by_agent: Dict[str, Dict[int, Dict[str, int]]] = {
+        agent: {} for agent in agent_ids
+    }
     stats_by_agent: Dict[str, Dict[str, Any]] = {
         agent: defaultdict(int) for agent in agent_ids
     }
@@ -286,9 +340,18 @@ def main() -> None:
                             episode_ids=data[f"{prefix}_episode_id"],
                             dataset_steps=data[f"{prefix}_dataset_step"],
                         )
+                        _merge_counter(counts_by_agent[agent], counts)
+                    elif cli.selection_method == "improvement_rate":
+                        action_stats, stats = _improvement_rate_counts(
+                            action_ids=data[action_key],
+                            metric=data[metric_key],
+                            valid=data[valid_key],
+                            improvement_tolerance=cli.improvement_tolerance,
+                        )
+                        _merge_action_stats(rate_stats_by_agent[agent], action_stats)
                     else:
                         counts, stats = _all_improving_counts(**kwargs)
-                    _merge_counter(counts_by_agent[agent], counts)
+                        _merge_counter(counts_by_agent[agent], counts)
                     for key, value in stats.items():
                         if value is not None:
                             stats_by_agent[agent][key] += int(value)
@@ -315,6 +378,11 @@ def main() -> None:
         "selection_method": cli.selection_method,
         "top_k": int(cli.top_k),
         "min_count": int(cli.min_count),
+        "min_count_semantics": (
+            "minimum_seen_count"
+            if cli.selection_method == "improvement_rate"
+            else "minimum_selected_count"
+        ),
         "include_action_zero": bool(include_action_zero),
         "require_improvement": bool(require_improvement),
         "improvement_tolerance": float(cli.improvement_tolerance),
@@ -325,11 +393,41 @@ def main() -> None:
     total_reduced = 0
     for agent in agent_ids:
         total_original += int(action_sizes.get(agent, 0))
-        ranked = [
-            {"action_id": int(action_id), "count": int(count)}
-            for action_id, count in counts_by_agent[agent].most_common()
-            if int(count) >= cli.min_count
-        ]
+        if cli.selection_method == "improvement_rate":
+            ranked = []
+            for action_id, values in rate_stats_by_agent[agent].items():
+                seen_count = int(values.get("seen_count", 0))
+                if seen_count < cli.min_count:
+                    continue
+                improved_count = int(values.get("improved_count", 0))
+                valid_finite_count = int(values.get("valid_finite_count", 0))
+                ranked.append(
+                    {
+                        "action_id": int(action_id),
+                        "score": (
+                            improved_count / seen_count
+                            if seen_count > 0
+                            else float("nan")
+                        ),
+                        "improved_count": improved_count,
+                        "seen_count": seen_count,
+                        "valid_finite_count": valid_finite_count,
+                    }
+                )
+            ranked.sort(
+                key=lambda item: (
+                    -float(item["score"]),
+                    -int(item["improved_count"]),
+                    -int(item["seen_count"]),
+                    int(item["action_id"]),
+                )
+            )
+        else:
+            ranked = [
+                {"action_id": int(action_id), "count": int(count)}
+                for action_id, count in counts_by_agent[agent].most_common()
+                if int(count) >= cli.min_count
+            ]
         selected = [item["action_id"] for item in ranked[: cli.top_k]]
         if include_action_zero and 0 not in selected:
             selected = [0] + selected

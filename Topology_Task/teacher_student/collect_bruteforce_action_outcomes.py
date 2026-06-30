@@ -1351,15 +1351,24 @@ def main() -> None:
             avg_wall_step = _safe_div(timed_wall_seconds, timed_env_steps)
             avg_sim_action = _safe_div(timed_sim_action_seconds, timed_sim_actions)
             last_sim_action = _safe_div(sim_action_seconds, sim_action_count)
-            eta_seconds = (
-                avg_wall_step * max(cli.max_env_steps - env_steps, 0)
-                if cli.max_env_steps is not None
-                else float("nan")
-            )
+            if cli.max_env_steps is not None:
+                eta_seconds = avg_wall_step * max(cli.max_env_steps - env_steps, 0)
+                eta_basis = "env_steps"
+            elif completed_episodes > 0:
+                avg_seconds_per_episode = _safe_div(elapsed, completed_episodes)
+                eta_seconds = avg_seconds_per_episode * max(
+                    int(target_episodes) - completed_episodes, 0
+                )
+                eta_basis = "episodes"
+            else:
+                eta_seconds = float("nan")
+                eta_basis = "unknown"
             print(
                 "timing: "
                 f"env_steps={env_steps} "
                 f"episodes={completed_episodes}/{target_episodes} "
+                f"candidate_states={candidate_states} "
+                f"outcome_examples={writer.total_rows} "
                 f"last_step={wall_step_seconds:.3f}s "
                 f"avg_step={avg_wall_step:.3f}s "
                 f"last_env_step={env_step_seconds:.3f}s "
@@ -1368,7 +1377,8 @@ def main() -> None:
                 f"last_sec_per_sim_action={last_sim_action:.6f}s "
                 f"avg_sec_per_sim_action={avg_sim_action:.6f}s "
                 f"elapsed={_format_duration(elapsed)} "
-                f"eta={_format_duration(eta_seconds)}",
+                f"eta={_format_duration(eta_seconds)} "
+                f"eta_basis={eta_basis}",
                 flush=True,
             )
 

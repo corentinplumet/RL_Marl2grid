@@ -171,6 +171,25 @@ with the valid unilateral action that produced the lowest simulated
 `rho_after_action`; use `OUTCOME_ROLLOUT_POLICY=do_nothing` for a passive
 rollout.
 
+An alternative reducer ranks by empirical improvement rate:
+
+```bash
+ACTION_REDUCTION_METHOD=improvement_rate \
+ACTION_REDUCTION_MIN_COUNT=20 \
+sbatch Topology_Task/teacher_student/job_reduce_action_space_jed.sh
+```
+
+For each action, this computes:
+
+```text
+score = improved_count / seen_count
+```
+
+where `improved_count` is the number of valid simulations with
+`delta_vs_do_nothing < -improvement_tolerance`. In this mode,
+`ACTION_REDUCTION_MIN_COUNT` is the minimum number of times an action must have
+been sampled before it can be selected.
+
 To train MAPPO with this reduced action space, pass the generated JSON to the
 environment:
 
