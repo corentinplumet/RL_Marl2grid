@@ -283,6 +283,7 @@ def _metadata(
         "outcome_rollout_policy": cli.outcome_rollout_policy,
         "outcome_action_sample_size": cli.outcome_action_sample_size,
         "outcome_include_action_zero": bool(cli.outcome_include_action_zero),
+        "outcome_sim_workers": int(cli.outcome_sim_workers),
         "agent_ids": agent_ids,
         "action_sizes": action_sizes,
         "obs_shapes": obs_shapes,
@@ -349,6 +350,15 @@ def parse_args() -> Namespace:
     )
     parser.add_argument("--outcome-action-sample-size", type=int, default=None)
     parser.add_argument("--outcome-include-action-zero", type=str2bool, default=True)
+    parser.add_argument(
+        "--outcome-sim-workers",
+        type=int,
+        default=1,
+        help=(
+            "Number of worker threads used to simulate candidate actions at one "
+            "collected state. The default 1 preserves the original sequential path."
+        ),
+    )
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--overwrite", type=str2bool, default=False)
     parser.add_argument("--shard-size", type=int, default=50000)
@@ -431,6 +441,8 @@ def main() -> None:
         raise ValueError("--max-env-steps must be positive when provided.")
     if cli.outcome_action_sample_size is not None and cli.outcome_action_sample_size <= 0:
         raise ValueError("--outcome-action-sample-size must be positive when provided.")
+    if cli.outcome_sim_workers <= 0:
+        raise ValueError("--outcome-sim-workers must be positive.")
     if cli.shard_size <= 0:
         raise ValueError("--shard-size must be positive.")
     if cli.timing_every_env_steps <= 0:
@@ -490,6 +502,7 @@ def main() -> None:
     print(f"Collection rho threshold: {cli.collection_rho_threshold}")
     print(f"Rollout policy: {cli.outcome_rollout_policy}")
     print(f"Action sample size: {cli.outcome_action_sample_size or 'all'}")
+    print(f"Simulation workers: {cli.outcome_sim_workers}")
     print(f"Reduce after: {cli.reduce_after}")
     for agent in agent_ids:
         print(
@@ -542,6 +555,7 @@ def main() -> None:
             do_nothing = env.simulate_action_outcomes(
                 [{"agent_id": agent_ids[0], "action_id": 0}],
                 time_step=cli.outcome_time_step,
+                num_workers=cli.outcome_sim_workers,
             )[0]
             rho_after_do_nothing = float(do_nothing["rho_after"])
             worst_line_after_do_nothing = int(do_nothing["worst_line_after"])
@@ -553,6 +567,7 @@ def main() -> None:
             outcomes = env.simulate_action_outcomes(
                 requests,
                 time_step=cli.outcome_time_step,
+                num_workers=cli.outcome_sim_workers,
             )
             sim_action_seconds = time.perf_counter() - sim_start_time
             sim_action_count = len(requests) + 1

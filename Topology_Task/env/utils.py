@@ -2,7 +2,10 @@ import os
 import re
 import json
 import hashlib
+import copy
+from concurrent.futures import ThreadPoolExecutor
 from collections import defaultdict
+from threading import Lock
 from packaging import version
 
 from gymnasium.spaces import Discrete, Box
@@ -1167,7 +1170,33 @@ class MAEnvWrapper(MAEnv):
     ) -> Dict[str, Any]:
         """Simulate a multi-agent action without advancing the environment."""
         rho_before, worst_line_before = self._rho_summary_from_obs(self._obs)
-        result = {
+        result = self._empty_action_outcome(rho_before, worst_line_before)
+
+        global_action, validation = self._build_global_action_for_simulation(actions)
+        result.update(validation)
+        if not validation["action_is_valid"]:
+            return result
+
+        return self._simulate_prebuilt_action_outcome(
+            obs=self._obs,
+            global_action=global_action,
+            result=result,
+            time_step=time_step,
+        )
+
+    @staticmethod
+    def _copy_for_simulation(value: Any) -> Any:
+        try:
+            return value.copy()
+        except Exception:
+            return copy.deepcopy(value)
+
+    def _empty_action_outcome(
+        self,
+        rho_before: float,
+        worst_line_before: int,
+    ) -> Dict[str, Any]:
+        return {
             "rho_before": rho_before,
             "worst_line_before": worst_line_before,
             "rho_after": float("nan"),
@@ -1183,19 +1212,22 @@ class MAEnvWrapper(MAEnv):
             "validation_error": "",
         }
 
-        global_action, validation = self._build_global_action_for_simulation(actions)
-        result.update(validation)
-        if not validation["action_is_valid"]:
-            return result
-
+    def _simulate_prebuilt_action_outcome(
+        self,
+        *,
+        obs: Any,
+        global_action: Any,
+        result: Dict[str, Any],
+        time_step: int,
+    ) -> Dict[str, Any]:
         try:
             try:
-                sim_obs, sim_reward, sim_done, sim_info = self._obs.simulate(
+                sim_obs, sim_reward, sim_done, sim_info = obs.simulate(
                     global_action,
                     time_step=time_step,
                 )
             except TypeError:
-                sim_obs, sim_reward, sim_done, sim_info = self._obs.simulate(
+                sim_obs, sim_reward, sim_done, sim_info = obs.simulate(
                     global_action
                 )
             rho_after, worst_line_after = self._rho_summary_from_obs(sim_obs)
@@ -1235,16 +1267,71 @@ class MAEnvWrapper(MAEnv):
         requests: List[Dict[str, Any]],
         *,
         time_step: int = 1,
+        num_workers: int = 1,
     ) -> List[Dict[str, Any]]:
         """Simulate many unilateral agent/action requests at the current state."""
-        return [
-            self.simulate_action_outcome(
-                str(request["agent_id"]),
-                request["action_id"],
-                time_step=time_step,
+        num_workers = max(1, int(num_workers))
+        if num_workers == 1 or len(requests) <= 1:
+            return [
+                self.simulate_action_outcome(
+                    str(request["agent_id"]),
+                    request["action_id"],
+                    time_step=time_step,
+                )
+                for request in requests
+            ]
+
+        rho_before, worst_line_before = self._rho_summary_from_obs(self._obs)
+        results: List[Optional[Dict[str, Any]]] = [None] * len(requests)
+        jobs = []
+
+        for idx, request in enumerate(requests):
+            agent_id = str(request["agent_id"])
+            if agent_id not in self.g2op_ma_env.agents:
+                raise KeyError(f"Unknown agent_id {agent_id!r}.")
+            actions = {other_agent: 0 for other_agent in self.g2op_ma_env.agents}
+            actions[agent_id] = self._action_id_to_int(request["action_id"])
+
+            result = self._empty_action_outcome(rho_before, worst_line_before)
+            global_action, validation = self._build_global_action_for_simulation(
+                actions
             )
-            for request in requests
-        ]
+            result.update(validation)
+            if not validation["action_is_valid"]:
+                results[idx] = result
+                continue
+
+            jobs.append(
+                (
+                    idx,
+                    global_action,
+                    result,
+                )
+            )
+
+        if jobs:
+            workers = min(num_workers, len(jobs))
+            copy_lock = Lock()
+
+            def _run(job):
+                idx, global_action, result = job
+                with copy_lock:
+                    obs_copy = self._copy_for_simulation(self._obs)
+                    action_copy = self._copy_for_simulation(global_action)
+                return idx, self._simulate_prebuilt_action_outcome(
+                    obs=obs_copy,
+                    global_action=action_copy,
+                    result=result,
+                    time_step=time_step,
+                )
+
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                for idx, outcome in executor.map(_run, jobs):
+                    results[idx] = outcome
+
+        if any(result is None for result in results):
+            raise RuntimeError("Internal error: missing simulated action outcome.")
+        return [result for result in results if result is not None]
 
     def decode_action(self, agent_id: str, action_id: int, max_chars: int = 600) -> str:
         """Return a compact human-readable Grid2Op action description."""

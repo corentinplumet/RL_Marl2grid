@@ -2052,12 +2052,18 @@ RERUN_A0_COMPARISONS = [
     ("rerun_a0_nonopt", "rerun_a0_nonopt", "#ff7f0e"),
     ("rerun_a01_opt", "rerun_a01_opt", "#2ca02c"),
     ("rerun_a02_opt", "rerun_a02_opt", "#d62728"),
-    ("a0_nonopt", "a0_nonopt", "#9467bd"),
 ]
 
 RERUN_A0_BIAS_COMPARISONS = [
     ("rerun_bias_05", "rerun_bias_05", "#ff7f0e"),
     ("rerun_bias_07", "rerun_bias_07", "#d62728"),
+]
+
+RERUN_A0_CORE_COMPARISONS = [
+    ("rerun_a0_nonopt", "rerun_a0_nonopt", "#ff7f0e"),
+    ("rerun_a01_opt", "rerun_a01", "#2ca02c"),
+    ("rerun_a02_opt", "rerun_a02", "#d62728"),
+    ("old_a0_nonopt_noval20", "old_a0_nonopt_noval20", "#9467bd"),
 ]
 
 
@@ -2066,7 +2072,7 @@ def _seeded_prefix_names(prefix, seeds=(0, 1, 2)):
 
 
 def _rerun_a0_comparison_names(prefix, seeds=(0, 1, 2)):
-    if prefix == "a0_nonopt":
+    if prefix == "old_a0_nonopt_noval20":
         return [f"noval20_mlp_a1_no_entropy_decay_nonopt_s{seed}_det" for seed in seeds]
     return _seeded_prefix_names(prefix, seeds=seeds)
 
@@ -2093,6 +2099,8 @@ def rerun_a0_run_names(seeds=(0, 1, 2)):
     """Run names for the A0 rerun comparison panels."""
     names = []
     for prefix, _, _ in RERUN_A0_COMPARISONS:
+        names.extend(_rerun_a0_comparison_names(prefix, seeds=seeds))
+    for prefix, _, _ in RERUN_A0_CORE_COMPARISONS:
         names.extend(_rerun_a0_comparison_names(prefix, seeds=seeds))
     names.extend(rerun_a0_bias_run_names())
     return _unique_text(names)
@@ -2297,10 +2305,10 @@ def plot_rerun_a0_opt_comparison(seeds=(0, 1, 2)):
         raise RuntimeError("No A0 rerun alternatives could be built from history_df.")
 
     fig = plot_run_mean_groups(
-        {"A0 reruns: opt vs nonopt / a0.1 / a0.2 / old a0_nonopt": mean_runs},
+        {"A0 reruns: opt vs nonopt / a0.1 / a0.2": mean_runs},
         split="test",
         smooth=5,
-        title="configs/a0_test_rerun: rerun_a0_opt vs alternatives + a0_nonopt",
+        title="configs/a0_test_rerun: rerun_a0_opt vs rerun_a0_nonopt / rerun_a01 / rerun_a02",
         ncols=1,
         subplot_height=520,
         width=1300,
@@ -2310,6 +2318,108 @@ def plot_rerun_a0_opt_comparison(seeds=(0, 1, 2)):
         save_name="rerun_a0_opt_vs_alternatives",
     )
     return {"fig": fig, "mean_runs": mean_runs}
+
+
+def _rerun_a0_baseline_mean_curve(seeds=(0, 1, 2), *, width=4):
+    baseline_runs = _resolve_exact_run_names(
+        _rerun_a0_comparison_names("rerun_a0_opt", seeds=seeds),
+        label="rerun_a0_opt",
+    )
+    if not baseline_runs:
+        raise RuntimeError("No cached runs found for rerun_a0_opt baseline.")
+    return baseline_runs, mean_curve(
+        baseline_runs,
+        color="#1f77b4",
+        dash="solid",
+        width=width,
+        member_alpha=0.16,
+        std_alpha=0.12,
+    )
+
+
+def _rerun_a0_core_mean_curve(prefix, label, color, seeds=(0, 1, 2)):
+    runs = _resolve_exact_run_names(
+        _rerun_a0_comparison_names(prefix, seeds=seeds),
+        label=prefix,
+    )
+    if not runs:
+        print(f"Skipping {label}: no cached runs found.")
+        return None, None
+    return runs, mean_curve(
+        runs,
+        color=color,
+        dash="solid",
+        width=3,
+        member_alpha=0.16,
+        std_alpha=0.12,
+    )
+
+
+def plot_rerun_a0_core_pairwise_comparisons(seeds=(0, 1, 2)):
+    """Pairwise seed-aggregated survival panels: rerun_a0_opt vs each core rerun."""
+    baseline_runs, baseline_curve = _rerun_a0_baseline_mean_curve(seeds=seeds)
+    groups = {}
+    resolved_runs = {"rerun_a0_opt": baseline_runs}
+
+    for prefix, label, color in RERUN_A0_CORE_COMPARISONS:
+        runs, comparison_curve = _rerun_a0_core_mean_curve(prefix, label, color, seeds=seeds)
+        if comparison_curve is None:
+            continue
+        resolved_runs[label] = runs
+        groups[f"rerun_a0_opt vs {label}"] = {
+            "rerun_a0_opt": baseline_curve,
+            label: comparison_curve,
+        }
+
+    if not groups:
+        raise RuntimeError("No A0 core comparison runs could be built.")
+
+    fig = plot_run_mean_groups(
+        groups,
+        split="test",
+        smooth=5,
+        title="A0 core reruns: rerun_a0_opt baseline pairwise comparisons",
+        ncols=2,
+        subplot_height=430,
+        width=1500,
+        y_range=[0, 105],
+        show_members=True,
+        show_std=True,
+        save_name="rerun_a0_opt_core_pairwise_comparisons",
+    )
+    return {"fig": fig, "mean_groups": groups, "runs": resolved_runs}
+
+
+def plot_rerun_a0_core_all_curves(seeds=(0, 1, 2)):
+    """Single seed-aggregated survival plot for rerun_a0_opt and core controls."""
+    baseline_runs, baseline_curve = _rerun_a0_baseline_mean_curve(seeds=seeds)
+    mean_runs = {"rerun_a0_opt": baseline_curve}
+    resolved_runs = {"rerun_a0_opt": baseline_runs}
+
+    for prefix, label, color in RERUN_A0_CORE_COMPARISONS:
+        runs, comparison_curve = _rerun_a0_core_mean_curve(prefix, label, color, seeds=seeds)
+        if comparison_curve is None:
+            continue
+        mean_runs[label] = comparison_curve
+        resolved_runs[label] = runs
+
+    if len(mean_runs) < 2:
+        raise RuntimeError("No A0 core comparison runs could be built.")
+
+    fig = plot_run_mean_groups(
+        {"rerun_a0_opt vs core reruns": mean_runs},
+        split="test",
+        smooth=5,
+        title="A0 core reruns: rerun_a0_opt vs rerun_a0_nonopt / rerun_a01 / rerun_a02 / old noval20 nonopt",
+        ncols=1,
+        subplot_height=520,
+        width=1300,
+        y_range=[0, 105],
+        show_members=True,
+        show_std=True,
+        save_name="rerun_a0_opt_core_all_curves",
+    )
+    return {"fig": fig, "mean_runs": mean_runs, "runs": resolved_runs}
 
 
 def plot_rerun_a0_bias_comparison(seeds=(0, 1, 2)):

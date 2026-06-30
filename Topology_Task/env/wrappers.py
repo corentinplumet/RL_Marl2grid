@@ -156,6 +156,7 @@ class AsyncMultiAgentVecEnv:
         requests: List[Dict[str, Any]],
         env_idx: int = 0,
         time_step: int = 1,
+        num_workers: int = 1,
     ) -> List[Dict[str, Any]]:
         """Simulate unilateral action requests in one worker environment."""
         if self.waiting:
@@ -166,7 +167,11 @@ class AsyncMultiAgentVecEnv:
         self.remotes[env_idx].send(
             (
                 "simulate_action_outcomes",
-                {"requests": requests, "time_step": time_step},
+                {
+                    "requests": requests,
+                    "time_step": time_step,
+                    "num_workers": num_workers,
+                },
             )
         )
         return self.remotes[env_idx].recv()
@@ -232,6 +237,7 @@ class AsyncMultiAgentVecEnv:
                         env.simulate_action_outcomes(
                             data["requests"],
                             time_step=data.get("time_step", 1),
+                            num_workers=data.get("num_workers", 1),
                         )
                     )
                 else:
@@ -346,8 +352,13 @@ class RecordEpisodeStatistics(gym.Wrapper, gym.utils.RecordConstructorArgs):
         requests: List[Dict[str, Any]],
         *,
         time_step: int = 1,
+        num_workers: int = 1,
     ) -> List[Dict[str, Any]]:
-        return self.env.simulate_action_outcomes(requests, time_step=time_step)
+        return self.env.simulate_action_outcomes(
+            requests,
+            time_step=time_step,
+            num_workers=num_workers,
+        )
 
     def step(self, action):
         """Steps through the environment, recording the episode statistics."""

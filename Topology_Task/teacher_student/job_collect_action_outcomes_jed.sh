@@ -8,8 +8,8 @@
 #SBATCH --qos=academic
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=4
-#SBATCH --mem-per-cpu=7000M
+#SBATCH --cpus-per-task=72
+#SBATCH --mem=128G
 #SBATCH --time=1-06:00:00
 #SBATCH --output=Topology_Task/teacher_student/slurm-%x-%j.out
 #SBATCH --error=Topology_Task/teacher_student/slurm-%x-%j.err
@@ -34,6 +34,7 @@ Common overrides:
   MAX_EPISODES=               # leave empty for one pass over this shard
   MAX_ENV_STEPS=
   OUTCOME_ACTION_SAMPLE_SIZE=64   # set to all to evaluate every action
+  OUTCOME_SIM_WORKERS=72          # parallel action simulations per collected state
   TIMING_EVERY_ENV_STEPS=1
   ACTION_REDUCTION_TOP_K=208
   OVERWRITE=false
@@ -105,6 +106,7 @@ COLLECTION_RHO_THRESHOLD="${COLLECTION_RHO_THRESHOLD:-0.90}"
 MAX_EPISODES="${MAX_EPISODES:-}"
 MAX_ENV_STEPS="${MAX_ENV_STEPS:-}"
 OUTCOME_ACTION_SAMPLE_SIZE="${OUTCOME_ACTION_SAMPLE_SIZE:-64}"
+OUTCOME_SIM_WORKERS="${OUTCOME_SIM_WORKERS:-${SLURM_CPUS_PER_TASK:-1}}"
 OUTCOME_ROLLOUT_POLICY="${OUTCOME_ROLLOUT_POLICY:-best_simulated}"
 OUTCOME_DELTA_TOLERANCE="${OUTCOME_DELTA_TOLERANCE:-1e-3}"
 TIMING_EVERY_ENV_STEPS="${TIMING_EVERY_ENV_STEPS:-100}"
@@ -154,6 +156,7 @@ collector_args=(
     --collection-rho-threshold "${COLLECTION_RHO_THRESHOLD}"
     --outcome-rollout-policy "${OUTCOME_ROLLOUT_POLICY}"
     --outcome-delta-tolerance "${OUTCOME_DELTA_TOLERANCE}"
+    --outcome-sim-workers "${OUTCOME_SIM_WORKERS}"
     --timing-every-env-steps "${TIMING_EVERY_ENV_STEPS}"
     --shard-size "${SHARD_SIZE}"
     --compress "${COMPRESS}"
@@ -184,6 +187,11 @@ conda activate "${CONDA_ENV}"
 
 cd "${TASK_DIR}"
 
+export OMP_NUM_THREADS=1
+export MKL_NUM_THREADS=1
+export OPENBLAS_NUM_THREADS=1
+export NUMEXPR_NUM_THREADS=1
+
 echo "Launching brute-force action-space reduction on JED"
 echo "Conda env: ${CONDA_ENV}"
 echo "Env id: ${ENV_ID}"
@@ -194,6 +202,7 @@ echo "Collection rho threshold: ${COLLECTION_RHO_THRESHOLD}"
 echo "Max episodes: ${MAX_EPISODES:-collector default}"
 echo "Max env steps: ${MAX_ENV_STEPS:-none}"
 echo "Action sample size: ${OUTCOME_ACTION_SAMPLE_SIZE:-all}"
+echo "Simulation workers: ${OUTCOME_SIM_WORKERS}"
 echo "Action reduction top-k: ${ACTION_REDUCTION_TOP_K}"
 echo "Reduce after: ${REDUCE_AFTER}"
 echo "Extra args: $*"

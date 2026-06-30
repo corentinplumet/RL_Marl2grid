@@ -137,7 +137,7 @@ _CELL_FEATURES = 'ID_COLS = [\n    "run_name", "run_id", "experiment", "comparis
 _CELL_PROFILES = 'PROFILE_GROUP_COLS = [\n    "run_name", "run_id", "experiment", "comparison_group", "family", "family_label", "seed",\n    "design", "gate_enabled", "control_axis", "control_value", "control_label",\n    "topology_reward_weight", "intervention_penalty", "entropy_schedule",\n    "feature_group", "feature_group_order", "feature_key", "feature_label", "entity",\n]\n\nprofile_by_run = final_window_average(FEATURE_LONG, "value", PROFILE_GROUP_COLS)\nACTION_PROFILE = profile_by_run.groupby([\n    "experiment", "comparison_group", "family", "family_label", "design", "gate_enabled",\n    "control_axis", "control_value", "control_label", "topology_reward_weight",\n    "intervention_penalty", "entropy_schedule", "feature_group", "feature_group_order",\n    "feature_key", "feature_label", "entity",\n], dropna=False, as_index=False).agg(\n    value=("value", "mean"),\n    std=("value", "std"),\n    runs=("run_id", "nunique"),\n    seeds=("seed", lambda values: sorted(pd.Series(values).dropna().astype(int).unique())),\n)\n\n# print(f"Final-window profile rows: {len(ACTION_PROFILE):,}")\n# display(ACTION_PROFILE.groupby(["experiment", "family_label", "feature_group"], dropna=False).agg(\n#     features=("feature_key", "nunique"),\n#     runs=("runs", "max"),\n# ).reset_index())\n'
 _CELL_ACTION0_ALL = 'ACTION0_AVERAGE_LAST_N_LOGGED = 5\n\n\ndef action0_final_rows():\n    data = FEATURE_LONG[FEATURE_LONG["feature_group"] == "agent_action0"].copy()\n    if data.empty:\n        return data\n\n    # Average the last few cached training values for each run and agent.\n    data = data.sort_values(["run_id", "entity", "_step"])\n    data = data.groupby(["run_id", "entity"], dropna=False).tail(int(ACTION0_AVERAGE_LAST_N_LOGGED)).copy()\n\n    data["rollout_action_samples"] = pd.to_numeric(data["rollout_action_samples"], errors="coerce")\n    missing_samples = data["rollout_action_samples"].isna() | (data["rollout_action_samples"] <= 0)\n    if missing_samples.any():\n        fallback_samples = (\n            pd.to_numeric(data.get("n_steps"), errors="coerce").fillna(0)\n            * pd.to_numeric(data.get("n_envs"), errors="coerce").fillna(0)\n        )\n        data.loc[missing_samples, "rollout_action_samples"] = fallback_samples[missing_samples]\n\n    summary_cols = [\n        "run_name", "run_id", "experiment", "comparison_group", "family", "family_label",\n        "seed", "design", "control_axis", "control_value", "control_label", "entity",\n        "n_steps", "n_envs", "rollout_action_samples",\n    ]\n    data = data.groupby(summary_cols, dropna=False, as_index=False).agg(\n        final_fraction_action0=("value", "mean"),\n        std_last_fraction_action0=("value", "std"),\n        final_step_millions=("step_millions", "max"),\n        averaged_logged_points=("value", "count"),\n    )\n    data["std_last_fraction_action0"] = data["std_last_fraction_action0"].fillna(0.0)\n    data["final_action0_count"] = (data["final_fraction_action0"] * data["rollout_action_samples"]).round().astype("Int64")\n    data["std_last_action0_count"] = (data["std_last_fraction_action0"] * data["rollout_action_samples"]).round().astype("Int64")\n    data["agent"] = data["entity"].astype(str)\n    data["run_label"] = data["run_name"]\n    data["folder_label"] = data["experiment"].map({\n        "intervention_gate_15": "Intervention gate 15",\n        "phase4_sparse_control_16": "Phase4 sparse control 16",\n        "heuristic_vs_gate_s0_s1_s2": "Heuristic vs gate s0/s1/s2",\n    }).fillna(data["experiment"])\n    data["agent"] = pd.Categorical(data["agent"], categories=["agent_0", "agent_1", "agent_2"], ordered=True)\n    return data.dropna(subset=["final_fraction_action0"])\n\n\nACTION0_FINAL_LONG = action0_final_rows()\nACTION0_COUNT_LONG = ACTION0_FINAL_LONG  # Backward-compatible name for exported table code.\n\nACTION0_COUNT_SUMMARY = ACTION0_FINAL_LONG[[\n    "experiment",\n    "run_name",\n    "family_label",\n    "seed",\n    "agent",\n    "final_fraction_action0",\n    "final_action0_count",\n    "final_step_millions",\n    "rollout_action_samples",\n]].sort_values(["experiment", "family_label", "seed", "agent"]).reset_index(drop=True)\n\n# print(f"Action-0 fraction averaged over the last {ACTION0_AVERAGE_LAST_N_LOGGED} logged points by run and agent:")\n# display(ACTION0_COUNT_SUMMARY)\n\n\ndef plot_action0_fraction_all_runs(experiment, title, save_name):\n    data = ACTION0_FINAL_LONG[ACTION0_FINAL_LONG["experiment"] == experiment].copy()\n    if data.empty:\n        print(f"No final action-0 data for {experiment}")\n        return None\n\n    data = data.sort_values(["family_label", "seed", "agent"])\n    fig = px.bar(\n        data,\n        x="agent",\n        y="final_fraction_action0",\n        color="run_label",\n        barmode="group",\n        hover_data=[\n            "family_label",\n            "seed",\n            "final_action0_count",\n            "final_step_millions",\n            "rollout_action_samples",\n        ],\n        labels={\n            "agent": "agent",\n            "final_fraction_action0": f"mean action 0 fraction over last {ACTION0_AVERAGE_LAST_N_LOGGED} logged",\n            "run_label": "run",\n        },\n        title=title,\n    )\n    fig.update_yaxes(range=[0, 1], title_text="action 0 fraction")\n    fig.update_layout(\n        template="plotly_white",\n        height=620,\n        width=1450,\n        bargap=0.18,\n        bargroupgap=0.04,\n        legend={"orientation": "v", "yanchor": "top", "y": 1, "xanchor": "left", "x": 1.01},\n        margin={"l": 70, "r": 340, "t": 90, "b": 70},\n    )\n    save_figure(fig, save_name)\n    if SHOW_FIGURES:\n        fig.show()\n    return fig\n\n\nfig_action0_fraction_ig15_all_runs = plot_action0_fraction_all_runs(\n    "intervention_gate_15",\n    f"Intervention gate 15: action 0 fraction by agent for all runs (mean of last {ACTION0_AVERAGE_LAST_N_LOGGED} logged)",\n    "final_action0_fraction_by_agent_all_runs_intervention_gate_15",\n)\nfig_action0_fraction_sparse16_all_runs = plot_action0_fraction_all_runs(\n    "phase4_sparse_control_16",\n    f"Phase4 sparse control 16: action 0 fraction by agent for all runs (mean of last {ACTION0_AVERAGE_LAST_N_LOGGED} logged)",\n    "final_action0_fraction_by_agent_all_runs_phase4_sparse_control_16",\n)\nfig_action0_fraction_hvg_all_runs = plot_action0_fraction_all_runs(\n    "heuristic_vs_gate_s0_s1_s2",\n    f"Heuristic vs gate s0/s1/s2: action 0 fraction by agent for all runs (mean of last {ACTION0_AVERAGE_LAST_N_LOGGED} logged)",\n    "final_action0_fraction_by_agent_all_runs_heuristic_vs_gate_s0_s1_s2",\n)\n'
 _CELL_ACTION0_SEED = 'def _seed_list(values):\n    return sorted(pd.Series(values).dropna().astype(int).unique().tolist())\n\n\ndef seed_aggregated_action0_rows():\n    if ACTION0_FINAL_LONG.empty:\n        return pd.DataFrame()\n    grouped = ACTION0_FINAL_LONG.groupby(\n        [\n            "experiment",\n            "comparison_group",\n            "family",\n            "family_label",\n            "design",\n            "control_axis",\n            "control_value",\n            "control_label",\n            "agent",\n        ],\n        dropna=False,\n        observed=True,\n        as_index=False,\n    ).agg(\n        mean_final_fraction_action0=("final_fraction_action0", "mean"),\n        std_final_fraction_action0=("final_fraction_action0", "std"),\n        mean_final_action0_count=("final_action0_count", "mean"),\n        std_final_action0_count=("final_action0_count", "std"),\n        n_seeds=("seed", "nunique"),\n        seeds=("seed", _seed_list),\n        runs=("run_name", lambda values: sorted(pd.Series(values).dropna().astype(str).unique().tolist())),\n    )\n    grouped["std_final_fraction_action0"] = grouped["std_final_fraction_action0"].fillna(0.0)\n    grouped["std_final_action0_count"] = grouped["std_final_action0_count"].fillna(0.0)\n    grouped["agent"] = pd.Categorical(grouped["agent"], categories=["agent_0", "agent_1", "agent_2"], ordered=True)\n    grouped["condition_label"] = grouped["family_label"]\n    return grouped.sort_values(["experiment", "control_value", "design", "family_label", "agent"])\n\n\nACTION0_SEED_AGG = seed_aggregated_action0_rows()\n# print(f"Seed-aggregated action-0 fraction by condition and agent (run mean of last {ACTION0_AVERAGE_LAST_N_LOGGED} logged):")\n# display(ACTION0_SEED_AGG)\n\n\ndef plot_action0_fraction_seed_aggregated(experiment, title, save_name):\n    data = ACTION0_SEED_AGG[ACTION0_SEED_AGG["experiment"] == experiment].copy()\n    if data.empty:\n        print(f"No seed-aggregated final action-0 data for {experiment}")\n        return None\n\n    data = data.sort_values(["control_value", "design", "condition_label", "agent"])\n    fig = px.bar(\n        data,\n        x="agent",\n        y="mean_final_fraction_action0",\n        color="condition_label",\n        error_y="std_final_fraction_action0",\n        barmode="group",\n        hover_data={\n            "condition_label": True,\n            "control_label": True,\n            "design": True,\n            "n_seeds": True,\n            "seeds": True,\n            "mean_final_action0_count": ":.0f",\n            "std_final_action0_count": ":.0f",\n            "mean_final_fraction_action0": ":.4f",\n            "std_final_fraction_action0": ":.4f",\n        },\n        labels={\n            "agent": "agent",\n            "mean_final_fraction_action0": "mean final action 0 fraction",\n            "condition_label": "condition",\n        },\n        title=title,\n    )\n\n    seed_points = ACTION0_FINAL_LONG[ACTION0_FINAL_LONG["experiment"] == experiment].copy()\n    if not seed_points.empty:\n        seed_points["condition_label"] = seed_points["family_label"]\n        seed_points = seed_points.sort_values(["control_value", "design", "condition_label", "agent", "seed"])\n        add_seed_point_overlay(\n            fig,\n            seed_points,\n            x_col="agent",\n            y_col="final_fraction_action0",\n            group_col="condition_label",\n            customdata_cols=[\n                "run_name",\n                "seed",\n                "condition_label",\n                "final_fraction_action0",\n                "final_action0_count",\n                "averaged_logged_points",\n            ],\n            hovertemplate=(\n                "seed run=%{customdata[0]}<br>"\n                "seed=%{customdata[1]}<br>"\n                "condition=%{customdata[2]}<br>"\n                "agent=%{x}<br>"\n                "seed action-0 fraction=%{y:.4f}<br>"\n                "action-0 count=%{customdata[4]}<br>"\n                "logged points=%{customdata[5]}<extra></extra>"\n            ),\n        )\n\n    fig.update_yaxes(range=[0, 1], title_text="mean final action 0 fraction")\n    fig.update_layout(\n        template="plotly_white",\n        height=620,\n        width=1450,\n        bargap=0.18,\n        bargroupgap=0.04,\n        legend={"orientation": "v", "yanchor": "top", "y": 1, "xanchor": "left", "x": 1.01},\n        margin={"l": 70, "r": 340, "t": 90, "b": 70},\n    )\n    save_figure(fig, save_name)\n    if SHOW_FIGURES:\n        fig.show()\n    return fig\n\n\nfig_action0_fraction_ig15_seed_agg = plot_action0_fraction_seed_aggregated(\n    "intervention_gate_15",\n    f"Intervention gate 15: seed-aggregated action 0 fraction by agent (run mean of last {ACTION0_AVERAGE_LAST_N_LOGGED} logged)",\n    "seed_aggregated_final_action0_fraction_by_agent_intervention_gate_15",\n)\nfig_action0_fraction_sparse16_seed_agg = plot_action0_fraction_seed_aggregated(\n    "phase4_sparse_control_16",\n    f"Phase4 sparse control 16: seed-aggregated action 0 fraction by agent (run mean of last {ACTION0_AVERAGE_LAST_N_LOGGED} logged)",\n    "seed_aggregated_final_action0_fraction_by_agent_phase4_sparse_control_16",\n)\nfig_action0_fraction_hvg_seed_agg = plot_action0_fraction_seed_aggregated(\n    "heuristic_vs_gate_s0_s1_s2",\n    f"Heuristic vs gate s0/s1/s2: seed-aggregated action 0 fraction by agent (run mean of last {ACTION0_AVERAGE_LAST_N_LOGGED} logged)",\n    "seed_aggregated_final_action0_fraction_by_agent_heuristic_vs_gate_s0_s1_s2",\n)\n'
-_CELL_SURVIVAL_ACTION = 'SURVIVAL_ACTION_BEHAVIOR_SMOOTH_WINDOW = 5\nSURVIVAL_METRIC_CANDIDATES = [\n    "test/charts/episodic_survival",\n    "test/episodic_survival",\n    "validation/episodic_survival",\n    "charts/episodic_survival",\n    "train_eval/charts/episodic_survival",\n    "train_eval/episodic_survival",\n]\n\ntry:\n    _seed_list\nexcept NameError:\n    def _seed_list(values):\n        return sorted(pd.Series(values).dropna().astype(int).unique().tolist())\n\n\ndef _survival_scale(values):\n    numeric = pd.to_numeric(values, errors="coerce")\n    max_value = numeric.max(skipna=True)\n    if pd.isna(max_value):\n        return 100.0\n    return 100.0 if max_value <= 1.5 else 1.0\n\n\ndef seed_aggregated_survival_rows():\n    frames = []\n    for run_id, run_history in history_wide.groupby("run_id", sort=False):\n        metric = next(\n            (\n                candidate for candidate in SURVIVAL_METRIC_CANDIDATES\n                if candidate in run_history.columns and run_history[candidate].notna().any()\n            ),\n            None,\n        )\n        if metric is None:\n            continue\n\n        values = pd.to_numeric(run_history[metric], errors="coerce")\n        frame = run_history[[\n            "run_name",\n            "run_id",\n            "experiment",\n            "comparison_group",\n            "family",\n            "family_label",\n            "seed",\n            "design",\n            "control_axis",\n            "control_value",\n            "control_label",\n            "entropy_schedule",\n            "_step",\n            "step_millions",\n        ]].copy()\n        frame["survival_pct"] = values * _survival_scale(values)\n        frame["metric_used"] = metric\n        frames.append(frame.dropna(subset=["survival_pct", "_step", "step_millions"]))\n\n    if not frames:\n        return pd.DataFrame()\n\n    survival = pd.concat(frames, ignore_index=True, sort=False)\n    grouped = survival.groupby(\n        [\n            "experiment",\n            "comparison_group",\n            "family",\n            "family_label",\n            "design",\n            "control_axis",\n            "control_value",\n            "control_label",\n            "entropy_schedule",\n            "_step",\n            "step_millions",\n        ],\n        dropna=False,\n        as_index=False,\n    ).agg(\n        mean_survival_pct=("survival_pct", "mean"),\n        std_survival_pct=("survival_pct", "std"),\n        n_seeds=("run_id", "nunique"),\n        seeds=("seed", _seed_list),\n        runs=("run_name", lambda values: sorted(pd.Series(values).dropna().astype(str).unique().tolist())),\n        metrics_used=("metric_used", lambda values: sorted(pd.Series(values).dropna().astype(str).unique().tolist())),\n    )\n    grouped["std_survival_pct"] = grouped["std_survival_pct"].fillna(0.0)\n    grouped["condition_label"] = grouped["family_label"]\n    grouped = grouped.sort_values(["experiment", "control_value", "design", "family_label", "_step"])\n\n    if SURVIVAL_ACTION_BEHAVIOR_SMOOTH_WINDOW and int(SURVIVAL_ACTION_BEHAVIOR_SMOOTH_WINDOW) > 1:\n        grouped["mean_survival_pct_smooth"] = grouped.groupby(\n            ["experiment", "family"],\n            dropna=False,\n        )["mean_survival_pct"].transform(\n            lambda values: values.rolling(int(SURVIVAL_ACTION_BEHAVIOR_SMOOTH_WINDOW), min_periods=1).mean()\n        )\n        grouped["std_survival_pct_smooth"] = grouped.groupby(\n            ["experiment", "family"],\n            dropna=False,\n        )["std_survival_pct"].transform(\n            lambda values: values.rolling(int(SURVIVAL_ACTION_BEHAVIOR_SMOOTH_WINDOW), min_periods=1).mean()\n        )\n    else:\n        grouped["mean_survival_pct_smooth"] = grouped["mean_survival_pct"]\n        grouped["std_survival_pct_smooth"] = grouped["std_survival_pct"]\n    return grouped\n\n\nSURVIVAL_SEED_AGG = seed_aggregated_survival_rows()\n# print("Seed-aggregated survival time series:")\n# display(SURVIVAL_SEED_AGG.groupby(["experiment", "family_label"], dropna=False).agg(\n#     points=("_step", "count"),\n#     n_seeds=("n_seeds", "max"),\n#     seeds=("seeds", "first"),\n#     metrics=("metrics_used", "first"),\n# ).reset_index())\n\n\nACTION_BEHAVIOR_SMOOTH_WINDOW = 5\n\n\ndef seed_aggregated_action_behavior_rows():\n    behavior = FEATURE_LONG[FEATURE_LONG["feature_group"].isin(["agent_action0", "agent_non_idle"])].copy()\n    if behavior.empty:\n        return pd.DataFrame()\n\n    # First collapse the three agents inside each run, so each run contributes one\n    # action-0 and one non-idle curve to the seed aggregate.\n    per_run = behavior.groupby(\n        [\n            "run_name",\n            "run_id",\n            "experiment",\n            "comparison_group",\n            "family",\n            "family_label",\n            "seed",\n            "design",\n            "control_axis",\n            "control_value",\n            "control_label",\n            "entropy_schedule",\n            "feature_group",\n            "_step",\n            "step_millions",\n        ],\n        dropna=False,\n        as_index=False,\n    ).agg(\n        run_mean_value=("value", "mean"),\n        agents=("entity", lambda values: sorted(pd.Series(values).dropna().astype(str).unique().tolist())),\n    )\n\n    grouped = per_run.groupby(\n        [\n            "experiment",\n            "comparison_group",\n            "family",\n            "family_label",\n            "design",\n            "control_axis",\n            "control_value",\n            "control_label",\n            "entropy_schedule",\n            "feature_group",\n            "_step",\n            "step_millions",\n        ],\n        dropna=False,\n        as_index=False,\n    ).agg(\n        mean_value=("run_mean_value", "mean"),\n        std_value=("run_mean_value", "std"),\n        n_seeds=("run_id", "nunique"),\n        seeds=("seed", _seed_list),\n        runs=("run_name", lambda values: sorted(pd.Series(values).dropna().astype(str).unique().tolist())),\n    )\n    grouped["std_value"] = grouped["std_value"].fillna(0.0)\n    grouped["condition_label"] = grouped["family_label"]\n    grouped["metric_label"] = grouped["feature_group"].map({\n        "agent_action0": "action 0 fraction",\n        "agent_non_idle": "non-idle fraction",\n    })\n    grouped = grouped.sort_values(["experiment", "control_value", "design", "family_label", "feature_group", "_step"])\n\n    if ACTION_BEHAVIOR_SMOOTH_WINDOW and int(ACTION_BEHAVIOR_SMOOTH_WINDOW) > 1:\n        grouped["mean_value_smooth"] = grouped.groupby(\n            ["experiment", "family", "feature_group"],\n            dropna=False,\n        )["mean_value"].transform(lambda values: values.rolling(int(ACTION_BEHAVIOR_SMOOTH_WINDOW), min_periods=1).mean())\n        grouped["std_value_smooth"] = grouped.groupby(\n            ["experiment", "family", "feature_group"],\n            dropna=False,\n        )["std_value"].transform(lambda values: values.rolling(int(ACTION_BEHAVIOR_SMOOTH_WINDOW), min_periods=1).mean())\n    else:\n        grouped["mean_value_smooth"] = grouped["mean_value"]\n        grouped["std_value_smooth"] = grouped["std_value"]\n    return grouped\n\n\nACTION_BEHAVIOR_SEED_AGG = seed_aggregated_action_behavior_rows()\n# print("Seed-aggregated action behavior time series:")\n# display(ACTION_BEHAVIOR_SEED_AGG.groupby(["experiment", "family_label", "metric_label"], dropna=False).agg(\n#     points=("_step", "count"),\n#     n_seeds=("n_seeds", "max"),\n#     seeds=("seeds", "first"),\n# ).reset_index())\n\n\ndef plot_survival_vs_action_behavior(experiment, title, save_name):\n    survival = SURVIVAL_SEED_AGG[SURVIVAL_SEED_AGG["experiment"] == experiment].copy()\n    behavior = ACTION_BEHAVIOR_SEED_AGG[ACTION_BEHAVIOR_SEED_AGG["experiment"] == experiment].copy()\n    if survival.empty or behavior.empty:\n        print(f"Missing survival or action-behavior data for {experiment}")\n        return None\n\n    conditions = pd.concat([\n        survival[["family", "condition_label", "control_value", "design"]],\n        behavior[["family", "condition_label", "control_value", "design"]],\n    ], ignore_index=True).drop_duplicates()\n    conditions = conditions.sort_values(["control_value", "design", "condition_label"])\n    palette = px.colors.qualitative.Plotly + px.colors.qualitative.Dark24\n    colors = {row.family: palette[idx % len(palette)] for idx, row in enumerate(conditions.itertuples(index=False))}\n\n    fig = make_subplots(\n        rows=3,\n        cols=1,\n        shared_xaxes=True,\n        vertical_spacing=0.055,\n        subplot_titles=(\n            "Episodic survival",\n            "Mean action-0 fraction across agents",\n            "Mean non-idle fraction across agents",\n        ),\n    )\n\n    for _, row in conditions.iterrows():\n        family = row["family"]\n        label = row["condition_label"]\n        color = colors[family]\n\n        survival_data = survival[survival["family"] == family].sort_values("step_millions")\n        if not survival_data.empty:\n            fig.add_trace(\n                go.Scatter(\n                    x=survival_data["step_millions"],\n                    y=survival_data["mean_survival_pct_smooth"],\n                    mode="lines",\n                    name=label,\n                    legendgroup=family,\n                    showlegend=True,\n                    line={"color": color, "width": 3},\n                    customdata=np.stack([\n                        survival_data["n_seeds"],\n                        survival_data["seeds"].astype(str),\n                        survival_data["metrics_used"].astype(str),\n                    ], axis=-1),\n                    hovertemplate=(\n                        f"<b>{label}</b><br>"\n                        "step=%{x:.2f}M<br>"\n                        "survival=%{y:.2f}%<br>"\n                        "seeds=%{customdata[1]}<br>"\n                        "n_seeds=%{customdata[0]}<br>"\n                        "metric=%{customdata[2]}<extra></extra>"\n                    ),\n                ),\n                row=1,\n                col=1,\n            )\n\n        for feature_group, row_idx in [("agent_action0", 2), ("agent_non_idle", 3)]:\n            metric_data = behavior[(behavior["family"] == family) & (behavior["feature_group"] == feature_group)].sort_values("step_millions")\n            if metric_data.empty:\n                continue\n            fig.add_trace(\n                go.Scatter(\n                    x=metric_data["step_millions"],\n                    y=metric_data["mean_value_smooth"],\n                    mode="lines",\n                    name=label,\n                    legendgroup=family,\n                    showlegend=False,\n                    line={"color": color, "width": 2.6},\n                    customdata=np.stack([\n                        metric_data["n_seeds"],\n                        metric_data["seeds"].astype(str),\n                        metric_data["metric_label"].astype(str),\n                    ], axis=-1),\n                    hovertemplate=(\n                        f"<b>{label}</b><br>"\n                        "step=%{x:.2f}M<br>"\n                        "%{customdata[2]}=%{y:.4f}<br>"\n                        "seeds=%{customdata[1]}<br>"\n                        "n_seeds=%{customdata[0]}<extra></extra>"\n                    ),\n                ),\n                row=row_idx,\n                col=1,\n            )\n\n    fig.update_layout(\n        title=title,\n        template="plotly_white",\n        height=940,\n        width=1450,\n        hovermode="x unified",\n        legend={"orientation": "v", "yanchor": "top", "y": 1, "xanchor": "left", "x": 1.01},\n        margin={"l": 80, "r": 340, "t": 95, "b": 70},\n    )\n    fig.update_yaxes(title_text="survival (%)", range=[0, 105], row=1, col=1)\n    fig.update_yaxes(title_text="action 0 fraction", range=[0, 1], row=2, col=1)\n    fig.update_yaxes(title_text="non-idle fraction", range=[0, 1], row=3, col=1)\n    fig.update_xaxes(title_text="steps (M)", row=3, col=1)\n    save_figure(fig, save_name)\n    if SHOW_FIGURES:\n        fig.show()\n    return fig\n\n\nfig_survival_vs_action_ig15 = plot_survival_vs_action_behavior(\n    "intervention_gate_15",\n    "Intervention gate 15: survival vs action behavior over training",\n    "survival_vs_action_behavior_intervention_gate_15",\n)\nfig_survival_vs_action_sparse16 = plot_survival_vs_action_behavior(\n    "phase4_sparse_control_16",\n    "Phase4 sparse control 16: survival vs action behavior over training",\n    "survival_vs_action_behavior_phase4_sparse_control_16",\n)\nfig_survival_vs_action_hvg = plot_survival_vs_action_behavior(\n    "heuristic_vs_gate_s0_s1_s2",\n    "Heuristic vs gate s0/s1/s2: survival vs action behavior over training",\n    "survival_vs_action_behavior_heuristic_vs_gate_s0_s1_s2",\n)\n'
+_CELL_SURVIVAL_ACTION = 'SURVIVAL_ACTION_BEHAVIOR_SMOOTH_WINDOW = 5\nSURVIVAL_METRIC_CANDIDATES = [\n    "test/charts/episodic_survival",\n    "test/episodic_survival",\n    "validation/episodic_survival",\n    "charts/episodic_survival",\n    "train_eval/charts/episodic_survival",\n    "train_eval/episodic_survival",\n]\n\ntry:\n    _seed_list\nexcept NameError:\n    def _seed_list(values):\n        return sorted(pd.Series(values).dropna().astype(int).unique().tolist())\n\n\ndef _survival_scale(values):\n    numeric = pd.to_numeric(values, errors="coerce")\n    max_value = numeric.max(skipna=True)\n    if pd.isna(max_value):\n        return 100.0\n    return 100.0 if max_value <= 1.5 else 1.0\n\n\ndef seed_aggregated_survival_rows():\n    frames = []\n    for run_id, run_history in history_wide.groupby("run_id", sort=False):\n        metric = next(\n            (\n                candidate for candidate in SURVIVAL_METRIC_CANDIDATES\n                if candidate in run_history.columns and run_history[candidate].notna().any()\n            ),\n            None,\n        )\n        if metric is None:\n            continue\n\n        values = pd.to_numeric(run_history[metric], errors="coerce")\n        frame = run_history[[\n            "run_name",\n            "run_id",\n            "experiment",\n            "comparison_group",\n            "family",\n            "family_label",\n            "seed",\n            "design",\n            "control_axis",\n            "control_value",\n            "control_label",\n            "entropy_schedule",\n            "_step",\n            "step_millions",\n        ]].copy()\n        frame["survival_pct"] = values * _survival_scale(values)\n        frame["metric_used"] = metric\n        frames.append(frame.dropna(subset=["survival_pct", "_step", "step_millions"]))\n\n    if not frames:\n        return pd.DataFrame()\n\n    survival = pd.concat(frames, ignore_index=True, sort=False)\n    grouped = survival.groupby(\n        [\n            "experiment",\n            "comparison_group",\n            "family",\n            "family_label",\n            "design",\n            "control_axis",\n            "control_value",\n            "control_label",\n            "entropy_schedule",\n            "_step",\n            "step_millions",\n        ],\n        dropna=False,\n        as_index=False,\n    ).agg(\n        mean_survival_pct=("survival_pct", "mean"),\n        std_survival_pct=("survival_pct", "std"),\n        n_seeds=("run_id", "nunique"),\n        seeds=("seed", _seed_list),\n        runs=("run_name", lambda values: sorted(pd.Series(values).dropna().astype(str).unique().tolist())),\n        metrics_used=("metric_used", lambda values: sorted(pd.Series(values).dropna().astype(str).unique().tolist())),\n    )\n    grouped["std_survival_pct"] = grouped["std_survival_pct"].fillna(0.0)\n    grouped["condition_label"] = grouped["family_label"]\n    grouped = grouped.sort_values(["experiment", "control_value", "design", "family_label", "_step"])\n\n    if SURVIVAL_ACTION_BEHAVIOR_SMOOTH_WINDOW and int(SURVIVAL_ACTION_BEHAVIOR_SMOOTH_WINDOW) > 1:\n        grouped["mean_survival_pct_smooth"] = grouped.groupby(\n            ["experiment", "family"],\n            dropna=False,\n        )["mean_survival_pct"].transform(\n            lambda values: values.rolling(int(SURVIVAL_ACTION_BEHAVIOR_SMOOTH_WINDOW), min_periods=1).mean()\n        )\n        grouped["std_survival_pct_smooth"] = grouped.groupby(\n            ["experiment", "family"],\n            dropna=False,\n        )["std_survival_pct"].transform(\n            lambda values: values.rolling(int(SURVIVAL_ACTION_BEHAVIOR_SMOOTH_WINDOW), min_periods=1).mean()\n        )\n    else:\n        grouped["mean_survival_pct_smooth"] = grouped["mean_survival_pct"]\n        grouped["std_survival_pct_smooth"] = grouped["std_survival_pct"]\n    return grouped\n\n\nSURVIVAL_SEED_AGG = seed_aggregated_survival_rows()\n# print("Seed-aggregated survival time series:")\n# display(SURVIVAL_SEED_AGG.groupby(["experiment", "family_label"], dropna=False).agg(\n#     points=("_step", "count"),\n#     n_seeds=("n_seeds", "max"),\n#     seeds=("seeds", "first"),\n#     metrics=("metrics_used", "first"),\n# ).reset_index())\n\n\nACTION_BEHAVIOR_SMOOTH_WINDOW = 5\n\n\ndef seed_aggregated_action_behavior_rows():\n    behavior = FEATURE_LONG[FEATURE_LONG["feature_group"].eq("agent_action0")].copy()\n    if behavior.empty:\n        return pd.DataFrame()\n\n    # First collapse the three agents inside each run, so each run contributes one\n    # action-0 curve to the seed aggregate.\n    per_run = behavior.groupby(\n        [\n            "run_name",\n            "run_id",\n            "experiment",\n            "comparison_group",\n            "family",\n            "family_label",\n            "seed",\n            "design",\n            "control_axis",\n            "control_value",\n            "control_label",\n            "entropy_schedule",\n            "feature_group",\n            "_step",\n            "step_millions",\n        ],\n        dropna=False,\n        as_index=False,\n    ).agg(\n        run_mean_value=("value", "mean"),\n        agents=("entity", lambda values: sorted(pd.Series(values).dropna().astype(str).unique().tolist())),\n    )\n\n    grouped = per_run.groupby(\n        [\n            "experiment",\n            "comparison_group",\n            "family",\n            "family_label",\n            "design",\n            "control_axis",\n            "control_value",\n            "control_label",\n            "entropy_schedule",\n            "feature_group",\n            "_step",\n            "step_millions",\n        ],\n        dropna=False,\n        as_index=False,\n    ).agg(\n        mean_value=("run_mean_value", "mean"),\n        std_value=("run_mean_value", "std"),\n        n_seeds=("run_id", "nunique"),\n        seeds=("seed", _seed_list),\n        runs=("run_name", lambda values: sorted(pd.Series(values).dropna().astype(str).unique().tolist())),\n    )\n    grouped["std_value"] = grouped["std_value"].fillna(0.0)\n    grouped["condition_label"] = grouped["family_label"]\n    grouped["metric_label"] = grouped["feature_group"].map({\n        "agent_action0": "action 0 fraction",\n    })\n    grouped = grouped.sort_values(["experiment", "control_value", "design", "family_label", "feature_group", "_step"])\n\n    if ACTION_BEHAVIOR_SMOOTH_WINDOW and int(ACTION_BEHAVIOR_SMOOTH_WINDOW) > 1:\n        grouped["mean_value_smooth"] = grouped.groupby(\n            ["experiment", "family", "feature_group"],\n            dropna=False,\n        )["mean_value"].transform(lambda values: values.rolling(int(ACTION_BEHAVIOR_SMOOTH_WINDOW), min_periods=1).mean())\n        grouped["std_value_smooth"] = grouped.groupby(\n            ["experiment", "family", "feature_group"],\n            dropna=False,\n        )["std_value"].transform(lambda values: values.rolling(int(ACTION_BEHAVIOR_SMOOTH_WINDOW), min_periods=1).mean())\n    else:\n        grouped["mean_value_smooth"] = grouped["mean_value"]\n        grouped["std_value_smooth"] = grouped["std_value"]\n    return grouped\n\n\nACTION_BEHAVIOR_SEED_AGG = seed_aggregated_action_behavior_rows()\n# print("Seed-aggregated action behavior time series:")\n# display(ACTION_BEHAVIOR_SEED_AGG.groupby(["experiment", "family_label", "metric_label"], dropna=False).agg(\n#     points=("_step", "count"),\n#     n_seeds=("n_seeds", "max"),\n#     seeds=("seeds", "first"),\n# ).reset_index())\n\n\ndef plot_survival_vs_action_behavior(experiment, title, save_name):\n    survival = SURVIVAL_SEED_AGG[SURVIVAL_SEED_AGG["experiment"] == experiment].copy()\n    behavior = ACTION_BEHAVIOR_SEED_AGG[ACTION_BEHAVIOR_SEED_AGG["experiment"] == experiment].copy()\n    if survival.empty or behavior.empty:\n        print(f"Missing survival or action-behavior data for {experiment}")\n        return None\n\n    conditions = pd.concat([\n        survival[["family", "condition_label", "control_value", "design"]],\n        behavior[["family", "condition_label", "control_value", "design"]],\n    ], ignore_index=True).drop_duplicates()\n    conditions = conditions.sort_values(["control_value", "design", "condition_label"])\n    palette = px.colors.qualitative.Plotly + px.colors.qualitative.Dark24\n    colors = {row.family: palette[idx % len(palette)] for idx, row in enumerate(conditions.itertuples(index=False))}\n\n    fig = make_subplots(\n        rows=2,\n        cols=1,\n        shared_xaxes=True,\n        vertical_spacing=0.075,\n        subplot_titles=(\n            "Episodic survival",\n            "Mean action-0 fraction across agents",\n        ),\n    )\n\n    for _, row in conditions.iterrows():\n        family = row["family"]\n        label = row["condition_label"]\n        color = colors[family]\n\n        survival_data = survival[survival["family"] == family].sort_values("step_millions")\n        if not survival_data.empty:\n            fig.add_trace(\n                go.Scatter(\n                    x=survival_data["step_millions"],\n                    y=survival_data["mean_survival_pct_smooth"],\n                    mode="lines",\n                    name=label,\n                    legendgroup=family,\n                    showlegend=True,\n                    line={"color": color, "width": 3},\n                    customdata=np.stack([\n                        survival_data["n_seeds"],\n                        survival_data["seeds"].astype(str),\n                        survival_data["metrics_used"].astype(str),\n                    ], axis=-1),\n                    hovertemplate=(\n                        f"<b>{label}</b><br>"\n                        "step=%{x:.2f}M<br>"\n                        "survival=%{y:.2f}%<br>"\n                        "seeds=%{customdata[1]}<br>"\n                        "n_seeds=%{customdata[0]}<br>"\n                        "metric=%{customdata[2]}<extra></extra>"\n                    ),\n                ),\n                row=1,\n                col=1,\n            )\n\n        for feature_group, row_idx in [("agent_action0", 2)]:\n            metric_data = behavior[(behavior["family"] == family) & (behavior["feature_group"] == feature_group)].sort_values("step_millions")\n            if metric_data.empty:\n                continue\n            fig.add_trace(\n                go.Scatter(\n                    x=metric_data["step_millions"],\n                    y=metric_data["mean_value_smooth"],\n                    mode="lines",\n                    name=label,\n                    legendgroup=family,\n                    showlegend=False,\n                    line={"color": color, "width": 2.6},\n                    customdata=np.stack([\n                        metric_data["n_seeds"],\n                        metric_data["seeds"].astype(str),\n                        metric_data["metric_label"].astype(str),\n                    ], axis=-1),\n                    hovertemplate=(\n                        f"<b>{label}</b><br>"\n                        "step=%{x:.2f}M<br>"\n                        "%{customdata[2]}=%{y:.4f}<br>"\n                        "seeds=%{customdata[1]}<br>"\n                        "n_seeds=%{customdata[0]}<extra></extra>"\n                    ),\n                ),\n                row=row_idx,\n                col=1,\n            )\n\n    fig.update_layout(\n        title=title,\n        template="plotly_white",\n        height=760,\n        width=1450,\n        hovermode="x unified",\n        legend={"orientation": "v", "yanchor": "top", "y": 1, "xanchor": "left", "x": 1.01},\n        margin={"l": 80, "r": 340, "t": 95, "b": 70},\n    )\n    fig.update_yaxes(title_text="survival (%)", range=[0, 105], row=1, col=1)\n    fig.update_yaxes(title_text="action 0 fraction", range=[0, 1], row=2, col=1)\n    fig.update_xaxes(title_text="steps (M)", row=2, col=1)\n    save_figure(fig, save_name)\n    if SHOW_FIGURES:\n        fig.show()\n    return fig\n\n\nfig_survival_vs_action_ig15 = plot_survival_vs_action_behavior(\n    "intervention_gate_15",\n    "Intervention gate 15: survival vs action behavior over training",\n    "survival_vs_action_behavior_intervention_gate_15",\n)\nfig_survival_vs_action_sparse16 = plot_survival_vs_action_behavior(\n    "phase4_sparse_control_16",\n    "Phase4 sparse control 16: survival vs action behavior over training",\n    "survival_vs_action_behavior_phase4_sparse_control_16",\n)\nfig_survival_vs_action_hvg = plot_survival_vs_action_behavior(\n    "heuristic_vs_gate_s0_s1_s2",\n    "Heuristic vs gate s0/s1/s2: survival vs action behavior over training",\n    "survival_vs_action_behavior_heuristic_vs_gate_s0_s1_s2",\n)\n'
 _CELL_ENTROPY_ACTION0 = 'ENTROPY_ACTION0_SMOOTH_WINDOW = 5\nENTROPY_ACTION0_FINAL_LAST_N_LOGGED = 5\n\n\ndef entropy_action0_run_rows():\n    data = FEATURE_LONG[FEATURE_LONG["feature_group"].isin(["agent_action0", "agent_entropy"])].copy()\n    if data.empty:\n        return pd.DataFrame()\n\n    group_cols = [\n        "run_name",\n        "run_id",\n        "experiment",\n        "comparison_group",\n        "family",\n        "family_label",\n        "seed",\n        "design",\n        "control_axis",\n        "control_value",\n        "control_label",\n        "entropy_schedule",\n        "feature_group",\n        "_step",\n        "step_millions",\n    ]\n    per_run = data.groupby(group_cols, dropna=False, as_index=False).agg(\n        run_mean_value=("value", "mean"),\n        run_std_agent_value=("value", "std"),\n        n_agents_observed=("entity", "nunique"),\n        agents=("entity", lambda values: sorted(pd.Series(values).dropna().astype(str).unique().tolist())),\n    )\n    per_run["run_std_agent_value"] = per_run["run_std_agent_value"].fillna(0.0)\n    per_run["metric_label"] = per_run["feature_group"].map({\n        "agent_action0": "action 0 fraction",\n        "agent_entropy": "policy entropy",\n    })\n    return per_run.sort_values(["experiment", "control_value", "design", "family_label", "feature_group", "_step"])\n\n\ndef seed_aggregated_entropy_action0_rows():\n    if ENTROPY_ACTION0_RUN_LONG.empty:\n        return pd.DataFrame()\n\n    group_cols = [\n        "experiment",\n        "comparison_group",\n        "family",\n        "family_label",\n        "design",\n        "control_axis",\n        "control_value",\n        "control_label",\n        "entropy_schedule",\n        "feature_group",\n        "metric_label",\n        "_step",\n        "step_millions",\n    ]\n    grouped = ENTROPY_ACTION0_RUN_LONG.groupby(group_cols, dropna=False, as_index=False).agg(\n        mean_value=("run_mean_value", "mean"),\n        std_value=("run_mean_value", "std"),\n        mean_agent_spread=("run_std_agent_value", "mean"),\n        min_agents_observed=("n_agents_observed", "min"),\n        n_seeds=("run_id", "nunique"),\n        seeds=("seed", _seed_list),\n        runs=("run_name", lambda values: sorted(pd.Series(values).dropna().astype(str).unique().tolist())),\n    )\n    grouped["std_value"] = grouped["std_value"].fillna(0.0)\n    grouped["mean_agent_spread"] = grouped["mean_agent_spread"].fillna(0.0)\n    grouped["condition_label"] = grouped["family_label"]\n    grouped = grouped.sort_values(["experiment", "control_value", "design", "family_label", "feature_group", "_step"])\n\n    if ENTROPY_ACTION0_SMOOTH_WINDOW and int(ENTROPY_ACTION0_SMOOTH_WINDOW) > 1:\n        for column in ["mean_value", "std_value", "mean_agent_spread"]:\n            grouped[f"{column}_smooth"] = grouped.groupby(\n                ["experiment", "family", "feature_group"],\n                dropna=False,\n            )[column].transform(lambda values: values.rolling(int(ENTROPY_ACTION0_SMOOTH_WINDOW), min_periods=1).mean())\n    else:\n        for column in ["mean_value", "std_value", "mean_agent_spread"]:\n            grouped[f"{column}_smooth"] = grouped[column]\n    return grouped\n\n\ndef seed_aggregated_final_entropy_action0_rows():\n    if ENTROPY_ACTION0_RUN_LONG.empty:\n        return pd.DataFrame()\n\n    data = ENTROPY_ACTION0_RUN_LONG.sort_values(["run_id", "feature_group", "_step"]).copy()\n    data = data.groupby(["run_id", "feature_group"], dropna=False).tail(int(ENTROPY_ACTION0_FINAL_LAST_N_LOGGED))\n    per_run_cols = [\n        "run_name",\n        "run_id",\n        "experiment",\n        "comparison_group",\n        "family",\n        "family_label",\n        "seed",\n        "design",\n        "control_axis",\n        "control_value",\n        "control_label",\n        "entropy_schedule",\n        "feature_group",\n    ]\n    per_run = data.groupby(per_run_cols, dropna=False, as_index=False).agg(\n        final_value=("run_mean_value", "mean"),\n        final_agent_spread=("run_std_agent_value", "mean"),\n        final_step_millions=("step_millions", "max"),\n        min_agents_observed=("n_agents_observed", "min"),\n        averaged_logged_points=("run_mean_value", "count"),\n    )\n\n    index_cols = [col for col in per_run_cols if col != "feature_group"]\n    values = per_run.pivot_table(index=index_cols, columns="feature_group", values="final_value", aggfunc="mean").reset_index()\n    spreads = per_run.pivot_table(index=index_cols, columns="feature_group", values="final_agent_spread", aggfunc="mean").reset_index()\n    counts = per_run.groupby(index_cols, dropna=False, as_index=False).agg(\n        final_step_millions=("final_step_millions", "max"),\n        min_agents_observed=("min_agents_observed", "min"),\n        min_averaged_logged_points=("averaged_logged_points", "min"),\n    )\n\n    for column in ["agent_action0", "agent_entropy"]:\n        if column not in values.columns:\n            values[column] = np.nan\n        if column not in spreads.columns:\n            spreads[column] = np.nan\n    values = values.rename(columns={\n        "agent_action0": "final_action0_fraction",\n        "agent_entropy": "final_entropy",\n    })\n    spreads = spreads.rename(columns={\n        "agent_action0": "final_action0_agent_spread",\n        "agent_entropy": "final_entropy_agent_spread",\n    })\n    spread_cols = index_cols + ["final_action0_agent_spread", "final_entropy_agent_spread"]\n    per_run_wide = values.merge(spreads[spread_cols], on=index_cols, how="left").merge(counts, on=index_cols, how="left")\n    per_run_wide = per_run_wide.dropna(subset=["final_action0_fraction", "final_entropy"], how="any")\n    if per_run_wide.empty:\n        return pd.DataFrame()\n\n    grouped = per_run_wide.groupby(\n        [\n            "experiment",\n            "comparison_group",\n            "family",\n            "family_label",\n            "design",\n            "control_axis",\n            "control_value",\n            "control_label",\n            "entropy_schedule",\n        ],\n        dropna=False,\n        as_index=False,\n    ).agg(\n        mean_final_action0_fraction=("final_action0_fraction", "mean"),\n        std_final_action0_fraction=("final_action0_fraction", "std"),\n        mean_final_entropy=("final_entropy", "mean"),\n        std_final_entropy=("final_entropy", "std"),\n        mean_final_action0_agent_spread=("final_action0_agent_spread", "mean"),\n        mean_final_entropy_agent_spread=("final_entropy_agent_spread", "mean"),\n        mean_final_step_millions=("final_step_millions", "mean"),\n        min_agents_observed=("min_agents_observed", "min"),\n        min_averaged_logged_points=("min_averaged_logged_points", "min"),\n        n_seeds=("run_id", "nunique"),\n        seeds=("seed", _seed_list),\n        runs=("run_name", lambda values: sorted(pd.Series(values).dropna().astype(str).unique().tolist())),\n    )\n    for column in ["std_final_action0_fraction", "std_final_entropy"]:\n        grouped[column] = grouped[column].fillna(0.0)\n    grouped["condition_label"] = grouped["family_label"]\n    return grouped.sort_values(["experiment", "control_value", "design", "family_label"])\n\n\nENTROPY_ACTION0_RUN_LONG = entropy_action0_run_rows()\nENTROPY_ACTION0_SEED_AGG = seed_aggregated_entropy_action0_rows()\nENTROPY_ACTION0_FINAL_SEED_AGG = seed_aggregated_final_entropy_action0_rows()\n\n# print("Seed-aggregated action-0 vs entropy time series:")\n# if ENTROPY_ACTION0_SEED_AGG.empty:\n#     print("No action-0/entropy metrics found.")\n# else:\n#     display(ENTROPY_ACTION0_SEED_AGG.groupby(["experiment", "family_label", "metric_label"], dropna=False).agg(\n#         points=("_step", "count"),\n#         n_seeds=("n_seeds", "max"),\n#         seeds=("seeds", "first"),\n#         min_agents_observed=("min_agents_observed", "min"),\n#     ).reset_index())\n\n# print(f"Seed-aggregated final action-0 vs entropy, averaged over last {ENTROPY_ACTION0_FINAL_LAST_N_LOGGED} logged points:")\n# if ENTROPY_ACTION0_FINAL_SEED_AGG.empty:\n#     print("No final action-0/entropy summary available.")\n# else:\n#     display(ENTROPY_ACTION0_FINAL_SEED_AGG[[\n#         "experiment",\n#         "family_label",\n#         "mean_final_action0_fraction",\n#         "std_final_action0_fraction",\n#         "mean_final_entropy",\n#         "std_final_entropy",\n#         "n_seeds",\n#         "seeds",\n#     ]])\n\n\ndef plot_entropy_action0_timeseries(experiment, title, save_name):\n    data = ENTROPY_ACTION0_SEED_AGG[ENTROPY_ACTION0_SEED_AGG["experiment"] == experiment].copy()\n    if data.empty:\n        print(f"No action-0/entropy time-series data for {experiment}")\n        return None\n\n    conditions = data[["family", "condition_label", "control_value", "design"]].drop_duplicates()\n    conditions = conditions.sort_values(["control_value", "design", "condition_label"])\n    palette = px.colors.qualitative.Plotly + px.colors.qualitative.Dark24\n    colors = {row.family: palette[idx % len(palette)] for idx, row in enumerate(conditions.itertuples(index=False))}\n\n    fig = make_subplots(\n        rows=2,\n        cols=1,\n        shared_xaxes=True,\n        vertical_spacing=0.075,\n        subplot_titles=(\n            "Mean action-0 fraction across agents",\n            "Mean policy entropy across agents",\n        ),\n    )\n    for _, condition in conditions.iterrows():\n        family = condition["family"]\n        label = condition["condition_label"]\n        color = colors[family]\n        for feature_group, row_idx in [("agent_action0", 1), ("agent_entropy", 2)]:\n            metric_data = data[(data["family"] == family) & (data["feature_group"] == feature_group)].sort_values("step_millions")\n            if metric_data.empty:\n                continue\n            fig.add_trace(\n                go.Scatter(\n                    x=metric_data["step_millions"],\n                    y=metric_data["mean_value_smooth"],\n                    mode="lines",\n                    name=label,\n                    legendgroup=family,\n                    showlegend=row_idx == 1,\n                    line={"color": color, "width": 3 if row_idx == 1 else 2.8},\n                    customdata=np.stack([\n                        metric_data["std_value_smooth"],\n                        metric_data["mean_agent_spread_smooth"],\n                        metric_data["n_seeds"],\n                        metric_data["seeds"].astype(str),\n                        metric_data["metric_label"].astype(str),\n                    ], axis=-1),\n                    hovertemplate=(\n                        f"<b>{label}</b><br>"\n                        "step=%{x:.2f}M<br>"\n                        "%{customdata[4]}=%{y:.4f}<br>"\n                        "std across seeds=%{customdata[0]:.4f}<br>"\n                        "mean agent spread=%{customdata[1]:.4f}<br>"\n                        "seeds=%{customdata[3]}<br>"\n                        "n_seeds=%{customdata[2]}<extra></extra>"\n                    ),\n                ),\n                row=row_idx,\n                col=1,\n            )\n\n    fig.update_layout(\n        title=title,\n        template="plotly_white",\n        height=780,\n        width=1450,\n        hovermode="x unified",\n        legend={"orientation": "v", "yanchor": "top", "y": 1, "xanchor": "left", "x": 1.01},\n        margin={"l": 80, "r": 360, "t": 95, "b": 70},\n    )\n    fig.update_yaxes(title_text="action-0 fraction", range=[0, 1], row=1, col=1)\n    fig.update_yaxes(title_text="entropy", row=2, col=1)\n    fig.update_xaxes(title_text="steps (M)", row=2, col=1)\n    save_figure(fig, save_name)\n    if SHOW_FIGURES:\n        fig.show()\n    return fig\n\n\ndef plot_final_action0_entropy_scatter(experiment, title, save_name):\n    data = ENTROPY_ACTION0_FINAL_SEED_AGG[ENTROPY_ACTION0_FINAL_SEED_AGG["experiment"] == experiment].copy()\n    if data.empty:\n        print(f"No final action-0/entropy data for {experiment}")\n        return None\n\n    data = data.sort_values(["control_value", "design", "condition_label"])\n    fig = px.scatter(\n        data,\n        x="mean_final_action0_fraction",\n        y="mean_final_entropy",\n        color="condition_label",\n        symbol="design",\n        size="n_seeds",\n        size_max=18,\n        error_x="std_final_action0_fraction",\n        error_y="std_final_entropy",\n        hover_data={\n            "condition_label": True,\n            "control_label": True,\n            "design": True,\n            "mean_final_action0_fraction": ":.4f",\n            "std_final_action0_fraction": ":.4f",\n            "mean_final_entropy": ":.4f",\n            "std_final_entropy": ":.4f",\n            "mean_final_action0_agent_spread": ":.4f",\n            "mean_final_entropy_agent_spread": ":.4f",\n            "n_seeds": True,\n            "seeds": True,\n            "min_averaged_logged_points": True,\n        },\n        labels={\n            "mean_final_action0_fraction": "mean final action-0 fraction",\n            "mean_final_entropy": "mean final entropy",\n            "condition_label": "condition",\n        },\n        title=title,\n    )\n    fig.update_xaxes(range=[0, 1], title_text="action-0 fraction")\n    fig.update_yaxes(title_text="policy entropy")\n    fig.update_traces(marker={"line": {"width": 1, "color": "white"}})\n    fig.update_layout(\n        template="plotly_white",\n        height=640,\n        width=1450,\n        legend={"orientation": "v", "yanchor": "top", "y": 1, "xanchor": "left", "x": 1.01},\n        margin={"l": 80, "r": 360, "t": 90, "b": 80},\n    )\n    save_figure(fig, save_name)\n    if SHOW_FIGURES:\n        fig.show()\n    return fig\n\n\nfig_entropy_action0_timeseries_ig15 = plot_entropy_action0_timeseries(\n    "intervention_gate_15",\n    "Intervention gate 15: action-0 fraction vs entropy over training",\n    "entropy_action0_timeseries_intervention_gate_15",\n)\nfig_entropy_action0_timeseries_sparse16 = plot_entropy_action0_timeseries(\n    "phase4_sparse_control_16",\n    "Phase4 sparse control 16: action-0 fraction vs entropy over training",\n    "entropy_action0_timeseries_phase4_sparse_control_16",\n)\nfig_entropy_action0_timeseries_hvg = plot_entropy_action0_timeseries(\n    "heuristic_vs_gate_s0_s1_s2",\n    "Heuristic vs gate s0/s1/s2: action-0 fraction vs entropy over training",\n    "entropy_action0_timeseries_heuristic_vs_gate_s0_s1_s2",\n)\nfig_entropy_action0_final_scatter_ig15 = plot_final_action0_entropy_scatter(\n    "intervention_gate_15",\n    f"Intervention gate 15: final action-0 confidence map (mean of last {ENTROPY_ACTION0_FINAL_LAST_N_LOGGED} logged)",\n    "final_entropy_action0_confidence_intervention_gate_15",\n)\nfig_entropy_action0_final_scatter_sparse16 = plot_final_action0_entropy_scatter(\n    "phase4_sparse_control_16",\n    f"Phase4 sparse control 16: final action-0 confidence map (mean of last {ENTROPY_ACTION0_FINAL_LAST_N_LOGGED} logged)",\n    "final_entropy_action0_confidence_phase4_sparse_control_16",\n)\nfig_entropy_action0_final_scatter_hvg = plot_final_action0_entropy_scatter(\n    "heuristic_vs_gate_s0_s1_s2",\n    f"Heuristic vs gate s0/s1/s2: final action-0 confidence map (mean of last {ENTROPY_ACTION0_FINAL_LAST_N_LOGGED} logged)",\n    "final_entropy_action0_confidence_heuristic_vs_gate_s0_s1_s2",\n)\n'
 _CELL_AGENT_IMBALANCE = 'AGENT_IMBALANCE_SMOOTH_WINDOW = 5\nAGENT_IMBALANCE_FINAL_LAST_N_LOGGED = 5\n\n\ndef agent_imbalance_run_rows():\n    data = FEATURE_LONG[FEATURE_LONG["feature_group"] == "agent_non_idle"].copy()\n    if data.empty:\n        return pd.DataFrame()\n\n    group_cols = [\n        "run_name",\n        "run_id",\n        "experiment",\n        "comparison_group",\n        "family",\n        "family_label",\n        "seed",\n        "design",\n        "control_axis",\n        "control_value",\n        "control_label",\n        "entropy_schedule",\n        "_step",\n        "step_millions",\n    ]\n    grouped = data.groupby(group_cols, dropna=False, as_index=False).agg(\n        min_non_idle=("value", "min"),\n        max_non_idle=("value", "max"),\n        mean_non_idle=("value", "mean"),\n        std_agent_non_idle=("value", "std"),\n        n_agents_observed=("entity", "nunique"),\n        agents=("entity", lambda values: sorted(pd.Series(values).dropna().astype(str).unique().tolist())),\n    )\n    grouped["std_agent_non_idle"] = grouped["std_agent_non_idle"].fillna(0.0)\n    grouped["non_idle_imbalance"] = grouped["max_non_idle"] - grouped["min_non_idle"]\n    return grouped.sort_values(["experiment", "control_value", "design", "family_label", "_step"])\n\n\ndef seed_aggregated_agent_imbalance_rows():\n    if AGENT_IMBALANCE_RUN_LONG.empty:\n        return pd.DataFrame()\n\n    group_cols = [\n        "experiment",\n        "comparison_group",\n        "family",\n        "family_label",\n        "design",\n        "control_axis",\n        "control_value",\n        "control_label",\n        "entropy_schedule",\n        "_step",\n        "step_millions",\n    ]\n    grouped = AGENT_IMBALANCE_RUN_LONG.groupby(group_cols, dropna=False, as_index=False).agg(\n        mean_imbalance=("non_idle_imbalance", "mean"),\n        std_imbalance=("non_idle_imbalance", "std"),\n        mean_non_idle=("mean_non_idle", "mean"),\n        mean_min_non_idle=("min_non_idle", "mean"),\n        mean_max_non_idle=("max_non_idle", "mean"),\n        min_agents_observed=("n_agents_observed", "min"),\n        n_seeds=("run_id", "nunique"),\n        seeds=("seed", _seed_list),\n        runs=("run_name", lambda values: sorted(pd.Series(values).dropna().astype(str).unique().tolist())),\n    )\n    grouped["std_imbalance"] = grouped["std_imbalance"].fillna(0.0)\n    grouped["condition_label"] = grouped["family_label"]\n    grouped = grouped.sort_values(["experiment", "control_value", "design", "family_label", "_step"])\n\n    if AGENT_IMBALANCE_SMOOTH_WINDOW and int(AGENT_IMBALANCE_SMOOTH_WINDOW) > 1:\n        for column in ["mean_imbalance", "std_imbalance", "mean_non_idle", "mean_min_non_idle", "mean_max_non_idle"]:\n            grouped[f"{column}_smooth"] = grouped.groupby(\n                ["experiment", "family"],\n                dropna=False,\n            )[column].transform(lambda values: values.rolling(int(AGENT_IMBALANCE_SMOOTH_WINDOW), min_periods=1).mean())\n    else:\n        for column in ["mean_imbalance", "std_imbalance", "mean_non_idle", "mean_min_non_idle", "mean_max_non_idle"]:\n            grouped[f"{column}_smooth"] = grouped[column]\n    return grouped\n\n\ndef seed_aggregated_final_agent_imbalance_rows():\n    if AGENT_IMBALANCE_RUN_LONG.empty:\n        return pd.DataFrame()\n\n    data = AGENT_IMBALANCE_RUN_LONG.sort_values(["run_id", "_step"]).copy()\n    data = data.groupby(["run_id"], dropna=False).tail(int(AGENT_IMBALANCE_FINAL_LAST_N_LOGGED))\n    per_run_cols = [\n        "run_name",\n        "run_id",\n        "experiment",\n        "comparison_group",\n        "family",\n        "family_label",\n        "seed",\n        "design",\n        "control_axis",\n        "control_value",\n        "control_label",\n        "entropy_schedule",\n    ]\n    per_run = data.groupby(per_run_cols, dropna=False, as_index=False).agg(\n        final_imbalance=("non_idle_imbalance", "mean"),\n        final_mean_non_idle=("mean_non_idle", "mean"),\n        final_min_non_idle=("min_non_idle", "mean"),\n        final_max_non_idle=("max_non_idle", "mean"),\n        final_step_millions=("step_millions", "max"),\n        min_agents_observed=("n_agents_observed", "min"),\n        averaged_logged_points=("non_idle_imbalance", "count"),\n    )\n\n    grouped = per_run.groupby(\n        [\n            "experiment",\n            "comparison_group",\n            "family",\n            "family_label",\n            "design",\n            "control_axis",\n            "control_value",\n            "control_label",\n            "entropy_schedule",\n        ],\n        dropna=False,\n        as_index=False,\n    ).agg(\n        mean_final_imbalance=("final_imbalance", "mean"),\n        std_final_imbalance=("final_imbalance", "std"),\n        mean_final_non_idle=("final_mean_non_idle", "mean"),\n        mean_final_min_non_idle=("final_min_non_idle", "mean"),\n        mean_final_max_non_idle=("final_max_non_idle", "mean"),\n        mean_final_step_millions=("final_step_millions", "mean"),\n        min_agents_observed=("min_agents_observed", "min"),\n        min_averaged_logged_points=("averaged_logged_points", "min"),\n        n_seeds=("run_id", "nunique"),\n        seeds=("seed", _seed_list),\n        runs=("run_name", lambda values: sorted(pd.Series(values).dropna().astype(str).unique().tolist())),\n    )\n    grouped["std_final_imbalance"] = grouped["std_final_imbalance"].fillna(0.0)\n    grouped["condition_label"] = grouped["family_label"]\n    return grouped.sort_values(["experiment", "control_value", "design", "family_label"])\n\n\nAGENT_IMBALANCE_RUN_LONG = agent_imbalance_run_rows()\nAGENT_IMBALANCE_SEED_AGG = seed_aggregated_agent_imbalance_rows()\nAGENT_IMBALANCE_FINAL_SEED_AGG = seed_aggregated_final_agent_imbalance_rows()\n\n# print("Seed-aggregated non-idle imbalance time series:")\n# if AGENT_IMBALANCE_SEED_AGG.empty:\n#     print("No agent non-idle metrics found for imbalance plots.")\n# else:\n#     display(AGENT_IMBALANCE_SEED_AGG.groupby(["experiment", "family_label"], dropna=False).agg(\n#         points=("_step", "count"),\n#         n_seeds=("n_seeds", "max"),\n#         seeds=("seeds", "first"),\n#         min_agents_observed=("min_agents_observed", "min"),\n#     ).reset_index())\n\n# print(f"Seed-aggregated final non-idle imbalance, averaged over last {AGENT_IMBALANCE_FINAL_LAST_N_LOGGED} logged points:")\n# if AGENT_IMBALANCE_FINAL_SEED_AGG.empty:\n#     print("No final agent imbalance summary available.")\n# else:\n#     display(AGENT_IMBALANCE_FINAL_SEED_AGG[[\n#         "experiment",\n#         "family_label",\n#         "mean_final_imbalance",\n#         "std_final_imbalance",\n#         "mean_final_non_idle",\n#         "mean_final_min_non_idle",\n#         "mean_final_max_non_idle",\n#         "n_seeds",\n#         "seeds",\n#     ]])\n\n\ndef plot_agent_imbalance_timeseries(experiment, title, save_name):\n    data = AGENT_IMBALANCE_SEED_AGG[AGENT_IMBALANCE_SEED_AGG["experiment"] == experiment].copy()\n    if data.empty:\n        print(f"No agent imbalance time-series data for {experiment}")\n        return None\n\n    conditions = data[["family", "condition_label", "control_value", "design"]].drop_duplicates()\n    conditions = conditions.sort_values(["control_value", "design", "condition_label"])\n    palette = px.colors.qualitative.Plotly + px.colors.qualitative.Dark24\n    colors = {row.family: palette[idx % len(palette)] for idx, row in enumerate(conditions.itertuples(index=False))}\n\n    fig = go.Figure()\n    for _, condition in conditions.iterrows():\n        family = condition["family"]\n        label = condition["condition_label"]\n        condition_data = data[data["family"] == family].sort_values("step_millions")\n        if condition_data.empty:\n            continue\n        fig.add_trace(\n            go.Scatter(\n                x=condition_data["step_millions"],\n                y=condition_data["mean_imbalance_smooth"],\n                mode="lines",\n                name=label,\n                line={"color": colors[family], "width": 3},\n                customdata=np.stack([\n                    condition_data["std_imbalance_smooth"],\n                    condition_data["mean_non_idle_smooth"],\n                    condition_data["mean_min_non_idle_smooth"],\n                    condition_data["mean_max_non_idle_smooth"],\n                    condition_data["n_seeds"],\n                    condition_data["seeds"].astype(str),\n                ], axis=-1),\n                hovertemplate=(\n                    f"<b>{label}</b><br>"\n                    "step=%{x:.2f}M<br>"\n                    "imbalance=%{y:.4f}<br>"\n                    "std=%{customdata[0]:.4f}<br>"\n                    "mean non-idle=%{customdata[1]:.4f}<br>"\n                    "min agent=%{customdata[2]:.4f}<br>"\n                    "max agent=%{customdata[3]:.4f}<br>"\n                    "seeds=%{customdata[5]}<br>"\n                    "n_seeds=%{customdata[4]}<extra></extra>"\n                ),\n            )\n        )\n\n    fig.update_layout(\n        title=title,\n        template="plotly_white",\n        height=620,\n        width=1450,\n        hovermode="x unified",\n        legend={"orientation": "v", "yanchor": "top", "y": 1, "xanchor": "left", "x": 1.01},\n        margin={"l": 80, "r": 360, "t": 90, "b": 70},\n    )\n    fig.update_yaxes(title_text="max(non-idle) - min(non-idle)", range=[0, 1])\n    fig.update_xaxes(title_text="steps (M)")\n    save_figure(fig, save_name)\n    if SHOW_FIGURES:\n        fig.show()\n    return fig\n\n\ndef _final_agent_imbalance_seed_points(experiment):\n    data = AGENT_IMBALANCE_RUN_LONG[AGENT_IMBALANCE_RUN_LONG["experiment"] == experiment].copy()\n    if data.empty:\n        return pd.DataFrame()\n    data = data.sort_values(["run_id", "_step"])\n    data = data.groupby(["run_id"], dropna=False).tail(int(AGENT_IMBALANCE_FINAL_LAST_N_LOGGED))\n    per_run_cols = [\n        "run_name",\n        "run_id",\n        "experiment",\n        "comparison_group",\n        "family",\n        "family_label",\n        "seed",\n        "design",\n        "control_axis",\n        "control_value",\n        "control_label",\n        "entropy_schedule",\n    ]\n    seed_points = data.groupby(per_run_cols, dropna=False, as_index=False).agg(\n        seed_final_imbalance=("non_idle_imbalance", "mean"),\n        seed_final_non_idle=("mean_non_idle", "mean"),\n        seed_final_min_non_idle=("min_non_idle", "mean"),\n        seed_final_max_non_idle=("max_non_idle", "mean"),\n        final_step_millions=("step_millions", "max"),\n        averaged_logged_points=("non_idle_imbalance", "count"),\n    )\n    seed_points["condition_label"] = seed_points["family_label"]\n    return seed_points.sort_values(["control_value", "design", "condition_label", "seed"])\n\n\ndef plot_final_agent_imbalance(experiment, title, save_name):\n    data = AGENT_IMBALANCE_FINAL_SEED_AGG[AGENT_IMBALANCE_FINAL_SEED_AGG["experiment"] == experiment].copy()\n    if data.empty:\n        print(f"No final agent imbalance data for {experiment}")\n        return None\n\n    data = data.sort_values(["control_value", "design", "condition_label"])\n    fig = px.bar(\n        data,\n        x="condition_label",\n        y="mean_final_imbalance",\n        color="condition_label",\n        error_y="std_final_imbalance",\n        hover_data={\n            "condition_label": True,\n            "control_label": True,\n            "design": True,\n            "mean_final_imbalance": ":.4f",\n            "std_final_imbalance": ":.4f",\n            "mean_final_non_idle": ":.4f",\n            "mean_final_min_non_idle": ":.4f",\n            "mean_final_max_non_idle": ":.4f",\n            "n_seeds": True,\n            "seeds": True,\n            "min_averaged_logged_points": True,\n        },\n        labels={\n            "condition_label": "condition",\n            "mean_final_imbalance": "mean final imbalance",\n        },\n        title=title,\n    )\n\n    seed_points = _final_agent_imbalance_seed_points(experiment)\n    add_seed_point_overlay(\n        fig,\n        seed_points,\n        x_col="condition_label",\n        y_col="seed_final_imbalance",\n        group_col="condition_label",\n        customdata_cols=[\n            "run_name",\n            "seed",\n            "condition_label",\n            "seed_final_non_idle",\n            "seed_final_min_non_idle",\n            "seed_final_max_non_idle",\n            "averaged_logged_points",\n        ],\n        hovertemplate=(\n            "seed run=%{customdata[0]}<br>"\n            "seed=%{customdata[1]}<br>"\n            "condition=%{customdata[2]}<br>"\n            "seed imbalance=%{y:.4f}<br>"\n            "mean non-idle=%{customdata[3]:.4f}<br>"\n            "min agent=%{customdata[4]:.4f}<br>"\n            "max agent=%{customdata[5]:.4f}<br>"\n            "logged points=%{customdata[6]}<extra></extra>"\n        ),\n    )\n\n    fig.update_yaxes(title_text="max(non-idle) - min(non-idle)", range=[0, 1])\n    fig.update_xaxes(tickangle=25)\n    fig.update_layout(\n        template="plotly_white",\n        height=640,\n        width=1450,\n        showlegend=False,\n        bargap=0.22,\n        margin={"l": 80, "r": 80, "t": 90, "b": 150},\n    )\n    save_figure(fig, save_name)\n    if SHOW_FIGURES:\n        fig.show()\n    return fig\n\n\nfig_agent_imbalance_timeseries_ig15 = plot_agent_imbalance_timeseries(\n    "intervention_gate_15",\n    "Intervention gate 15: agent non-idle imbalance over training",\n    "agent_non_idle_imbalance_timeseries_intervention_gate_15",\n)\nfig_agent_imbalance_timeseries_sparse16 = plot_agent_imbalance_timeseries(\n    "phase4_sparse_control_16",\n    "Phase4 sparse control 16: agent non-idle imbalance over training",\n    "agent_non_idle_imbalance_timeseries_phase4_sparse_control_16",\n)\nfig_agent_imbalance_timeseries_hvg = plot_agent_imbalance_timeseries(\n    "heuristic_vs_gate_s0_s1_s2",\n    "Heuristic vs gate s0/s1/s2: agent non-idle imbalance over training",\n    "agent_non_idle_imbalance_timeseries_heuristic_vs_gate_s0_s1_s2",\n)\nfig_agent_imbalance_final_ig15 = plot_final_agent_imbalance(\n    "intervention_gate_15",\n    f"Intervention gate 15: final agent non-idle imbalance (mean of last {AGENT_IMBALANCE_FINAL_LAST_N_LOGGED} logged)",\n    "final_agent_non_idle_imbalance_intervention_gate_15",\n)\nfig_agent_imbalance_final_sparse16 = plot_final_agent_imbalance(\n    "phase4_sparse_control_16",\n    f"Phase4 sparse control 16: final agent non-idle imbalance (mean of last {AGENT_IMBALANCE_FINAL_LAST_N_LOGGED} logged)",\n    "final_agent_non_idle_imbalance_phase4_sparse_control_16",\n)\nfig_agent_imbalance_final_hvg = plot_final_agent_imbalance(\n    "heuristic_vs_gate_s0_s1_s2",\n    f"Heuristic vs gate s0/s1/s2: final agent non-idle imbalance (mean of last {AGENT_IMBALANCE_FINAL_LAST_N_LOGGED} logged)",\n    "final_agent_non_idle_imbalance_heuristic_vs_gate_s0_s1_s2",\n)\n'
 _CELL_JOINT_COORDINATION = 'JOINT_COORDINATION_SMOOTH_WINDOW = 5\nJOINT_COORDINATION_FINAL_LAST_N_LOGGED = 5\nJOINT_AGENT_COUNT_LABELS = {\n    0: "0 agents act",\n    1: "1 agent acts",\n    2: "2 agents act",\n    3: "3 agents act",\n}\nJOINT_AGENT_COUNT_ORDER = list(JOINT_AGENT_COUNT_LABELS.values())\n\n\ndef joint_coordination_run_rows():\n    data = FEATURE_LONG[FEATURE_LONG["feature_group"] == "joint_non_idle"].copy()\n    if data.empty:\n        return pd.DataFrame()\n\n    data["n_agents_act"] = pd.to_numeric(data["entity"], errors="coerce")\n    data = data.dropna(subset=["n_agents_act", "value", "_step"])\n    data["n_agents_act"] = data["n_agents_act"].astype(int)\n    data = data[data["n_agents_act"].isin(JOINT_AGENT_COUNT_LABELS.keys())].copy()\n    data["coordination_label"] = data["n_agents_act"].map(JOINT_AGENT_COUNT_LABELS)\n    data["coordination_label"] = pd.Categorical(\n        data["coordination_label"],\n        categories=JOINT_AGENT_COUNT_ORDER,\n        ordered=True,\n    )\n    return data.sort_values(["experiment", "control_value", "design", "family_label", "n_agents_act", "_step"])\n\n\ndef seed_aggregated_joint_coordination_rows():\n    if JOINT_COORDINATION_RUN_LONG.empty:\n        return pd.DataFrame()\n\n    group_cols = [\n        "experiment",\n        "comparison_group",\n        "family",\n        "family_label",\n        "design",\n        "control_axis",\n        "control_value",\n        "control_label",\n        "entropy_schedule",\n        "n_agents_act",\n        "coordination_label",\n        "_step",\n        "step_millions",\n    ]\n    grouped = JOINT_COORDINATION_RUN_LONG.groupby(\n        group_cols,\n        dropna=False,\n        observed=True,\n        as_index=False,\n    ).agg(\n        mean_fraction=("value", "mean"),\n        std_fraction=("value", "std"),\n        n_seeds=("run_id", "nunique"),\n        seeds=("seed", _seed_list),\n        runs=("run_name", lambda values: sorted(pd.Series(values).dropna().astype(str).unique().tolist())),\n    )\n    grouped["std_fraction"] = grouped["std_fraction"].fillna(0.0)\n    grouped["condition_label"] = grouped["family_label"]\n    grouped["coordination_label"] = pd.Categorical(\n        grouped["coordination_label"],\n        categories=JOINT_AGENT_COUNT_ORDER,\n        ordered=True,\n    )\n    grouped = grouped.sort_values(["experiment", "control_value", "design", "family_label", "n_agents_act", "_step"])\n\n    if JOINT_COORDINATION_SMOOTH_WINDOW and int(JOINT_COORDINATION_SMOOTH_WINDOW) > 1:\n        grouped["mean_fraction_smooth"] = grouped.groupby(\n            ["experiment", "family", "n_agents_act"],\n            dropna=False,\n            observed=True,\n        )["mean_fraction"].transform(lambda values: values.rolling(int(JOINT_COORDINATION_SMOOTH_WINDOW), min_periods=1).mean())\n        grouped["std_fraction_smooth"] = grouped.groupby(\n            ["experiment", "family", "n_agents_act"],\n            dropna=False,\n            observed=True,\n        )["std_fraction"].transform(lambda values: values.rolling(int(JOINT_COORDINATION_SMOOTH_WINDOW), min_periods=1).mean())\n    else:\n        grouped["mean_fraction_smooth"] = grouped["mean_fraction"]\n        grouped["std_fraction_smooth"] = grouped["std_fraction"]\n    return grouped\n\n\ndef seed_aggregated_final_joint_coordination_rows():\n    if JOINT_COORDINATION_RUN_LONG.empty:\n        return pd.DataFrame()\n\n    data = JOINT_COORDINATION_RUN_LONG.sort_values(["run_id", "n_agents_act", "_step"]).copy()\n    data = data.groupby(["run_id", "n_agents_act"], dropna=False, observed=True).tail(int(JOINT_COORDINATION_FINAL_LAST_N_LOGGED))\n    per_run_cols = [\n        "run_name",\n        "run_id",\n        "experiment",\n        "comparison_group",\n        "family",\n        "family_label",\n        "seed",\n        "design",\n        "control_axis",\n        "control_value",\n        "control_label",\n        "entropy_schedule",\n        "n_agents_act",\n        "coordination_label",\n    ]\n    per_run = data.groupby(per_run_cols, dropna=False, observed=True, as_index=False).agg(\n        final_fraction=("value", "mean"),\n        final_step_millions=("step_millions", "max"),\n        averaged_logged_points=("value", "count"),\n    )\n\n    grouped = per_run.groupby(\n        [\n            "experiment",\n            "comparison_group",\n            "family",\n            "family_label",\n            "design",\n            "control_axis",\n            "control_value",\n            "control_label",\n            "entropy_schedule",\n            "n_agents_act",\n            "coordination_label",\n        ],\n        dropna=False,\n        observed=True,\n        as_index=False,\n    ).agg(\n        mean_final_fraction=("final_fraction", "mean"),\n        std_final_fraction=("final_fraction", "std"),\n        mean_final_step_millions=("final_step_millions", "mean"),\n        min_averaged_logged_points=("averaged_logged_points", "min"),\n        n_seeds=("run_id", "nunique"),\n        seeds=("seed", _seed_list),\n        runs=("run_name", lambda values: sorted(pd.Series(values).dropna().astype(str).unique().tolist())),\n    )\n    grouped["std_final_fraction"] = grouped["std_final_fraction"].fillna(0.0)\n    grouped["condition_label"] = grouped["family_label"]\n    grouped["coordination_label"] = pd.Categorical(\n        grouped["coordination_label"],\n        categories=JOINT_AGENT_COUNT_ORDER,\n        ordered=True,\n    )\n    return grouped.sort_values(["experiment", "control_value", "design", "family_label", "n_agents_act"])\n\n\ndef joint_coordination_coverage_rows():\n    keep_cols = [\n        "experiment",\n        "run_name",\n        "run_id",\n        "family",\n        "family_label",\n        "seed",\n        "design",\n        "control_label",\n    ]\n    if selected_runs.empty:\n        return pd.DataFrame(columns=keep_cols + ["has_joint_coordination", "joint_coordination_rows", "joint_coordination_bins"])\n\n    if JOINT_COORDINATION_RUN_LONG.empty:\n        available = pd.DataFrame(columns=["run_id", "run_name", "joint_coordination_rows", "joint_coordination_bins"])\n    else:\n        available = JOINT_COORDINATION_RUN_LONG.groupby(["run_id", "run_name"], dropna=False, as_index=False).agg(\n            joint_coordination_rows=("value", "count"),\n            joint_coordination_bins=("coordination_label", lambda values: sorted(pd.Series(values).dropna().astype(str).unique().tolist())),\n            first_step_millions=("step_millions", "min"),\n            last_step_millions=("step_millions", "max"),\n        )\n    out = selected_runs[keep_cols].merge(available, on=["run_id", "run_name"], how="left")\n    out["joint_coordination_rows"] = out["joint_coordination_rows"].fillna(0).astype(int)\n    out["has_joint_coordination"] = out["joint_coordination_rows"] > 0\n    return out.sort_values(["experiment", "family_label", "seed"])\n\n\nJOINT_COORDINATION_RUN_LONG = joint_coordination_run_rows()\nJOINT_COORDINATION_SEED_AGG = seed_aggregated_joint_coordination_rows()\nJOINT_COORDINATION_FINAL_SEED_AGG = seed_aggregated_final_joint_coordination_rows()\nJOINT_COORDINATION_COVERAGE = joint_coordination_coverage_rows()\n\n# print("Joint coordination metric coverage for cached runs:")\n# if JOINT_COORDINATION_COVERAGE.empty:\n#     print("No cached runs found in the selected cache.")\n# else:\n#     display(JOINT_COORDINATION_COVERAGE[[\n#         "experiment",\n#         "run_name",\n#         "family_label",\n#         "seed",\n#         "has_joint_coordination",\n#         "joint_coordination_rows",\n#         "joint_coordination_bins",\n#     ]])\n\n# missing_joint_coordination = JOINT_COORDINATION_COVERAGE[~JOINT_COORDINATION_COVERAGE["has_joint_coordination"]]\n# if not missing_joint_coordination.empty:\n#     print("Cached runs with no non-empty joint coordination rows:")\n#     display(missing_joint_coordination[["experiment", "run_name", "family_label", "seed"]])\n\n# print("Seed-aggregated joint action coordination time series:")\n# if JOINT_COORDINATION_SEED_AGG.empty:\n#     print("No joint non-idle count metrics found.")\n# else:\n#     display(JOINT_COORDINATION_SEED_AGG.groupby(["experiment", "family_label", "coordination_label"], dropna=False, observed=True).agg(\n#         points=("_step", "count"),\n#         n_seeds=("n_seeds", "max"),\n#         seeds=("seeds", "first"),\n#     ).reset_index())\n\n# print(f"Seed-aggregated final joint action coordination, averaged over last {JOINT_COORDINATION_FINAL_LAST_N_LOGGED} logged points:")\n# if JOINT_COORDINATION_FINAL_SEED_AGG.empty:\n#     print("No final joint coordination summary available.")\n# else:\n#     display(JOINT_COORDINATION_FINAL_SEED_AGG[[\n#         "experiment",\n#         "family_label",\n#         "coordination_label",\n#         "mean_final_fraction",\n#         "std_final_fraction",\n#         "n_seeds",\n#         "seeds",\n#     ]])\n\n\ndef plot_joint_coordination_timeseries(experiment, title, save_name):\n    data = JOINT_COORDINATION_SEED_AGG[JOINT_COORDINATION_SEED_AGG["experiment"] == experiment].copy()\n    if data.empty:\n        print(f"No joint coordination time-series data for {experiment}")\n        return None\n\n    counts = [count for count in JOINT_AGENT_COUNT_LABELS if count in set(data["n_agents_act"].astype(int))]\n    conditions = data[["family", "condition_label", "control_value", "design"]].drop_duplicates()\n    conditions = conditions.sort_values(["control_value", "design", "condition_label"])\n    palette = px.colors.qualitative.Plotly + px.colors.qualitative.Dark24\n    colors = {row.family: palette[idx % len(palette)] for idx, row in enumerate(conditions.itertuples(index=False))}\n\n    fig = make_subplots(\n        rows=len(counts),\n        cols=1,\n        shared_xaxes=True,\n        vertical_spacing=0.055,\n        subplot_titles=[JOINT_AGENT_COUNT_LABELS[count] for count in counts],\n    )\n\n    for row_idx, count in enumerate(counts, start=1):\n        count_data = data[data["n_agents_act"].astype(int) == int(count)]\n        for _, condition in conditions.iterrows():\n            family = condition["family"]\n            label = condition["condition_label"]\n            condition_data = count_data[count_data["family"] == family].sort_values("step_millions")\n            if condition_data.empty:\n                continue\n            fig.add_trace(\n                go.Scatter(\n                    x=condition_data["step_millions"],\n                    y=condition_data["mean_fraction_smooth"],\n                    mode="lines",\n                    name=label,\n                    legendgroup=family,\n                    showlegend=row_idx == 1,\n                    line={"color": colors[family], "width": 2.8},\n                    customdata=np.stack([\n                        condition_data["n_seeds"],\n                        condition_data["seeds"].astype(str),\n                        condition_data["std_fraction_smooth"],\n                    ], axis=-1),\n                    hovertemplate=(\n                        f"<b>{label}</b><br>"\n                        f"coordination={JOINT_AGENT_COUNT_LABELS[count]}<br>"\n                        "step=%{x:.2f}M<br>"\n                        "fraction=%{y:.4f}<br>"\n                        "std=%{customdata[2]:.4f}<br>"\n                        "seeds=%{customdata[1]}<br>"\n                        "n_seeds=%{customdata[0]}<extra></extra>"\n                    ),\n                ),\n                row=row_idx,\n                col=1,\n            )\n        fig.update_yaxes(title_text="fraction", range=[0, 1], row=row_idx, col=1)\n\n    fig.update_layout(\n        title=title,\n        template="plotly_white",\n        height=1080,\n        width=1450,\n        hovermode="x unified",\n        legend={"orientation": "v", "yanchor": "top", "y": 1, "xanchor": "left", "x": 1.01},\n        margin={"l": 80, "r": 360, "t": 100, "b": 70},\n    )\n    fig.update_xaxes(title_text="steps (M)", row=len(counts), col=1)\n    save_figure(fig, save_name)\n    if SHOW_FIGURES:\n        fig.show()\n    return fig\n\n\ndef _final_joint_coordination_seed_points(experiment):\n    data = JOINT_COORDINATION_RUN_LONG[JOINT_COORDINATION_RUN_LONG["experiment"] == experiment].copy()\n    if data.empty:\n        return pd.DataFrame()\n    data = data.sort_values(["run_id", "n_agents_act", "_step"])\n    data = data.groupby(["run_id", "n_agents_act"], dropna=False, observed=True).tail(int(JOINT_COORDINATION_FINAL_LAST_N_LOGGED))\n    per_run_cols = [\n        "run_name",\n        "run_id",\n        "experiment",\n        "comparison_group",\n        "family",\n        "family_label",\n        "seed",\n        "design",\n        "control_axis",\n        "control_value",\n        "control_label",\n        "entropy_schedule",\n        "n_agents_act",\n        "coordination_label",\n    ]\n    seed_points = data.groupby(per_run_cols, dropna=False, observed=True, as_index=False).agg(\n        seed_final_fraction=("value", "mean"),\n        final_step_millions=("step_millions", "max"),\n        averaged_logged_points=("value", "count"),\n    )\n    seed_points["condition_label"] = seed_points["family_label"]\n    seed_points["coordination_label"] = pd.Categorical(\n        seed_points["coordination_label"],\n        categories=JOINT_AGENT_COUNT_ORDER,\n        ordered=True,\n    )\n    return seed_points.sort_values(["n_agents_act", "control_value", "design", "condition_label", "seed"])\n\n\ndef plot_final_joint_coordination(experiment, title, save_name):\n    data = JOINT_COORDINATION_FINAL_SEED_AGG[JOINT_COORDINATION_FINAL_SEED_AGG["experiment"] == experiment].copy()\n    if data.empty:\n        print(f"No final joint coordination data for {experiment}")\n        return None\n\n    data["coordination_label"] = pd.Categorical(\n        data["coordination_label"],\n        categories=JOINT_AGENT_COUNT_ORDER,\n        ordered=True,\n    )\n    fig = px.bar(\n        data.sort_values(["n_agents_act", "control_value", "design", "condition_label"]),\n        x="coordination_label",\n        y="mean_final_fraction",\n        color="condition_label",\n        error_y="std_final_fraction",\n        barmode="group",\n        hover_data={\n            "condition_label": True,\n            "control_label": True,\n            "design": True,\n            "mean_final_fraction": ":.4f",\n            "std_final_fraction": ":.4f",\n            "n_seeds": True,\n            "seeds": True,\n            "min_averaged_logged_points": True,\n        },\n        labels={\n            "coordination_label": "agents acting in same step",\n            "mean_final_fraction": "mean final fraction",\n            "condition_label": "condition",\n        },\n        title=title,\n    )\n\n    seed_points = _final_joint_coordination_seed_points(experiment)\n    add_seed_point_overlay(\n        fig,\n        seed_points,\n        x_col="coordination_label",\n        y_col="seed_final_fraction",\n        group_col="condition_label",\n        customdata_cols=[\n            "run_name",\n            "seed",\n            "condition_label",\n            "coordination_label",\n            "seed_final_fraction",\n            "averaged_logged_points",\n        ],\n        hovertemplate=(\n            "seed run=%{customdata[0]}<br>"\n            "seed=%{customdata[1]}<br>"\n            "condition=%{customdata[2]}<br>"\n            "coordination=%{customdata[3]}<br>"\n            "seed fraction=%{y:.4f}<br>"\n            "logged points=%{customdata[5]}<extra></extra>"\n        ),\n    )\n\n    fig.update_yaxes(title_text="fraction of environment steps", range=[0, 1])\n    fig.update_layout(\n        template="plotly_white",\n        height=640,\n        width=1450,\n        bargap=0.18,\n        bargroupgap=0.04,\n        legend={"orientation": "v", "yanchor": "top", "y": 1, "xanchor": "left", "x": 1.01},\n        margin={"l": 80, "r": 360, "t": 90, "b": 80},\n    )\n    save_figure(fig, save_name)\n    if SHOW_FIGURES:\n        fig.show()\n    return fig\n\n\nfig_joint_coordination_timeseries_ig15 = plot_joint_coordination_timeseries(\n    "intervention_gate_15",\n    "Intervention gate 15: joint action coordination over training",\n    "joint_action_coordination_timeseries_intervention_gate_15",\n)\nfig_joint_coordination_timeseries_sparse16 = plot_joint_coordination_timeseries(\n    "phase4_sparse_control_16",\n    "Phase4 sparse control 16: joint action coordination over training",\n    "joint_action_coordination_timeseries_phase4_sparse_control_16",\n)\nfig_joint_coordination_timeseries_hvg = plot_joint_coordination_timeseries(\n    "heuristic_vs_gate_s0_s1_s2",\n    "Heuristic vs gate s0/s1/s2: joint action coordination over training",\n    "joint_action_coordination_timeseries_heuristic_vs_gate_s0_s1_s2",\n)\nfig_joint_coordination_final_ig15 = plot_final_joint_coordination(\n    "intervention_gate_15",\n    f"Intervention gate 15: final joint action coordination (mean of last {JOINT_COORDINATION_FINAL_LAST_N_LOGGED} logged)",\n    "final_joint_action_coordination_intervention_gate_15",\n)\nfig_joint_coordination_final_sparse16 = plot_final_joint_coordination(\n    "phase4_sparse_control_16",\n    f"Phase4 sparse control 16: final joint action coordination (mean of last {JOINT_COORDINATION_FINAL_LAST_N_LOGGED} logged)",\n    "final_joint_action_coordination_phase4_sparse_control_16",\n)\nfig_joint_coordination_final_hvg = plot_final_joint_coordination(\n    "heuristic_vs_gate_s0_s1_s2",\n    f"Heuristic vs gate s0/s1/s2: final joint action coordination (mean of last {JOINT_COORDINATION_FINAL_LAST_N_LOGGED} logged)",\n    "final_joint_action_coordination_heuristic_vs_gate_s0_s1_s2",\n)\n'
@@ -668,72 +668,498 @@ def _plot_generic_experiments(context, *, plotter_name, fig_prefix, title_templa
     return figures
 
 
-def last5_logged_action0_fraction_by_agent_all_runs(context):
-    _exec_cell(context, _CELL_ACTION0_ALL, "last5_action0_all_runs")
-    _plot_aib(
-        context,
-        "fig_action0_fraction_aib_all_runs",
-        "plot_action0_fraction_all_runs",
-        f"{AIB_TITLE}: action 0 fraction by agent for all runs (mean of last 5 logged)",
-        "final_action0_fraction_by_agent_all_runs_adaptive_intervention_budget_7",
+def _action0_average_last_n(context):
+    try:
+        return int(context.get("ACTION0_AVERAGE_LAST_N_LOGGED", 5))
+    except (TypeError, ValueError):
+        return 5
+
+
+def _empty_action0_frame(context, name):
+    empty = pd.DataFrame()
+    context[name] = empty
+    return empty
+
+
+def _ensure_action0_final_agent_rows(context):
+    """Build the raw final action-0 table with one row per run and agent."""
+    existing = context.get("ACTION0_FINAL_LONG")
+    if isinstance(existing, pd.DataFrame):
+        if not existing.empty:
+            existing = existing.copy()
+            if "agent" not in existing.columns and "entity" in existing.columns:
+                existing["agent"] = existing["entity"].astype(str)
+            if "run_label" not in existing.columns and "run_name" in existing.columns:
+                existing["run_label"] = existing["run_name"]
+            if "condition_label" not in existing.columns and "family_label" in existing.columns:
+                existing["condition_label"] = existing["family_label"]
+            if "agent" in existing.columns:
+                existing["agent"] = pd.Categorical(
+                    existing["agent"].astype(str),
+                    categories=["agent_0", "agent_1", "agent_2"],
+                    ordered=True,
+                )
+            context["ACTION0_FINAL_LONG"] = existing
+        return existing
+
+    feature_long = context.get("FEATURE_LONG")
+    if not isinstance(feature_long, pd.DataFrame) or feature_long.empty:
+        context["ACTION0_COUNT_LONG"] = pd.DataFrame()
+        context["ACTION0_COUNT_SUMMARY"] = pd.DataFrame()
+        return _empty_action0_frame(context, "ACTION0_FINAL_LONG")
+
+    data = feature_long[feature_long["feature_group"] == "agent_action0"].copy()
+    if data.empty:
+        context["ACTION0_COUNT_LONG"] = pd.DataFrame()
+        context["ACTION0_COUNT_SUMMARY"] = pd.DataFrame()
+        return _empty_action0_frame(context, "ACTION0_FINAL_LONG")
+
+    last_n = _action0_average_last_n(context)
+    data = data.sort_values(["run_id", "entity", "_step"])
+    data = _apply_final_summary_step_cutoff(data, context.get("FINAL_SUMMARY_STEP_M"))
+    data = data.groupby(["run_id", "entity"], dropna=False).tail(last_n).copy()
+    if data.empty:
+        context["ACTION0_COUNT_LONG"] = pd.DataFrame()
+        context["ACTION0_COUNT_SUMMARY"] = pd.DataFrame()
+        return _empty_action0_frame(context, "ACTION0_FINAL_LONG")
+
+    if "rollout_action_samples" not in data.columns:
+        data["rollout_action_samples"] = np.nan
+    data["rollout_action_samples"] = pd.to_numeric(data["rollout_action_samples"], errors="coerce")
+    missing_samples = data["rollout_action_samples"].isna() | (data["rollout_action_samples"] <= 0)
+    if missing_samples.any():
+        n_steps = (
+            pd.to_numeric(data["n_steps"], errors="coerce").fillna(0)
+            if "n_steps" in data.columns
+            else pd.Series(0, index=data.index)
+        )
+        n_envs = (
+            pd.to_numeric(data["n_envs"], errors="coerce").fillna(0)
+            if "n_envs" in data.columns
+            else pd.Series(0, index=data.index)
+        )
+        data.loc[missing_samples, "rollout_action_samples"] = (n_steps * n_envs)[missing_samples]
+
+    summary_cols = [
+        "run_name", "run_id", "experiment", "comparison_group", "family", "family_label",
+        "seed", "design", "control_axis", "control_value", "control_label", "entity",
+        "n_steps", "n_envs", "rollout_action_samples",
+    ]
+    summary_cols = [col for col in summary_cols if col in data.columns]
+    data = data.groupby(summary_cols, dropna=False, as_index=False).agg(
+        final_fraction_action0=("value", "mean"),
+        std_last_fraction_action0=("value", "std"),
+        final_step_millions=("step_millions", "max"),
+        averaged_logged_points=("value", "count"),
     )
-    extra_figures = _plot_generic_experiments(
+    data["std_last_fraction_action0"] = data["std_last_fraction_action0"].fillna(0.0)
+    data["final_action0_count"] = (
+        data["final_fraction_action0"] * data["rollout_action_samples"]
+    ).round().astype("Int64")
+    data["std_last_action0_count"] = (
+        data["std_last_fraction_action0"] * data["rollout_action_samples"]
+    ).round().astype("Int64")
+    data["agent"] = data["entity"].astype(str)
+    data["run_label"] = data["run_name"]
+    data["condition_label"] = data["family_label"]
+    data["folder_label"] = data["experiment"].map(
+        {
+            "intervention_gate_15": "Intervention gate 15",
+            "phase4_sparse_control_16": "Phase4 sparse control 16",
+            "heuristic_vs_gate_s0_s1_s2": "Heuristic vs gate s0/s1/s2",
+        }
+    ).fillna(data["experiment"])
+    data["agent"] = pd.Categorical(data["agent"], categories=["agent_0", "agent_1", "agent_2"], ordered=True)
+    data = data.dropna(subset=["final_fraction_action0"])
+
+    context["ACTION0_FINAL_LONG"] = data
+    context["ACTION0_COUNT_LONG"] = data
+    summary_cols = [
+        "experiment",
+        "run_name",
+        "family_label",
+        "seed",
+        "agent",
+        "final_fraction_action0",
+        "final_action0_count",
+        "final_step_millions",
+        "rollout_action_samples",
+    ]
+    summary_cols = [col for col in summary_cols if col in data.columns]
+    context["ACTION0_COUNT_SUMMARY"] = (
+        data[summary_cols]
+        .sort_values([col for col in ["experiment", "family_label", "seed", "agent"] if col in data.columns])
+        .reset_index(drop=True)
+    )
+    return data
+
+
+def _ensure_action0_final_run_rows(context):
+    """Aggregate final action-0 rows to one row per run, averaging across agents."""
+    existing = context.get("ACTION0_FINAL_RUN_LONG")
+    if isinstance(existing, pd.DataFrame):
+        if not existing.empty:
+            existing = existing.copy()
+            if "condition_label" not in existing.columns and "family_label" in existing.columns:
+                existing["condition_label"] = existing["family_label"]
+            if "run_label" not in existing.columns and "run_name" in existing.columns:
+                existing["run_label"] = existing["run_name"]
+            context["ACTION0_FINAL_RUN_LONG"] = existing
+        return existing
+
+    data = _ensure_action0_final_agent_rows(context)
+    if data.empty:
+        context["ACTION0_COUNT_RUN_SUMMARY"] = pd.DataFrame()
+        return _empty_action0_frame(context, "ACTION0_FINAL_RUN_LONG")
+
+    data = data.copy()
+    data["final_fraction_action0"] = pd.to_numeric(data["final_fraction_action0"], errors="coerce")
+    data["final_action0_count"] = pd.to_numeric(data.get("final_action0_count"), errors="coerce")
+    data["rollout_action_samples"] = pd.to_numeric(data.get("rollout_action_samples"), errors="coerce")
+    group_cols = [
+        "run_name",
+        "run_id",
+        "experiment",
+        "comparison_group",
+        "family",
+        "family_label",
+        "seed",
+        "design",
+        "control_axis",
+        "control_value",
+        "control_label",
+    ]
+    group_cols = [col for col in group_cols if col in data.columns]
+    run_rows = data.groupby(group_cols, dropna=False, as_index=False).agg(
+        final_fraction_action0=("final_fraction_action0", "mean"),
+        std_agent_fraction_action0=("final_fraction_action0", "std"),
+        final_action0_count=("final_action0_count", "sum"),
+        rollout_action_samples_per_agent=("rollout_action_samples", "max"),
+        rollout_action_samples_total=("rollout_action_samples", "sum"),
+        final_step_millions=("final_step_millions", "max"),
+        averaged_logged_points=("averaged_logged_points", "min"),
+        n_agents=("agent", "nunique"),
+    )
+    run_rows["std_agent_fraction_action0"] = run_rows["std_agent_fraction_action0"].fillna(0.0)
+    run_rows["condition_label"] = run_rows["family_label"]
+    run_rows["run_label"] = run_rows["run_name"]
+    run_rows = run_rows.sort_values(
+        [col for col in ["experiment", "control_value", "design", "family_label", "seed", "run_name"] if col in run_rows.columns]
+    ).reset_index(drop=True)
+
+    context["ACTION0_FINAL_RUN_LONG"] = run_rows
+    context["ACTION0_COUNT_RUN_SUMMARY"] = run_rows[
+        [
+            col
+            for col in [
+                "experiment",
+                "run_name",
+                "family_label",
+                "seed",
+                "final_fraction_action0",
+                "std_agent_fraction_action0",
+                "final_action0_count",
+                "final_step_millions",
+                "n_agents",
+            ]
+            if col in run_rows.columns
+        ]
+    ].reset_index(drop=True)
+    return run_rows
+
+
+def _ensure_action0_run_seed_agg(context):
+    existing = context.get("ACTION0_RUN_SEED_AGG")
+    if isinstance(existing, pd.DataFrame):
+        return existing
+
+    run_rows = _ensure_action0_final_run_rows(context)
+    if run_rows.empty:
+        context["ACTION0_SEED_AGG"] = pd.DataFrame()
+        return _empty_action0_frame(context, "ACTION0_RUN_SEED_AGG")
+
+    group_cols = [
+        "experiment",
+        "comparison_group",
+        "family",
+        "family_label",
+        "design",
+        "control_axis",
+        "control_value",
+        "control_label",
+        "condition_label",
+    ]
+    group_cols = [col for col in group_cols if col in run_rows.columns]
+    grouped = run_rows.groupby(group_cols, dropna=False, as_index=False).agg(
+        mean_final_fraction_action0=("final_fraction_action0", "mean"),
+        std_final_fraction_action0=("final_fraction_action0", "std"),
+        mean_final_action0_count=("final_action0_count", "mean"),
+        std_final_action0_count=("final_action0_count", "std"),
+        mean_agent_fraction_spread=("std_agent_fraction_action0", "mean"),
+        mean_final_step_millions=("final_step_millions", "mean"),
+        min_averaged_logged_points=("averaged_logged_points", "min"),
+        n_runs=("run_id", "nunique"),
+        n_seeds=("seed", "nunique"),
+        seeds=("seed", _seed_list),
+        runs=("run_name", lambda values: sorted(pd.Series(values).dropna().astype(str).unique().tolist())),
+    )
+    for column in ["std_final_fraction_action0", "std_final_action0_count"]:
+        grouped[column] = grouped[column].fillna(0.0)
+    grouped = grouped.sort_values(
+        [col for col in ["experiment", "control_value", "design", "family_label"] if col in grouped.columns]
+    ).reset_index(drop=True)
+    context["ACTION0_RUN_SEED_AGG"] = grouped
+    context["ACTION0_SEED_AGG"] = grouped
+    return grouped
+
+
+def _ensure_action0_agent_seed_agg(context):
+    existing = context.get("ACTION0_AGENT_SEED_AGG")
+    if isinstance(existing, pd.DataFrame):
+        if not existing.empty:
+            existing = existing.copy()
+            if "condition_label" not in existing.columns and "family_label" in existing.columns:
+                existing["condition_label"] = existing["family_label"]
+            if "agent" in existing.columns:
+                existing["agent"] = pd.Categorical(
+                    existing["agent"].astype(str),
+                    categories=["agent_0", "agent_1", "agent_2"],
+                    ordered=True,
+                )
+            context["ACTION0_AGENT_SEED_AGG"] = existing
+        context["ACTION0_SEED_AGG"] = existing
+        return existing
+
+    data = _ensure_action0_final_agent_rows(context)
+    if data.empty:
+        context["ACTION0_SEED_AGG"] = pd.DataFrame()
+        return _empty_action0_frame(context, "ACTION0_AGENT_SEED_AGG")
+
+    group_cols = [
+        "experiment",
+        "comparison_group",
+        "family",
+        "family_label",
+        "design",
+        "control_axis",
+        "control_value",
+        "control_label",
+        "agent",
+    ]
+    group_cols = [col for col in group_cols if col in data.columns]
+    grouped = data.groupby(group_cols, dropna=False, observed=True, as_index=False).agg(
+        mean_final_fraction_action0=("final_fraction_action0", "mean"),
+        std_final_fraction_action0=("final_fraction_action0", "std"),
+        mean_final_action0_count=("final_action0_count", "mean"),
+        std_final_action0_count=("final_action0_count", "std"),
+        n_seeds=("seed", "nunique"),
+        seeds=("seed", _seed_list),
+        runs=("run_name", lambda values: sorted(pd.Series(values).dropna().astype(str).unique().tolist())),
+    )
+    for column in ["std_final_fraction_action0", "std_final_action0_count"]:
+        grouped[column] = grouped[column].fillna(0.0)
+    grouped["agent"] = pd.Categorical(grouped["agent"], categories=["agent_0", "agent_1", "agent_2"], ordered=True)
+    grouped["condition_label"] = grouped["family_label"]
+    grouped = grouped.sort_values(
+        [col for col in ["experiment", "control_value", "design", "family_label", "agent"] if col in grouped.columns]
+    ).reset_index(drop=True)
+    context["ACTION0_AGENT_SEED_AGG"] = grouped
+    context["ACTION0_SEED_AGG"] = grouped
+    return grouped
+
+
+def _save_context_figure(context, fig, save_name):
+    save_figure = context.get("save_figure")
+    if callable(save_figure):
+        save_figure(fig, save_name)
+    if context.get("SHOW_FIGURES"):
+        fig.show()
+    return fig
+
+
+def _action0_run_colors(run_labels):
+    palette = px.colors.qualitative.Plotly + px.colors.qualitative.Dark24 + px.colors.qualitative.Alphabet
+    return {label: palette[idx % len(palette)] for idx, label in enumerate(run_labels)}
+
+
+def _plot_action0_seed_mean_by_run_agent(context, experiment, title, save_name):
+    data = _ensure_action0_agent_seed_agg(context)
+    data = data[data["experiment"].astype(str) == str(experiment)].copy()
+    if data.empty:
+        print(f"No seed-aggregated agent-level action-0 data for {experiment}")
+        return None
+
+    data["plot_run_label"] = data["condition_label"].fillna(data["family_label"]).astype(str)
+    data = data.sort_values(["control_value", "design", "plot_run_label", "agent"])
+    run_order = data["plot_run_label"].dropna().drop_duplicates().tolist()
+    agents = [
+        agent
+        for agent in ["agent_0", "agent_1", "agent_2"]
+        if agent in set(data["agent"].astype(str))
+    ]
+    colors = _action0_run_colors(run_order)
+    patterns = {"agent_0": "", "agent_1": "/", "agent_2": "\\"}
+
+    fig = go.Figure()
+    for agent in agents:
+        agent_data = data[data["agent"].astype(str) == agent].copy()
+        agent_data = pd.DataFrame({"plot_run_label": run_order}).merge(
+            agent_data,
+            on="plot_run_label",
+            how="left",
+        )
+        customdata = np.stack(
+            [
+                agent_data["std_final_fraction_action0"].fillna(0.0),
+                agent_data["n_seeds"].fillna(0).astype(int),
+                agent_data["seeds"].astype(str),
+                agent_data["mean_final_action0_count"],
+                agent_data["std_final_action0_count"].fillna(0.0),
+                agent_data["runs"].astype(str),
+            ],
+            axis=-1,
+        )
+        fig.add_trace(
+            go.Bar(
+                x=agent_data["plot_run_label"],
+                y=agent_data["mean_final_fraction_action0"],
+                name=agent,
+                legendgroup=agent,
+                marker={
+                    "color": [colors[label] for label in agent_data["plot_run_label"]],
+                    "line": {"color": "rgba(0,0,0,0.35)", "width": 0.7},
+                    "pattern": {"shape": patterns.get(agent, "")},
+                },
+                error_y={
+                    "type": "data",
+                    "array": agent_data["std_final_fraction_action0"].fillna(0.0),
+                    "visible": True,
+                },
+                customdata=customdata,
+                hovertemplate=(
+                    "run=%{x}<br>"
+                    f"agent={agent}<br>"
+                    "mean action-0 fraction=%{y:.4f}<br>"
+                    "std across seeds=%{customdata[0]:.4f}<br>"
+                    "n_seeds=%{customdata[1]}<br>"
+                    "seeds=%{customdata[2]}<br>"
+                    "mean action-0 count=%{customdata[3]:.0f}<br>"
+                    "std action-0 count=%{customdata[4]:.0f}<br>"
+                    "seed runs=%{customdata[5]}<extra></extra>"
+                ),
+            )
+        )
+
+    fig.update_yaxes(range=[0, 1], title_text="mean action-0 fraction across seeds")
+    fig.update_xaxes(title_text="run", categoryorder="array", categoryarray=run_order)
+    fig.update_layout(
+        title=title,
+        template="plotly_white",
+        barmode="group",
+        height=640,
+        width=1450,
+        bargap=0.18,
+        bargroupgap=0.04,
+        legend={
+            "title": {"text": "agent"},
+            "orientation": "v",
+            "yanchor": "top",
+            "y": 1,
+            "xanchor": "left",
+            "x": 1.01,
+        },
+        margin={"l": 70, "r": 220, "t": 90, "b": 130},
+    )
+    return _save_context_figure(context, fig, save_name)
+
+
+def _plot_action0_fraction_all_runs_by_agent(context, experiment, title, save_name):
+    return _plot_action0_seed_mean_by_run_agent(context, experiment, title, save_name)
+
+
+def _plot_action0_fraction_all_runs_by_run(context, experiment, title, save_name):
+    return _plot_action0_fraction_all_runs_by_agent(context, experiment, title, save_name)
+
+
+def _plot_action0_fraction_seed_aggregated_by_agent(context, experiment, title, save_name):
+    return _plot_action0_seed_mean_by_run_agent(context, experiment, title, save_name)
+
+
+def _plot_action0_fraction_seed_aggregated_by_run(context, experiment, title, save_name):
+    return _plot_action0_fraction_seed_aggregated_by_agent(context, experiment, title, save_name)
+
+
+def _plot_action0_for_selected_experiments(context, *, plotter, fig_prefix, title_template, save_prefix):
+    figures = {}
+    for experiment in _selected_experiments(context, include_legacy=True):
+        title = title_template.format(
+            title=_experiment_title(experiment),
+            experiment=experiment,
+            last_n=_action0_average_last_n(context),
+        )
+        key = _safe_key(experiment)
+        fig = plotter(context, experiment, title, f"{save_prefix}_{key}")
+        if fig is not None:
+            fig_name = f"{fig_prefix}_{key}"
+            context[fig_name] = fig
+            figures[fig_name] = fig
+    return figures
+
+
+def last5_logged_action0_fraction_by_agent_all_runs(context):
+    _ensure_action0_final_agent_rows(context)
+    _ensure_action0_final_run_rows(context)
+    _ensure_action0_agent_seed_agg(context)
+    figures = _plot_action0_for_selected_experiments(
         context,
-        plotter_name="plot_action0_fraction_all_runs",
-        fig_prefix="fig_action0_fraction_all_runs",
-        title_template="{title}: action 0 fraction by agent for all runs (mean of last 5 logged)",
+        plotter=_plot_action0_fraction_all_runs_by_agent,
+        fig_prefix="fig_action0_fraction_by_agent_all_runs",
+        title_template="{title}: action-0 fraction by run and agent (agent bars are seed means over last {last_n} logged)",
         save_prefix="final_action0_fraction_by_agent_all_runs",
     )
     return {
-        "title": "Last-5logged action 0 fraction by agent for all runs",
-        "figures": {
-            **_figures(context, [
-            "fig_action0_fraction_ig15_all_runs",
-            "fig_action0_fraction_hvg_all_runs",
-            "fig_action0_fraction_sparse16_all_runs",
-            "fig_action0_fraction_aib_all_runs",
-            ]),
-            **extra_figures,
-        },
+        "title": "Last-5logged action-0 fraction by run and agent",
+        "figures": figures,
         "tables": {
             "ACTION0_FINAL_LONG": context.get("ACTION0_FINAL_LONG"),
+            "ACTION0_FINAL_RUN_LONG": context.get("ACTION0_FINAL_RUN_LONG"),
+            "ACTION0_AGENT_SEED_AGG": context.get("ACTION0_AGENT_SEED_AGG"),
             "ACTION0_COUNT_LONG": context.get("ACTION0_COUNT_LONG"),
             "ACTION0_COUNT_SUMMARY": context.get("ACTION0_COUNT_SUMMARY"),
+            "ACTION0_COUNT_RUN_SUMMARY": context.get("ACTION0_COUNT_RUN_SUMMARY"),
         },
     }
+
+
+def last5_logged_action0_fraction_by_run_all_runs(context):
+    return last5_logged_action0_fraction_by_agent_all_runs(context)
 
 
 def seed_aggregated_last5_logged_action0_fraction_by_agent(context):
     if "ACTION0_FINAL_LONG" not in context:
         last5_logged_action0_fraction_by_agent_all_runs(context)
-    _exec_cell(context, _CELL_ACTION0_SEED, "seed_aggregated_action0")
-    _plot_aib(
+    _ensure_action0_run_seed_agg(context)
+    _ensure_action0_agent_seed_agg(context)
+    figures = _plot_action0_for_selected_experiments(
         context,
-        "fig_action0_fraction_aib_seed_agg",
-        "plot_action0_fraction_seed_aggregated",
-        f"{AIB_TITLE}: seed-aggregated action 0 fraction by agent (mean of last 5 logged)",
-        "seed_aggregated_final_action0_fraction_by_agent_adaptive_intervention_budget_7",
-    )
-    extra_figures = _plot_generic_experiments(
-        context,
-        plotter_name="plot_action0_fraction_seed_aggregated",
-        fig_prefix="fig_action0_fraction_seed_agg",
-        title_template="{title}: seed-aggregated action 0 fraction by agent (mean of last 5 logged)",
+        plotter=_plot_action0_fraction_seed_aggregated_by_agent,
+        fig_prefix="fig_action0_fraction_by_agent_seed_agg",
+        title_template="{title}: seed-aggregated action-0 fraction by run and agent (mean of last {last_n} logged)",
         save_prefix="seed_aggregated_final_action0_fraction_by_agent",
     )
     return {
-        "title": "Seed-Aggregated Last-5-Logged Action-0 Fraction By Agent",
-        "figures": {
-            **_figures(context, [
-            "fig_action0_fraction_ig15_seed_agg",
-            "fig_action0_fraction_hvg_seed_agg",
-            "fig_action0_fraction_sparse16_seed_agg",
-            "fig_action0_fraction_aib_seed_agg",
-            ]),
-            **extra_figures,
+        "title": "Seed-Aggregated Last-5-Logged Action-0 Fraction By Run And Agent",
+        "figures": figures,
+        "tables": {
+            "ACTION0_AGENT_SEED_AGG": context.get("ACTION0_AGENT_SEED_AGG"),
+            "ACTION0_RUN_SEED_AGG": context.get("ACTION0_RUN_SEED_AGG"),
+            "ACTION0_SEED_AGG": context.get("ACTION0_SEED_AGG"),
         },
-        "tables": {"ACTION0_SEED_AGG": context.get("ACTION0_SEED_AGG")},
     }
+
+
+def seed_aggregated_last5_logged_action0_fraction_by_run(context):
+    return seed_aggregated_last5_logged_action0_fraction_by_agent(context)
 
 
 def survival_vs_action0_non_idle_over_time(context):
@@ -742,18 +1168,18 @@ def survival_vs_action0_non_idle_over_time(context):
         context,
         "fig_survival_vs_action_aib",
         "plot_survival_vs_action_behavior",
-        f"{AIB_TITLE}: survival vs action-0 / non-idle over evaluation",
+        f"{AIB_TITLE}: survival vs action-0 over evaluation",
         "survival_vs_action_behavior_adaptive_intervention_budget_7",
     )
     extra_figures = _plot_generic_experiments(
         context,
         plotter_name="plot_survival_vs_action_behavior",
         fig_prefix="fig_survival_vs_action",
-        title_template="{title}: survival vs action-0 / non-idle over evaluation",
+        title_template="{title}: survival vs action-0 over evaluation",
         save_prefix="survival_vs_action_behavior",
     )
     return {
-        "title": "Survival vs Action-0 / Non-Idle Over Time",
+        "title": "Survival vs Action-0 Over Time",
         "figures": {
             **_figures(context, [
             "fig_survival_vs_action_ig15",

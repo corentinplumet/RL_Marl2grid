@@ -156,6 +156,195 @@ def show_or_return(fig: Optional[go.Figure], show: bool = True) -> Optional[go.F
     return fig
 
 
+def _category_colors(labels: Sequence[Any]) -> Dict[str, str]:
+    palette = px.colors.qualitative.Plotly + px.colors.qualitative.Dark24 + px.colors.qualitative.Alphabet
+    return {str(label): palette[idx % len(palette)] for idx, label in enumerate(labels)}
+
+
+def _seed_list(values: pd.Series) -> List[int]:
+    numeric = pd.to_numeric(values, errors="coerce").dropna()
+    return sorted(numeric.astype(int).unique().tolist())
+
+
+def aggregate_agent_seed_means(
+    df: pd.DataFrame,
+    *,
+    source_col: str,
+    value_col: str,
+    agent_col: str = "agent",
+    family_col: Optional[str] = None,
+    seed_col: Optional[str] = None,
+    extra_mean_cols: Sequence[str] = (),
+) -> pd.DataFrame:
+    if df.empty:
+        return df.copy()
+
+    data = df.copy()
+    family_col = family_col or f"{source_col}_family"
+    seed_col = seed_col or f"{source_col}_seed"
+    if family_col not in data.columns or seed_col not in data.columns:
+        data = add_seed_group_columns(
+            data,
+            source_col=source_col,
+            family_col=family_col,
+            seed_col=seed_col,
+        )
+    if family_col not in data.columns:
+        data[family_col] = data[source_col].astype(str)
+    if seed_col not in data.columns:
+        data[seed_col] = np.nan
+
+    data[value_col] = pd.to_numeric(data[value_col], errors="coerce")
+    data = data.dropna(subset=[value_col])
+    if data.empty:
+        return data
+
+    group_cols = [family_col, agent_col]
+    agg_spec: Dict[str, Any] = {
+        "mean": (value_col, "mean"),
+        "std": (value_col, "std"),
+        "min": (value_col, "min"),
+        "max": (value_col, "max"),
+        "n_seeds": (source_col, "nunique"),
+        "seeds": (seed_col, _seed_list),
+        "members": (source_col, lambda values: sorted(pd.Series(values).dropna().astype(str).unique().tolist())),
+    }
+    if "n" in data.columns:
+        agg_spec["total_n"] = ("n", "sum")
+        agg_spec["mean_n"] = ("n", "mean")
+    for column in extra_mean_cols:
+        if column in data.columns and column != value_col:
+            data[column] = pd.to_numeric(data[column], errors="coerce")
+            agg_spec[f"{column}_mean"] = (column, "mean")
+
+    grouped = data.groupby(group_cols, dropna=False, observed=True, as_index=False).agg(**agg_spec)
+    grouped["std"] = grouped["std"].fillna(0.0)
+    grouped["plot_label"] = grouped[family_col].astype(str)
+    return grouped.sort_values(["plot_label", agent_col]).reset_index(drop=True)
+
+
+def plot_agent_seed_mean_bar(
+    df: pd.DataFrame,
+    *,
+    source_col: str,
+    value_col: str,
+    title: str,
+    y_title: Optional[str] = None,
+    agent_col: str = "agent",
+    family_col: Optional[str] = None,
+    seed_col: Optional[str] = None,
+    extra_mean_cols: Sequence[str] = (),
+    save_name: Optional[str] = None,
+    save: bool = True,
+    show: bool = True,
+    height: int = 620,
+    width: int = 1250,
+    y_range: Optional[Sequence[float]] = None,
+    add_zero_line: bool = False,
+    x_tickangle: Optional[float] = None,
+) -> Optional[go.Figure]:
+    agg = aggregate_agent_seed_means(
+        df,
+        source_col=source_col,
+        value_col=value_col,
+        agent_col=agent_col,
+        family_col=family_col,
+        seed_col=seed_col,
+        extra_mean_cols=extra_mean_cols,
+    )
+    if agg.empty:
+        print(f"No data for {title}")
+        return None
+
+    run_order = agg["plot_label"].dropna().astype(str).drop_duplicates().tolist()
+    agents = [agent for agent in AGENTS if agent in set(agg[agent_col].astype(str))]
+    if not agents:
+        agents = sorted(agg[agent_col].dropna().astype(str).unique().tolist())
+    colors = _category_colors(run_order)
+    patterns = {"agent_0": "", "agent_1": "/", "agent_2": "\\"}
+
+    extra_hover_cols = [f"{column}_mean" for column in extra_mean_cols if f"{column}_mean" in agg.columns]
+    fig = go.Figure()
+    for agent in agents:
+        agent_data = agg[agg[agent_col].astype(str) == str(agent)].copy()
+        agent_data = pd.DataFrame({"plot_label": run_order}).merge(
+            agent_data,
+            on="plot_label",
+            how="left",
+        )
+        custom_cols = ["std", "min", "max", "n_seeds", "seeds", "members", *extra_hover_cols]
+        if "total_n" in agent_data.columns:
+            custom_cols.extend(["total_n", "mean_n"])
+        customdata = np.stack(
+            [
+                (
+                    agent_data[column].fillna(0.0)
+                    if pd.api.types.is_numeric_dtype(agent_data[column])
+                    else agent_data[column].astype(str)
+                )
+                for column in custom_cols
+            ],
+            axis=-1,
+        )
+        hover_lines = [
+            "run=%{x}",
+            f"agent={agent}",
+            f"{y_title or value_col}=%{{y:.4f}}",
+            "std across seeds=%{customdata[0]:.4f}",
+            "min=%{customdata[1]:.4f}",
+            "max=%{customdata[2]:.4f}",
+            "n seeds=%{customdata[3]}",
+            "seeds=%{customdata[4]}",
+            "members=%{customdata[5]}",
+        ]
+        for idx, column in enumerate(extra_hover_cols, start=6):
+            hover_lines.append(f"{column}=%{{customdata[{idx}]:.4f}}")
+        if "total_n" in agent_data.columns:
+            total_idx = 6 + len(extra_hover_cols)
+            hover_lines.append(f"total_n=%{{customdata[{total_idx}]:.0f}}")
+            hover_lines.append(f"mean_n=%{{customdata[{total_idx + 1}]:.0f}}")
+        fig.add_trace(
+            go.Bar(
+                x=agent_data["plot_label"],
+                y=agent_data["mean"],
+                name=str(agent),
+                legendgroup=str(agent),
+                marker={
+                    "color": [colors[str(label)] for label in agent_data["plot_label"]],
+                    "line": {"color": "rgba(0,0,0,0.35)", "width": 0.7},
+                    "pattern": {"shape": patterns.get(str(agent), "")},
+                },
+                error_y={"type": "data", "array": agent_data["std"].fillna(0.0), "visible": True},
+                customdata=customdata,
+                hovertemplate="<br>".join(hover_lines) + "<extra></extra>",
+            )
+        )
+
+    if add_zero_line:
+        fig.add_hline(y=0, line_width=1, line_dash="dash", line_color="black")
+    fig.update_yaxes(title_text=y_title or value_col, range=list(y_range) if y_range else None)
+    fig.update_xaxes(
+        title_text=source_col.replace("_", " "),
+        categoryorder="array",
+        categoryarray=run_order,
+        tickangle=x_tickangle,
+    )
+    fig.update_layout(
+        title=title,
+        template="plotly_white",
+        barmode="group",
+        height=height,
+        width=width,
+        bargap=0.18,
+        bargroupgap=0.04,
+        legend={"title": {"text": "agent"}, "orientation": "v", "yanchor": "top", "y": 1, "xanchor": "left", "x": 1.01},
+        margin={"l": 70, "r": 210, "t": 90, "b": 120},
+    )
+    if save_name:
+        save_fig(fig, save_name, save=save)
+    return show_or_return(fig, show=show)
+
+
 def _as_float(value: Any, default: float = np.nan) -> float:
     if value is None:
         return default
@@ -195,6 +384,29 @@ def _seed_from_name(name: str) -> float:
 
 def _family_from_name(name: str) -> str:
     return re.sub(r"_s\d+$", "", str(name))
+
+
+def _family_seed_from_label(label: Any) -> Tuple[str, float]:
+    text = str(label)
+    name = Path(text).name
+    stem = Path(name).stem if Path(name).suffix else name
+    return _family_from_name(stem), _seed_from_name(stem)
+
+
+def add_seed_group_columns(
+    df: pd.DataFrame,
+    *,
+    source_col: str,
+    family_col: str,
+    seed_col: str,
+) -> pd.DataFrame:
+    out = df.copy()
+    if out.empty or source_col not in out.columns:
+        return out
+    pairs = out[source_col].map(_family_seed_from_label)
+    out[family_col] = pairs.map(lambda item: item[0])
+    out[seed_col] = pairs.map(lambda item: item[1])
+    return out
 
 
 def _read_toml(path: Path) -> Dict[str, Any]:
@@ -1371,7 +1583,57 @@ def load_teacher_dataset_summaries(root: Path = TEACHER_DATASET_ROOT) -> Tuple[p
             }
         )
         agent_rows.extend(_dataset_agent_rows(metadata, dataset_name))
-    return pd.DataFrame(dataset_rows), pd.DataFrame(agent_rows)
+    dataset_df = add_seed_group_columns(
+        pd.DataFrame(dataset_rows),
+        source_col="dataset",
+        family_col="dataset_family",
+        seed_col="dataset_seed",
+    )
+    agent_df = add_seed_group_columns(
+        pd.DataFrame(agent_rows),
+        source_col="dataset",
+        family_col="dataset_family",
+        seed_col="dataset_seed",
+    )
+    return dataset_df, agent_df
+
+
+def aggregate_teacher_dataset_agents(agent_df: pd.DataFrame) -> pd.DataFrame:
+    if agent_df.empty:
+        return agent_df.copy()
+    data = add_seed_group_columns(
+        agent_df,
+        source_col="dataset",
+        family_col="dataset_family",
+        seed_col="dataset_seed",
+    )
+    metrics = [
+        "teacher_action0_frac",
+        "teacher_nonidle_frac",
+        "policy_nonidle_frac",
+        "force_noop_frac",
+        "was_overwritten_frac",
+        "overwrite_to_action0_frac",
+        "obs_nan_or_inf",
+    ]
+    agg_spec: Dict[str, Any] = {
+        "n_seed_datasets": ("dataset", "nunique"),
+        "datasets": ("dataset", lambda values: sorted(pd.Series(values).dropna().astype(str).unique().tolist())),
+        "seeds": ("dataset_seed", _seed_list),
+    }
+    if "n" in data.columns:
+        agg_spec["total_n"] = ("n", "sum")
+        agg_spec["mean_n"] = ("n", "mean")
+    for metric in metrics:
+        if metric in data.columns:
+            data[metric] = pd.to_numeric(data[metric], errors="coerce")
+            agg_spec[metric] = (metric, "mean")
+            agg_spec[f"{metric}_std"] = (metric, "std")
+    out = data.groupby(["dataset_family", "agent"], dropna=False, observed=True, as_index=False).agg(**agg_spec)
+    std_cols = [col for col in out.columns if col.endswith("_std")]
+    if std_cols:
+        out[std_cols] = out[std_cols].fillna(0.0)
+    return out.sort_values(["dataset_family", "agent"]).reset_index(drop=True)
 
 
 def plot_teacher_dataset_balance(agent_df: pd.DataFrame, *, show: bool = True, save: bool = True) -> List[go.Figure]:
@@ -1387,20 +1649,25 @@ def plot_teacher_dataset_balance(agent_df: pd.DataFrame, *, show: bool = True, s
     ]:
         if metric not in agent_df.columns:
             continue
-        fig = px.bar(
+        fig = plot_agent_seed_mean_bar(
             agent_df,
-            x="dataset",
-            y=metric,
-            color="agent",
-            barmode="group",
-            hover_data=["n", "policy_nonidle_frac", "overwrite_to_action0_frac"],
-            title=title,
+            source_col="dataset",
+            family_col="dataset_family",
+            seed_col="dataset_seed",
+            value_col=metric,
+            title=f"{title}: seed mean by dataset family and agent",
+            y_title=metric,
+            extra_mean_cols=["policy_nonidle_frac", "overwrite_to_action0_frac"],
+            save_name=f"teacher_dataset_{metric}",
+            save=save,
+            show=show,
+            height=560,
+            width=1250,
+            y_range=[0, 1],
+            x_tickangle=-30,
         )
-        fig.update_layout(template="plotly_white", height=560, width=1250)
-        fig.update_xaxes(tickangle=-30)
-        save_fig(fig, f"teacher_dataset_{metric}", save=save)
-        show_or_return(fig, show=show)
-        figs.append(fig)
+        if fig is not None:
+            figs.append(fig)
     return figs
 
 
@@ -1466,7 +1733,33 @@ def load_teacher_student_checkpoints(
                     }
                     row.update(metrics)
                     epoch_rows.append(row)
-    return pd.DataFrame(ckpt_rows), pd.DataFrame(epoch_rows)
+    checkpoint_df = add_seed_group_columns(
+        pd.DataFrame(ckpt_rows),
+        source_col="checkpoint",
+        family_col="checkpoint_family",
+        seed_col="checkpoint_seed",
+    )
+    if "dataset" in checkpoint_df.columns:
+        checkpoint_df = add_seed_group_columns(
+            checkpoint_df,
+            source_col="dataset",
+            family_col="dataset_family",
+            seed_col="dataset_seed",
+        )
+    epoch_df = add_seed_group_columns(
+        pd.DataFrame(epoch_rows),
+        source_col="checkpoint",
+        family_col="checkpoint_family",
+        seed_col="checkpoint_seed",
+    )
+    if "dataset" in epoch_df.columns:
+        epoch_df = add_seed_group_columns(
+            epoch_df,
+            source_col="dataset",
+            family_col="dataset_family",
+            seed_col="dataset_seed",
+        )
+    return checkpoint_df, epoch_df
 
 
 def plot_student_bc_metrics(epoch_df: pd.DataFrame, *, show: bool = True, save: bool = True) -> List[go.Figure]:
