@@ -1186,10 +1186,12 @@ class MAEnvWrapper(MAEnv):
 
     @staticmethod
     def _copy_for_simulation(value: Any) -> Any:
+        # Grid2Op observations can share internal simulation state after .copy().
+        # Deep copies are slower, but they isolate parallel obs.simulate calls.
         try:
-            return value.copy()
-        except Exception:
             return copy.deepcopy(value)
+        except Exception:
+            return value.copy()
 
     def _empty_action_outcome(
         self,
