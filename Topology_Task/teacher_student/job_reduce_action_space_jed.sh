@@ -54,6 +54,7 @@ ACTION_REDUCTION_MIN_COUNT="${ACTION_REDUCTION_MIN_COUNT:-1}"
 ACTION_REDUCTION_METRIC="${ACTION_REDUCTION_METRIC:-delta_vs_do_nothing}"
 ACTION_REDUCTION_METHOD="${ACTION_REDUCTION_METHOD:-best_per_state}"
 ACTION_REDUCTION_REQUIRE_IMPROVEMENT="${ACTION_REDUCTION_REQUIRE_IMPROVEMENT:-true}"
+ACTION_REDUCTION_IMPROVEMENT_TOLERANCE="${ACTION_REDUCTION_IMPROVEMENT_TOLERANCE:-1e-3}"
 
 source "${CONDA_BASE}/etc/profile.d/conda.sh"
 conda activate "${CONDA_ENV}"
@@ -79,4 +80,5 @@ python -u teacher_student/reduce_action_space_from_outcomes.py \
     --min-count "${ACTION_REDUCTION_MIN_COUNT}" \
     --metric "${ACTION_REDUCTION_METRIC}" \
     --selection-method "${ACTION_REDUCTION_METHOD}" \
-    --require-improvement "${ACTION_REDUCTION_REQUIRE_IMPROVEMENT}"
+    --require-improvement "${ACTION_REDUCTION_REQUIRE_IMPROVEMENT}" \
+    --improvement-tolerance "${ACTION_REDUCTION_IMPROVEMENT_TOLERANCE}"

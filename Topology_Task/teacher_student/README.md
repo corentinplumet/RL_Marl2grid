@@ -72,6 +72,10 @@ python Topology_Task/teacher_student/collect_teacher_dataset.py \
 
 ## Brute-Force Action-Space Reduction
 
+For the complete procedure, including collection, saved fields, reducer modes,
+commands, and pitfalls, see
+[`ACTION_SPACE_REDUCTION_README.md`](ACTION_SPACE_REDUCTION_README.md).
+
 This stage does not need a checkpoint. It is the pre-RL brute-force teacher:
 instantiate the `bus36` Grid2Op environment, simulate candidate topology actions
 from high-rho states, log how each action changes `rho_max`, then keep the
