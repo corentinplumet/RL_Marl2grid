@@ -4,8 +4,11 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
+import gc
 import json
 import multiprocessing as mp
+import os
 import shutil
 import subprocess
 import sys
@@ -447,8 +450,23 @@ def _run_reducer(cli: Namespace, output_dir: Path) -> None:
     subprocess.run(cmd, cwd=str(TASK_DIR), check=True)
 
 
+@contextlib.contextmanager
+def _suppress_grid2op_cleanup_stderr():
+    """Hide Grid2Op double-close noise emitted from BaseEnv.__del__.
+
+    Some Grid2Op observation environments raise "closed already" from their
+    destructor after the parent env has been closed. That exception is printed as
+    "Exception ignored in ..." on stderr during process cleanup, even though the
+    collection already finished correctly.
+    """
+    with open(os.devnull, "w", encoding="utf-8") as devnull:
+        with contextlib.redirect_stderr(devnull):
+            yield
+
+
 def _simulation_worker_main(remote, env_args: Namespace, chronic_split: Optional[str]) -> None:
     env = None
+    exit_code = 0
     try:
         set_random_seed(int(env_args.seed))
         env = MAEnvWrapper(env_args, eval_env=True, chronic_split=chronic_split)
@@ -511,14 +529,29 @@ def _simulation_worker_main(remote, env_args: Namespace, chronic_split: Optional
 
             raise NotImplementedError(f"Unknown worker command: {cmd}")
     except Exception:
+        exit_code = 1
         try:
             remote.send({"ok": False, "error": traceback.format_exc()})
         except Exception:
             pass
     finally:
         if env is not None:
-            env.close()
-        remote.close()
+            with _suppress_grid2op_cleanup_stderr():
+                try:
+                    env.close()
+                except Exception:
+                    pass
+                env = None
+                gc.collect()
+        try:
+            remote.close()
+        except Exception:
+            pass
+        # Grid2Op can raise from BaseEnv.__del__ during interpreter shutdown
+        # after internal observation envs have already been closed. Worker
+        # results have already been sent through the pipe, so bypass Python's
+        # destructor sweep to avoid turning cleanup noise into failed jobs.
+        os._exit(exit_code)
 
 
 class SimulationWorkerPool:
@@ -1030,7 +1063,13 @@ def main() -> None:
     metadata_file = _write_metadata(output_dir, final_metadata)
     if sim_pool is not None:
         sim_pool.close()
-    env.close()
+    with _suppress_grid2op_cleanup_stderr():
+        try:
+            env.close()
+        except Exception:
+            pass
+        env = None
+        gc.collect()
 
     print("========== Brute-force collection complete ==========")
     print(f"Output dir: {_safe_path(output_dir)}")
