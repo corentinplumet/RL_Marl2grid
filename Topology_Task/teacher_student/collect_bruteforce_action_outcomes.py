@@ -489,9 +489,15 @@ def _simulation_worker_main(remote, env_args: Namespace, chronic_split: Optional
                 )
                 continue
 
-            if cmd == "step":
-                _, _, terminations, truncations, _ = env.step(data["actions"])
-                done = bool(terminations[agent_ids[0]] or truncations[agent_ids[0]])
+            if cmd == "sync":
+                done = False
+                for actions in data["actions"]:
+                    _, _, terminations, truncations, _ = env.step(actions)
+                    done = bool(
+                        terminations[agent_ids[0]] or truncations[agent_ids[0]]
+                    )
+                    if done:
+                        break
                 remote.send(
                     {
                         "ok": True,
@@ -594,6 +600,34 @@ class SimulationWorkerPool:
             raise RuntimeError("Internal error: missing worker simulation outcome.")
         return [outcome for outcome in outcomes if outcome is not None]
 
+    def sync(
+        self,
+        pending_actions: List[Dict[str, int]],
+        *,
+        reference_max_rho: float,
+    ) -> None:
+        if not pending_actions:
+            self._check_rhos(
+                [float(reference_max_rho)] * self.num_workers,
+                float(reference_max_rho),
+                context="sync",
+            )
+            return
+        for remote in self.remotes:
+            remote.send(("sync", {"actions": pending_actions}))
+        responses = [self._recv(remote) for remote in self.remotes]
+        worker_dones = [bool(response["done"]) for response in responses]
+        if any(worker_dones):
+            raise RuntimeError(
+                "Simulation worker reached done while replaying pending actions "
+                f"before a collector candidate state: {worker_dones[:8]}..."
+            )
+        self._check_rhos(
+            [float(response["max_rho"]) for response in responses],
+            float(reference_max_rho),
+            context="sync",
+        )
+
     def step(
         self,
         actions: Dict[str, int],
@@ -601,21 +635,11 @@ class SimulationWorkerPool:
         main_done: bool,
         reference_max_rho: Optional[float],
     ) -> None:
-        for remote in self.remotes:
-            remote.send(("step", {"actions": actions}))
-        responses = [self._recv(remote) for remote in self.remotes]
-        worker_dones = [bool(response["done"]) for response in responses]
-        if any(done != bool(main_done) for done in worker_dones):
+        if main_done:
             raise RuntimeError(
-                "Simulation worker desynchronized from collector: "
-                f"main_done={main_done}, worker_dones={worker_dones[:8]}..."
+                "SimulationWorkerPool.step is no longer used for terminal steps."
             )
-        if not main_done and reference_max_rho is not None:
-            self._check_rhos(
-                [float(response["max_rho"]) for response in responses],
-                float(reference_max_rho),
-                context="step",
-            )
+        self.sync([actions], reference_max_rho=float(reference_max_rho))
 
     def _check_rhos(
         self,
@@ -767,6 +791,7 @@ def main() -> None:
     skipped_states = 0
     unique_fingerprints = set()
     episode_lengths: List[int] = []
+    pending_worker_actions: List[Dict[str, int]] = []
     run_start_time = time.perf_counter()
     timed_env_steps = 0
     timed_sim_actions = 0
@@ -798,6 +823,14 @@ def main() -> None:
 
         if should_collect:
             candidate_states += 1
+            if sim_pool is not None:
+                sync_start_time = time.perf_counter()
+                sim_pool.sync(
+                    pending_worker_actions,
+                    reference_max_rho=global_max_rho,
+                )
+                pending_worker_actions = []
+                collection_seconds += time.perf_counter() - sync_start_time
             collection_start_time = time.perf_counter()
             sim_start_time = time.perf_counter()
             do_nothing = env.simulate_action_outcomes(
@@ -900,7 +933,7 @@ def main() -> None:
                         ),
                     )
                     print(f"wrote {_safe_path(flushed)} at env_step={env_steps}")
-            collection_seconds = time.perf_counter() - collection_start_time
+            collection_seconds += time.perf_counter() - collection_start_time
         else:
             skipped_states += 1
 
@@ -916,15 +949,6 @@ def main() -> None:
         done_episode_length = 0
         if done:
             done_episode_length = max(int(env.g2op_ma_env._cent_env.nb_time_step), 1)
-
-        if sim_pool is not None:
-            sim_pool.step(
-                rollout_actions,
-                main_done=done,
-                reference_max_rho=(
-                    None if done else float(env.get_current_max_rho())
-                ),
-            )
 
         env_steps += 1
         episode_step += 1
@@ -976,10 +1000,13 @@ def main() -> None:
                     flush=True,
                 )
             obs, _ = env.reset()
+            pending_worker_actions = []
             if sim_pool is not None:
                 sim_pool.reset(float(env.get_current_max_rho()))
             episode_step = 0
         else:
+            if sim_pool is not None:
+                pending_worker_actions.append(dict(rollout_actions))
             obs = next_obs
 
     final_shard = writer.flush()
