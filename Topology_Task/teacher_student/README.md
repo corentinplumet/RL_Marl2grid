@@ -135,7 +135,15 @@ After the array completes, merge all parts into one reduced action-space file:
 ```bash
 DATASET_ROOT=outputs/teacher_student_datasets/bus36_bruteforce_rho090 \
 ACTION_REDUCTION_TOP_K=208 \
+ACTION_REDUCTION_NAME=best_per_state_delta_do_nothing_k208 \
 sbatch Topology_Task/teacher_student/job_reduce_action_space_jed.sh
+```
+
+You can also pass a config file:
+
+```bash
+sbatch Topology_Task/teacher_student/job_reduce_action_space_jed.sh \
+  Topology_Task/teacher_student/reduction_configs/bus36_improvement_rate_delta_do_nothing_k208.env
 ```
 
 The dedicated JED wrapper defaults to:
@@ -160,11 +168,10 @@ ACTION_REDUCTION_TOP_K=64 \
 sbatch Topology_Task/teacher_student/job_collect_action_outcomes_jed.sh
 ```
 
-The wrapper runs `reduce_action_space_from_outcomes.py` after collection by
-default and writes:
+The reducer wrapper writes:
 
 ```text
-outputs/teacher_student_datasets/bus36_bruteforce_rho090/metadata/reduced_action_space.json
+${DATASET_ROOT}/metadata/reduced_action_space_${ACTION_REDUCTION_NAME}.json
 ```
 
 The reducer mimics the paper's action-set reduction: for each collected state,

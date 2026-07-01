@@ -425,10 +425,64 @@ The JED launcher is:
 Topology_Task/teacher_student/job_reduce_action_space_jed.sh
 ```
 
-The reducer reads all `parts/part_*` datasets and writes:
+You can launch the reducer either by setting environment variables directly or
+by passing a config file to the Slurm wrapper.
+
+Config files live in:
 
 ```text
-metadata/reduced_action_space.json
+Topology_Task/teacher_student/reduction_configs/
+```
+
+Ready-to-run bus36 configs:
+
+```text
+bus36_best_per_state_delta_do_nothing_k208.env
+bus36_all_improving_delta_do_nothing_k208.env
+bus36_improvement_rate_delta_do_nothing_k208.env
+```
+
+Each config controls:
+
+```text
+DATASET_ROOT
+ACTION_REDUCTION_NAME
+ACTION_REDUCTION_OUTPUT
+ACTION_REDUCTION_TOP_K
+ACTION_REDUCTION_MIN_COUNT
+ACTION_REDUCTION_METRIC
+ACTION_REDUCTION_METHOD
+ACTION_REDUCTION_REQUIRE_IMPROVEMENT
+ACTION_REDUCTION_IMPROVEMENT_TOLERANCE
+```
+
+Launch from the repository root:
+
+```bash
+cd /home/plumet/RL_Marl2grid
+
+sbatch Topology_Task/teacher_student/job_reduce_action_space_jed.sh \
+  Topology_Task/teacher_student/reduction_configs/bus36_improvement_rate_delta_do_nothing_k208.env
+```
+
+This writes:
+
+```text
+${DATASET_ROOT}/metadata/reduced_action_space_${ACTION_REDUCTION_NAME}.json
+```
+
+For the improvement-rate config above, the output is:
+
+```text
+outputs/teacher_student_datasets/bus36_context_rho090_a1_2048_15jobs/metadata/reduced_action_space_improvement_rate_delta_do_nothing_k208_min20.json
+```
+
+The reducer reads all `parts/part_*` datasets and writes the configured JSON
+file. If neither `ACTION_REDUCTION_NAME` nor `ACTION_REDUCTION_OUTPUT` is set,
+the wrapper generates a descriptive default name:
+
+```text
+${DATASET_ROOT}/metadata/reduced_action_space_${METHOD}_${METRIC}_k${TOP_K}_min${MIN_COUNT}.json
 ```
 
 The output JSON contains, for each agent:
@@ -456,6 +510,7 @@ ACTION_REDUCTION_TOP_K=208 \
 ACTION_REDUCTION_MIN_COUNT=20 \
 ACTION_REDUCTION_METRIC=delta_vs_do_nothing \
 ACTION_REDUCTION_METHOD=improvement_rate \
+ACTION_REDUCTION_NAME=improvement_rate_delta_do_nothing_k208_min20 \
 ACTION_REDUCTION_REQUIRE_IMPROVEMENT=true \
 ACTION_REDUCTION_IMPROVEMENT_TOLERANCE=1e-3 \
 sbatch Topology_Task/teacher_student/job_reduce_action_space_jed.sh
@@ -464,7 +519,7 @@ sbatch Topology_Task/teacher_student/job_reduce_action_space_jed.sh
 This writes:
 
 ```text
-outputs/teacher_student_datasets/bus36_context_rho090_a1_2048_15jobs/metadata/reduced_action_space.json
+outputs/teacher_student_datasets/bus36_context_rho090_a1_2048_15jobs/metadata/reduced_action_space_improvement_rate_delta_do_nothing_k208_min20.json
 ```
 
 If you want to keep multiple reduced action spaces from the same dataset, use

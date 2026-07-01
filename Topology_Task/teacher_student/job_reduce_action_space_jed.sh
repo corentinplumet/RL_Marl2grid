@@ -3,13 +3,16 @@
 # Submit after the collection array completes:
 #   DATASET_ROOT=outputs/teacher_student_datasets/bus36_bruteforce_rho090 \
 #   sbatch Topology_Task/teacher_student/job_reduce_action_space_jed.sh
+# Or use a config file:
+#   sbatch Topology_Task/teacher_student/job_reduce_action_space_jed.sh \
+#     Topology_Task/teacher_student/reduction_configs/bus36_improvement_rate_k208.env
 #SBATCH --job-name=reduce_actions
 #SBATCH --mail-user=corentin.plumet@epfl.ch
 #SBATCH --partition=academic
 #SBATCH --qos=academic
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=72
 #SBATCH --mem=32G
 #SBATCH --time=04:00:00
 #SBATCH --output=Topology_Task/teacher_student/slurm-%x-%j.out
@@ -48,6 +51,29 @@ if [ ! -f "${CONDA_BASE}/etc/profile.d/conda.sh" ]; then
     exit 1
 fi
 
+REDUCTION_CONFIG="${1:-}"
+if [ -n "${REDUCTION_CONFIG}" ]; then
+    if [[ "${REDUCTION_CONFIG}" == --* ]]; then
+        echo "Unexpected option '${REDUCTION_CONFIG}'. Pass a config file path or set environment variables." >&2
+        exit 1
+    fi
+    if [ -f "${REDUCTION_CONFIG}" ]; then
+        REDUCTION_CONFIG_PATH="${REDUCTION_CONFIG}"
+    elif [ -f "${REPO_DIR}/${REDUCTION_CONFIG}" ]; then
+        REDUCTION_CONFIG_PATH="${REPO_DIR}/${REDUCTION_CONFIG}"
+    elif [ -f "${TASK_DIR}/${REDUCTION_CONFIG}" ]; then
+        REDUCTION_CONFIG_PATH="${TASK_DIR}/${REDUCTION_CONFIG}"
+    else
+        echo "Reduction config file does not exist: ${REDUCTION_CONFIG}" >&2
+        exit 1
+    fi
+    # shellcheck source=/dev/null
+    source "${REDUCTION_CONFIG_PATH}"
+    shift
+else
+    REDUCTION_CONFIG_PATH=""
+fi
+
 DATASET_ROOT="${DATASET_ROOT:-outputs/teacher_student_datasets/bus36_bruteforce_rho090}"
 ACTION_REDUCTION_TOP_K="${ACTION_REDUCTION_TOP_K:-208}"
 ACTION_REDUCTION_MIN_COUNT="${ACTION_REDUCTION_MIN_COUNT:-1}"
@@ -55,6 +81,16 @@ ACTION_REDUCTION_METRIC="${ACTION_REDUCTION_METRIC:-delta_vs_do_nothing}"
 ACTION_REDUCTION_METHOD="${ACTION_REDUCTION_METHOD:-best_per_state}"
 ACTION_REDUCTION_REQUIRE_IMPROVEMENT="${ACTION_REDUCTION_REQUIRE_IMPROVEMENT:-true}"
 ACTION_REDUCTION_IMPROVEMENT_TOLERANCE="${ACTION_REDUCTION_IMPROVEMENT_TOLERANCE:-1e-3}"
+ACTION_REDUCTION_NAME="${ACTION_REDUCTION_NAME:-}"
+ACTION_REDUCTION_OUTPUT="${ACTION_REDUCTION_OUTPUT:-}"
+
+if [ -z "${ACTION_REDUCTION_OUTPUT}" ]; then
+    if [ -n "${ACTION_REDUCTION_NAME}" ]; then
+        ACTION_REDUCTION_OUTPUT="${DATASET_ROOT}/metadata/reduced_action_space_${ACTION_REDUCTION_NAME}.json"
+    else
+        ACTION_REDUCTION_OUTPUT="${DATASET_ROOT}/metadata/reduced_action_space_${ACTION_REDUCTION_METHOD}_${ACTION_REDUCTION_METRIC}_k${ACTION_REDUCTION_TOP_K}_min${ACTION_REDUCTION_MIN_COUNT}.json"
+    fi
+fi
 
 source "${CONDA_BASE}/etc/profile.d/conda.sh"
 conda activate "${CONDA_ENV}"
@@ -71,11 +107,19 @@ if [ "${#part_dirs[@]}" -eq 0 ]; then
 fi
 
 echo "Reducing ${#part_dirs[@]} part datasets from ${DATASET_ROOT}"
+echo "Config: ${REDUCTION_CONFIG_PATH:-none}"
+echo "Method: ${ACTION_REDUCTION_METHOD}"
+echo "Metric: ${ACTION_REDUCTION_METRIC}"
+echo "Top-k: ${ACTION_REDUCTION_TOP_K}"
+echo "Min count: ${ACTION_REDUCTION_MIN_COUNT}"
+echo "Require improvement: ${ACTION_REDUCTION_REQUIRE_IMPROVEMENT}"
+echo "Improvement tolerance: ${ACTION_REDUCTION_IMPROVEMENT_TOLERANCE}"
+echo "Output: ${ACTION_REDUCTION_OUTPUT}"
 printf "  %s\n" "${part_dirs[@]}"
 
 python -u teacher_student/reduce_action_space_from_outcomes.py \
     --dataset "${part_dirs[@]}" \
-    --output "${DATASET_ROOT}/metadata/reduced_action_space.json" \
+    --output "${ACTION_REDUCTION_OUTPUT}" \
     --top-k "${ACTION_REDUCTION_TOP_K}" \
     --min-count "${ACTION_REDUCTION_MIN_COUNT}" \
     --metric "${ACTION_REDUCTION_METRIC}" \
