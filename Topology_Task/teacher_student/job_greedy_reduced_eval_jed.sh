@@ -32,6 +32,9 @@ Common overrides:
   REDUCED_ACTION_SPACE=outputs/.../reduced_action_space.json
   SPLIT=test
   MAX_EPISODES=              # leave empty for all chronics in split
+  CHRONIC_SAMPLE_MODE=sequential
+  CHRONIC_SAMPLE_SEED=
+  CHRONIC_SAMPLE_REPLACEMENT=false
   DECISION_RHO_THRESHOLD=0.90
   REQUIRE_IMPROVEMENT=true
   IMPROVEMENT_TOLERANCE=1e-3
@@ -85,6 +88,9 @@ DECENTRALIZED="${DECENTRALIZED:-true}"
 OPTIMIZE_MEM="${OPTIMIZE_MEM:-true}"
 MAX_EPISODES="${MAX_EPISODES:-}"
 MAX_ENV_STEPS="${MAX_ENV_STEPS:-}"
+CHRONIC_SAMPLE_MODE="${CHRONIC_SAMPLE_MODE:-sequential}"
+CHRONIC_SAMPLE_SEED="${CHRONIC_SAMPLE_SEED:-}"
+CHRONIC_SAMPLE_REPLACEMENT="${CHRONIC_SAMPLE_REPLACEMENT:-false}"
 DECISION_RHO_THRESHOLD="${DECISION_RHO_THRESHOLD:-0.90}"
 REQUIRE_IMPROVEMENT="${REQUIRE_IMPROVEMENT:-true}"
 IMPROVEMENT_TOLERANCE="${IMPROVEMENT_TOLERANCE:-1e-3}"
@@ -113,6 +119,8 @@ args=(
     --difficulty "${DIFFICULTY}"
     --decentralized "${DECENTRALIZED}"
     --optimize-mem "${OPTIMIZE_MEM}"
+    --chronic-sample-mode "${CHRONIC_SAMPLE_MODE}"
+    --chronic-sample-replacement "${CHRONIC_SAMPLE_REPLACEMENT}"
     --decision-rho-threshold "${DECISION_RHO_THRESHOLD}"
     --require-improvement "${REQUIRE_IMPROVEMENT}"
     --improvement-tolerance "${IMPROVEMENT_TOLERANCE}"
@@ -131,6 +139,10 @@ if [ -n "${MAX_ENV_STEPS}" ]; then
     args+=(--max-env-steps "${MAX_ENV_STEPS}")
 fi
 
+if [ -n "${CHRONIC_SAMPLE_SEED}" ]; then
+    args+=(--chronic-sample-seed "${CHRONIC_SAMPLE_SEED}")
+fi
+
 source "${CONDA_BASE}/etc/profile.d/conda.sh"
 conda activate "${CONDA_ENV}"
 
@@ -147,6 +159,9 @@ echo "Env id: ${ENV_ID}"
 echo "Reduced action space: ${REDUCED_ACTION_SPACE}"
 echo "Split: ${SPLIT}"
 echo "Max episodes: ${MAX_EPISODES:-split size}"
+echo "Chronic sample mode: ${CHRONIC_SAMPLE_MODE}"
+echo "Chronic sample seed: ${CHRONIC_SAMPLE_SEED:-SEED}"
+echo "Chronic sample replacement: ${CHRONIC_SAMPLE_REPLACEMENT}"
 echo "Decision rho threshold: ${DECISION_RHO_THRESHOLD}"
 echo "Require improvement: ${REQUIRE_IMPROVEMENT}"
 echo "Improvement tolerance: ${IMPROVEMENT_TOLERANCE}"
@@ -155,4 +170,3 @@ echo "Output dir: ${OUTPUT_DIR}"
 echo "Extra args: $*"
 
 python -u teacher_student/evaluate_greedy_reduced_actions.py "${args[@]}" "$@"
-

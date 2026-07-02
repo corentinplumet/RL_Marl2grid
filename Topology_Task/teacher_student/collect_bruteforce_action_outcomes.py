@@ -781,6 +781,9 @@ def _simulation_worker_main(remote, env_args: Namespace, chronic_split: Optional
                 break
 
             if cmd == "reset":
+                chronic_id = data.get("chronic_id", None)
+                if chronic_id is not None:
+                    env.set_chronic_id(int(chronic_id))
                 env.reset()
                 remote.send(
                     {
@@ -890,9 +893,13 @@ class SimulationWorkerPool:
             raise RuntimeError(response.get("error", "Unknown simulation worker error"))
         return response
 
-    def reset(self, reference_max_rho: float) -> None:
+    def reset(
+        self,
+        reference_max_rho: float,
+        chronic_id: Optional[int] = None,
+    ) -> None:
         for remote in self.remotes:
-            remote.send(("reset", {}))
+            remote.send(("reset", {"chronic_id": chronic_id}))
         responses = [self._recv(remote) for remote in self.remotes]
         self._check_rhos(
             [float(response["max_rho"]) for response in responses],

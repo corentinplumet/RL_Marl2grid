@@ -740,6 +740,37 @@ class MAEnvWrapper(MAEnv):
 
         return obs, heuristic_reward, done, info
 
+    def set_chronic_id(self, chronic_id: int) -> None:
+        """Best-effort request for Grid2Op to use a specific chronic on reset."""
+        chronic_id = int(chronic_id)
+        targets = [
+            getattr(self, "g2op_env", None),
+            getattr(self.g2op_ma_env, "_cent_env", None),
+            getattr(getattr(self, "g2op_env", None), "chronics_handler", None),
+            getattr(
+                getattr(self.g2op_ma_env, "_cent_env", None),
+                "chronics_handler",
+                None,
+            ),
+        ]
+        errors = []
+        seen = set()
+        for target in targets:
+            if target is None or id(target) in seen:
+                continue
+            seen.add(id(target))
+            for method_name in ("set_id", "tell_id"):
+                method = getattr(target, method_name, None)
+                if not callable(method):
+                    continue
+                try:
+                    method(chronic_id)
+                    return
+                except Exception as exc:
+                    errors.append(f"{type(target).__name__}.{method_name}: {exc}")
+        detail = "; ".join(errors[-4:]) if errors else "no set_id/tell_id method found"
+        raise RuntimeError(f"Could not set chronic id {chronic_id}: {detail}")
+
     def reset(self, seed=None, options=None):
         if seed is not None:
             self.seed(seed)

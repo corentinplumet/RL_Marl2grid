@@ -213,7 +213,10 @@ def _run_do_nothing_episode(
     env: MAEnvWrapper,
     agent_ids: List[str],
     max_env_steps: Optional[int],
+    chronic_id: Optional[int],
 ) -> Dict[str, Any]:
+    if chronic_id is not None:
+        env.set_chronic_id(int(chronic_id))
     _, _ = env.reset()
     chronic_info = _current_chronic_info(env)
     max_steps = _max_episode_duration(env)
@@ -249,10 +252,13 @@ def _run_greedy_episode(
     improvement_tolerance: float,
     require_improvement: bool,
     max_env_steps: Optional[int],
+    chronic_id: Optional[int],
 ) -> Dict[str, Any]:
+    if chronic_id is not None:
+        env.set_chronic_id(int(chronic_id))
     _, _ = env.reset()
     if sim_pool is not None:
-        sim_pool.reset(float(env.get_current_max_rho()))
+        sim_pool.reset(float(env.get_current_max_rho()), chronic_id=chronic_id)
 
     chronic_info = _current_chronic_info(env)
     max_steps = _max_episode_duration(env)
@@ -336,6 +342,7 @@ def _write_outputs(
 
     fieldnames = [
         "episode",
+        "requested_chronic_id",
         "greedy_chronic_name",
         "do_nothing_chronic_name",
         "greedy_chronic_fingerprint",
@@ -387,6 +394,23 @@ def parse_args() -> Namespace:
     parser.add_argument("--optimize-mem", type=str2bool, default=True)
     parser.add_argument("--max-episodes", type=int, default=None)
     parser.add_argument("--max-env-steps", type=int, default=None)
+    parser.add_argument(
+        "--chronic-sample-mode",
+        type=str,
+        default="sequential",
+        choices=["sequential", "random"],
+        help=(
+            "sequential evaluates the first N chronics in Grid2Op order. random "
+            "samples chronic ids from the selected split before each episode."
+        ),
+    )
+    parser.add_argument("--chronic-sample-seed", type=int, default=None)
+    parser.add_argument(
+        "--chronic-sample-replacement",
+        type=str2bool,
+        default=False,
+        help="Sample random chronic ids with replacement.",
+    )
     parser.add_argument("--decision-rho-threshold", type=float, default=0.90)
     parser.add_argument("--improvement-tolerance", type=float, default=1e-3)
     parser.add_argument("--require-improvement", type=str2bool, default=True)
@@ -427,9 +451,37 @@ def main() -> None:
     }
     requests = _candidate_requests(greedy_env, agent_ids)
     target_episodes = cli.max_episodes
+    split_size = getattr(greedy_env, "chronic_split_size", None)
     if target_episodes is None:
-        split_size = getattr(greedy_env, "chronic_split_size", None)
         target_episodes = int(split_size) if split_size is not None else 1
+    chronic_ids: List[Optional[int]] = [None] * int(target_episodes)
+    if cli.chronic_sample_mode == "random":
+        if split_size is None:
+            raise ValueError(
+                "--chronic-sample-mode=random requires an exact chronic split size."
+            )
+        if (
+            not bool(cli.chronic_sample_replacement)
+            and int(target_episodes) > int(split_size)
+        ):
+            raise ValueError(
+                "Cannot sample more chronics than the split size without "
+                "--chronic-sample-replacement true."
+            )
+        sample_seed = (
+            int(cli.chronic_sample_seed)
+            if cli.chronic_sample_seed is not None
+            else int(env_args.seed)
+        )
+        rng = np.random.default_rng(sample_seed)
+        chronic_ids = [
+            int(value)
+            for value in rng.choice(
+                int(split_size),
+                size=int(target_episodes),
+                replace=bool(cli.chronic_sample_replacement),
+            )
+        ]
 
     sim_pool = None
     if cli.sim_workers > 1:
@@ -446,6 +498,16 @@ def main() -> None:
     print(f"Reduced action space: {_safe_path(Path(env_args.reduced_action_space))}")
     print(f"Output dir: {_safe_path(output_dir)}")
     print(f"Episodes: {target_episodes}")
+    print(f"Chronic sample mode: {cli.chronic_sample_mode}")
+    if cli.chronic_sample_mode == "random":
+        print(
+            "Random chronic sample seed: "
+            f"{cli.chronic_sample_seed if cli.chronic_sample_seed is not None else env_args.seed}"
+        )
+        print(
+            "Random chronic ids preview: "
+            + ", ".join(str(value) for value in chronic_ids[:20])
+        )
     print(f"Decision rho threshold: {cli.decision_rho_threshold}")
     print(f"Require improvement: {cli.require_improvement}")
     print(f"Improvement tolerance: {cli.improvement_tolerance}")
@@ -461,6 +523,7 @@ def main() -> None:
     start_time = time.perf_counter()
     try:
         for episode in range(int(target_episodes)):
+            requested_chronic_id = chronic_ids[episode]
             greedy_result = _run_greedy_episode(
                 env=greedy_env,
                 agent_ids=agent_ids,
@@ -471,14 +534,19 @@ def main() -> None:
                 improvement_tolerance=float(cli.improvement_tolerance),
                 require_improvement=bool(cli.require_improvement),
                 max_env_steps=cli.max_env_steps,
+                chronic_id=requested_chronic_id,
             )
             do_nothing_result = _run_do_nothing_episode(
                 env=do_nothing_env,
                 agent_ids=agent_ids,
                 max_env_steps=cli.max_env_steps,
+                chronic_id=requested_chronic_id,
             )
             row = {
                 "episode": episode,
+                "requested_chronic_id": (
+                    "" if requested_chronic_id is None else int(requested_chronic_id)
+                ),
                 "greedy_chronic_name": greedy_result["chronic_name"],
                 "do_nothing_chronic_name": do_nothing_result["chronic_name"],
                 "greedy_chronic_fingerprint": greedy_result["chronic_fingerprint"],
