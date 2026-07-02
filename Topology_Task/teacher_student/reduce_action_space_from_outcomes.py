@@ -217,6 +217,16 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument("--top-k", type=int, default=208)
+    parser.add_argument(
+        "--top-k-by-agent",
+        type=str,
+        default=None,
+        help=(
+            "Optional per-agent top-k override. Use named values such as "
+            "'agent_0=77,agent_1=2048,agent_2=127,agent_3=512'. Agents not "
+            "listed use --top-k."
+        ),
+    )
     parser.add_argument("--min-count", type=int, default=1)
     parser.add_argument("--include-action-zero", type=str, default="true")
     parser.add_argument("--require-improvement", type=str, default="true")
@@ -236,6 +246,45 @@ def parse_args() -> argparse.Namespace:
 
 def _str_to_bool(value: str) -> bool:
     return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _parse_top_k_by_agent(
+    *,
+    value: Optional[str],
+    agent_ids: List[str],
+    default_top_k: int,
+) -> Dict[str, int]:
+    top_k_by_agent = {agent: int(default_top_k) for agent in agent_ids}
+    text = str(value or "").strip()
+    if not text:
+        return top_k_by_agent
+
+    valid_agents = set(agent_ids)
+    for item in text.split(","):
+        item = item.strip()
+        if not item:
+            continue
+        if "=" not in item:
+            raise ValueError(
+                "--top-k-by-agent entries must be named, e.g. "
+                "'agent_0=77,agent_1=2048'."
+            )
+        agent, raw_count = [part.strip() for part in item.split("=", 1)]
+        if agent not in valid_agents:
+            raise ValueError(
+                f"Unknown agent {agent!r} in --top-k-by-agent. "
+                f"Known agents: {agent_ids}."
+            )
+        try:
+            count = int(raw_count)
+        except ValueError as exc:
+            raise ValueError(
+                f"Invalid top-k value for {agent}: {raw_count!r}."
+            ) from exc
+        if count <= 0:
+            raise ValueError(f"Top-k for {agent} must be positive. Got {count}.")
+        top_k_by_agent[agent] = count
+    return top_k_by_agent
 
 
 def _default_output_for_datasets(dataset_dirs: List[Path]) -> Path:
@@ -325,11 +374,22 @@ def main() -> None:
 
     include_action_zero = _str_to_bool(cli.include_action_zero)
     require_improvement = _str_to_bool(cli.require_improvement)
+    top_k_by_agent = _parse_top_k_by_agent(
+        value=cli.top_k_by_agent,
+        agent_ids=agent_ids,
+        default_top_k=cli.top_k,
+    )
     print("========== Action-space reduction ==========", flush=True)
     print(f"Datasets: {len(dataset_dirs)}", flush=True)
     print(f"Method: {cli.selection_method}", flush=True)
     print(f"Metric: {cli.metric}", flush=True)
     print(f"Top-k: {cli.top_k}", flush=True)
+    if cli.top_k_by_agent:
+        print(
+            "Top-k by agent: "
+            + ", ".join(f"{agent}={top_k_by_agent[agent]}" for agent in agent_ids),
+            flush=True,
+        )
     print(f"Min count: {cli.min_count}", flush=True)
     print(f"Require improvement: {require_improvement}", flush=True)
     print(f"Improvement tolerance: {cli.improvement_tolerance}", flush=True)
@@ -468,6 +528,7 @@ def main() -> None:
         "metric": cli.metric,
         "selection_method": cli.selection_method,
         "top_k": int(cli.top_k),
+        "top_k_by_agent": top_k_by_agent,
         "min_count": int(cli.min_count),
         "min_count_semantics": (
             "minimum_seen_count"
@@ -484,6 +545,7 @@ def main() -> None:
     total_reduced = 0
     for agent in agent_ids:
         print(f"ranking {agent}...", flush=True)
+        agent_top_k = int(top_k_by_agent[agent])
         total_original += int(action_sizes.get(agent, 0))
         if cli.selection_method == "improvement_rate":
             ranked = []
@@ -520,10 +582,10 @@ def main() -> None:
                 for action_id, count in counts_by_agent[agent].most_common()
                 if int(count) >= cli.min_count
             ]
-        selected = [item["action_id"] for item in ranked[: cli.top_k]]
+        selected = [item["action_id"] for item in ranked[:agent_top_k]]
         if include_action_zero and 0 not in selected:
             selected = [0] + selected
-        selected = selected[: cli.top_k] if len(selected) > cli.top_k else selected
+        selected = selected[:agent_top_k] if len(selected) > agent_top_k else selected
         total_reduced += len(selected)
         original_size = int(action_sizes.get(agent, 0))
         reduced_frac = (
@@ -531,10 +593,11 @@ def main() -> None:
         )
         reduced["agents"][agent] = {
             "original_action_size": original_size,
+            "top_k": agent_top_k,
             "selected_action_size": len(selected),
             "selected_fraction": reduced_frac,
             "selected_action_ids": selected,
-            "ranked_actions": ranked[: max(cli.top_k, 50)],
+            "ranked_actions": ranked[: max(agent_top_k, 50)],
             "stats": dict(stats_by_agent[agent]),
         }
         print(

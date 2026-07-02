@@ -76,6 +76,7 @@ fi
 
 DATASET_ROOT="${DATASET_ROOT:-outputs/teacher_student_datasets/bus36_bruteforce_rho090}"
 ACTION_REDUCTION_TOP_K="${ACTION_REDUCTION_TOP_K:-208}"
+ACTION_REDUCTION_TOP_K_BY_AGENT="${ACTION_REDUCTION_TOP_K_BY_AGENT:-}"
 ACTION_REDUCTION_MIN_COUNT="${ACTION_REDUCTION_MIN_COUNT:-1}"
 ACTION_REDUCTION_METRIC="${ACTION_REDUCTION_METRIC:-delta_vs_do_nothing}"
 ACTION_REDUCTION_METHOD="${ACTION_REDUCTION_METHOD:-best_per_state}"
@@ -88,6 +89,8 @@ ACTION_REDUCTION_OUTPUT="${ACTION_REDUCTION_OUTPUT:-}"
 if [ -z "${ACTION_REDUCTION_OUTPUT}" ]; then
     if [ -n "${ACTION_REDUCTION_NAME}" ]; then
         ACTION_REDUCTION_OUTPUT="${DATASET_ROOT}/metadata/reduced_action_space_${ACTION_REDUCTION_NAME}.json"
+    elif [ -n "${ACTION_REDUCTION_TOP_K_BY_AGENT}" ]; then
+        ACTION_REDUCTION_OUTPUT="${DATASET_ROOT}/metadata/reduced_action_space_${ACTION_REDUCTION_METHOD}_${ACTION_REDUCTION_METRIC}_custom_topk_min${ACTION_REDUCTION_MIN_COUNT}.json"
     else
         ACTION_REDUCTION_OUTPUT="${DATASET_ROOT}/metadata/reduced_action_space_${ACTION_REDUCTION_METHOD}_${ACTION_REDUCTION_METRIC}_k${ACTION_REDUCTION_TOP_K}_min${ACTION_REDUCTION_MIN_COUNT}.json"
     fi
@@ -112,6 +115,7 @@ echo "Config: ${REDUCTION_CONFIG_PATH:-none}"
 echo "Method: ${ACTION_REDUCTION_METHOD}"
 echo "Metric: ${ACTION_REDUCTION_METRIC}"
 echo "Top-k: ${ACTION_REDUCTION_TOP_K}"
+echo "Top-k by agent: ${ACTION_REDUCTION_TOP_K_BY_AGENT:-global top-k}"
 echo "Min count: ${ACTION_REDUCTION_MIN_COUNT}"
 echo "Require improvement: ${ACTION_REDUCTION_REQUIRE_IMPROVEMENT}"
 echo "Improvement tolerance: ${ACTION_REDUCTION_IMPROVEMENT_TOLERANCE}"
@@ -119,13 +123,20 @@ echo "Progress every shards: ${ACTION_REDUCTION_PROGRESS_EVERY_SHARDS}"
 echo "Output: ${ACTION_REDUCTION_OUTPUT}"
 printf "  %s\n" "${part_dirs[@]}"
 
-python -u teacher_student/reduce_action_space_from_outcomes.py \
-    --dataset "${part_dirs[@]}" \
-    --output "${ACTION_REDUCTION_OUTPUT}" \
-    --top-k "${ACTION_REDUCTION_TOP_K}" \
-    --min-count "${ACTION_REDUCTION_MIN_COUNT}" \
-    --metric "${ACTION_REDUCTION_METRIC}" \
-    --selection-method "${ACTION_REDUCTION_METHOD}" \
-    --require-improvement "${ACTION_REDUCTION_REQUIRE_IMPROVEMENT}" \
-    --improvement-tolerance "${ACTION_REDUCTION_IMPROVEMENT_TOLERANCE}" \
+reducer_args=(
+    --dataset "${part_dirs[@]}"
+    --output "${ACTION_REDUCTION_OUTPUT}"
+    --top-k "${ACTION_REDUCTION_TOP_K}"
+    --min-count "${ACTION_REDUCTION_MIN_COUNT}"
+    --metric "${ACTION_REDUCTION_METRIC}"
+    --selection-method "${ACTION_REDUCTION_METHOD}"
+    --require-improvement "${ACTION_REDUCTION_REQUIRE_IMPROVEMENT}"
+    --improvement-tolerance "${ACTION_REDUCTION_IMPROVEMENT_TOLERANCE}"
     --progress-every-shards "${ACTION_REDUCTION_PROGRESS_EVERY_SHARDS}"
+)
+
+if [ -n "${ACTION_REDUCTION_TOP_K_BY_AGENT}" ]; then
+    reducer_args+=(--top-k-by-agent "${ACTION_REDUCTION_TOP_K_BY_AGENT}")
+fi
+
+python -u teacher_student/reduce_action_space_from_outcomes.py "${reducer_args[@]}"
