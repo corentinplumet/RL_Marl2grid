@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import sys
+import time
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -221,6 +222,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--require-improvement", type=str, default="true")
     parser.add_argument("--improvement-tolerance", type=float, default=1e-3)
     parser.add_argument("--max-shards", type=int, default=None)
+    parser.add_argument(
+        "--progress-every-shards",
+        type=int,
+        default=25,
+        help=(
+            "Print reducer progress every N shards. Set to 0 to print only one "
+            "line per dataset."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -251,13 +261,29 @@ def _list_shards_or_empty(dataset_dir: Path, max_shards: Optional[int]) -> List[
         return []
 
 
+def _format_duration(seconds: float) -> str:
+    if not np.isfinite(seconds):
+        return "unknown"
+    seconds = max(float(seconds), 0.0)
+    minutes, sec = divmod(seconds, 60.0)
+    hours, minutes = divmod(int(minutes), 60)
+    if hours:
+        return f"{hours}h{minutes:02d}m{sec:04.1f}s"
+    if minutes:
+        return f"{minutes}m{sec:04.1f}s"
+    return f"{sec:.1f}s"
+
+
 def main() -> None:
     cli = parse_args()
     if cli.top_k <= 0:
         raise ValueError("--top-k must be positive.")
     if cli.min_count <= 0:
         raise ValueError("--min-count must be positive.")
+    if cli.progress_every_shards < 0:
+        raise ValueError("--progress-every-shards must be non-negative.")
 
+    run_start = time.perf_counter()
     dataset_dirs = [resolve_dataset_dir(path) for path in cli.dataset]
     metadatas = []
     for dataset_dir in dataset_dirs:
@@ -299,6 +325,17 @@ def main() -> None:
 
     include_action_zero = _str_to_bool(cli.include_action_zero)
     require_improvement = _str_to_bool(cli.require_improvement)
+    print("========== Action-space reduction ==========", flush=True)
+    print(f"Datasets: {len(dataset_dirs)}", flush=True)
+    print(f"Method: {cli.selection_method}", flush=True)
+    print(f"Metric: {cli.metric}", flush=True)
+    print(f"Top-k: {cli.top_k}", flush=True)
+    print(f"Min count: {cli.min_count}", flush=True)
+    print(f"Require improvement: {require_improvement}", flush=True)
+    print(f"Improvement tolerance: {cli.improvement_tolerance}", flush=True)
+    print(f"Output: {task_relative(output)}", flush=True)
+    print("Agents: " + ", ".join(agent_ids), flush=True)
+    print("===========================================", flush=True)
 
     counts_by_agent: Dict[str, Counter] = {agent: Counter() for agent in agent_ids}
     rate_stats_by_agent: Dict[str, Dict[int, Dict[str, int]]] = {
@@ -309,11 +346,23 @@ def main() -> None:
     }
 
     datasets_with_shards = 0
-    for dataset_dir in dataset_dirs:
+    total_shards_processed = 0
+    total_agent_rows_processed = 0
+    for dataset_index, dataset_dir in enumerate(dataset_dirs, start=1):
         shards = _list_shards_or_empty(dataset_dir, cli.max_shards)
         if shards:
             datasets_with_shards += 1
-        for shard in shards:
+        print(
+            "dataset "
+            f"{dataset_index}/{len(dataset_dirs)}: "
+            f"{task_relative(dataset_dir)} shards={len(shards)}",
+            flush=True,
+        )
+        dataset_start = time.perf_counter()
+        dataset_agent_rows = 0
+        for shard_index, shard in enumerate(shards, start=1):
+            shard_start = time.perf_counter()
+            shard_agent_rows = 0
             with np.load(shard) as data:
                 for agent in agent_ids:
                     prefix = f"outcome_{agent}"
@@ -322,6 +371,7 @@ def main() -> None:
                     valid_key = f"{prefix}_action_is_valid"
                     if action_key not in data.files:
                         continue
+                    shard_agent_rows += int(data[action_key].shape[0])
                     if metric_key not in data.files:
                         raise KeyError(
                             f"Missing {metric_key} in {task_relative(shard)}"
@@ -355,6 +405,47 @@ def main() -> None:
                     for key, value in stats.items():
                         if value is not None:
                             stats_by_agent[agent][key] += int(value)
+            total_shards_processed += 1
+            dataset_agent_rows += shard_agent_rows
+            total_agent_rows_processed += shard_agent_rows
+            if (
+                cli.progress_every_shards > 0
+                and (
+                    shard_index == 1
+                    or shard_index == len(shards)
+                    or shard_index % cli.progress_every_shards == 0
+                )
+            ):
+                elapsed = time.perf_counter() - run_start
+                dataset_elapsed = time.perf_counter() - dataset_start
+                avg_dataset_shard = dataset_elapsed / max(shard_index, 1)
+                eta_dataset = avg_dataset_shard * max(len(shards) - shard_index, 0)
+                print(
+                    "progress: "
+                    f"dataset={dataset_index}/{len(dataset_dirs)} "
+                    f"shard={shard_index}/{len(shards)} "
+                    f"total_shards={total_shards_processed} "
+                    f"shard_rows={shard_agent_rows} "
+                    f"dataset_rows={dataset_agent_rows} "
+                    f"total_rows={total_agent_rows_processed} "
+                    f"last_shard={_format_duration(time.perf_counter() - shard_start)} "
+                    f"elapsed={_format_duration(elapsed)} "
+                    f"dataset_eta={_format_duration(eta_dataset)}",
+                    flush=True,
+                )
+        print(
+            "dataset complete: "
+            f"{dataset_index}/{len(dataset_dirs)} "
+            f"rows={dataset_agent_rows} "
+            f"elapsed={_format_duration(time.perf_counter() - dataset_start)}",
+            flush=True,
+        )
+
+    print(
+        "ranking actions after reading "
+        f"{total_shards_processed} shards and {total_agent_rows_processed} rows...",
+        flush=True,
+    )
 
     total_candidate_states = sum(
         int(metadata.get("n_candidate_states") or 0) for metadata in metadatas
@@ -392,6 +483,7 @@ def main() -> None:
     total_original = 0
     total_reduced = 0
     for agent in agent_ids:
+        print(f"ranking {agent}...", flush=True)
         total_original += int(action_sizes.get(agent, 0))
         if cli.selection_method == "improvement_rate":
             ranked = []
@@ -445,6 +537,11 @@ def main() -> None:
             "ranked_actions": ranked[: max(cli.top_k, 50)],
             "stats": dict(stats_by_agent[agent]),
         }
+        print(
+            f"{agent}: ranked={len(ranked)} selected={len(selected)}/"
+            f"{original_size}",
+            flush=True,
+        )
 
     reduced["total_original_action_size"] = int(total_original)
     reduced["total_selected_action_size"] = int(total_reduced)
@@ -470,6 +567,7 @@ def main() -> None:
             f"{payload['original_action_size']} "
             f"({payload['selected_fraction']:.4f})"
         )
+    print(f"Elapsed: {_format_duration(time.perf_counter() - run_start)}")
 
 
 if __name__ == "__main__":

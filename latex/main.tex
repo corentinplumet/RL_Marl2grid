@@ -1,0 +1,51 @@
+\documentclass[11pt,a4paper]{report}
+
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{setspace}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage[backend=biber,style=ieee]{biblatex}
+
+\addbibresource{references.bib}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  citecolor=blue,
+  urlcolor=blue,
+  pdftitle={Thesis Plan},
+  pdfauthor={Corentin Plumet}
+}
+
+\onehalfspacing
+\setlist[itemize]{topsep=0.25em,itemsep=0.15em}
+\setlist[enumerate]{topsep=0.25em,itemsep=0.15em}
+
+\title{Thesis Plan\\\large Decentralized Multi-Agent Reinforcement Learning for Power Grid Topology Control}
+\author{Corentin Plumet}
+\date{\today}
+
+\begin{document}
+
+\pagenumbering{roman}
+\hypersetup{pageanchor=false}
+\maketitle
+\hypersetup{pageanchor=true}
+\tableofcontents
+\clearpage
+
+\pagenumbering{arabic}
+\input{chapters/00_plan}
+\input{chapters/05_results_rerun_survival}
+
+\nocite{*}
+\printbibliography
+
+\end{document}

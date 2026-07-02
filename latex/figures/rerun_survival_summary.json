@@ -1,0 +1,192 @@
+{
+  "rerun_gine_best00_vs_best10_14.png": [
+    {
+      "name": "00 baseline",
+      "axis": 1,
+      "final_step_m": 11.92,
+      "final_survival": 59.182539682539684,
+      "peak_survival": 93.86507936507937
+    },
+    {
+      "name": "10 light GINE MLP critic",
+      "axis": 1,
+      "final_step_m": 14.96,
+      "final_survival": 78.91104497354497,
+      "peak_survival": 90.37450396825398
+    },
+    {
+      "name": "00 baseline",
+      "axis": 2,
+      "final_step_m": 11.92,
+      "final_survival": 59.182539682539684,
+      "peak_survival": 93.86507936507937
+    },
+    {
+      "name": "11 legacy init bias 0.0",
+      "axis": 2,
+      "final_step_m": 10.96,
+      "final_survival": 53.65277777777777,
+      "peak_survival": 83.895667989418
+    },
+    {
+      "name": "00 baseline",
+      "axis": 3,
+      "final_step_m": 11.92,
+      "final_survival": 59.182539682539684,
+      "peak_survival": 93.86507936507937
+    },
+    {
+      "name": "12 optcritic init bias 0.0",
+      "axis": 3,
+      "final_step_m": 10.56,
+      "final_survival": 82.4890873015873,
+      "peak_survival": 85.74603174603175
+    },
+    {
+      "name": "00 baseline",
+      "axis": 4,
+      "final_step_m": 11.92,
+      "final_survival": 59.182539682539684,
+      "peak_survival": 93.86507936507937
+    },
+    {
+      "name": "13 GINE A0 GNN critic",
+      "axis": 4,
+      "final_step_m": 11.6,
+      "final_survival": 59.294642857142854,
+      "peak_survival": 88.50843253968253
+    },
+    {
+      "name": "00 baseline",
+      "axis": 5,
+      "final_step_m": 11.92,
+      "final_survival": 59.182539682539684,
+      "peak_survival": 93.86507936507937
+    },
+    {
+      "name": "14 light GINE A0 MLP critic",
+      "axis": 5,
+      "final_step_m": 12.64,
+      "final_survival": 95.69196428571429,
+      "peak_survival": 97.42757936507938
+    }
+  ],
+  "rerun_a0_core_pairwise_comparisons.png": [
+    {
+      "name": "rerun_a0_opt",
+      "axis": 1,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "rerun_a0_nonopt",
+      "axis": 1,
+      "final_step_m": 17.52,
+      "final_survival": 93.1465773809524,
+      "peak_survival": 95.77579365079364
+    },
+    {
+      "name": "rerun_a0_opt",
+      "axis": 2,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "rerun_a01",
+      "axis": 2,
+      "final_step_m": 14.16,
+      "final_survival": 93.73958333333334,
+      "peak_survival": 100.0
+    },
+    {
+      "name": "rerun_a0_opt",
+      "axis": 3,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "rerun_a02",
+      "axis": 3,
+      "final_step_m": 17.04,
+      "final_survival": 81.82118055555556,
+      "peak_survival": 97.13996362433863
+    },
+    {
+      "name": "rerun_a0_opt",
+      "axis": 4,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "old_a0_nonopt_noval20",
+      "axis": 4,
+      "final_step_m": 11.88,
+      "final_survival": 22.29637896825397,
+      "peak_survival": 68.44270833333333
+    }
+  ],
+  "rerun_a0_core_all_curves.png": [
+    {
+      "name": "rerun_a0_opt",
+      "axis": 1,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "rerun_a0_nonopt",
+      "axis": 1,
+      "final_step_m": 17.52,
+      "final_survival": 93.1465773809524,
+      "peak_survival": 95.77579365079364
+    },
+    {
+      "name": "rerun_a01",
+      "axis": 1,
+      "final_step_m": 14.16,
+      "final_survival": 93.73958333333334,
+      "peak_survival": 100.0
+    },
+    {
+      "name": "rerun_a02",
+      "axis": 1,
+      "final_step_m": 17.04,
+      "final_survival": 81.82118055555556,
+      "peak_survival": 97.13996362433863
+    },
+    {
+      "name": "old_a0_nonopt_noval20",
+      "axis": 1,
+      "final_step_m": 11.88,
+      "final_survival": 22.29637896825397,
+      "peak_survival": 68.44270833333333
+    }
+  ],
+  "rerun_a0_bias_comparison.png": [
+    {
+      "name": "rerun_a0_opt",
+      "axis": 1,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "rerun_bias_05",
+      "axis": 1,
+      "final_step_m": 20.0,
+      "final_survival": 50.84176587301587,
+      "peak_survival": 70.22247023809524
+    },
+    {
+      "name": "rerun_bias_07",
+      "axis": 1,
+      "final_step_m": 19.92,
+      "final_survival": 99.27108134920634,
+      "peak_survival": 100.0
+    }
+  ]
+}

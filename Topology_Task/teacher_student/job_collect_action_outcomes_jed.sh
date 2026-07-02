@@ -38,6 +38,7 @@ Common overrides:
   OUTCOME_RESAMPLE_ACTIONS_PER_STATE=true
   OUTCOME_SIM_WORKERS=71          # parallel sims; defaults to cpus-per-task minus 1
   OUTCOME_SIM_START_METHOD=spawn
+  OUTCOME_WORKER_RESTART_EPISODES=25
   TIMING_EVERY_ENV_STEPS=1
   ACTION_REDUCTION_TOP_K=208
   OVERWRITE=false
@@ -116,6 +117,7 @@ if [ "${DEFAULT_OUTCOME_SIM_WORKERS}" -gt 1 ]; then
 fi
 OUTCOME_SIM_WORKERS="${OUTCOME_SIM_WORKERS:-${DEFAULT_OUTCOME_SIM_WORKERS}}"
 OUTCOME_SIM_START_METHOD="${OUTCOME_SIM_START_METHOD:-spawn}"
+OUTCOME_WORKER_RESTART_EPISODES="${OUTCOME_WORKER_RESTART_EPISODES:-25}"
 OUTCOME_ROLLOUT_POLICY="${OUTCOME_ROLLOUT_POLICY:-best_simulated}"
 OUTCOME_DELTA_TOLERANCE="${OUTCOME_DELTA_TOLERANCE:-1e-3}"
 OUTCOME_RESAMPLE_ACTIONS_PER_STATE="${OUTCOME_RESAMPLE_ACTIONS_PER_STATE:-true}"
@@ -169,6 +171,7 @@ collector_args=(
     --outcome-resample-actions-per-state "${OUTCOME_RESAMPLE_ACTIONS_PER_STATE}"
     --outcome-sim-workers "${OUTCOME_SIM_WORKERS}"
     --outcome-sim-start-method "${OUTCOME_SIM_START_METHOD}"
+    --outcome-worker-restart-episodes "${OUTCOME_WORKER_RESTART_EPISODES}"
     --timing-every-env-steps "${TIMING_EVERY_ENV_STEPS}"
     --shard-size "${SHARD_SIZE}"
     --compress "${COMPRESS}"
@@ -222,6 +225,7 @@ echo "Per-agent action sample sizes: ${OUTCOME_ACTION_SAMPLE_SIZES:-global defau
 echo "Resample actions per collected state: ${OUTCOME_RESAMPLE_ACTIONS_PER_STATE}"
 echo "Simulation workers: ${OUTCOME_SIM_WORKERS}"
 echo "Simulation start method: ${OUTCOME_SIM_START_METHOD}"
+echo "Worker restart episodes: ${OUTCOME_WORKER_RESTART_EPISODES}"
 echo "Action reduction top-k: ${ACTION_REDUCTION_TOP_K}"
 echo "Reduce after: ${REDUCE_AFTER}"
 echo "Extra args: $*"

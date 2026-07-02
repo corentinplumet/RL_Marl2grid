@@ -1,0 +1,221 @@
+\chapter{Thesis Plan}
+
+\section{Plan Inspiration}
+
+This plan follows the structure of the reference thesis in
+\texttt{mAI2024deMolB.pdf}: start from the power-grid motivation and research
+questions, introduce the scientific background, describe the environment before
+the algorithms, then separate methods from results and close by answering the
+research questions. The adapted structure below is tuned to this repository:
+Grid2Op topology control, decentralized MAPPO, graph encoders, rerun ablations,
+and sparse intervention mechanisms.
+
+\section{Working Title}
+
+\textbf{Decentralized Multi-Agent Reinforcement Learning for Sparse Power Grid
+Topology Control}
+
+\section{Central Thesis Question}
+
+How can decentralized multi-agent reinforcement learning agents learn reliable
+power-grid topology control policies that preserve survival performance while
+scaling to combinatorial action spaces and avoiding unnecessary interventions?
+
+\section{Research Questions}
+
+\begin{enumerate}
+  \item How should the Grid2Op topology-control problem be formulated as a
+  decentralized multi-agent decision problem?
+  \item Which architectural choices improve survival and generalization:
+  flat MLP policies, graph neural network encoders, shared actor weights,
+  critic design, or optimized critic updates?
+  \item How do initialization and training choices, especially the initial
+  do-nothing bias and reward normalization, affect exploration and learned
+  behavior?
+  \item Can sparse-control mechanisms, such as rho-based overrides,
+  intervention gates, fixed penalties, or adaptive intervention budgets,
+  reduce unnecessary topology actions without sacrificing episodic survival?
+\end{enumerate}
+
+\section{Expected Contributions}
+
+\begin{itemize}
+  \item A clear decentralized formulation of topology optimization in Grid2Op.
+  \item A controlled comparison of MAPPO baselines, GNN encoders, critic
+  variants, and initialization choices.
+  \item An ablation study of sparse intervention mechanisms for more
+  operator-like control.
+  \item A reproducible experiment and analysis pipeline based on W\&B histories,
+  cached metrics, notebooks, and final evaluation scripts.
+\end{itemize}
+
+\section{Chapter Outline}
+
+\subsection*{Chapter 1: Introduction}
+
+\textbf{Goal.} Motivate topology control as a low-cost but difficult operational
+tool for power-grid reliability.
+
+\textbf{Planned content.}
+\begin{itemize}
+  \item Energy-transition context: higher demand, renewable uncertainty, and
+  stressed transmission networks.
+  \item Topology control as an alternative or complement to redispatching and
+  grid expansion.
+  \item Why the problem is hard: sequential control, physical constraints,
+  rare failures, and combinatorial topology actions.
+  \item Why decentralized MARL is a natural fit: local substations, regional
+  decision making, reduced per-agent action spaces, and scalability.
+  \item Research questions, contributions, and thesis outline.
+\end{itemize}
+
+\subsection*{Chapter 2: Background and Related Work}
+
+\textbf{Goal.} Give the reader enough power-systems and RL background to
+understand the design choices.
+
+\textbf{Planned content.}
+\begin{itemize}
+  \item Power-grid operation: substations, busbars, line loading, overloads,
+  contingencies, and remedial actions.
+  \item Grid2Op and the Learning to Run a Power Network setting.
+  \item Reinforcement learning basics: MDPs, policy gradients, PPO, and MAPPO.
+  \item Multi-agent reinforcement learning: decentralized execution,
+  centralized training, credit assignment, and non-stationarity.
+  \item Graph neural networks for grid-structured observations.
+  \item Safe, sparse, and constrained RL ideas relevant to intervention budgets.
+\end{itemize}
+
+\subsection*{Chapter 3: Environment and Problem Formulation}
+
+\textbf{Goal.} Define exactly what the agents observe, choose, optimize, and are
+evaluated on.
+
+\textbf{Planned content.}
+\begin{itemize}
+  \item Grid2Op environment used in the repository and the selected chronics.
+  \item Multi-agent decomposition: agent-region or agent-substation assignment.
+  \item Observation spaces: local grid state, line loadings, topology state, and
+  optional graph observations.
+  \item Action spaces: local topology actions, action 0 as do nothing, legal
+  action constraints, and action-space reduction.
+  \item Reward and evaluation metrics: episodic survival, illegal action rate,
+  action-0 fraction, non-idle fraction, and train/test chronic split.
+  \item Reproducibility setup: seeds, W\&B logging, cached histories, and
+  deterministic evaluation.
+\end{itemize}
+
+\subsection*{Chapter 4: Methods}
+
+\textbf{Goal.} Present the implemented learning systems and the ablations.
+
+\textbf{Planned content.}
+\begin{itemize}
+  \item MAPPO baseline: actor, critic, rollout collection, PPO objective, and
+  centralized training assumptions.
+  \item Baseline MLP agents and the A0 family of reruns.
+  \item Graph-encoder agents: bus graph construction, GINE/GAT/GCN variants,
+  node and edge pre-encoders, graph readout, and flat-feature concatenation.
+  \item Critic variants: GNN critic versus MLP critic, legacy versus optimized
+  critic updates.
+  \item Initialization and exploration choices: entropy coefficient, entropy
+  decay, and initial do-nothing probability.
+  \item Sparse-control mechanisms: evaluation-time rho heuristic, intervention
+  gate, fixed sparse-action penalties, and adaptive intervention budgets.
+  \item Experimental protocol for ablations: controlled seeds, fixed evaluation
+  cadence, and fair baseline comparisons.
+\end{itemize}
+
+\subsection*{Chapter 5: Experiments and Results}
+
+\textbf{Goal.} Show which design choices matter and what behaviors the agents
+learn.
+
+\textbf{Planned content.}
+\begin{itemize}
+  \item Main baseline performance: training stability and test survival.
+  \item GNN architecture ablations: concat-flat, actor sharing, GINE versus GAT
+  or weighted GCN, light versus full encoders, and critic design.
+  \item A0 rerun ablations: optimized critic updates, smaller MLP, reward
+  normalization, and do-nothing initialization bias.
+  \item Sparse-control ablations: fixed penalty, global-safe weighting,
+  local-safe adaptive budget, rho-threshold sensitivity, and budget target
+  sensitivity.
+  \item Behavioral analysis: how often agents act, whether interventions are
+  local, and whether high survival comes with excessive topology churn.
+  \item Generalization: seen versus unseen chronics and robustness across seeds.
+\end{itemize}
+
+\textbf{Figures and tables to prepare.}
+\begin{itemize}
+  \item Table of run families and what each ablation changes.
+  \item Survival curves for baseline, GNN, A0, and sparse-control comparisons.
+  \item Action-frequency plots: action 0 fraction, any non-idle action, and
+  multi-agent simultaneous interventions.
+  \item Summary table with final survival, peak survival, and action sparsity.
+\end{itemize}
+
+\subsection*{Chapter 6: Discussion}
+
+\textbf{Goal.} Interpret the results rather than just restating them.
+
+\textbf{Planned content.}
+\begin{itemize}
+  \item Answer each research question directly.
+  \item Explain which components appear essential, useful, or unnecessary.
+  \item Discuss the tradeoff between survival and sparse interventions.
+  \item Relate learned behavior to operator-like control: act rarely, act
+  locally, and act when the grid is unsafe.
+  \item Discuss limits: simulator scope, incomplete operational constraints,
+  seed variance, training cost, and dependency on chosen chronics.
+\end{itemize}
+
+\subsection*{Chapter 7: Conclusion and Future Work}
+
+\textbf{Goal.} Close with the main thesis claim and next research directions.
+
+\textbf{Planned content.}
+\begin{itemize}
+  \item Short summary of the problem, approach, and core findings.
+  \item Final conclusion about decentralized MARL for topology control.
+  \item Future work: richer graph representations, larger grids, outage
+  contingencies, constrained RL tuning, better coordination mechanisms, and
+  operational validation.
+\end{itemize}
+
+\section{Appendix Plan}
+
+\begin{itemize}
+  \item Appendix A: Environment details and action-space construction.
+  \item Appendix B: Hyperparameters and training configuration tables.
+  \item Appendix C: Full ablation run registry.
+  \item Appendix D: Additional survival and behavior plots.
+  \item Appendix E: Reproducibility notes for notebooks, cached W\&B histories,
+  and evaluation scripts.
+\end{itemize}
+
+\section{Immediate Writing Order}
+
+\begin{enumerate}
+  \item Write Chapter 3 first, because it fixes notation and the experiment
+  vocabulary.
+  \item Write Chapter 4 next, using the existing configuration READMEs as source
+  notes for method variants.
+  \item Draft the Chapter 5 table of ablations before prose, so the results
+  chapter has a stable spine.
+  \item Write Chapter 1 once the main conclusion is clearer.
+  \item Finish Chapters 6 and 7 after the final plots and summary metrics are
+  frozen.
+\end{enumerate}
+
+\section{Open Decisions}
+
+\begin{itemize}
+  \item Confirm the final thesis title and whether to emphasize GNNs,
+  sparse-control, or decentralized MARL most strongly.
+  \item Decide which experiment families are final and which are only
+  exploratory.
+  \item Decide whether the main claim is performance improvement, improved
+  sparsity at equal survival, or reproducible ablation insight.
+  \item Choose the final bibliography style required by the university.
+\end{itemize}

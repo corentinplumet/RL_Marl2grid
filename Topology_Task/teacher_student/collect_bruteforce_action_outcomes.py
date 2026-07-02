@@ -385,6 +385,7 @@ class BruteForceOutcomeWriter:
             np.savez_compressed(path, **arrays)
         else:
             np.savez(path, **arrays)
+        arrays.clear()
 
         self.paths.append(path)
         self.shard_idx += 1
@@ -451,6 +452,7 @@ class StateContextWriter:
             np.savez_compressed(path, **arrays)
         else:
             np.savez(path, **arrays)
+        arrays.clear()
 
         self.paths.append(path)
         self.shard_idx += 1
@@ -504,6 +506,14 @@ def _metadata(
         )
         for agent in agent_ids
     }
+    shard_preview = {
+        "first": [_safe_path(path) for path in writer.paths[:3]],
+        "last": [_safe_path(path) for path in writer.paths[-3:]],
+    }
+    state_context_shard_preview = {
+        "first": [_safe_path(path) for path in state_writer.paths[:3]],
+        "last": [_safe_path(path) for path in state_writer.paths[-3:]],
+    }
     return {
         "status": status,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -541,6 +551,9 @@ def _metadata(
             "process_pool" if int(cli.outcome_sim_workers) > 1 else "sequential"
         ),
         "outcome_sim_start_method": cli.outcome_sim_start_method,
+        "outcome_worker_restart_episodes": int(
+            cli.outcome_worker_restart_episodes
+        ),
         "agent_ids": agent_ids,
         "action_sizes": action_sizes,
         "agent_line_domains": agent_line_domains,
@@ -565,9 +578,9 @@ def _metadata(
         "max_episodes_requested": cli.max_episodes,
         "max_env_steps_requested": cli.max_env_steps,
         "n_shards": int(len(writer.paths)),
-        "shards": [_safe_path(path) for path in writer.paths],
+        "shard_preview": shard_preview,
         "n_state_context_shards": int(len(state_writer.paths)),
-        "state_context_shards": [_safe_path(path) for path in state_writer.paths],
+        "state_context_shard_preview": state_context_shard_preview,
         "n_env_steps": int(env_steps),
         "n_candidate_states": int(candidate_states),
         "n_state_contexts": int(state_writer.total_rows),
@@ -653,6 +666,17 @@ def parse_args() -> Namespace:
         default="spawn",
         choices=["spawn", "fork", "forkserver"],
         help="Multiprocessing start method for --outcome-sim-workers > 1.",
+    )
+    parser.add_argument(
+        "--outcome-worker-restart-episodes",
+        type=int,
+        default=25,
+        help=(
+            "When using process simulation workers, close and recreate the worker "
+            "pool every N completed episodes. This bounds Grid2Op / LightSim "
+            "memory growth during very long action-outcome collection jobs. Set "
+            "to 0 to disable periodic restarts."
+        ),
     )
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--overwrite", type=str2bool, default=False)
@@ -1006,6 +1030,8 @@ def main() -> None:
         raise ValueError("--outcome-action-sample-size must be positive when provided.")
     if cli.outcome_sim_workers <= 0:
         raise ValueError("--outcome-sim-workers must be positive.")
+    if cli.outcome_worker_restart_episodes < 0:
+        raise ValueError("--outcome-worker-restart-episodes must be non-negative.")
     if cli.shard_size <= 0:
         raise ValueError("--shard-size must be positive.")
     if cli.timing_every_env_steps <= 0:
@@ -1100,6 +1126,11 @@ def main() -> None:
     if cli.outcome_sim_workers > 1:
         print(f"Simulation start method: {cli.outcome_sim_start_method}")
     print(f"Reduce after: {cli.reduce_after}")
+    if cli.outcome_sim_workers > 1:
+        print(
+            "Worker restart episodes: "
+            f"{cli.outcome_worker_restart_episodes or 'disabled'}"
+        )
     for agent in agent_ids:
         print(
             f"{agent}: evaluating {len(fixed_candidate_ids_by_agent[agent])}/"
@@ -1398,6 +1429,25 @@ def main() -> None:
             obs, _ = env.reset()
             pending_worker_actions = []
             if sim_pool is not None:
+                should_restart_workers = (
+                    cli.outcome_worker_restart_episodes > 0
+                    and completed_episodes > 0
+                    and completed_episodes % cli.outcome_worker_restart_episodes == 0
+                )
+                if should_restart_workers:
+                    print(
+                        "restarting simulation workers after "
+                        f"{completed_episodes} completed episodes",
+                        flush=True,
+                    )
+                    sim_pool.close()
+                    gc.collect()
+                    sim_pool = SimulationWorkerPool(
+                        env_args=env_args,
+                        chronic_split=chronic_split,
+                        num_workers=cli.outcome_sim_workers,
+                        start_method=cli.outcome_sim_start_method,
+                    )
                 sim_pool.reset(float(env.get_current_max_rho()))
             episode_step = 0
         else:

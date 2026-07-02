@@ -1,0 +1,117 @@
+\chapter{Preliminary Results}
+
+\section{Rerun Episodic Survival Ablations}
+
+This section summarizes the rerun survival plots generated from the episodic
+survival rerun notebook.
+The metric is test episodic survival in percent. Thick lines show the
+seed-aggregated mean curve, faint lines show individual seed curves, and shaded
+regions show the variability band used in the notebook plots.
+
+\subsection{Result Summary}
+
+The reruns suggest three main trends. First, the strongest GINE rerun is the
+light A0-style GINE with an MLP critic and optimized critic updates
+(\texttt{best\_14}), which reaches a final survival of about
+\(95.7\%\). Second, the A0 MLP baseline is robust: \texttt{rerun\_a0\_opt},
+\texttt{rerun\_a0\_nonopt}, and the smaller \texttt{rerun\_a01} variant all
+finish around \(93\%\) survival, while disabling reward normalization
+(\texttt{rerun\_a02}) ends lower. Third, the initial do-nothing bias has a large
+but non-monotonic effect in these reruns: \texttt{rerun\_bias\_05} performs
+poorly, while \texttt{rerun\_bias\_07} reaches nearly perfect final survival.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Selected final and peak survival values extracted from the rerun
+  survival notebook figures.}
+  \label{tab:rerun-survival-summary}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{llrr}
+    \toprule
+    Experiment group & Run & Final survival (\%) & Peak survival (\%) \\
+    \midrule
+    GINE rerun & \texttt{best\_00} baseline & 59.2 & 93.9 \\
+    GINE rerun & \texttt{best\_10} light GINE MLP critic & 78.9 & 90.4 \\
+    GINE rerun & \texttt{best\_12} optimized critic, bias 0.0 & 82.5 & 85.7 \\
+    GINE rerun & \texttt{best\_14} light A0-style GINE MLP critic & 95.7 & 97.4 \\
+    \midrule
+    A0 core & \texttt{rerun\_a0\_opt} & 93.4 & 98.6 \\
+    A0 core & \texttt{rerun\_a0\_nonopt} & 93.1 & 95.8 \\
+    A0 core & \texttt{rerun\_a01} smaller MLP & 93.7 & 100.0 \\
+    A0 core & \texttt{rerun\_a02} no reward normalization & 81.8 & 97.1 \\
+    A0 core & \texttt{old\_a0\_nonopt\_noval20} & 22.3 & 68.4 \\
+    \midrule
+    A0 bias & \texttt{rerun\_bias\_05} & 50.8 & 70.2 \\
+    A0 bias & \texttt{rerun\_bias\_07} & 99.3 & 100.0 \\
+    \bottomrule
+  \end{tabular}
+  }
+\end{table}
+
+\subsection{GINE best\_00 Versus best\_10--best\_14}
+
+Figure~\ref{fig:rerun-gine-best00} compares the historical
+\texttt{best\_00} GINE baseline against five controlled reruns. Removing the
+initial do-nothing bias alone (\texttt{best\_11}) does not improve the final
+curve. The optimized-critic variants are more competitive, and the strongest
+curve is \texttt{best\_14}, which combines a lighter GINE actor, MLP critic,
+A0-style entropy and initialization choices, no flat concatenation, and
+optimized critic updates.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{figures/rerun_gine_best00_vs_best10_14.png}
+  \caption{Seed-aggregated test episodic survival for GINE
+  \texttt{best\_00} against \texttt{best\_10}--\texttt{best\_14}.}
+  \label{fig:rerun-gine-best00}
+\end{figure}
+
+\subsection{A0 Core Reruns}
+
+Figures~\ref{fig:rerun-a0-pairwise} and~\ref{fig:rerun-a0-all} show the A0 core
+reruns. The optimized baseline, non-optimized critic update, and smaller MLP
+variant all reach similar final survival. The no-reward-normalization run learns
+more slowly and finishes lower, while the older non-optimized no-validation
+baseline is clearly not competitive under this comparison.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{figures/rerun_a0_core_pairwise_comparisons.png}
+  \caption{Pairwise A0 rerun comparisons against the \texttt{rerun\_a0\_opt}
+  baseline.}
+  \label{fig:rerun-a0-pairwise}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{figures/rerun_a0_core_all_curves.png}
+  \caption{All A0 core rerun survival curves shown on one axis.}
+  \label{fig:rerun-a0-all}
+\end{figure}
+
+\subsection{A0 Initial Do-Nothing Bias}
+
+Figure~\ref{fig:rerun-a0-bias} isolates the initial do-nothing bias. The
+\texttt{rerun\_bias\_05} curve remains unstable and substantially below the
+zero-bias baseline, whereas \texttt{rerun\_bias\_07} eventually reaches the
+highest final survival in this comparison. The conclusion is therefore not that
+larger bias is always better, but that the initialization prior strongly shapes
+exploration and should be treated as a first-order ablation variable.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{figures/rerun_a0_bias_comparison.png}
+  \caption{A0 baseline compared with initial do-nothing bias controls
+  \texttt{rerun\_bias\_05} and \texttt{rerun\_bias\_07}.}
+  \label{fig:rerun-a0-bias}
+\end{figure}
+
+\subsection{Ablation Takeaway}
+
+Overall, these reruns indicate that the strongest current direction is not a
+single isolated modification, but the combination of stable A0-style training
+choices with architectures that keep the critic and graph encoder simple enough
+to optimize reliably. Reward normalization and initialization bias both have
+large effects on survival, while optimized critic updates and lighter GINE/MLP
+critic variants can improve the final GINE rerun performance.
