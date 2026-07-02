@@ -74,6 +74,7 @@ def _current_chronic_info(env: MAEnvWrapper) -> Dict[str, str]:
         "chronic_name": str(info.get("chronic_name", "unknown")),
         "chronic_fingerprint": str(info.get("chronic_fingerprint", "unknown")),
         "chronic_datetime": str(info.get("chronic_datetime", "unknown")),
+        "chronic_reset_count": str(info.get("chronic_reset_count", "unknown")),
     }
 
 
@@ -339,6 +340,10 @@ def _write_outputs(
         "do_nothing_chronic_name",
         "greedy_chronic_fingerprint",
         "do_nothing_chronic_fingerprint",
+        "greedy_chronic_datetime",
+        "do_nothing_chronic_datetime",
+        "greedy_chronic_reset_count",
+        "do_nothing_chronic_reset_count",
         "same_chronic_fingerprint",
         "greedy_steps",
         "do_nothing_steps",
@@ -480,6 +485,12 @@ def main() -> None:
                 "do_nothing_chronic_fingerprint": do_nothing_result[
                     "chronic_fingerprint"
                 ],
+                "greedy_chronic_datetime": greedy_result["chronic_datetime"],
+                "do_nothing_chronic_datetime": do_nothing_result["chronic_datetime"],
+                "greedy_chronic_reset_count": greedy_result["chronic_reset_count"],
+                "do_nothing_chronic_reset_count": do_nothing_result[
+                    "chronic_reset_count"
+                ],
                 "same_chronic_fingerprint": greedy_result["chronic_fingerprint"]
                 == do_nothing_result["chronic_fingerprint"],
                 "greedy_steps": greedy_result["steps"],
@@ -514,6 +525,7 @@ def main() -> None:
                     f"same_chronic={row['same_chronic_fingerprint']} "
                     f"fp={str(row['greedy_chronic_fingerprint'])[:8]}/"
                     f"{str(row['do_nothing_chronic_fingerprint'])[:8]} "
+                    f"date={row['greedy_chronic_datetime']} "
                     f"elapsed={_format_duration(elapsed)} "
                     f"eta={_format_duration(eta)}",
                     flush=True,
