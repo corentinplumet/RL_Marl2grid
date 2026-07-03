@@ -784,7 +784,11 @@ def _simulation_worker_main(remote, env_args: Namespace, chronic_split: Optional
                 chronic_id = data.get("chronic_id", None)
                 if chronic_id is not None:
                     env.set_chronic_id(int(chronic_id))
-                env.reset()
+                    reset_repeats = 1
+                else:
+                    reset_repeats = max(1, int(data.get("reset_repeats", 1)))
+                for _ in range(reset_repeats):
+                    env.reset()
                 remote.send(
                     {
                         "ok": True,
@@ -897,9 +901,19 @@ class SimulationWorkerPool:
         self,
         reference_max_rho: float,
         chronic_id: Optional[int] = None,
+        reset_repeats: int = 1,
     ) -> None:
+        reset_repeats = max(1, int(reset_repeats))
         for remote in self.remotes:
-            remote.send(("reset", {"chronic_id": chronic_id}))
+            remote.send(
+                (
+                    "reset",
+                    {
+                        "chronic_id": chronic_id,
+                        "reset_repeats": reset_repeats,
+                    },
+                )
+            )
         responses = [self._recv(remote) for remote in self.remotes]
         self._check_rhos(
             [float(response["max_rho"]) for response in responses],
@@ -1160,7 +1174,10 @@ def main() -> None:
             num_workers=cli.outcome_sim_workers,
             start_method=cli.outcome_sim_start_method,
         )
-        sim_pool.reset(float(env.get_current_max_rho()))
+        sim_pool.reset(
+            float(env.get_current_max_rho()),
+            reset_repeats=max(1, int(env.current_chronic_reset_count)),
+        )
     env_steps = 0
     completed_episodes = 0
     episode_step = 0
@@ -1455,7 +1472,13 @@ def main() -> None:
                         num_workers=cli.outcome_sim_workers,
                         start_method=cli.outcome_sim_start_method,
                     )
-                sim_pool.reset(float(env.get_current_max_rho()))
+                    reset_repeats = max(1, int(env.current_chronic_reset_count))
+                else:
+                    reset_repeats = 1
+                sim_pool.reset(
+                    float(env.get_current_max_rho()),
+                    reset_repeats=reset_repeats,
+                )
             episode_step = 0
         else:
             if sim_pool is not None:
