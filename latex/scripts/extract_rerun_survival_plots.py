@@ -30,12 +30,25 @@ FIGURES = {
     14: "rerun_a0_bias_comparison.png",
 }
 
+HTML_FIGURES = {
+    REPO_ROOT
+    / "Topology_Task"
+    / "outputs"
+    / "wandb_figures"
+    / "gine_best_search2_baseline_comparisons.html": {
+        "filename": "gine_best_search2_baseline_comparisons.png",
+        "figsize": (12.8, 9.8),
+    },
+}
+
 DTYPE_MAP = {
     "f8": np.float64,
     "f4": np.float32,
     "i8": np.int64,
     "i4": np.int32,
     "i2": np.int16,
+    "i1": np.int8,
+    "u8": np.uint64,
     "u4": np.uint32,
     "u2": np.uint16,
     "u1": np.uint8,
@@ -93,6 +106,19 @@ def title_for_axis(fig, axis_num: int, order: list[int]) -> str:
     return ""
 
 
+def extract_plotly_html_figure(html_path: Path) -> dict:
+    text = html_path.read_text(encoding="utf-8")
+    call_start = text.index("Plotly.newPlot(")
+    decoder = json.JSONDecoder()
+
+    data_start = text.index("[", call_start)
+    data, data_offset = decoder.raw_decode(text[data_start:])
+
+    layout_start = text.index("{", data_start + data_offset)
+    layout, _ = decoder.raw_decode(text[layout_start:])
+    return {"data": data, "layout": layout}
+
+
 def subplot_order(fig, axes_with_data: set[int]) -> tuple[list[int], int, int]:
     layout = fig.get("layout", {})
     axis_info = []
@@ -117,7 +143,7 @@ def subplot_order(fig, axes_with_data: set[int]) -> tuple[list[int], int, int]:
     return order, rows, cols
 
 
-def render_figure(fig, out_path: Path) -> None:
+def render_figure(fig, out_path: Path, figsize: tuple[float, float] | None = None) -> None:
     axes_with_data = {
         axis_number(trace.get("xaxis"))
         for trace in fig.get("data", [])
@@ -125,8 +151,11 @@ def render_figure(fig, out_path: Path) -> None:
     }
     order, rows, cols = subplot_order(fig, axes_with_data)
 
-    width = 11.5 if cols > 1 else 8.5
-    height = 3.1 * rows if rows > 1 else 4.8
+    if figsize is None:
+        width = 11.5 if cols > 1 else 8.5
+        height = 3.1 * rows if rows > 1 else 4.8
+    else:
+        width, height = figsize
     figure, ax_grid = plt.subplots(rows, cols, figsize=(width, height), squeeze=False)
     axis_lookup = {}
     for idx, axis_num in enumerate(order):
@@ -229,9 +258,15 @@ def main() -> None:
         render_figure(fig, OUT_DIR / filename)
         summaries[filename] = collect_summary(fig)
 
+    for html_path, spec in HTML_FIGURES.items():
+        fig = extract_plotly_html_figure(html_path)
+        filename = spec["filename"]
+        render_figure(fig, OUT_DIR / filename, figsize=spec.get("figsize"))
+        summaries[filename] = collect_summary(fig)
+
     summary_path = OUT_DIR / "rerun_survival_summary.json"
     summary_path.write_text(json.dumps(summaries, indent=2), encoding="utf-8")
-    print(f"Wrote {len(FIGURES)} figures to {OUT_DIR}")
+    print(f"Wrote {len(FIGURES) + len(HTML_FIGURES)} figures to {OUT_DIR}")
     print(f"Wrote summary metrics to {summary_path}")
 
 

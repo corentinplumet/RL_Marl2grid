@@ -886,6 +886,110 @@ worse than do-nothing, keep `REQUIRE_IMPROVEMENT=true` and inspect invalid
 actions, simulation errors, or whether the metric is selecting actions that
 improve one-step rho but create later topology problems.
 
+## Optional: Filter An Existing Dataset To A Higher Rho Threshold
+
+If a dataset was collected with:
+
+```text
+COLLECTION_RHO_THRESHOLD=0.90
+```
+
+you can derive a stricter dataset from it without rerunning Grid2Op
+simulations, provided the original action-outcome shards contain
+`global_max_rho_before`. The collector stores this field by default.
+
+The filter is:
+
+```text
+Topology_Task/teacher_student/filter_action_outcome_dataset.py
+```
+
+The JED launcher is:
+
+```text
+Topology_Task/teacher_student/job_filter_action_outcomes_jed.sh
+```
+
+The filter keeps only action rows satisfying:
+
+```text
+outcome_agent_i_global_max_rho_before > RHO_THRESHOLD
+```
+
+and only state-context rows satisfying:
+
+```text
+state_global_max_rho_before > RHO_THRESHOLD
+```
+
+With `INCLUSIVE=true`, the comparison becomes `>=`.
+
+The filter does not recompute per-line masks such as
+`state_high_rho_line_mask`. Those masks remain the masks computed during the
+source collection, for example with `COLLECTION_RHO_THRESHOLD=0.90`. The new
+threshold is stored separately in metadata as the filter threshold.
+
+This operation is a pure subset selection. It does not resimulate actions, and
+it does not change the already-computed values:
+
+```text
+rho_after_action
+rho_after_do_nothing
+delta_vs_now
+delta_vs_do_nothing
+```
+
+So a `0.95` dataset derived from a `0.90` dataset answers:
+
+```text
+Among the states already collected at rho > 0.90, keep only the more severe
+states with rho > 0.95.
+```
+
+It cannot recover states that were never collected in the original dataset. For
+example, deriving `0.95` from `0.90` is valid, but deriving `0.85` from `0.90`
+would be incomplete because states with `0.85 < rho <= 0.90` were never
+simulated.
+
+Example for WCCI bus36:
+
+```bash
+cd /home/plumet/RL_Marl2grid
+
+SOURCE_DATASET=outputs/teacher_student_datasets/wcci_full2048a_90_v3 \
+OUTPUT_DIR=outputs/teacher_student_datasets/wcci_full2048a_95_v3 \
+RHO_THRESHOLD=0.95 \
+INCLUSIVE=false \
+OVERWRITE=false \
+sbatch --time=04:00:00 Topology_Task/teacher_student/job_filter_action_outcomes_jed.sh
+```
+
+After the filter finishes, use the new dataset root exactly like a normal
+collected dataset:
+
+```bash
+DATASET_ROOT=outputs/teacher_student_datasets/wcci_full2048a_95_v3 \
+ACTION_REDUCTION_TOP_K_BY_AGENT=agent_0=77,agent_1=2048,agent_2=127,agent_3=1119 \
+ACTION_REDUCTION_MIN_COUNT=20 \
+ACTION_REDUCTION_METRIC=delta_vs_do_nothing \
+ACTION_REDUCTION_METHOD=improvement_rate \
+ACTION_REDUCTION_NAME=wcci_full2048a_95_v3_improvement_rate \
+ACTION_REDUCTION_REQUIRE_IMPROVEMENT=true \
+ACTION_REDUCTION_IMPROVEMENT_TOLERANCE=1e-3 \
+sbatch Topology_Task/teacher_student/job_reduce_action_space_jed.sh
+```
+
+The filtered dataset keeps the same layout:
+
+```text
+wcci_full2048a_95_v3/
+  parts/
+    part_000/
+      shards/
+      state_contexts/
+      metadata/
+```
+
 ## Inspecting Dataset Quality
 
 After collection, inspect each part's metadata:

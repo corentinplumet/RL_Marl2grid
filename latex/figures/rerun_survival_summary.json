@@ -188,5 +188,175 @@
       "final_survival": 99.27108134920634,
       "peak_survival": 100.0
     }
+  ],
+  "gine_best_search2_baseline_comparisons.png": [
+    {
+      "name": "00 baseline",
+      "axis": 1,
+      "final_step_m": 11.92,
+      "final_survival": 59.182539682539684,
+      "peak_survival": 93.86507936507937
+    },
+    {
+      "name": "000 no concat-flat",
+      "axis": 1,
+      "final_step_m": 13.68,
+      "final_survival": 91.14136904761905,
+      "peak_survival": 91.14136904761905
+    },
+    {
+      "name": "00 baseline",
+      "axis": 2,
+      "final_step_m": 11.92,
+      "final_survival": 59.182539682539684,
+      "peak_survival": 93.86507936507937
+    },
+    {
+      "name": "01 optimized critic update",
+      "axis": 2,
+      "final_step_m": 14.48,
+      "final_survival": 80.5560515873016,
+      "peak_survival": 92.63624338624338
+    },
+    {
+      "name": "00 baseline",
+      "axis": 3,
+      "final_step_m": 11.92,
+      "final_survival": 59.182539682539684,
+      "peak_survival": 93.86507936507937
+    },
+    {
+      "name": "02 MLP critic",
+      "axis": 3,
+      "final_step_m": 14.96,
+      "final_survival": 87.1966765873016,
+      "peak_survival": 92.97569444444444
+    },
+    {
+      "name": "00 baseline",
+      "axis": 4,
+      "final_step_m": 11.92,
+      "final_survival": 59.182539682539684,
+      "peak_survival": 93.86507936507937
+    },
+    {
+      "name": "03 non-shared actor GNN",
+      "axis": 4,
+      "final_step_m": 12.24,
+      "final_survival": 80.94097222222223,
+      "peak_survival": 98.2777777777778
+    },
+    {
+      "name": "00 baseline",
+      "axis": 5,
+      "final_step_m": 11.92,
+      "final_survival": 59.182539682539684,
+      "peak_survival": 93.86507936507937
+    },
+    {
+      "name": "04 light GINE",
+      "axis": 5,
+      "final_step_m": 14.96,
+      "final_survival": 57.7405753968254,
+      "peak_survival": 84.16493055555556
+    },
+    {
+      "name": "00 baseline",
+      "axis": 6,
+      "final_step_m": 11.92,
+      "final_survival": 59.182539682539684,
+      "peak_survival": 93.86507936507937
+    },
+    {
+      "name": "05 entropy decay",
+      "axis": 6,
+      "final_step_m": 11.2,
+      "final_survival": 82.8328373015873,
+      "peak_survival": 96.48131613756613
+    },
+    {
+      "name": "00 baseline",
+      "axis": 7,
+      "final_step_m": 11.92,
+      "final_survival": 59.182539682539684,
+      "peak_survival": 93.86507936507937
+    },
+    {
+      "name": "06 no node ID",
+      "axis": 7,
+      "final_step_m": 14.64,
+      "final_survival": 93.43998015873017,
+      "peak_survival": 94.6577380952381
+    },
+    {
+      "name": "00 baseline",
+      "axis": 8,
+      "final_step_m": 11.92,
+      "final_survival": 59.182539682539684,
+      "peak_survival": 93.86507936507937
+    },
+    {
+      "name": "07 GAT",
+      "axis": 8,
+      "final_step_m": 10.56,
+      "final_survival": 64.46130952380952,
+      "peak_survival": 81.97495039682539
+    },
+    {
+      "name": "00 baseline",
+      "axis": 9,
+      "final_step_m": 11.92,
+      "final_survival": 59.182539682539684,
+      "peak_survival": 93.86507936507937
+    },
+    {
+      "name": "08 weighted GCN",
+      "axis": 9,
+      "final_step_m": 14.16,
+      "final_survival": 71.91517857142857,
+      "peak_survival": 82.18898809523809
+    },
+    {
+      "name": "00 baseline",
+      "axis": 10,
+      "final_step_m": 11.92,
+      "final_survival": 59.182539682539684,
+      "peak_survival": 93.86507936507937
+    },
+    {
+      "name": "09 light no-concat MLP critic",
+      "axis": 10,
+      "final_step_m": 14.96,
+      "final_survival": 84.5513392857143,
+      "peak_survival": 90.5124007936508
+    },
+    {
+      "name": "00 baseline",
+      "axis": 11,
+      "final_step_m": 11.92,
+      "final_survival": 59.182539682539684,
+      "peak_survival": 93.86507936507937
+    },
+    {
+      "name": "10 light concat MLP critic",
+      "axis": 11,
+      "final_step_m": 14.96,
+      "final_survival": 78.91104497354497,
+      "peak_survival": 90.37450396825398
+    },
+    {
+      "name": "00 baseline",
+      "axis": 12,
+      "final_step_m": 11.92,
+      "final_survival": 59.182539682539684,
+      "peak_survival": 93.86507936507937
+    },
+    {
+      "name": "11 init bias 0.0",
+      "axis": 12,
+      "final_step_m": 10.96,
+      "final_survival": 53.65277777777777,
+      "peak_survival": 83.895667989418
+    }
   ]
 }

@@ -9,7 +9,9 @@
 \usepackage{hyperref}
 \usepackage{enumitem}
 \usepackage{booktabs}
+\usepackage{array}
 \usepackage{graphicx}
+\usepackage{pdflscape}
 \usepackage{amsmath}
 \usepackage[backend=biber,style=ieee]{biblatex}
 
@@ -25,6 +27,7 @@
 }
 
 \onehalfspacing
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
 \setlist[itemize]{topsep=0.25em,itemsep=0.15em}
 \setlist[enumerate]{topsep=0.25em,itemsep=0.15em}
 
@@ -44,6 +47,15 @@
 \pagenumbering{arabic}
 \input{chapters/00_plan}
 \input{chapters/05_results_rerun_survival}
+
+\appendix
+\chapter{GINE Architecture}
+\label{app:gine-architecture}
+
+This appendix will describe the GINE encoder used in the graph-based topology
+control experiments. The final version should specify the graph construction,
+node and edge features, message-passing layers, pooling/readout operation, and
+how the actor and critic heads consume the encoded graph representation.
 
 \nocite{*}
 \printbibliography
