@@ -86,6 +86,7 @@ class Evaluator:
             getattr(args, "eval_action_rho_threshold", 0.90)
         )
         self.eval_episodes = getattr(args, "eval_episodes", 10)
+        self._eval_base_seed = int(getattr(args, "seed", 0))
         self.trace_rollout_actions = bool(
             getattr(args, "trace_rollout_actions", False)
         )
@@ -95,9 +96,11 @@ class Evaluator:
         self.trace_rollout_decode_actions = bool(
             getattr(args, "trace_rollout_decode_actions", True)
         )
-        if getattr(args, "split_chronics", False) and getattr(
-            args, "eval_all_split_chronics", True
-        ):
+        self._split_chronics = bool(getattr(args, "split_chronics", False))
+        self._eval_all_split_chronics = bool(
+            getattr(args, "eval_all_split_chronics", True)
+        )
+        if self._split_chronics and self._eval_all_split_chronics:
             split_size = getattr(self.env.env, "chronic_split_size", None)
             if split_size is not None:
                 self.eval_episodes = split_size
@@ -105,6 +108,37 @@ class Evaluator:
         self.chronic_split = chronic_split
         self.eval_progress_print = bool(getattr(args, "eval_progress_print", False))
         # if self.use_heuristic: self.env.set_n_rewards(len(self.reward_tags))
+
+    def _should_randomize_eval_chronics(self, eval_ep: int) -> bool:
+        """Return whether this eval should draw a fresh random chronic subset."""
+        if self.env_id == "bus14":
+            return False
+        if not self._split_chronics:
+            return False
+        split_size = getattr(self.env.env, "chronic_split_size", None)
+        if split_size is not None and int(eval_ep) >= int(split_size):
+            return False
+        return True
+
+    def _randomize_eval_chronics(self, glob_step: int, eval_ep: int) -> None:
+        if not self._should_randomize_eval_chronics(eval_ep):
+            return
+        prefix_offset = 0 if self.metric_prefix in {None, "test"} else 1_000_003
+        split_offset = 0 if self.chronic_split in {None, "test"} else 2_000_003
+        shuffle_seed = (
+            self._eval_base_seed
+            + int(glob_step)
+            + prefix_offset
+            + split_offset
+        )
+        self.env.reshuffle_chronics(seed=shuffle_seed)
+        if self.eval_progress_print:
+            eval_label = self.metric_prefix or "eval"
+            print(
+                f"{eval_label} random chronic subset: "
+                f"seed={shuffle_seed} episodes={eval_ep}",
+                flush=True,
+            )
 
     def _current_chronic_name(self) -> str:
         """Best-effort label for the currently evaluated Grid2Op chronic."""
@@ -257,6 +291,7 @@ class Evaluator:
             eval_ep = self.eval_episodes
 
         eval_label = self.metric_prefix or "eval"
+        self._randomize_eval_chronics(glob_step, eval_ep)
         if self.eval_progress_print:
             print(
                 f"{eval_label} evaluation start: {eval_ep} chronics, "

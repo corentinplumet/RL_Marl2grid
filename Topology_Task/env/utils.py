@@ -740,6 +740,46 @@ class MAEnvWrapper(MAEnv):
 
         return obs, heuristic_reward, done, info
 
+    def reshuffle_chronics(self, seed: Optional[int] = None) -> None:
+        """Best-effort reshuffle of the active chronic handler.
+
+        This is used by non-bus14 evaluation to draw a fresh random subset at
+        each eval call while keeping the train/test split filter unchanged.
+        """
+        targets = [
+            getattr(getattr(self, "g2op_env", None), "chronics_handler", None),
+            getattr(
+                getattr(self.g2op_ma_env, "_cent_env", None),
+                "chronics_handler",
+                None,
+            ),
+        ]
+        errors = []
+        shuffled = False
+        seen = set()
+        for handler in targets:
+            if handler is None or id(handler) in seen:
+                continue
+            seen.add(id(handler))
+            try:
+                if seed is not None:
+                    seed_method = getattr(handler, "seed", None)
+                    if callable(seed_method):
+                        seed_method(int(seed))
+                shuffle_method = getattr(handler, "shuffle", None)
+                if callable(shuffle_method):
+                    shuffle_method()
+                    shuffled = True
+                reset_method = getattr(handler, "reset", None)
+                if callable(reset_method):
+                    reset_method()
+            except Exception as exc:
+                errors.append(f"{type(handler).__name__}: {exc}")
+
+        if not shuffled:
+            detail = "; ".join(errors[-4:]) if errors else "no shuffle method found"
+            raise RuntimeError(f"Could not reshuffle chronics: {detail}")
+
     def set_chronic_id(self, chronic_id: int) -> None:
         """Best-effort request for Grid2Op to use a specific chronic on reset."""
         chronic_id = int(chronic_id)

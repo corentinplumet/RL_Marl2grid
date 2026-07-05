@@ -347,6 +347,9 @@ class RecordEpisodeStatistics(gym.Wrapper, gym.utils.RecordConstructorArgs):
     def get_current_agent_max_rho(self) -> Dict[str, float]:
         return self.env.get_current_agent_max_rho()
 
+    def reshuffle_chronics(self, seed: Optional[int] = None) -> None:
+        return self.env.reshuffle_chronics(seed=seed)
+
     def simulate_action_outcomes(
         self,
         requests: List[Dict[str, Any]],
