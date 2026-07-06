@@ -25,7 +25,7 @@ XDG_CACHE_HOME = "{run_dir}/cache"
 
 [args]
 # core
-time_limit = 1440
+time_limit = 4320
 checkpoint = true
 alg = "MAPPO"
 seed = 0

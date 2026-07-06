@@ -1,7 +1,7 @@
-# WCCI reduced-action MLP baseline with adaptive intervention-budget overlay.
+# WCCI reduced-action MLP baseline with AIB and topology-distance penalty.
 
 [run]
-name = "wcci_aib_02_flat_local_t035_72x576_s2"
+name = "wcci_aib_01_flat_local_t010_topo010_72x576_s1"
 run_dir = "outputs/jed-{config_name}-{job_id}"
 seed_from_slurm_array = false
 extra_args = []
@@ -28,9 +28,9 @@ XDG_CACHE_HOME = "{run_dir}/cache"
 time_limit = 4320
 checkpoint = true
 alg = "MAPPO"
-seed = 2
+seed = 1
 verbose = true
-exp_tag = "wcci_aib_02_flat_local_t035_72x576_s2"
+exp_tag = "wcci_aib_01_flat_local_t010_topo010_72x576_s1"
 track = true
 wandb_project = "Grid2Op"
 wandb_entity = "corentin-plumet-epfl"
@@ -52,7 +52,7 @@ norm_obs = true
 use_heuristic = false
 heuristic_type = "idle"
 line_margin_reward_weight = 0.0
-topology_reward_weight = 0.0
+topology_reward_weight = 0.01
 optimize_mem = true
 constraints_type = 0
 split_chronics = true
@@ -95,10 +95,10 @@ eval_episodes = 10
 eval_all_split_chronics = false
 eval_train_chronics = true
 
-# experiment overlay copied from a0_aib
+# experiment overlay copied from wcci_aib; topology_reward_weight=0.01
 adaptive_intervention_budget = true
 intervention_budget_cost_mode = "local_safe"
-intervention_budget_target = 0.35
+intervention_budget_target = 0.10
 intervention_budget_lr = 0.02
 intervention_budget_rho_threshold = 0.90
 intervention_budget_rho_sharpness = 25.0

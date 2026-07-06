@@ -25,7 +25,7 @@ XDG_CACHE_HOME = "{run_dir}/cache"
 
 [args]
 # core
-time_limit = 1440
+time_limit = 4320
 checkpoint = true
 alg = "MAPPO"
 seed = 1
@@ -64,7 +64,7 @@ actor_encoder = "mlp"
 critic_encoder = "mlp"
 
 # ppo
-total_timesteps = 20000000
+total_timesteps = 60000000
 n_steps = 576
 eval_freq = 82944
 actor_layers = [256, 256, 256]

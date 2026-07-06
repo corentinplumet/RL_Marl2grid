@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+sbatch job_jed.sh configs/wcci_aib_topology/wcci_aib_00_flat_local_t020_topo003_72x576_s0.toml
+sbatch job_jed.sh configs/wcci_aib_topology/wcci_aib_00_flat_local_t020_topo003_72x576_s1.toml
+sbatch job_jed.sh configs/wcci_aib_topology/wcci_aib_00_flat_local_t020_topo003_72x576_s2.toml
+sbatch job_jed.sh configs/wcci_aib_topology/wcci_aib_00_flat_local_t020_topo010_72x576_s0.toml
+sbatch job_jed.sh configs/wcci_aib_topology/wcci_aib_00_flat_local_t020_topo010_72x576_s1.toml
+sbatch job_jed.sh configs/wcci_aib_topology/wcci_aib_00_flat_local_t020_topo010_72x576_s2.toml
+sbatch job_jed.sh configs/wcci_aib_topology/wcci_aib_01_flat_local_t010_topo003_72x576_s0.toml
+sbatch job_jed.sh configs/wcci_aib_topology/wcci_aib_01_flat_local_t010_topo003_72x576_s1.toml
+sbatch job_jed.sh configs/wcci_aib_topology/wcci_aib_01_flat_local_t010_topo003_72x576_s2.toml
+sbatch job_jed.sh configs/wcci_aib_topology/wcci_aib_01_flat_local_t010_topo010_72x576_s0.toml
+sbatch job_jed.sh configs/wcci_aib_topology/wcci_aib_01_flat_local_t010_topo010_72x576_s1.toml
+sbatch job_jed.sh configs/wcci_aib_topology/wcci_aib_01_flat_local_t010_topo010_72x576_s2.toml

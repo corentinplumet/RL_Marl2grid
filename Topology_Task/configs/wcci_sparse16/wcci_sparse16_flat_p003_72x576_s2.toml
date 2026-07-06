@@ -1,7 +1,7 @@
-# WCCI reduced-action MLP baseline with adaptive intervention-budget overlay.
+# WCCI reduced-action MLP baseline with sparse non-idle action penalty.
 
 [run]
-name = "wcci_aib_02_flat_local_t035_72x576_s2"
+name = "wcci_sparse16_flat_p003_72x576_s2"
 run_dir = "outputs/jed-{config_name}-{job_id}"
 seed_from_slurm_array = false
 extra_args = []
@@ -30,7 +30,7 @@ checkpoint = true
 alg = "MAPPO"
 seed = 2
 verbose = true
-exp_tag = "wcci_aib_02_flat_local_t035_72x576_s2"
+exp_tag = "wcci_sparse16_flat_p003_72x576_s2"
 track = true
 wandb_project = "Grid2Op"
 wandb_entity = "corentin-plumet-epfl"
@@ -42,7 +42,7 @@ n_threads = 4
 # environment
 env_id = "bus36_wcci"
 n_envs = 72
-action_type = "topology" 
+action_type = "topology"
 reduced_action_space = "outputs/teacher_student_datasets/wcci_full2048a_90_v3/metadata/reduced_action_space_wcci_full2048a_90_v3_mk256.json"
 difficulty = 0
 decentralized = true
@@ -64,7 +64,7 @@ actor_encoder = "mlp"
 critic_encoder = "mlp"
 
 # ppo
-total_timesteps = 60000000
+total_timesteps = 20000000
 n_steps = 576
 eval_freq = 82944
 actor_layers = [256, 256, 256]
@@ -95,10 +95,16 @@ eval_episodes = 10
 eval_all_split_chronics = false
 eval_train_chronics = true
 
-# experiment overlay copied from a0_aib
-adaptive_intervention_budget = true
-intervention_budget_cost_mode = "local_safe"
-intervention_budget_target = 0.35
-intervention_budget_lr = 0.02
-intervention_budget_rho_threshold = 0.90
-intervention_budget_rho_sharpness = 25.0
+# experiment overlay copied from a0_sparse16_flat_p003
+intervention_gate = false
+intervention_gate_eval_mode = "final_action_map"
+intervention_penalty = 0.003
+safe_intervention_penalty = 0.0
+safe_intervention_rho_threshold = 0.90
+eval_action_heuristic = "none"
+eval_action_rho_threshold = 0.90
+trace_rollout_actions = false
+trace_rollout_env_idx = 0
+trace_rollout_max_steps = 512
+trace_rollout_every = 10
+trace_rollout_decode_actions = true
