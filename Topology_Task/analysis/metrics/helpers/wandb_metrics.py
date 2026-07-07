@@ -18,6 +18,11 @@ import numpy as np
 import pandas as pd
 
 try:
+    from .run_data import scan_run_data
+except ImportError:  # pragma: no cover - direct notebook/script execution fallback
+    from run_data import scan_run_data
+
+try:
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
 except ImportError as exc:
@@ -114,8 +119,10 @@ def configure_task_dir(task_dir=None):
     """Configure cache and figure paths. Call this if the notebook runs from an unusual cwd."""
     global TASK_DIR, CACHE_DIR, FULL_CACHE_DIR, METRIC_CACHE_DIR, FIG_DIR
     global MANIFEST_PATH, CACHE_INDEX_PATH, FAILED_HISTORY_DOWNLOADS_PATH
+    global RUN_DATA_DIR
 
     TASK_DIR = Path(task_dir).resolve() if task_dir is not None else find_task_dir()
+    RUN_DATA_DIR = TASK_DIR / "outputs" / "run_data"
     CACHE_DIR = TASK_DIR / "outputs" / "wandb_cache"
     FULL_CACHE_DIR = CACHE_DIR / "full_history"
     METRIC_CACHE_DIR = CACHE_DIR / "metric_history"
@@ -366,6 +373,7 @@ def _cache_file_from_metadata(meta, meta_path, key, filename):
 
 
 def cached_runs_from_full_history():
+    run_data = scan_run_data(RUN_DATA_DIR, include_legacy=False)
     rows = []
     for meta_path in _metadata_json_paths():
         try:
@@ -404,7 +412,18 @@ def cached_runs_from_full_history():
             "rows": meta.get("rows"),
             "columns": meta.get("columns"),
         })
-    return pd.DataFrame(rows)
+    cache_df = pd.DataFrame(rows)
+    if not run_data.empty:
+        run_data = run_data.copy()
+        if "name" not in run_data.columns and "run_name" in run_data.columns:
+            run_data["name"] = run_data["run_name"]
+        if "id" not in run_data.columns and "run_id" in run_data.columns:
+            run_data["id"] = run_data["run_id"]
+    pieces = [piece for piece in [run_data, cache_df] if not piece.empty]
+    if not pieces:
+        return pd.DataFrame()
+    out = pd.concat(pieces, ignore_index=True, sort=False)
+    return out.drop_duplicates(subset=["name", "id"], keep="first").reset_index(drop=True)
 
 
 def _current_exact_run_name_candidates():

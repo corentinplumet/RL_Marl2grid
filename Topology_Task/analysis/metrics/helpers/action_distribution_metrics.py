@@ -16,6 +16,11 @@ import numpy as np
 import pandas as pd
 
 try:
+    from .run_data import RUN_DATA_DIR, active_history_index_path
+except ImportError:  # pragma: no cover - direct notebook/script execution fallback
+    from run_data import RUN_DATA_DIR, active_history_index_path
+
+try:
     import tomllib
 except ModuleNotFoundError:  # pragma: no cover - Python < 3.11 fallback
     import tomli as tomllib
@@ -67,7 +72,8 @@ A0_EXPERIMENT_FOLDERS = {
     "a0_aib": CONFIG_ROOT / "a0_aib",
 }
 CACHE_DIR = TASK_DIR / "outputs" / "wandb_cache"
-CACHE_INDEX_PATH = CACHE_DIR / "full_history_cache_index.csv"
+OLD_CACHE_INDEX_PATH = CACHE_DIR / "full_history_cache_index.csv"
+CACHE_INDEX_PATH = active_history_index_path(OLD_CACHE_INDEX_PATH)
 FIG_DIR = TASK_DIR / "outputs" / "action_distribution_figures"
 TRACE_CACHE_DIR = CACHE_DIR / "action_trace_tables"
 for directory in [FIG_DIR, TRACE_CACHE_DIR]:
@@ -222,6 +228,7 @@ def _base_context(experiment_folders=None):
         "A0_AIB_LABELS": A0_AIB_LABELS,
         "A0_AIB_ORDER": A0_AIB_ORDER,
         "CACHE_DIR": CACHE_DIR,
+        "RUN_DATA_DIR": RUN_DATA_DIR,
         "CACHE_INDEX_PATH": CACHE_INDEX_PATH,
         "FIG_DIR": FIG_DIR,
         "TRACE_CACHE_DIR": TRACE_CACHE_DIR,

@@ -18,3 +18,18 @@ clearer:
 
 The notebooks locate `helpers/` automatically whether they are run from this
 folder, the repository root, or inside `Topology_Task`.
+
+## Run Data Source
+
+The plotting helpers first look for permanent W&B downloads under:
+
+```text
+Topology_Task/outputs/run_data/
+```
+
+This is the preferred source. If no permanent run data is found, the helpers
+fall back to the older cache under:
+
+```text
+Topology_Task/outputs/wandb_cache/
+```

@@ -16,6 +16,13 @@ sbatch Topology_Task/full_test_eval/job_full_test_eval.sh \
   --checkpoint checkpoint/best_test_hvg_04_eval_local_rho090_s0.tar
 ```
 
+On Izar, use the Izar wrapper instead:
+
+```bash
+sbatch Topology_Task/full_test_eval/job_full_test_eval_izar.sh \
+  --checkpoint checkpoint/best_test_hvg_04_eval_local_rho090_s0.tar
+```
+
 Or select by model name and checkpoint global step:
 
 ```bash

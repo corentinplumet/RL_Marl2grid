@@ -18,6 +18,11 @@ import numpy as np
 import pandas as pd
 
 try:
+    from .run_data import RUN_DATA_DIR, scan_run_data
+except ImportError:  # pragma: no cover - direct notebook/script execution fallback
+    from run_data import RUN_DATA_DIR, scan_run_data
+
+try:
     import tomllib
 except ModuleNotFoundError:  # pragma: no cover
     import tomli as tomllib
@@ -128,6 +133,7 @@ CONFIG_ROOT = TASK_DIR / "configs"
 CACHE_DIR = TASK_DIR / "outputs" / "wandb_cache"
 FULL_HISTORY_DIR = CACHE_DIR / "full_history"
 CACHE_INDEX_PATH = CACHE_DIR / "full_history_cache_index.csv"
+PERMANENT_RUN_DATA_DIR = RUN_DATA_DIR
 FIG_DIR = TASK_DIR / "outputs" / "comparison_dashboard_figures"
 FULL_TEST_DIR = TASK_DIR / "outputs" / "full_test_eval"
 TEACHER_DATASET_ROOT = TASK_DIR / "outputs" / "teacher_student_datasets"
@@ -523,14 +529,17 @@ def load_cache_index(path: Path = CACHE_INDEX_PATH) -> pd.DataFrame:
         df = df.rename(columns={"name": "run_name"})
     if "id" in df.columns and "run_id" not in df.columns:
         df = df.rename(columns={"id": "run_id"})
-    scanned = _scan_full_history_cache(FULL_HISTORY_DIR)
-    if df.empty and scanned.empty:
+    scanned_cache = _scan_full_history_cache(FULL_HISTORY_DIR)
+    scanned_run_data = scan_run_data(PERMANENT_RUN_DATA_DIR, include_legacy=False)
+    if df.empty and scanned_cache.empty and scanned_run_data.empty:
         raise FileNotFoundError(
-            f"Missing readable W&B history cache. Expected {path} or metadata "
-            f"under {FULL_HISTORY_DIR}. Run the W&B history cache notebook first."
+            f"Missing readable W&B histories. Expected permanent run data under "
+            f"{PERMANENT_RUN_DATA_DIR}, or cache index {path}, or metadata under "
+            f"{FULL_HISTORY_DIR}."
         )
-    if not scanned.empty:
-        df = pd.concat([df, scanned], ignore_index=True, sort=False)
+    pieces = [piece for piece in [df, scanned_cache, scanned_run_data] if not piece.empty]
+    if pieces:
+        df = pd.concat(pieces, ignore_index=True, sort=False)
         df = df.drop_duplicates(subset=["run_name", "run_id"], keep="last")
     for column in ["history_parquet", "history_csv"]:
         if column not in df.columns:
@@ -558,6 +567,8 @@ def _resolve_cached_history_path(
     run_id: Any,
     filename: str,
 ) -> Optional[Path]:
+    if isinstance(value, Path):
+        return value if value.exists() else None
     if isinstance(value, str) and value:
         path = Path(value)
         if path.exists():
