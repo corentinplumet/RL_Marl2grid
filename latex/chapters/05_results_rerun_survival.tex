@@ -55,7 +55,7 @@ Table~\ref{tab:experiment-index} gives a compact map of the experiment blocks
 included so far. New result sections should add one row to this index before
 adding detailed prose.
 
-\begin{table}[htbp]
+\begin{table}[H]
   \centering
   \small
   \caption{Current result blocks and their role in the thesis.}
@@ -119,7 +119,21 @@ critic-update scheduling, and the initialization of the action-0 probability.
 Table~\ref{tab:a0-run-configurations} records these settings so that the
 survival plots can be interpreted without repeatedly restating the run names.
 
-\begin{table}[htbp]
+\paragraph{Evidence.}
+Table~\ref{tab:a0-core-summary} reports final and peak survival for the core A0
+ablations. Figure~\ref{fig:rerun-a0-pairwise} shows each comparison against the
+\texttt{rerun\_a0\_opt} baseline, and Figure~\ref{fig:rerun-a0-all} overlays all
+core A0 curves.
+
+\paragraph{Interpretation.}
+The optimized A0 baseline, the non-optimized critic-update variant, and the
+smaller MLP variant all finish around \(93\%\) survival. This suggests that the
+main A0 recipe is robust once the rerun protocol is fixed. Disabling reward
+normalization still reaches high peak survival, but it learns more slowly and
+finishes lower. The old no-validation, non-optimized baseline is clearly not
+competitive and should not be used as the main reference for later ablations.
+
+\begin{table}[H]
   \centering
   \scriptsize
   \caption{A0-family run configurations. The reference run is
@@ -149,13 +163,22 @@ survival plots can be interpreted without repeatedly restating the run names.
   \end{tabular}
 \end{table}
 
-\paragraph{Evidence.}
-Table~\ref{tab:a0-core-summary} reports final and peak survival for the core A0
-ablations. Figure~\ref{fig:rerun-a0-pairwise} shows each comparison against the
-\texttt{rerun\_a0\_opt} baseline, and Figure~\ref{fig:rerun-a0-all} overlays all
-core A0 curves.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figures/rerun_a0_core_pairwise_comparisons.png}
+  \caption{Pairwise A0 rerun comparisons against the \texttt{rerun\_a0\_opt}
+  baseline.}
+  \label{fig:rerun-a0-pairwise}
+\end{figure}
 
-\begin{table}[htbp]
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figures/rerun_a0_core_all_curves.png}
+  \caption{All A0 core rerun survival curves shown on one axis.}
+  \label{fig:rerun-a0-all}
+\end{figure}
+
+\begin{table}[H]
   \centering
   \small
   \caption{A0 core rerun survival summary.}
@@ -174,29 +197,6 @@ core A0 curves.
   \end{tabular}
   }
 \end{table}
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=\textwidth]{figures/rerun_a0_core_pairwise_comparisons.png}
-  \caption{Pairwise A0 rerun comparisons against the \texttt{rerun\_a0\_opt}
-  baseline.}
-  \label{fig:rerun-a0-pairwise}
-\end{figure}
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=\textwidth]{figures/rerun_a0_core_all_curves.png}
-  \caption{All A0 core rerun survival curves shown on one axis.}
-  \label{fig:rerun-a0-all}
-\end{figure}
-
-\paragraph{Interpretation.}
-The optimized A0 baseline, the non-optimized critic-update variant, and the
-smaller MLP variant all finish around \(93\%\) survival. This suggests that the
-main A0 recipe is robust once the rerun protocol is fixed. Disabling reward
-normalization still reaches high peak survival, but it learns more slowly and
-finishes lower. The old no-validation, non-optimized baseline is clearly not
-competitive and should not be used as the main reference for later ablations.
 
 \subsection{Initial Do-Nothing Bias}
 \label{subsec:a0-bias-reruns}
@@ -222,7 +222,15 @@ Table~\ref{tab:a0-bias-summary} and Figure~\ref{fig:rerun-a0-bias} compare the
 zero-bias A0 baseline with \texttt{rerun\_bias\_05} and
 \texttt{rerun\_bias\_07}.
 
-\begin{table}[htbp]
+\paragraph{Interpretation.}
+The effect of the action-0 bias is large and non-monotonic. The 0.5-bias curve
+remains unstable and substantially below the zero-bias baseline, whereas the
+0.7-bias curve eventually reaches the highest final survival in this comparison.
+The current conclusion is therefore not that larger bias is always better.
+Instead, the initialization prior appears to strongly shape exploration and
+should be treated as a first-order ablation variable.
+
+\begin{table}[H]
   \centering
   \small
   \caption{Initial do-nothing bias survival summary.}
@@ -238,7 +246,7 @@ zero-bias A0 baseline with \texttt{rerun\_bias\_05} and
   \end{tabular}
 \end{table}
 
-\begin{figure}[htbp]
+\begin{figure}[H]
   \centering
   \includegraphics[width=\textwidth]{figures/rerun_a0_bias_comparison.png}
   \caption{A0 baseline compared with initial do-nothing bias controls
@@ -246,13 +254,6 @@ zero-bias A0 baseline with \texttt{rerun\_bias\_05} and
   \label{fig:rerun-a0-bias}
 \end{figure}
 
-\paragraph{Interpretation.}
-The effect of the action-0 bias is large and non-monotonic. The 0.5-bias curve
-remains unstable and substantially below the zero-bias baseline, whereas the
-0.7-bias curve eventually reaches the highest final survival in this comparison.
-The current conclusion is therefore not that larger bias is always better.
-Instead, the initialization prior appears to strongly shape exploration and
-should be treated as a first-order ablation variable.
 
 \subsection{GINE Encoder Reruns}
 \label{subsec:gine-reruns}
@@ -272,6 +273,28 @@ All GINE runs use \texttt{gnn\_type = gine}, reward normalization,
 \(15{,}000{,}000\) total timesteps, evaluation every \(80{,}000\) timesteps,
 \(2{,}000\) rollout steps, deterministic evaluation, and the same 80/20 chronic
 split used by the A0 experiments. The reference run is \texttt{best\_00}.
+
+\paragraph{Implementation detail.}
+The full GINE model architecture is described separately in
+Appendix~\ref{app:gine-architecture}. This block separates representational
+changes from optimization changes. The GINE encoder changes how grid
+observations are embedded, while the critic type, flat-feature concatenation,
+entropy setting, and critic-update schedule affect how the PPO objective is
+optimized.
+
+\paragraph{Evidence.}
+Table~\ref{tab:gine-run-configurations} records the run configurations,
+Table~\ref{tab:gine-rerun-summary} gives the selected survival values, and
+Figure~\ref{fig:rerun-gine-best00} shows the pairwise survival curves against
+\texttt{best\_00}.
+
+\paragraph{Interpretation.}
+The strongest GINE result is \texttt{best\_14}, which reaches about
+\(95.7\%\) final survival. This suggests that the graph encoder can be
+competitive when it is paired with a simpler MLP critic and stable A0-style
+training choices. The heavier historical GINE baseline has high peak survival
+but much weaker final survival, which points to optimization stability rather
+than representational capacity as the main issue.
 
 \begin{landscape}
 \begin{table}[p]
@@ -311,21 +334,7 @@ split used by the A0 experiments. The reference run is \texttt{best\_00}.
 \end{table}
 \end{landscape}
 
-\paragraph{Implementation detail.}
-The full GINE model architecture is described separately in
-Appendix~\ref{app:gine-architecture}. This block separates representational
-changes from optimization changes. The GINE encoder changes how grid
-observations are embedded, while the critic type, flat-feature concatenation,
-entropy setting, and critic-update schedule affect how the PPO objective is
-optimized.
-
-\paragraph{Evidence.}
-Table~\ref{tab:gine-run-configurations} records the run configurations,
-Table~\ref{tab:gine-rerun-summary} gives the selected survival values, and
-Figure~\ref{fig:rerun-gine-best00} shows the pairwise survival curves against
-\texttt{best\_00}.
-
-\begin{table}[htbp]
+\begin{table}[H]
   \centering
   \small
   \caption{GINE rerun survival summary.}
@@ -344,21 +353,13 @@ Figure~\ref{fig:rerun-gine-best00} shows the pairwise survival curves against
   }
 \end{table}
 
-\begin{figure}[htbp]
+\begin{figure}[H]
   \centering
   \includegraphics[width=\textwidth]{figures/rerun_gine_best00_vs_best10_14.png}
   \caption{Seed-aggregated test episodic survival for GINE
   \texttt{best\_00} against \texttt{best\_10}--\texttt{best\_14}.}
   \label{fig:rerun-gine-best00}
 \end{figure}
-
-\paragraph{Interpretation.}
-The strongest GINE result is \texttt{best\_14}, which reaches about
-\(95.7\%\) final survival. This suggests that the graph encoder can be
-competitive when it is paired with a simpler MLP critic and stable A0-style
-training choices. The heavier historical GINE baseline has high peak survival
-but much weaker final survival, which points to optimization stability rather
-than representational capacity as the main issue.
 
 \subsection{Heavy GINE}
 \label{subsec:heavy-gine}
@@ -387,6 +388,22 @@ Table~\ref{tab:heavy-gine-configurations} gives the parameter comparison used
 for this ablation. The table is based on the \texttt{s0} TOML file for each
 family; the corresponding \texttt{s1} and \texttt{s2} files keep the same
 configuration except for the training seed and run name.
+
+\paragraph{Evidence.}
+Figure~\ref{fig:gine-best-search2} compares the \texttt{best\_00} baseline
+against each heavy-GINE alternative. Each panel shows the seed-averaged
+test-survival curve for \texttt{best\_00} and one comparison family, with faint
+seed curves and variability bands.
+
+\paragraph{Interpretation.}
+The broad search suggests that the heavy baseline is not limited by capacity
+alone. Several simpler or more constrained variants improve final survival over
+\texttt{best\_00}, especially removing node-ID embeddings, removing flat
+concatenation, using an MLP critic, and combining a light GINE actor with an MLP
+critic. In contrast, simply switching message passing to GAT or weighted GCN,
+or removing the initial do-nothing bias while keeping the heavy GINE/GNN-critic
+structure, does not clearly solve the stability problem.
+
 
 \begin{landscape}
 \begin{table}[p]
@@ -447,12 +464,6 @@ configuration except for the training seed and run name.
 \end{table}
 \end{landscape}
 
-\paragraph{Evidence.}
-Figure~\ref{fig:gine-best-search2} compares the \texttt{best\_00} baseline
-against each heavy-GINE alternative. Each panel shows the seed-averaged
-test-survival curve for \texttt{best\_00} and one comparison family, with faint
-seed curves and variability bands.
-
 \begin{landscape}
 \begin{figure}[p]
   \centering
@@ -464,14 +475,6 @@ seed curves and variability bands.
 \end{figure}
 \end{landscape}
 
-\paragraph{Interpretation.}
-The broad search suggests that the heavy baseline is not limited by capacity
-alone. Several simpler or more constrained variants improve final survival over
-\texttt{best\_00}, especially removing node-ID embeddings, removing flat
-concatenation, using an MLP critic, and combining a light GINE actor with an MLP
-critic. In contrast, simply switching message passing to GAT or weighted GCN,
-or removing the initial do-nothing bias while keeping the heavy GINE/GNN-critic
-structure, does not clearly solve the stability problem.
 
 \section{Decentralized Sparse Intervention Control}
 \label{sec:sparse-intervention-control}

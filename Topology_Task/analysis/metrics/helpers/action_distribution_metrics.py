@@ -76,8 +76,11 @@ OLD_CACHE_INDEX_PATH = CACHE_DIR / "full_history_cache_index.csv"
 CACHE_INDEX_PATH = active_history_index_path(OLD_CACHE_INDEX_PATH)
 FIG_DIR = TASK_DIR / "outputs" / "action_distribution_figures"
 TRACE_CACHE_DIR = CACHE_DIR / "action_trace_tables"
+FULL_TEST_EVAL_DIR = TASK_DIR / "outputs" / "full_test_eval"
 for directory in [FIG_DIR, TRACE_CACHE_DIR]:
     directory.mkdir(parents=True, exist_ok=True)
+
+_LAST_ACTION_DISTRIBUTION_SOURCE_ROWS = pd.DataFrame()
 
 AIB_EXPERIMENT = "adaptive_intervention_budget_7"
 AIB_TITLE = "Adaptive intervention budget 7"
@@ -204,6 +207,638 @@ def _annotate_aib_context(context):
     return context
 
 
+def _path_or_none(value):
+    if value is None:
+        return None
+    try:
+        if pd.isna(value):
+            return None
+    except (TypeError, ValueError):
+        pass
+    path = Path(value).expanduser()
+    return path if path.exists() else None
+
+
+def _relative_to(path, root):
+    try:
+        return path.resolve().relative_to(Path(root).resolve())
+    except ValueError:
+        return None
+
+
+def _run_data_group_dir(path):
+    relative = _relative_to(path, RUN_DATA_DIR)
+    if relative is None:
+        return None
+    parts = relative.parts
+    if not parts:
+        return RUN_DATA_DIR.resolve()
+    return (RUN_DATA_DIR / parts[0]).resolve()
+
+
+def _history_source_folder(row):
+    if isinstance(row, pd.Series):
+        row = row.to_dict()
+    for column in ("run_data_dir", "run_dir", "history_parquet", "history_csv"):
+        path = _path_or_none(row.get(column))
+        if path is None:
+            continue
+        run_data_group = _run_data_group_dir(path)
+        if run_data_group is not None:
+            return run_data_group
+        return path.resolve() if path.is_dir() else path.parent.resolve()
+    return None
+
+
+def print_action_distribution_source_folders(
+    rows,
+    *,
+    label="Action-distribution source folders used to build tables",
+    limit=12,
+):
+    if rows is None or len(rows) == 0:
+        print(f"{label}: none")
+        return []
+    iterator = rows.to_dict("records") if isinstance(rows, pd.DataFrame) else list(rows)
+    counts = {}
+    for row in iterator:
+        folder = _history_source_folder(row)
+        if folder is None:
+            continue
+        counts[folder] = counts.get(folder, 0) + 1
+    if not counts:
+        print(f"{label}: no local history source metadata found")
+        return []
+    ordered = sorted(counts.items(), key=lambda item: (str(item[0]), item[1]))
+    total = sum(counts.values())
+    print(f"{label}: {len(ordered)} folder(s), {total} run(s)")
+    for folder, count in ordered[:limit]:
+        print(f"  - {folder} ({count} run{'s' if count != 1 else ''})")
+    if len(ordered) > limit:
+        print(f"  ... {len(ordered) - limit} more folder(s)")
+    return [folder for folder, _ in ordered]
+
+
+def print_full_test_eval_source_folders(
+    rows,
+    *,
+    label="Full-test eval JSON folders used to select checkpoint steps",
+    limit=12,
+):
+    if rows is None or len(rows) == 0:
+        return []
+    iterator = rows.to_dict("records") if isinstance(rows, pd.DataFrame) else list(rows)
+    counts = {}
+    for row in iterator:
+        path = _path_or_none(row.get("path"))
+        if path is None:
+            continue
+        folder = path.parent.resolve()
+        counts[folder] = counts.get(folder, 0) + 1
+    if not counts:
+        return []
+    ordered = sorted(counts.items(), key=lambda item: (str(item[0]), item[1]))
+    total = sum(counts.values())
+    print(f"{label}: {len(ordered)} folder(s), {total} JSON file(s)")
+    for folder, count in ordered[:limit]:
+        print(f"  - {folder} ({count} file{'s' if count != 1 else ''})")
+    if len(ordered) > limit:
+        print(f"  ... {len(ordered) - limit} more folder(s)")
+    return [folder for folder, _ in ordered]
+
+
+def _remember_action_distribution_source_rows(rows):
+    global _LAST_ACTION_DISTRIBUTION_SOURCE_ROWS
+    if isinstance(rows, pd.DataFrame):
+        _LAST_ACTION_DISTRIBUTION_SOURCE_ROWS = rows.copy()
+    else:
+        _LAST_ACTION_DISTRIBUTION_SOURCE_ROWS = pd.DataFrame()
+
+
+def _source_rows_for_metric_output(output):
+    source_rows = output.get("source_rows")
+    if not isinstance(source_rows, pd.DataFrame) or source_rows.empty:
+        source_rows = _LAST_ACTION_DISTRIBUTION_SOURCE_ROWS
+    if not isinstance(source_rows, pd.DataFrame) or source_rows.empty:
+        return pd.DataFrame()
+
+    tables = output.get("tables", {}) if isinstance(output, dict) else {}
+    run_ids = set()
+    run_names = set()
+    experiments = set()
+    for table in tables.values():
+        if not isinstance(table, pd.DataFrame) or table.empty:
+            continue
+        if "run_id" in table.columns:
+            run_ids.update(table["run_id"].dropna().astype(str))
+        if "run_name" in table.columns:
+            run_names.update(table["run_name"].dropna().astype(str))
+        if "experiment" in table.columns:
+            experiments.update(table["experiment"].dropna().astype(str))
+
+    rows = source_rows.copy()
+    if run_ids and "run_id" in rows.columns:
+        return rows[rows["run_id"].astype(str).isin(run_ids)].drop_duplicates()
+    if run_ids and "id" in rows.columns:
+        return rows[rows["id"].astype(str).isin(run_ids)].drop_duplicates()
+    if run_names and "run_name" in rows.columns:
+        return rows[rows["run_name"].astype(str).isin(run_names)].drop_duplicates()
+    if run_names and "name" in rows.columns:
+        return rows[rows["name"].astype(str).isin(run_names)].drop_duplicates()
+    if experiments and "experiment" in rows.columns:
+        return rows[rows["experiment"].astype(str).isin(experiments)].drop_duplicates()
+    return rows.drop_duplicates()
+
+
+def print_metric_output_source_folders(output):
+    rows = _source_rows_for_metric_output(output)
+    folders = print_action_distribution_source_folders(
+        rows,
+        label="Plot source folders used to build these action-distribution curves",
+    )
+    full_test_rows = output.get("full_test_rows") if isinstance(output, dict) else None
+    if isinstance(full_test_rows, pd.DataFrame) and not full_test_rows.empty:
+        print_full_test_eval_source_folders(full_test_rows)
+        checkpoint_cols = [
+            col
+            for col in [
+                "run_like",
+                "checkpoint_global_step",
+                "local_checkpoint_path",
+                "local_best_test_checkpoint_path",
+                "checkpoint",
+                "path",
+            ]
+            if col in full_test_rows.columns
+        ]
+        if checkpoint_cols:
+            print("Checkpoint/full-test files used for plotted rows:")
+            for row in full_test_rows[checkpoint_cols].drop_duplicates().itertuples(index=False):
+                values = row._asdict()
+                run_like = values.get("run_like")
+                step = values.get("checkpoint_global_step")
+                checkpoint = values.get("local_checkpoint_path") or values.get("checkpoint")
+                best_test = values.get("local_best_test_checkpoint_path")
+                json_path = values.get("path")
+                best_test_text = f"; matching_best_test={best_test}" if best_test else ""
+                print(f"  - {run_like} @ step {step}: checkpoint={checkpoint}{best_test_text}; full_test_json={json_path}")
+    return folders
+
+
+def _run_data_group_name(row):
+    folder = _history_source_folder(row)
+    if folder is None:
+        return None
+    relative = _relative_to(folder, RUN_DATA_DIR)
+    if relative is not None and relative.parts:
+        return relative.parts[0]
+    return folder.name
+
+
+def _normalize_run_data_source(source):
+    if source is None:
+        return None
+    text = str(source).strip().lower()
+    if text in {"", "all", "both", "none", "null"}:
+        return None
+    if text not in {"cpu", "gpu"}:
+        raise ValueError("run_data_source must be one of None, 'all', 'cpu', or 'gpu'.")
+    return text
+
+
+def _filter_rows_by_run_data_source(rows, source, *, keep_unsplit=True):
+    source = _normalize_run_data_source(source)
+    if source is None:
+        return rows
+    if not isinstance(rows, pd.DataFrame) or rows.empty:
+        return rows
+
+    rows = rows.copy()
+    groups = rows.apply(_run_data_group_name, axis=1)
+    split_suffixes = ("_cpu", "_gpu")
+    keep = groups.astype(str).str.endswith(f"_{source}")
+    if keep_unsplit:
+        is_split = groups.astype(str).str.endswith(split_suffixes)
+        keep = keep | (groups.notna() & ~is_split)
+    return rows[keep].reset_index(drop=True)
+
+
+CHECKPOINT_SEARCH_DIRS = (
+    TASK_DIR / "checkpoint" / "with_obs_stats",
+    TASK_DIR / "checkpoint" / "without_obs_stats",
+    TASK_DIR / "checkpoint" / "teacher_student",
+)
+
+
+def _checkpoint_run_like(stem):
+    return re.sub(r"^(best_test_|final_)", "", str(stem or ""))
+
+
+def _fallback_run_like_from_full_test_path(json_path):
+    stem = Path(json_path).stem
+    stem = re.sub(r"_step\d+(?:_job\d+)?$", "", stem)
+    return _checkpoint_run_like(stem)
+
+
+def _resolve_local_checkpoint_path(checkpoint_value, search_dirs=CHECKPOINT_SEARCH_DIRS):
+    text = str(checkpoint_value or "").strip()
+    if not text:
+        return None
+
+    raw_path = Path(text).expanduser()
+    if raw_path.exists():
+        return str(raw_path.resolve())
+
+    names = []
+    if raw_path.name:
+        names.append(raw_path.name)
+        if raw_path.suffix:
+            if not raw_path.stem.startswith("best_test_"):
+                names.append(f"best_test_{raw_path.name}")
+            else:
+                names.append(raw_path.name.replace("best_test_", "", 1))
+
+    seen = set()
+    for name in names:
+        if not name or name in seen:
+            continue
+        seen.add(name)
+        for directory in search_dirs:
+            candidate = Path(directory) / name
+            if candidate.exists():
+                return str(candidate.resolve())
+    return None
+
+
+def _resolve_local_best_test_checkpoint_path(checkpoint_value, search_dirs=CHECKPOINT_SEARCH_DIRS):
+    text = str(checkpoint_value or "").strip()
+    if not text:
+        return None
+    raw_path = Path(text).expanduser()
+    if not raw_path.name or not raw_path.suffix:
+        return None
+
+    best_name = raw_path.name if raw_path.stem.startswith("best_test_") else f"best_test_{raw_path.name}"
+    for directory in search_dirs:
+        candidate = Path(directory) / best_name
+        if candidate.exists():
+            return str(candidate.resolve())
+    return None
+
+
+def load_full_test_eval_results(path=FULL_TEST_EVAL_DIR):
+    """Load standalone full-test JSON summaries and resolve local checkpoint paths."""
+    path = Path(path)
+    rows = []
+    if not path.exists():
+        return pd.DataFrame(columns=["path", "bad", "error"])
+
+    for json_path in sorted(path.glob("*.json")):
+        try:
+            data = json.loads(json_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            rows.append({"path": str(json_path), "bad": True, "error": repr(exc)})
+            continue
+
+        checkpoint = Path(str(data.get("checkpoint", "")))
+        checkpoint_stem = checkpoint.stem
+        run_like = _checkpoint_run_like(checkpoint_stem) if checkpoint_stem else _fallback_run_like_from_full_test_path(json_path)
+        local_checkpoint_path = _resolve_local_checkpoint_path(data.get("checkpoint"))
+        local_best_test_checkpoint_path = _resolve_local_best_test_checkpoint_path(data.get("checkpoint"))
+        rows.append(
+            {
+                "path": str(json_path),
+                "bad": False,
+                "checkpoint": str(checkpoint),
+                "checkpoint_stem": checkpoint_stem,
+                "run_like": run_like,
+                "checkpoint_global_step": data.get("checkpoint_global_step"),
+                "requested_model": data.get("requested_model"),
+                "requested_step": data.get("requested_step"),
+                "requested_step_policy": data.get("requested_step_policy"),
+                "split": data.get("split"),
+                "eval_episodes": data.get("eval_episodes"),
+                "deterministic_eval": data.get("deterministic_eval"),
+                "eval_action_heuristic": data.get("eval_action_heuristic", "none"),
+                "eval_action_rho_threshold": data.get("eval_action_rho_threshold"),
+                "obs_normalization": data.get("obs_normalization"),
+                "norm_obs_effective": data.get("norm_obs_effective"),
+                "obs_stats_available": data.get("obs_stats_available"),
+                "survival_frac": data.get("survival_frac"),
+                "survival_percent": data.get("survival_percent"),
+                "intervention_gate": data.get("intervention_gate"),
+                "intervention_gate_eval_mode": data.get("intervention_gate_eval_mode"),
+                "created_at": data.get("created_at"),
+                "local_checkpoint_path": local_checkpoint_path,
+                "local_checkpoint_exists": bool(local_checkpoint_path),
+                "local_best_test_checkpoint_path": local_best_test_checkpoint_path,
+                "local_best_test_checkpoint_exists": bool(local_best_test_checkpoint_path),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _deduplicate_full_test_eval_rows(rows):
+    if not isinstance(rows, pd.DataFrame) or rows.empty:
+        return rows
+    data = rows.copy()
+    if "created_at" not in data.columns:
+        data["created_at"] = ""
+    sort_cols = [col for col in ["run_like", "checkpoint_global_step", "created_at", "path"] if col in data.columns]
+    data = data.sort_values(sort_cols)
+    key_cols = [
+        "run_like",
+        "checkpoint_global_step",
+        "split",
+        "eval_action_heuristic",
+        "eval_action_rho_threshold",
+    ]
+    key_cols = [col for col in key_cols if col in data.columns]
+    if key_cols:
+        data = data.drop_duplicates(key_cols, keep="last")
+    return data.reset_index(drop=True)
+
+
+def _agent_ids_from_train_action_history(history):
+    pattern = re.compile(r"^train/frac_action_0_(agent_\d+)$")
+    agents = []
+    for col in history.columns:
+        match = pattern.match(str(col))
+        if match:
+            agents.append(match.group(1))
+    return sorted(set(agents), key=lambda agent: int(agent.rsplit("_", 1)[-1]))
+
+
+def _action0_series_for_checkpoint_agent(run_history, split, agent):
+    candidates = [
+        (f"{split}/explain/frac_action_0_{agent}", False),
+        (f"train/frac_action_0_{agent}", False),
+        (f"{split}/explain/action_nonidle_{agent}", True),
+        (f"train/explain/action_nonidle_{agent}", True),
+    ]
+    for column, invert in candidates:
+        if column not in run_history.columns:
+            continue
+        values = pd.to_numeric(run_history[column], errors="coerce")
+        if values.notna().any():
+            return (1.0 - values if invert else values), column, invert
+    return None, None, False
+
+
+def _select_checkpoint_metric_point(run_history, values, checkpoint_step, *, step_policy="at_or_before"):
+    frame = pd.DataFrame(
+        {
+            "_step": pd.to_numeric(run_history["_step"], errors="coerce"),
+            "step_millions": pd.to_numeric(run_history.get("step_millions"), errors="coerce"),
+            "value": pd.to_numeric(values, errors="coerce"),
+        }
+    ).dropna(subset=["_step", "value"])
+    if frame.empty:
+        return None
+
+    checkpoint_step = pd.to_numeric(pd.Series([checkpoint_step]), errors="coerce").iloc[0]
+    if pd.isna(checkpoint_step):
+        selected = frame.sort_values("_step").iloc[-1]
+        return selected, "last_available_no_checkpoint_step"
+
+    policy = str(step_policy or "at_or_before").strip().lower()
+    if policy == "exact":
+        candidates = frame[np.isclose(frame["_step"], checkpoint_step)]
+        if candidates.empty:
+            return None
+        selected = candidates.sort_values("_step").iloc[-1]
+        return selected, "exact"
+    if policy == "nearest":
+        candidates = frame.assign(_abs_delta=(frame["_step"] - checkpoint_step).abs())
+        selected = candidates.sort_values(["_abs_delta", "_step"]).iloc[0]
+        return selected.drop(labels=["_abs_delta"]), "nearest"
+
+    candidates = frame[frame["_step"] <= checkpoint_step]
+    if candidates.empty:
+        candidates = frame.assign(_abs_delta=(frame["_step"] - checkpoint_step).abs())
+        selected = candidates.sort_values(["_abs_delta", "_step"]).iloc[0]
+        return selected.drop(labels=["_abs_delta"]), "nearest_after_fallback"
+    selected = candidates.sort_values("_step").iloc[-1]
+    return selected, "at_or_before" if selected["_step"] != checkpoint_step else "exact"
+
+
+def _filter_full_test_rows_for_checkpoint_action0(rows, *, checkpoint_name_regex=None):
+    if not isinstance(rows, pd.DataFrame) or rows.empty:
+        return rows
+    bad = rows["bad"].fillna(False).astype(bool) if "bad" in rows.columns else pd.Series(False, index=rows.index)
+    data = rows[~bad].copy()
+    if checkpoint_name_regex:
+        pattern = re.compile(str(checkpoint_name_regex))
+        text = (
+            data.get("run_like", pd.Series("", index=data.index)).fillna("").astype(str)
+            + "\n"
+            + data.get("checkpoint_stem", pd.Series("", index=data.index)).fillna("").astype(str)
+            + "\n"
+            + data.get("checkpoint", pd.Series("", index=data.index)).fillna("").astype(str)
+        )
+        data = data[text.map(lambda value: bool(pattern.search(value)))]
+    return _deduplicate_full_test_eval_rows(data)
+
+
+def _source_rows_for_action0_table(context, action0_rows):
+    selected = context.get("selected_runs")
+    if not isinstance(selected, pd.DataFrame) or selected.empty:
+        return pd.DataFrame()
+    if not isinstance(action0_rows, pd.DataFrame) or action0_rows.empty:
+        return pd.DataFrame()
+    run_ids = set(action0_rows.get("run_id", pd.Series(dtype=str)).dropna().astype(str))
+    if run_ids and "run_id" in selected.columns:
+        return selected[selected["run_id"].astype(str).isin(run_ids)].drop_duplicates().reset_index(drop=True)
+    run_names = set(action0_rows.get("run_name", pd.Series(dtype=str)).dropna().astype(str))
+    if run_names and "run_name" in selected.columns:
+        return selected[selected["run_name"].astype(str).isin(run_names)].drop_duplicates().reset_index(drop=True)
+    return pd.DataFrame()
+
+
+def checkpoint_aligned_action0_rows(
+    context,
+    *,
+    full_test_dir=FULL_TEST_EVAL_DIR,
+    checkpoint_name_regex=None,
+    experiments=None,
+    step_policy="at_or_before",
+    max_step_delta=None,
+):
+    """Extract one action-0 point per run/agent at the full-test checkpoint step."""
+    history = context.get("history_wide")
+    selected = context.get("selected_runs")
+    if not isinstance(history, pd.DataFrame) or history.empty:
+        raise RuntimeError("Missing history_wide in context. Run load_action_distribution_context first.")
+    if not isinstance(selected, pd.DataFrame) or selected.empty:
+        raise RuntimeError("Missing selected_runs in context. Run load_action_distribution_context first.")
+
+    full_test_all = load_full_test_eval_results(full_test_dir)
+    full_test = _filter_full_test_rows_for_checkpoint_action0(
+        full_test_all,
+        checkpoint_name_regex=checkpoint_name_regex,
+    )
+
+    if full_test.empty:
+        return pd.DataFrame(), full_test, pd.DataFrame(
+            [{"reason": "no_full_test_json", "checkpoint_name_regex": checkpoint_name_regex}]
+        )
+
+    selected_for_match = selected.copy()
+    selected_for_match["run_like"] = selected_for_match["run_name"].astype(str).map(_checkpoint_run_like)
+    matched = full_test.merge(
+        selected_for_match,
+        on="run_like",
+        how="inner",
+        suffixes=("_full_test", ""),
+    )
+    if experiments is not None:
+        wanted = {str(value) for value in ([experiments] if isinstance(experiments, str) else experiments)}
+        matched = matched[matched["experiment"].astype(str).isin(wanted)].copy()
+
+    rows = []
+    missing = []
+    meta_cols = [
+        "run_name",
+        "run_id",
+        "experiment",
+        "comparison_group",
+        "family",
+        "family_label",
+        "seed",
+        "design",
+        "control_axis",
+        "control_value",
+        "control_label",
+        "entropy_schedule",
+        "n_steps",
+        "n_envs",
+        "rollout_action_samples",
+    ]
+    max_step_delta = None if max_step_delta is None else float(max_step_delta)
+
+    for record in matched.to_dict("records"):
+        run_id = record.get("run_id")
+        run_history = history[history["run_id"].astype(str).eq(str(run_id))].copy()
+        if run_history.empty:
+            missing.append({**record, "reason": "missing_cached_history"})
+            continue
+
+        split = str(record.get("split") or context.get("ACTION_EVAL_SPLIT") or "test").strip()
+        agents = sorted(
+            set(_agent_ids_from_eval_history(run_history, split))
+            | set(_agent_ids_from_train_action_history(run_history)),
+            key=lambda agent: int(agent.rsplit("_", 1)[-1]),
+        )
+        if not agents:
+            missing.append({**record, "reason": "no_action0_agent_columns", "split_used": split})
+            continue
+
+        checkpoint_step = record.get("checkpoint_global_step")
+        for agent in agents:
+            values, metric_column, inverted = _action0_series_for_checkpoint_agent(run_history, split, agent)
+            if values is None:
+                missing.append({**record, "reason": "missing_agent_action0_metric", "agent": agent, "split_used": split})
+                continue
+
+            selected_point = _select_checkpoint_metric_point(
+                run_history,
+                values,
+                checkpoint_step,
+                step_policy=step_policy,
+            )
+            if selected_point is None:
+                missing.append({**record, "reason": "no_metric_point_at_policy_step", "agent": agent, "split_used": split})
+                continue
+            point, match_policy = selected_point
+            selected_step = float(point["_step"])
+            checkpoint_step_numeric = pd.to_numeric(pd.Series([checkpoint_step]), errors="coerce").iloc[0]
+            step_delta = selected_step - float(checkpoint_step_numeric) if pd.notna(checkpoint_step_numeric) else np.nan
+            if max_step_delta is not None and pd.notna(step_delta) and abs(step_delta) > max_step_delta:
+                missing.append(
+                    {
+                        **record,
+                        "reason": "step_delta_exceeds_max",
+                        "agent": agent,
+                        "split_used": split,
+                        "selected_step": selected_step,
+                        "step_delta": step_delta,
+                        "max_step_delta": max_step_delta,
+                    }
+                )
+                continue
+
+            out = {col: record.get(col) for col in meta_cols if col in record}
+            out.update(
+                {
+                    "entity": agent,
+                    "agent": agent,
+                    "final_fraction_action0": float(point["value"]),
+                    "std_last_fraction_action0": 0.0,
+                    "final_action0_count": np.nan,
+                    "std_last_action0_count": np.nan,
+                    "final_step_millions": selected_step / 1_000_000.0,
+                    "averaged_logged_points": 1,
+                    "checkpoint_global_step": checkpoint_step,
+                    "checkpoint_step_millions": (
+                        float(checkpoint_step_numeric) / 1_000_000.0
+                        if pd.notna(checkpoint_step_numeric)
+                        else np.nan
+                    ),
+                    "selected_metric_step": selected_step,
+                    "selected_metric_step_millions": selected_step / 1_000_000.0,
+                    "step_delta": step_delta,
+                    "step_delta_millions": step_delta / 1_000_000.0 if pd.notna(step_delta) else np.nan,
+                    "step_match_policy": match_policy,
+                    "requested_step_policy": step_policy,
+                    "action_metric_column": metric_column,
+                    "action_metric_inverted": bool(inverted),
+                    "split_used": split,
+                    "full_test_path": record.get("path"),
+                    "checkpoint": record.get("checkpoint"),
+                    "checkpoint_stem": record.get("checkpoint_stem"),
+                    "run_like": record.get("run_like"),
+                    "local_checkpoint_path": record.get("local_checkpoint_path"),
+                    "local_checkpoint_exists": record.get("local_checkpoint_exists"),
+                    "local_best_test_checkpoint_path": record.get("local_best_test_checkpoint_path"),
+                    "local_best_test_checkpoint_exists": record.get("local_best_test_checkpoint_exists"),
+                    "survival_frac": record.get("survival_frac"),
+                    "survival_percent": record.get("survival_percent"),
+                    "eval_episodes": record.get("eval_episodes"),
+                    "eval_action_heuristic_full_test": record.get("eval_action_heuristic"),
+                    "eval_action_rho_threshold_full_test": record.get("eval_action_rho_threshold"),
+                    "obs_normalization": record.get("obs_normalization"),
+                    "run_label": record.get("run_name"),
+                    "condition_label": record.get("family_label"),
+                }
+            )
+            rows.append(out)
+
+    action0_rows = pd.DataFrame(rows)
+    if not action0_rows.empty:
+        action0_rows["agent"] = pd.Categorical(
+            action0_rows["agent"].astype(str),
+            categories=["agent_0", "agent_1", "agent_2"],
+            ordered=True,
+        )
+        action0_rows["entity"] = action0_rows["agent"].astype(str)
+        action0_rows = action0_rows.sort_values(
+            [col for col in ["experiment", "control_value", "family_label", "seed", "agent"] if col in action0_rows.columns]
+        ).reset_index(drop=True)
+
+    matched_run_likes = (
+        sorted(matched["run_like"].dropna().astype(str).unique().tolist())
+        if isinstance(matched, pd.DataFrame) and "run_like" in matched.columns
+        else []
+    )
+    unmatched_full_test = full_test[~full_test["run_like"].astype(str).isin(matched_run_likes)].copy()
+    for record in unmatched_full_test.to_dict("records"):
+        missing.append({**record, "reason": "no_matching_cached_run_for_full_test_json"})
+
+    full_test_used = full_test[full_test["run_like"].astype(str).isin(set(action0_rows.get("run_like", pd.Series(dtype=str)).dropna().astype(str)))]
+    missing_rows = pd.DataFrame(missing)
+    return action0_rows, full_test_used.reset_index(drop=True), missing_rows.reset_index(drop=True)
+
+
 def _base_context(experiment_folders=None):
     return {
         "Path": Path,
@@ -232,6 +867,7 @@ def _base_context(experiment_folders=None):
         "CACHE_INDEX_PATH": CACHE_INDEX_PATH,
         "FIG_DIR": FIG_DIR,
         "TRACE_CACHE_DIR": TRACE_CACHE_DIR,
+        "FULL_TEST_EVAL_DIR": FULL_TEST_EVAL_DIR,
     }
 
 
@@ -452,6 +1088,13 @@ def _cell_source_for_context(context, source, label=None):
             '    index = index.rename(columns={"name": "run_name", "id": "run_id"}).copy()\n',
             (
                 '    index = index.rename(columns={"name": "run_name", "id": "run_id"}).copy()\n'
+                '    for _dedup_col in ["run_name", "run_id"]:\n'
+                '        _matches = index.loc[:, index.columns == _dedup_col]\n'
+                '        if isinstance(_matches, pd.DataFrame) and len(_matches.columns) > 1:\n'
+                '            _coalesced = _matches.bfill(axis=1).iloc[:, 0]\n'
+                '            index = index.loc[:, index.columns != _dedup_col].copy()\n'
+                '            index[_dedup_col] = _coalesced\n'
+                '    index = index.loc[:, ~index.columns.duplicated()].copy()\n'
                 '    if "run_name" in index.columns:\n'
                 '        index["run_name_raw"] = index["run_name"]\n'
                 '        index["run_name"] = index["run_name"].astype(str).str.strip()\n'
@@ -460,6 +1103,32 @@ def _cell_source_for_context(context, source, label=None):
         source = source.replace(
             '    match = re.match(r"^sparse16_(flat|gated)_p\\d{3}$", family)\n',
             '    match = re.match(r"^(?:a0_)?sparse16_(flat|gated)_p\\d{3}$", family)\n',
+        )
+        source = source.replace(
+            (
+                'selected_runs = cache_index.merge(\n'
+                '    EXPECTED_CONFIGS,\n'
+                '    left_on="run_name",\n'
+                '    right_on="expected_run_name",\n'
+                '    how="inner",\n'
+                ')\n'
+            ),
+            (
+                'selected_runs = cache_index.merge(\n'
+                '    EXPECTED_CONFIGS,\n'
+                '    left_on="run_name",\n'
+                '    right_on="expected_run_name",\n'
+                '    how="inner",\n'
+                ')\n'
+                'for _merged_col in ["seed", "n_steps", "n_envs"]:\n'
+                '    _left_col = f"{_merged_col}_x"\n'
+                '    _right_col = f"{_merged_col}_y"\n'
+                '    if _left_col in selected_runs.columns or _right_col in selected_runs.columns:\n'
+                '        _left_values = selected_runs[_left_col] if _left_col in selected_runs.columns else pd.Series(np.nan, index=selected_runs.index)\n'
+                '        _right_values = selected_runs[_right_col] if _right_col in selected_runs.columns else pd.Series(np.nan, index=selected_runs.index)\n'
+                '        selected_runs[_merged_col] = _right_values.combine_first(_left_values)\n'
+                '        selected_runs = selected_runs.drop(columns=[col for col in [_left_col, _right_col] if col in selected_runs.columns])\n'
+            ),
         )
         source = source.replace(
             '\n\ndef _metadata_from_config(path, experiment):\n',
@@ -565,6 +1234,7 @@ def load_action_distribution_context(
     experiment_folders=None,
     action_metric_source="eval",
     eval_split="test",
+    run_data_source=None,
     save_figures=True,
     show_figures=False,
     show_tables=False,
@@ -581,6 +1251,7 @@ def load_action_distribution_context(
 
     context["ACTION_METRIC_SOURCE"] = str(action_metric_source or "train").strip().lower()
     context["ACTION_EVAL_SPLIT"] = str(eval_split or "test").strip()
+    context["RUN_DATA_SOURCE"] = _normalize_run_data_source(run_data_source)
     context["SAVE_FIGURES"] = bool(save_figures)
     context["SHOW_FIGURES"] = bool(show_figures)
     context["FINAL_SUMMARY_STEP_M"] = final_summary_step_m
@@ -595,6 +1266,22 @@ def load_action_distribution_context(
 
     _exec_cell(context, _CELL_CONFIG_CACHE, "configs_and_cache")
     _annotate_aib_context(context)
+    if context["RUN_DATA_SOURCE"] is not None:
+        before = len(context.get("selected_runs", []))
+        context["selected_runs"] = _filter_rows_by_run_data_source(
+            context.get("selected_runs"),
+            context["RUN_DATA_SOURCE"],
+        )
+        after = len(context["selected_runs"])
+        if after == 0:
+            raise RuntimeError(
+                f"No cached runs remain after filtering run_data_source={context['RUN_DATA_SOURCE']!r}."
+            )
+        print(
+            f"Run-data source filter: {context['RUN_DATA_SOURCE']} "
+            f"({after} / {before} cached runs kept; unsplit folders kept as shared baselines)"
+        )
+    _remember_action_distribution_source_rows(context.get("selected_runs"))
     if context["ACTION_METRIC_SOURCE"] == "eval":
         context["FIG_DIR"] = FIG_DIR / f"eval_{context['ACTION_EVAL_SPLIT']}"
         context["FIG_DIR"].mkdir(parents=True, exist_ok=True)
@@ -1111,6 +1798,66 @@ def _plot_action0_for_selected_experiments(context, *, plotter, fig_prefix, titl
             context[fig_name] = fig
             figures[fig_name] = fig
     return figures
+
+
+def full_test_checkpoint_action0_fraction_by_agent(
+    context,
+    *,
+    full_test_dir=FULL_TEST_EVAL_DIR,
+    checkpoint_name_regex=None,
+    experiments=None,
+    step_policy="at_or_before",
+    max_step_delta=None,
+):
+    """Plot action-0 fractions at the checkpoint step recorded in full_test_eval JSONs."""
+    action0_rows, full_test_rows, missing_rows = checkpoint_aligned_action0_rows(
+        context,
+        full_test_dir=full_test_dir,
+        checkpoint_name_regex=checkpoint_name_regex,
+        experiments=experiments,
+        step_policy=step_policy,
+        max_step_delta=max_step_delta,
+    )
+    context["FULL_TEST_CHECKPOINT_ACTION0_LONG"] = action0_rows
+    context["FULL_TEST_CHECKPOINT_ROWS"] = full_test_rows
+    context["FULL_TEST_CHECKPOINT_ACTION0_MISSING"] = missing_rows
+
+    figures = {}
+    if action0_rows.empty:
+        print("No checkpoint-aligned action-0 rows could be built from full_test_eval metadata.")
+    else:
+        plot_context = dict(context)
+        plot_context["ACTION0_FINAL_LONG"] = action0_rows
+        plot_context["ACTION0_COUNT_LONG"] = action0_rows
+        for cache_key in [
+            "ACTION0_FINAL_RUN_LONG",
+            "ACTION0_RUN_SEED_AGG",
+            "ACTION0_AGENT_SEED_AGG",
+            "ACTION0_SEED_AGG",
+            "ACTION0_COUNT_SUMMARY",
+            "ACTION0_COUNT_RUN_SUMMARY",
+        ]:
+            plot_context.pop(cache_key, None)
+        figures = _plot_action0_for_selected_experiments(
+            plot_context,
+            plotter=_plot_action0_fraction_all_runs_by_agent,
+            fig_prefix="fig_full_test_checkpoint_action0_fraction_by_agent",
+            title_template="{title}: checkpoint-aligned full-test action-0 fraction by run and agent",
+            save_prefix="full_test_checkpoint_action0_fraction_by_agent",
+        )
+
+    source_rows = _source_rows_for_action0_table(context, action0_rows)
+    return {
+        "title": "Full-Test Checkpoint-Aligned Action-0 Fraction By Run And Agent",
+        "figures": figures,
+        "tables": {
+            "FULL_TEST_CHECKPOINT_ACTION0_LONG": action0_rows,
+            "FULL_TEST_CHECKPOINT_ROWS": full_test_rows,
+            "FULL_TEST_CHECKPOINT_ACTION0_MISSING": missing_rows,
+        },
+        "source_rows": source_rows,
+        "full_test_rows": full_test_rows,
+    }
 
 
 def last5_logged_action0_fraction_by_agent_all_runs(context):
@@ -1867,11 +2614,15 @@ def display_metric_output(output, *, table_rows=20):
             print(f"{table_name}: {getattr(table, 'shape', '')}")
             if hasattr(table, "head"):
                 display(table.head(table_rows))
+    if output.get("figures"):
+        print_metric_output_source_folders(output)
     for fig in output.get("figures", {}).values():
         display(fig)
 
 
 def display_metric_figures(output):
     """Display only figures for a metric output."""
+    if output.get("figures"):
+        print_metric_output_source_folders(output)
     for fig in output.get("figures", {}).values():
         display(fig)

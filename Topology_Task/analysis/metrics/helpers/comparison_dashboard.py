@@ -162,6 +162,131 @@ def show_or_return(fig: Optional[go.Figure], show: bool = True) -> Optional[go.F
     return fig
 
 
+def _path_or_none(value: Any) -> Optional[Path]:
+    if value is None:
+        return None
+    try:
+        if pd.isna(value):
+            return None
+    except (TypeError, ValueError):
+        pass
+    path = Path(value).expanduser()
+    return path if path.exists() else None
+
+
+def _relative_to(path: Path, root: Path) -> Optional[Path]:
+    try:
+        return path.resolve().relative_to(root.resolve())
+    except ValueError:
+        return None
+
+
+def _run_data_group_dir(path: Path) -> Optional[Path]:
+    relative = _relative_to(path, PERMANENT_RUN_DATA_DIR)
+    if relative is None:
+        return None
+    parts = relative.parts
+    if not parts:
+        return PERMANENT_RUN_DATA_DIR
+    return (PERMANENT_RUN_DATA_DIR / parts[0]).resolve()
+
+
+def _history_source_folder(row: Dict[str, Any] | pd.Series) -> Optional[Path]:
+    if isinstance(row, pd.Series):
+        row = row.to_dict()
+    history_source_folder = _path_or_none(row.get("history_source_folder"))
+    if history_source_folder is not None:
+        return history_source_folder.resolve()
+    history_source_path = _path_or_none(row.get("history_source_path"))
+    if history_source_path is not None:
+        return history_source_path.parent.resolve()
+    run_data_dir = _path_or_none(row.get("run_data_dir"))
+    if run_data_dir is not None:
+        return run_data_dir.resolve()
+    run_dir = _path_or_none(row.get("run_dir"))
+    if run_dir is not None:
+        return run_dir.resolve()
+    for column in ("history_parquet", "history_csv"):
+        history_path = _path_or_none(row.get(column))
+        if history_path is None:
+            continue
+        run_data_group = _run_data_group_dir(history_path)
+        if run_data_group is not None:
+            return run_data_group
+        if _relative_to(history_path, FULL_HISTORY_DIR) is not None:
+            return FULL_HISTORY_DIR.resolve()
+        return history_path.parent.resolve()
+    return None
+
+
+def print_history_source_folders(
+    rows: pd.DataFrame | Sequence[Dict[str, Any]],
+    *,
+    label: str = "History source folders used to build curves",
+    limit: int = 12,
+) -> List[Path]:
+    if rows is None or len(rows) == 0:
+        print(f"{label}: none")
+        return []
+    iterator = rows.to_dict("records") if isinstance(rows, pd.DataFrame) else list(rows)
+    counts: Dict[Path, int] = {}
+    for row in iterator:
+        folder = _history_source_folder(row)
+        if folder is None:
+            continue
+        counts[folder] = counts.get(folder, 0) + 1
+    if not counts:
+        print(f"{label}: no local history files found")
+        return []
+    ordered = sorted(counts.items(), key=lambda item: (str(item[0]), item[1]))
+    total = sum(counts.values())
+    print(f"{label}: {len(ordered)} folder(s), {total} run(s)")
+    for folder, count in ordered[:limit]:
+        suffix = "s" if count != 1 else ""
+        print(f"  - {folder} ({count} run{suffix})")
+    if len(ordered) > limit:
+        print(f"  ... {len(ordered) - limit} more folder(s)")
+    return [folder for folder, _ in ordered]
+
+
+def print_plot_source_folders(
+    data: pd.DataFrame,
+    *,
+    label: str = "Plot source folders used to build curves",
+) -> List[Path]:
+    if data is None or data.empty:
+        print(f"{label}: none")
+        return []
+    source_cols = [
+        column
+        for column in [
+            "run_name",
+            "run_id",
+            "history_source_folder",
+            "history_source_path",
+            "run_data_dir",
+            "run_dir",
+            "history_parquet",
+            "history_csv",
+        ]
+        if column in data.columns
+    ]
+    if not any(
+        column in source_cols
+        for column in [
+            "history_source_folder",
+            "history_source_path",
+            "run_data_dir",
+            "run_dir",
+            "history_parquet",
+            "history_csv",
+        ]
+    ):
+        print(f"{label}: no local history source metadata found")
+        return []
+    return print_history_source_folders(data[source_cols].drop_duplicates(), label=label)
+
+
 def _category_colors(labels: Sequence[Any]) -> Dict[str, str]:
     palette = px.colors.qualitative.Plotly + px.colors.qualitative.Dark24 + px.colors.qualitative.Alphabet
     return {str(label): palette[idx % len(palette)] for idx, label in enumerate(labels)}
@@ -723,7 +848,17 @@ def load_cached_histories(
         if verbose:
             print(f"[{idx:>3}/{len(rows)}] loading {row['run_name']}", flush=True)
         try:
-            frames.append(read_cached_history(row))
+            history = read_cached_history(row)
+            source_folder = _history_source_folder(row)
+            source_path = (
+                _path_or_none(row.get("history_parquet"))
+                or _path_or_none(row.get("history_csv"))
+            )
+            if source_folder is not None:
+                history["history_source_folder"] = str(source_folder)
+            if source_path is not None:
+                history["history_source_path"] = str(source_path)
+            frames.append(history)
         except Exception as exc:
             print(f"skipped {row.get('run_name')}: {type(exc).__name__}: {exc}")
     if not frames:
@@ -788,6 +923,11 @@ def survival_curve(
 ) -> pd.DataFrame:
     candidates = SURVIVAL_CANDIDATES.get(split, [split])
     values, used = _coalesce_columns(history, candidates)
+    source_cols = [
+        column
+        for column in ["history_source_folder", "history_source_path"]
+        if column in history.columns
+    ]
     out = history[
         [
             "run_name",
@@ -801,6 +941,7 @@ def survival_curve(
             "mechanism",
             "_step",
             "step_millions",
+            *source_cols,
         ]
     ].copy()
     out["metric"] = f"{split}_survival"
@@ -861,6 +1002,11 @@ def agent_metric_curve(
         values, used = _coalesce_columns(history, candidates)
         if metric == "nonidle" and used == f"train/frac_action_0_{agent}":
             values = 1.0 - values
+        source_cols = [
+            column
+            for column in ["history_source_folder", "history_source_path"]
+            if column in history.columns
+        ]
         df = history[
             [
                 "run_name",
@@ -874,6 +1020,7 @@ def agent_metric_curve(
                 "mechanism",
                 "_step",
                 "step_millions",
+                *source_cols,
             ]
         ].copy()
         df["agent"] = agent
@@ -912,6 +1059,11 @@ def heuristic_curve(
             ]
         )
     rows = []
+    source_cols = [
+        column
+        for column in ["history_source_folder", "history_source_path"]
+        if column in history.columns
+    ]
     for metric, candidates, agent in specs:
         values, used = _coalesce_columns(history, candidates)
         df = history[
@@ -927,6 +1079,7 @@ def heuristic_curve(
                 "mechanism",
                 "_step",
                 "step_millions",
+                *source_cols,
             ]
         ].copy()
         df["agent"] = agent or "joint"
@@ -946,6 +1099,11 @@ def heuristic_curve(
 
 def joint_nonidle_curve(history: pd.DataFrame, *, smooth: int = 1) -> pd.DataFrame:
     rows = []
+    source_cols = [
+        column
+        for column in ["history_source_folder", "history_source_path"]
+        if column in history.columns
+    ]
     for count in JOINT_COUNTS:
         col = f"train/non_idle_agents_count_{count}_frac"
         if col not in history.columns:
@@ -963,6 +1121,7 @@ def joint_nonidle_curve(history: pd.DataFrame, *, smooth: int = 1) -> pd.DataFra
                 "mechanism",
                 "_step",
                 "step_millions",
+                *source_cols,
             ]
         ].copy()
         df["non_idle_agents"] = count
@@ -985,6 +1144,7 @@ def joint_nonidle_curve(history: pd.DataFrame, *, smooth: int = 1) -> pd.DataFra
                 "mechanism",
                 "_step",
                 "step_millions",
+                *source_cols,
             ]
         ].copy()
         df["non_idle_agents"] = metric
@@ -1022,6 +1182,11 @@ def aib_curve(history: pd.DataFrame, *, smooth: int = 1) -> pd.DataFrame:
             ]
         )
     rows = []
+    source_cols = [
+        column
+        for column in ["history_source_folder", "history_source_path"]
+        if column in history.columns
+    ]
     for metric, col, agent in specs:
         if col not in history.columns:
             continue
@@ -1038,6 +1203,7 @@ def aib_curve(history: pd.DataFrame, *, smooth: int = 1) -> pd.DataFrame:
                 "mechanism",
                 "_step",
                 "step_millions",
+                *source_cols,
             ]
         ].copy()
         df["agent"] = agent or "joint"
@@ -1070,6 +1236,11 @@ def sparse_penalty_curve(history: pd.DataFrame, *, smooth: int = 1) -> pd.DataFr
             ]
         )
     rows = []
+    source_cols = [
+        column
+        for column in ["history_source_folder", "history_source_path"]
+        if column in history.columns
+    ]
     for metric, col, agent in specs:
         if col not in history.columns:
             continue
@@ -1086,6 +1257,7 @@ def sparse_penalty_curve(history: pd.DataFrame, *, smooth: int = 1) -> pd.DataFr
                 "mechanism",
                 "_step",
                 "step_millions",
+                *source_cols,
             ]
         ].copy()
         df["agent"] = agent or "joint"
@@ -1141,6 +1313,8 @@ def per_run_final(
         "seed",
         "design",
         "mechanism",
+        "history_source_folder",
+        "history_source_path",
     ]
     extra = [c for c in ["agent", "metric", "metric_label", "non_idle_agents"] if c in window.columns]
     by = [c for c in [*id_cols, *extra] if c in window.columns]
@@ -1263,6 +1437,7 @@ def plot_timeseries(
         )
     fig.update_layout(template="plotly_white", height=height, width=1450, hovermode="x unified")
     fig.update_traces(line={"width": 2.6})
+    print_plot_source_folders(df)
     if save_name:
         save_fig(fig, save_name, save=save)
     return show_or_return(fig, show=show)
@@ -1324,6 +1499,7 @@ def plot_final_bar(
     )
     fig.update_layout(template="plotly_white", height=height, width=1450)
     fig.update_xaxes(categoryorder="array", categoryarray=agg.sort_values("condition_order")[x_col].astype(str).unique())
+    print_plot_source_folders(per_run)
     if save_name:
         save_fig(fig, save_name, save=save)
     return show_or_return(fig, show=show)
@@ -1418,6 +1594,7 @@ def plot_action_survival_tradeoff(
         )
     )
     fig.update_layout(template="plotly_white", height=650, width=1150)
+    print_plot_source_folders(per_run)
     if save_name:
         save_fig(fig, save_name, save=save)
     return show_or_return(fig, show=show)

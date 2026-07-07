@@ -151,6 +151,206 @@ history_df = pd.DataFrame(columns=["run_name", "run_id", "metric", "step", "valu
 _UNSET = object()
 
 
+def _path_or_none(value):
+    if value is None:
+        return None
+    try:
+        if pd.isna(value):
+            return None
+    except (TypeError, ValueError):
+        pass
+    path = Path(value).expanduser()
+    return path if path.exists() else None
+
+
+def _relative_to(path, root):
+    try:
+        return path.resolve().relative_to(Path(root).resolve())
+    except ValueError:
+        return None
+
+
+def _run_data_group_dir(path):
+    relative = _relative_to(path, RUN_DATA_DIR)
+    if relative is None:
+        return None
+    parts = relative.parts
+    if not parts:
+        return RUN_DATA_DIR
+    return (RUN_DATA_DIR / parts[0]).resolve()
+
+
+def _history_source_folder(row):
+    if isinstance(row, pd.Series):
+        row = row.to_dict()
+    history_source_folder = _path_or_none(row.get("history_source_folder"))
+    if history_source_folder is not None:
+        return history_source_folder.resolve()
+    history_source_path = _path_or_none(row.get("history_source_path"))
+    if history_source_path is not None:
+        return history_source_path.parent.resolve()
+    run_data_dir = _path_or_none(row.get("run_data_dir"))
+    if run_data_dir is not None:
+        return run_data_dir.resolve()
+    run_dir = _path_or_none(row.get("run_dir"))
+    if run_dir is not None:
+        return run_dir.resolve()
+    for column in ("history_parquet", "history_csv"):
+        history_path = _path_or_none(row.get(column))
+        if history_path is None:
+            continue
+        run_data_group = _run_data_group_dir(history_path)
+        if run_data_group is not None:
+            return run_data_group
+        if _relative_to(history_path, FULL_CACHE_DIR) is not None:
+            return FULL_CACHE_DIR.resolve()
+        return history_path.parent.resolve()
+    return None
+
+
+def _run_data_group_name_from_row(row):
+    if isinstance(row, pd.Series):
+        row = row.to_dict()
+    for column in (
+        "run_data_dir",
+        "history_source_folder",
+        "history_source_path",
+        "run_dir",
+        "history_parquet",
+        "history_csv",
+    ):
+        value = row.get(column)
+        if value is None:
+            continue
+        try:
+            if pd.isna(value):
+                continue
+        except (TypeError, ValueError):
+            pass
+        path = Path(value).expanduser()
+        relative = _relative_to(path, RUN_DATA_DIR)
+        if relative is not None and relative.parts:
+            return relative.parts[0]
+    return None
+
+
+def print_history_source_folders(rows=None, *, label="History source folders used to build curves", limit=12):
+    source_rows = runs_df if rows is None else rows
+    if source_rows is None or len(source_rows) == 0:
+        print(f"{label}: none")
+        return []
+    if isinstance(source_rows, pd.DataFrame):
+        iterator = source_rows.to_dict("records")
+    else:
+        iterator = list(source_rows)
+    counts = {}
+    for row in iterator:
+        folder = _history_source_folder(row)
+        if folder is None:
+            continue
+        counts[folder] = counts.get(folder, 0) + 1
+    if not counts:
+        print(f"{label}: no local history files found")
+        return []
+    ordered = sorted(counts.items(), key=lambda item: (str(item[0]), item[1]))
+    total = sum(counts.values())
+    print(f"{label}: {len(ordered)} folder(s), {total} run(s)")
+    for folder, count in ordered[:limit]:
+        print(f"  - {folder} ({count} run{'s' if count != 1 else ''})")
+    if len(ordered) > limit:
+        remaining = len(ordered) - limit
+        print(f"  ... {remaining} more folder(s)")
+    return [folder for folder, _ in ordered]
+
+
+def _source_rows_for_plot(history, run_names=None):
+    names = set(_unique_text(run_names or []))
+    if isinstance(history, pd.DataFrame) and not history.empty:
+        data = history
+        if names and "run_name" in data.columns:
+            data = data[data["run_name"].astype(str).isin(names)]
+        source_cols = [
+            column
+            for column in [
+                "run_name",
+                "run_id",
+                "history_source_folder",
+                "history_source_path",
+                "run_data_dir",
+                "run_dir",
+                "history_parquet",
+                "history_csv",
+            ]
+            if column in data.columns
+        ]
+        if any(column in source_cols for column in ["history_source_folder", "history_source_path", "run_data_dir", "run_dir", "history_parquet", "history_csv"]):
+            return data[source_cols].drop_duplicates()
+
+    if isinstance(runs_df, pd.DataFrame) and not runs_df.empty:
+        name_cols = [column for column in ["name", "run_name"] if column in runs_df.columns]
+        if names and name_cols:
+            mask = pd.Series(False, index=runs_df.index)
+            for column in name_cols:
+                mask = mask | runs_df[column].astype(str).isin(names)
+            return runs_df[mask].drop_duplicates()
+        return runs_df.drop_duplicates()
+    return pd.DataFrame()
+
+
+def _filter_history_by_run_data_groups(history, group_names, *, label="history", allow_empty=False):
+    groups = {str(group).strip() for group in group_names or [] if str(group).strip()}
+    if not groups:
+        return history
+    history = _get_history(history)
+    if history.empty:
+        return history
+
+    rows = _source_rows_for_plot(history)
+    if rows.empty:
+        raise RuntimeError(
+            f"Cannot filter {label} by run-data source because no source "
+            "metadata is available. Reload histories with the current helper code."
+        )
+    rows = rows.copy()
+    rows["__source_group"] = rows.apply(_run_data_group_name_from_row, axis=1)
+    allowed_rows = rows[rows["__source_group"].isin(groups)]
+    if allowed_rows.empty:
+        filtered = history.iloc[0:0].copy()
+    elif "run_id" in history.columns and any(column in allowed_rows.columns for column in ["run_id", "id"]):
+        id_columns = [column for column in ["run_id", "id"] if column in allowed_rows.columns]
+        allowed_ids = set()
+        for column in id_columns:
+            allowed_ids.update(allowed_rows[column].dropna().astype(str))
+        filtered = history[history["run_id"].astype(str).isin(allowed_ids)].copy()
+    elif "run_name" in history.columns and any(column in allowed_rows.columns for column in ["run_name", "name"]):
+        name_columns = [column for column in ["run_name", "name"] if column in allowed_rows.columns]
+        allowed_names = set()
+        for column in name_columns:
+            allowed_names.update(allowed_rows[column].dropna().astype(str))
+        filtered = history[history["run_name"].astype(str).isin(allowed_names)].copy()
+    else:
+        raise RuntimeError(
+            f"Cannot filter {label} by run-data source because history rows do not "
+            "have run_id or run_name columns."
+        )
+
+    if filtered.empty:
+        if allow_empty:
+            return filtered
+        raise RuntimeError(
+            f"No {label} rows found for source folder(s): {', '.join(sorted(groups))}."
+        )
+    return filtered
+
+
+def print_plot_source_folders(history, run_names=None, *, label="Plot source folders used to build curves"):
+    rows = _source_rows_for_plot(history, run_names=run_names)
+    if rows.empty:
+        print(f"{label}: no local history source metadata found")
+        return []
+    return print_history_source_folders(rows, label=label)
+
+
 @dataclass
 class WandbPlotData:
     runs_df: pd.DataFrame
@@ -1057,7 +1257,17 @@ def download_run_full_history_from_artifact(row, idx=None, total=None):
 
 def full_history_to_long(full_history, metrics):
     if full_history.empty:
-        return pd.DataFrame(columns=["run_name", "run_id", "metric", "step", "value"])
+        return pd.DataFrame(
+            columns=[
+                "run_name",
+                "run_id",
+                "metric",
+                "step",
+                "value",
+                "history_source_folder",
+                "history_source_path",
+            ]
+        )
     full_history = full_history.copy()
     if "run_name" in full_history.columns:
         full_history["run_name"] = full_history["run_name"].astype(str).str.strip()
@@ -1069,6 +1279,12 @@ def full_history_to_long(full_history, metrics):
         return pd.DataFrame(columns=["run_name", "run_id", "metric", "step", "value"])
 
     id_cols = [col for col in ["run_name", "run_id", step_col] if col in full_history.columns]
+    source_cols = [
+        col
+        for col in ["history_source_folder", "history_source_path"]
+        if col in full_history.columns
+    ]
+    id_cols = id_cols + [col for col in source_cols if col not in id_cols]
     long_history = full_history[id_cols + available_metrics].melt(
         id_vars=id_cols,
         value_vars=available_metrics,
@@ -1078,7 +1294,7 @@ def full_history_to_long(full_history, metrics):
     long_history = long_history.dropna(subset=["value"])
     if step_col != "step":
         long_history = long_history.rename(columns={step_col: "step"})
-    return long_history[["run_name", "run_id", "metric", "step", "value"]]
+    return long_history[["run_name", "run_id", "metric", "step", "value"] + source_cols]
 
 
 def _runs_df_count():
@@ -1123,6 +1339,18 @@ def download_or_load_histories():
                 )
             else:
                 full_history = download_run_full_history_from_artifact(row, idx=idx, total=total)
+            source_row = row._asdict() if hasattr(row, "_asdict") else row
+            source_folder = _history_source_folder(source_row) or FULL_CACHE_DIR.resolve()
+            source_path = (
+                _path_or_none(_row_get(row, "history_parquet"))
+                or _path_or_none(_row_get(row, "history_csv"))
+                or _path_or_none(full_parquet_path(run_name, run_id))
+                or _path_or_none(full_csv_path(run_name, run_id))
+            )
+            full_history = full_history.copy()
+            full_history["history_source_folder"] = str(source_folder)
+            if source_path is not None:
+                full_history["history_source_path"] = str(source_path)
             histories.append(full_history_to_long(full_history, METRICS))
             resolved_ref = artifact_path_for_run(run_id)
             if metadata_path(run_name, run_id).exists():
@@ -1312,6 +1540,12 @@ def plot_runs(
     )
     fig.update_xaxes(title_text=xaxis_title)
     fig.update_yaxes(title_text=yaxis_title, range=y_range)
+    print_plot_source_folders(
+        history,
+        _run_names_with_metric(
+            history, _run_names_from_run_specs(specs), metric_candidates
+        ),
+    )
     save_plot(fig, save_name)
     if show:
         fig.show()
@@ -1364,11 +1598,13 @@ def plot_run_groups(
     metric_candidates = _metric_candidates(metric=metric, split=split)
     added = 0
     legend_layouts = {}
+    plot_run_names = []
 
     for idx, (_, group_runs) in enumerate(group_items, start=1):
         row = int(np.ceil(idx / ncols))
         col = ((idx - 1) % ncols) + 1
         specs = _normalize_runs(group_runs, colors=colors, labels=labels, dashes=dashes)
+        plot_run_names.extend(_run_names_from_run_specs(specs))
         legend_id = _legend_id(idx)
         legend_layouts[legend_id] = _subplot_legend_layout(fig, row, col, ncols)
         added += _add_run_traces(
@@ -1409,6 +1645,10 @@ def plot_run_groups(
     }
     layout.update(legend_layouts)
     fig.update_layout(**layout)
+    print_plot_source_folders(
+        history,
+        _run_names_with_metric(history, plot_run_names, metric_candidates),
+    )
     save_plot(fig, save_name)
     if show:
         fig.show()
@@ -1486,6 +1726,12 @@ def plot_run_means(
     )
     fig.update_xaxes(title_text=xaxis_title)
     fig.update_yaxes(title_text=yaxis_title, range=y_range)
+    print_plot_source_folders(
+        history,
+        _run_names_with_metric(
+            history, _run_names_from_mean_specs(specs), metric_candidates
+        ),
+    )
     save_plot(fig, save_name)
     if show:
         fig.show()
@@ -1539,11 +1785,13 @@ def plot_run_mean_groups(
     metric_candidates = _metric_candidates(metric=metric, split=split)
     added = 0
     legend_layouts = {}
+    plot_run_names = []
 
     for idx, (_, mean_runs) in enumerate(group_items, start=1):
         row = int(np.ceil(idx / ncols))
         col = ((idx - 1) % ncols) + 1
         specs = _normalize_mean_specs(mean_runs, colors=colors, dashes=dashes)
+        plot_run_names.extend(_run_names_from_mean_specs(specs))
         legend_id = _legend_id(idx)
         legend_layouts[legend_id] = _subplot_legend_layout(fig, row, col, ncols)
         added += _add_mean_traces(
@@ -1586,6 +1834,10 @@ def plot_run_mean_groups(
     }
     layout.update(legend_layouts)
     fig.update_layout(**layout)
+    print_plot_source_folders(
+        history,
+        _run_names_with_metric(history, plot_run_names, metric_candidates),
+    )
     save_plot(fig, save_name)
     if show:
         fig.show()
@@ -1607,6 +1859,35 @@ def _metric_candidates(metric=None, split="test"):
     if isinstance(metric, str):
         return [metric]
     return list(metric)
+
+
+def _run_names_with_metric(history, run_names, metric_candidates):
+    names = _unique_text(run_names)
+    if not names:
+        return names
+    if not isinstance(history, pd.DataFrame) or history.empty:
+        return names
+    if "run_name" not in history.columns or "metric" not in history.columns:
+        return names
+    data = history[
+        history["run_name"].astype(str).isin(names)
+        & history["metric"].astype(str).isin([str(metric) for metric in metric_candidates])
+    ]
+    if "value" in data.columns:
+        data = data[pd.to_numeric(data["value"], errors="coerce").notna()]
+    actual = _unique_text(data["run_name"].tolist())
+    return actual or names
+
+
+def _run_names_from_run_specs(specs):
+    return _unique_text(spec.get("name") for spec in specs)
+
+
+def _run_names_from_mean_specs(specs):
+    names = []
+    for spec in specs:
+        names.extend(spec.get("runs", []))
+    return _unique_text(names)
 
 
 def _normalize_groups(groups):
@@ -1656,6 +1937,7 @@ def mean_curve(
     color=None,
     dash=None,
     label=None,
+    history=None,
     width=3,
     opacity=1.0,
     show_std=None,
@@ -1675,6 +1957,8 @@ def mean_curve(
         "show_members": show_members,
         "member_alpha": member_alpha,
     }
+    if history is not None:
+        spec["history"] = history
     if label is not None:
         spec["label"] = label
     return spec
@@ -1861,6 +2145,72 @@ def _a0_resolve_family_runs(expected_configs, family, *, history=None):
     return _unique_text(resolved), missing
 
 
+def _a0_normalize_source(source):
+    if source is None:
+        return None
+    text = str(source).strip().lower()
+    if text in {"", "none", "null"}:
+        return None
+    if text in {"all", "both"}:
+        return "all"
+    if text not in {"cpu", "gpu"}:
+        raise ValueError("source must be one of None, 'cpu', 'gpu', or 'all'.")
+    return text
+
+
+def _a0_source_groups(folder_name, baseline_folder_name, source):
+    source = _a0_normalize_source(source)
+    if source is None:
+        return None
+    if source == "all":
+        groups = set()
+        for item in ("cpu", "gpu"):
+            groups.add(f"{folder_name}_{item}")
+            if baseline_folder_name and baseline_folder_name != folder_name:
+                groups.add(f"{baseline_folder_name}_{item}")
+                groups.add(baseline_folder_name)
+        return groups
+    groups = {f"{folder_name}_{source}"}
+    if baseline_folder_name and baseline_folder_name != folder_name:
+        groups.add(f"{baseline_folder_name}_{source}")
+        groups.add(baseline_folder_name)
+    return groups
+
+
+def _a0_filter_history_for_source(
+    history,
+    folder_name,
+    source,
+    *,
+    allow_unsplit_fallback=False,
+    label="history",
+):
+    source = _a0_normalize_source(source)
+    if source not in {"cpu", "gpu"}:
+        raise ValueError("A0 source slices must be 'cpu' or 'gpu'.")
+
+    groups = {f"{folder_name}_{source}"}
+    filtered = _filter_history_by_run_data_groups(
+        history,
+        groups,
+        label=label,
+        allow_empty=True,
+    )
+    if not filtered.empty or not allow_unsplit_fallback:
+        return filtered, groups, False
+
+    fallback_groups = {folder_name}
+    fallback = _filter_history_by_run_data_groups(
+        history,
+        fallback_groups,
+        label=label,
+        allow_empty=True,
+    )
+    if fallback.empty:
+        return filtered, groups, False
+    return fallback, fallback_groups, True
+
+
 def _a0_compare_color(family):
     family_text = str(family)
     if "gate" in family_text or "gated" in family_text:
@@ -1886,6 +2236,7 @@ def plot_a0_config_folder_survival_comparisons(
     save_name=None,
     ncols=2,
     history=None,
+    source=None,
 ):
     """Plot one A0 config folder as baseline-vs-alternative survival subplots."""
     history = _get_history(history)
@@ -1904,22 +2255,24 @@ def plot_a0_config_folder_survival_comparisons(
             family_order=baseline_family_order,
         )
     baseline_folder_name = baseline_expected["folder"].iloc[0]
-    baseline_runs, baseline_missing = _a0_resolve_family_runs(baseline_expected, baseline_family, history=history)
+    source_key = _a0_normalize_source(source)
+    source_groups = None
+    if source_key in {"cpu", "gpu"}:
+        source_groups = _a0_source_groups(folder_name, baseline_folder_name, source_key)
+        history = _filter_history_by_run_data_groups(
+            history,
+            source_groups,
+            label=f"A0 configs/{folder_name}",
+        )
     baseline_rows = baseline_expected[baseline_expected["family"] == baseline_family]
     resolved_baseline_label = baseline_label or (
         baseline_rows["family_label"].iloc[0]
         if not baseline_rows.empty
         else baseline_family.replace("_", " ")
     )
-    missing_rows = [
-        {"family": baseline_family, "expected_run_name": name, "reason": "missing baseline run"}
-        for name in baseline_missing
-    ]
-    if not baseline_runs:
-        raise RuntimeError(
-            f"No cached baseline runs found for {baseline_family}. "
-            f"Load/download configs/{baseline_folder_name} first."
-        )
+    missing_rows = []
+    baseline_runs_by_source = {}
+    baseline_runs = []
 
     groups = {}
     comparison_families = (
@@ -1928,49 +2281,187 @@ def plot_a0_config_folder_survival_comparisons(
         .query("family != @baseline_family")
         .sort_values(["family_order", "family_label"])
     )
-    for item in comparison_families.itertuples(index=False):
-        compare_runs, missing = _a0_resolve_family_runs(expected, item.family, history=history)
-        missing_rows.extend(
-            {"family": item.family, "expected_run_name": name, "reason": "missing comparison run"}
-            for name in missing
+
+    if source_key == "all":
+        source_groups = set()
+        source_histories = {}
+        baseline_source_histories = {}
+        for source_item in ("cpu", "gpu"):
+            source_history, used_groups, _ = _a0_filter_history_for_source(
+                history,
+                folder_name,
+                source_item,
+                label=f"A0 configs/{folder_name} {source_item}",
+            )
+            source_histories[source_item] = (source_history, used_groups, False)
+            source_groups.update(used_groups)
+
+            baseline_history, baseline_groups, baseline_fallback = _a0_filter_history_for_source(
+                history,
+                baseline_folder_name,
+                source_item,
+                allow_unsplit_fallback=baseline_folder_name != folder_name,
+                label=f"A0 baseline configs/{baseline_folder_name} {source_item}",
+            )
+            baseline_source_histories[source_item] = (
+                baseline_history,
+                baseline_groups,
+                baseline_fallback,
+            )
+            source_groups.update(baseline_groups)
+
+            if baseline_history.empty:
+                baseline_missing = baseline_rows["expected_run_name"].astype(str).tolist()
+                source_runs = []
+            else:
+                source_runs, baseline_missing = _a0_resolve_family_runs(
+                    baseline_expected,
+                    baseline_family,
+                    history=baseline_history,
+                )
+            baseline_runs_by_source[source_item] = source_runs
+            baseline_runs.extend(source_runs)
+            missing_rows.extend(
+                {
+                    "family": baseline_family,
+                    "expected_run_name": name,
+                    "reason": f"missing baseline run ({source_item})",
+                }
+                for name in baseline_missing
+            )
+
+        baseline_runs = _unique_text(baseline_runs)
+        if not baseline_runs:
+            raise RuntimeError(
+                f"No cached baseline runs found for {baseline_family} in CPU/GPU sources. "
+                f"Load/download configs/{baseline_folder_name} first."
+            )
+
+        source_dashes = {"cpu": "solid", "gpu": "dash"}
+        for item in comparison_families.itertuples(index=False):
+            subplot_specs = {}
+            added_baseline_signatures = set()
+            has_compare_runs = False
+            for source_item in ("cpu", "gpu"):
+                baseline_history, baseline_groups, baseline_fallback = baseline_source_histories[source_item]
+                source_runs = baseline_runs_by_source.get(source_item, [])
+                if source_runs:
+                    baseline_signature = (tuple(sorted(baseline_groups)), tuple(source_runs))
+                    if baseline_signature not in added_baseline_signatures:
+                        added_baseline_signatures.add(baseline_signature)
+                        suffix = "shared" if baseline_fallback else source_item.upper()
+                        subplot_specs[f"baseline: {resolved_baseline_label} ({suffix})"] = mean_curve(
+                            source_runs,
+                            history=baseline_history,
+                            color="#1f77b4",
+                            dash=source_dashes[source_item],
+                            width=4,
+                            member_alpha=0.16,
+                            std_alpha=0.10,
+                        )
+
+                source_history, _, _ = source_histories[source_item]
+                if source_history.empty:
+                    missing = expected.loc[
+                        expected["family"] == item.family,
+                        "expected_run_name",
+                    ].astype(str).tolist()
+                    compare_runs = []
+                else:
+                    compare_runs, missing = _a0_resolve_family_runs(
+                        expected,
+                        item.family,
+                        history=source_history,
+                    )
+                missing_rows.extend(
+                    {
+                        "family": item.family,
+                        "expected_run_name": name,
+                        "reason": f"missing comparison run ({source_item})",
+                    }
+                    for name in missing
+                )
+                if compare_runs:
+                    has_compare_runs = True
+                    subplot_specs[f"{item.family_label} ({source_item.upper()})"] = mean_curve(
+                        compare_runs,
+                        history=source_history,
+                        color=_a0_compare_color(item.family),
+                        dash=source_dashes[source_item],
+                        width=3,
+                        member_alpha=0.16,
+                        std_alpha=0.12,
+                    )
+
+            if not has_compare_runs:
+                print(f"Skipping {item.family_label}: no cached CPU/GPU runs found.")
+                continue
+            groups[f"{item.family_label} vs baseline: {resolved_baseline_label}"] = subplot_specs
+
+    else:
+        baseline_runs, baseline_missing = _a0_resolve_family_runs(
+            baseline_expected,
+            baseline_family,
+            history=history,
         )
-        if not compare_runs:
-            print(f"Skipping {item.family_label}: no cached runs found.")
-            continue
-        groups[f"{item.family_label} vs baseline: {resolved_baseline_label}"] = {
-            f"baseline: {resolved_baseline_label}": mean_curve(
-                baseline_runs,
-                color="#1f77b4",
-                dash="solid",
-                width=4,
-                member_alpha=0.16,
-                std_alpha=0.10,
-            ),
-            item.family_label: mean_curve(
-                compare_runs,
-                color=_a0_compare_color(item.family),
-                dash="solid",
-                width=3,
-                member_alpha=0.16,
-                std_alpha=0.12,
-            ),
-        }
+        missing_rows.extend(
+            {"family": baseline_family, "expected_run_name": name, "reason": "missing baseline run"}
+            for name in baseline_missing
+        )
+        if not baseline_runs:
+            raise RuntimeError(
+                f"No cached baseline runs found for {baseline_family}. "
+                f"Load/download configs/{baseline_folder_name} first."
+            )
+
+        for item in comparison_families.itertuples(index=False):
+            compare_runs, missing = _a0_resolve_family_runs(expected, item.family, history=history)
+            missing_rows.extend(
+                {"family": item.family, "expected_run_name": name, "reason": "missing comparison run"}
+                for name in missing
+            )
+            if not compare_runs:
+                print(f"Skipping {item.family_label}: no cached runs found.")
+                continue
+            groups[f"{item.family_label} vs baseline: {resolved_baseline_label}"] = {
+                f"baseline: {resolved_baseline_label}": mean_curve(
+                    baseline_runs,
+                    color="#1f77b4",
+                    dash="solid",
+                    width=4,
+                    member_alpha=0.16,
+                    std_alpha=0.10,
+                ),
+                item.family_label: mean_curve(
+                    compare_runs,
+                    color=_a0_compare_color(item.family),
+                    dash="solid",
+                    width=3,
+                    member_alpha=0.16,
+                    std_alpha=0.12,
+                ),
+            }
 
     if not groups:
         raise RuntimeError(f"No A0 comparison groups could be built for configs/{folder_name}.")
+
+    title_suffix = " (CPU/GPU split)" if source_key == "all" else f" ({source_key.upper()})" if source_key else ""
+    resolved_save_name = save_name or f"{folder_name}_survival_baseline_comparisons"
+    if source_key and save_name is None:
+        resolved_save_name = f"{folder_name}_{source_key}_survival_baseline_comparisons"
 
     fig = plot_run_mean_groups(
         groups,
         split="test",
         smooth=5,
-        title=title or f"configs/{folder_name}: episodic survival baseline comparisons",
+        title=(title or f"configs/{folder_name}: episodic survival baseline comparisons") + title_suffix,
         ncols=ncols,
         subplot_height=380,
         width=1500 if ncols <= 2 else 1700,
         y_range=[0, 105],
         show_members=True,
         show_std=True,
-        save_name=save_name or f"{folder_name}_survival_baseline_comparisons",
+        save_name=resolved_save_name,
         history=history,
     )
     return {
@@ -1981,6 +2472,8 @@ def plot_a0_config_folder_survival_comparisons(
         "baseline_family": baseline_family,
         "baseline_runs": baseline_runs,
         "baseline_folder": baseline_folder_name,
+        "source": source_key,
+        "source_groups": sorted(source_groups) if source_groups else None,
     }
 
 
@@ -1996,22 +2489,27 @@ def plot_a0_hvg_survival():
     )
 
 
-def plot_a0_sparse16_survival():
+def plot_a0_sparse16_survival(source=None):
     sparse_families = [f"a0_sparse16_{design}_p{penalty}" for penalty in ("000", "001", "003", "010") for design in ("flat", "gated")]
     family_labels = {family: _a0_sparse_family_label(family) for family in sparse_families}
     family_order = {family: _a0_sparse_family_order(family) for family in sparse_families}
+    source_key = _a0_normalize_source(source)
+    save_suffix = f"_{source_key}" if source_key else ""
     return plot_a0_config_folder_survival_comparisons(
         "a0_sparse16",
         baseline_family="a0_sparse16_flat_p000",
         family_labels=family_labels,
         family_order=family_order,
         title="configs/a0_sparse16: A0 sparse-action survival vs flat p0.000",
-        save_name="a0_sparse16_survival_baseline_comparisons",
+        save_name=f"a0_sparse16{save_suffix}_survival_baseline_comparisons",
         ncols=3,
+        source=source_key,
     )
 
 
-def plot_a0_aib_survival():
+def plot_a0_aib_survival(source=None):
+    source_key = _a0_normalize_source(source)
+    save_suffix = f"_{source_key}" if source_key else ""
     return plot_a0_config_folder_survival_comparisons(
         "a0_aib",
         baseline_config_folder="a0_hvg",
@@ -2022,8 +2520,9 @@ def plot_a0_aib_survival():
         family_labels=A0_AIB_FAMILY_LABELS,
         family_order=A0_AIB_FAMILY_ORDER,
         title="configs/a0_aib: A0 adaptive budget survival vs plain A0 baseline",
-        save_name="a0_aib_survival_vs_plain_a0_baseline",
+        save_name=f"a0_aib{save_suffix}_survival_vs_plain_a0_baseline",
         ncols=2,
+        source=source_key,
     )
 
 
@@ -2544,6 +3043,7 @@ def _coerce_mean_spec(label, value):
             style_keys = {
                 "label", "name", "color", "dash", "width", "line_width", "opacity",
                 "show_std", "std_alpha", "show_members", "member_alpha",
+                "history",
             }
             if any(key in spec for key in style_keys):
                 raise ValueError(f"Mean curve {label!r} has style keys but no `runs` list.")
@@ -2598,6 +3098,7 @@ def _is_stoch_run(name):
 
 
 def _mean_metric_frame(history, spec, metric_candidates, min_members=1, smooth=None):
+    history = spec.get("history", history)
     frames = []
     metrics_used = []
     for run_name in spec["runs"]:
@@ -4344,7 +4845,6 @@ def plot_phase4_sparse_control_16_survival():
         ) | coverage["history_csv"].apply(
             lambda value: isinstance(value, str) and Path(value).exists()
         )
-
         histories = []
         for _, row in coverage[coverage["cache_exists"]].iterrows():
             parquet_path = Path(row["history_parquet"]) if isinstance(row.get("history_parquet"), str) else None
@@ -4562,6 +5062,13 @@ def plot_phase4_sparse_control_16_survival():
             )
         if not comparisons:
             raise RuntimeError("No cached alternative conditions were available to compare against the baseline.")
+        plotted_run_names = set(survival["run_name"].dropna().astype(str))
+        print_history_source_folders(
+            coverage[
+                coverage["expected_run_name"].astype(str).isin(plotted_run_names)
+            ],
+            label="Phase4 sparse plot source folders used to build curves",
+        )
 
         ncols = min(PHASE4_SPARSE_NCOLS, len(comparisons))
         nrows = int(np.ceil(len(comparisons) / ncols))
@@ -4837,7 +5344,6 @@ def plot_heuristic_vs_gate_survival():
         ) | coverage["history_csv"].apply(
             lambda value: isinstance(value, str) and Path(value).exists()
         )
-
         histories = []
         for _, row in coverage[coverage["cache_exists"]].iterrows():
             parquet_path = Path(row["history_parquet"]) if isinstance(row.get("history_parquet"), str) else None
@@ -5031,6 +5537,13 @@ def plot_heuristic_vs_gate_survival():
             print("No cached non-baseline heuristic/gate variants to compare yet.")
             print("Download with RUN_NAME_REGEX =", repr(HVG_DOWNLOAD_REGEX))
             return None
+        plotted_run_names = set(survival["run_name"].dropna().astype(str))
+        print_history_source_folders(
+            coverage[
+                coverage["expected_run_name"].astype(str).isin(plotted_run_names)
+            ],
+            label="HVG plot source folders used to build curves",
+        )
 
         ncols = min(HVG_NCOLS, len(comparisons))
         nrows = int(np.ceil(len(comparisons) / ncols))
