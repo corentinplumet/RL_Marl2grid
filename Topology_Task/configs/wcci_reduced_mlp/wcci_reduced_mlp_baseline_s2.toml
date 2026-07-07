@@ -64,7 +64,7 @@ actor_encoder = "mlp"
 critic_encoder = "mlp"
 
 # ppo
-total_timesteps = 60000000
+total_timesteps = 20000000
 n_steps = 2000
 eval_freq = 80000
 actor_layers = [256, 256, 256]
