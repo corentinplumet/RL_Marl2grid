@@ -847,6 +847,25 @@ class MAEnvWrapper(MAEnv):
             return str(int(value))
         return None
 
+    def _current_chronic_handlers(self) -> List[Any]:
+        """Return chronic handlers in the same priority order as current_obs."""
+        candidates = [
+            getattr(
+                getattr(self.g2op_ma_env, "_cent_env", None),
+                "chronics_handler",
+                None,
+            ),
+            getattr(getattr(self, "g2op_env", None), "chronics_handler", None),
+        ]
+        handlers = []
+        seen = set()
+        for handler in candidates:
+            if handler is None or id(handler) in seen:
+                continue
+            handlers.append(handler)
+            seen.add(id(handler))
+        return handlers
+
     def get_current_chronic_name(self) -> str:
         """Best-effort label for the current Grid2Op chronic.
 
@@ -854,13 +873,11 @@ class MAEnvWrapper(MAEnv):
         combinations expose a stale top-level handler label, so we inspect nested
         handler data first and fall back conservatively.
         """
-        handler = getattr(self.g2op_env, "chronics_handler", None)
-        if handler is None:
-            return "unknown"
+        handlers = self._current_chronic_handlers()
 
         objects = []
         seen = set()
-        queue = [handler]
+        queue = list(handlers)
         while queue:
             obj = queue.pop(0)
             if obj is None or id(obj) in seen:
@@ -901,13 +918,11 @@ class MAEnvWrapper(MAEnv):
 
     def get_current_chronic_path(self) -> str:
         """Best-effort full path/id for the current Grid2Op chronic."""
-        handler = getattr(self.g2op_env, "chronics_handler", None)
-        if handler is None:
-            return "unknown"
+        handlers = self._current_chronic_handlers()
 
         objects = []
         seen = set()
-        queue = [handler]
+        queue = list(handlers)
         while queue:
             obj = queue.pop(0)
             if obj is None or id(obj) in seen:
