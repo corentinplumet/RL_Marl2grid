@@ -328,6 +328,26 @@ def _build_chronic_splits(
     }
 
 
+def _shuffle_chronic_order(
+    chronics: List[str],
+    args: Dict[str, Any],
+    split_name: str,
+    env_index: int,
+) -> Tuple[List[str], int]:
+    order_seed = _stable_int_seed(
+        _chronic_split_seed(args),
+        getattr(args, "seed", 0),
+        split_name,
+        "order",
+        int(env_index),
+    )
+    if not chronics:
+        return [], order_seed
+    rng = np.random.default_rng(order_seed)
+    order = rng.permutation(len(chronics))
+    return [chronics[int(idx)] for idx in order], order_seed
+
+
 def _chronic_key_variants(chronic_path: Any) -> set:
     text = str(chronic_path)
     norm = os.path.normpath(text)
@@ -376,6 +396,77 @@ def _hash_chronic_shard(chronic_path: Any, args: Dict[str, Any]) -> int:
     return _chronic_shard_hash(chronic_path, args) % _chronic_shard_count(args)
 
 
+def _current_chronic_subpaths(chronics_handler: Any) -> List[str]:
+    for attr in ("subpaths", "_subpaths", "paths", "_paths"):
+        value = getattr(chronics_handler, attr, None)
+        paths = _collect_chronic_paths_from(value)
+        if paths:
+            return paths
+    return []
+
+
+def _set_chronics_handler_order(
+    chronics_handler: Any,
+    ordered_chronics: List[str],
+) -> bool:
+    if not ordered_chronics:
+        return False
+    subpaths = _current_chronic_subpaths(chronics_handler)
+    if not subpaths:
+        return False
+
+    key_to_index: Dict[str, int] = {}
+    for idx, path in enumerate(subpaths):
+        for key in _chronic_key_variants(path):
+            key_to_index.setdefault(key, idx)
+
+    order = []
+    seen = set()
+    for chronic in ordered_chronics:
+        chronic_index = None
+        for key in _chronic_key_variants(chronic):
+            if key in key_to_index:
+                chronic_index = key_to_index[key]
+                break
+        if chronic_index is None or chronic_index in seen:
+            continue
+        order.append(int(chronic_index))
+        seen.add(chronic_index)
+
+    if not order:
+        return False
+
+    chronics_handler._order = np.asarray(order, dtype=int)
+    prev_cache_id = getattr(chronics_handler, "_prev_cache_id", None)
+    if prev_cache_id is not None:
+        chronics_handler._prev_cache_id = int(prev_cache_id) % len(order)
+    metadata_method = getattr(chronics_handler, "_set_current_chronic_metadata", None)
+    if callable(metadata_method):
+        metadata_method()
+    return True
+
+
+def _shuffle_existing_chronics_handler_order(
+    chronics_handler: Any,
+    seed: int,
+) -> bool:
+    order = getattr(chronics_handler, "_order", None)
+    if order is None:
+        return False
+    order = np.asarray(order, dtype=int)
+    if order.size <= 1:
+        return False
+    rng = np.random.default_rng(int(seed))
+    chronics_handler._order = order[rng.permutation(order.size)]
+    prev_cache_id = getattr(chronics_handler, "_prev_cache_id", None)
+    if prev_cache_id is not None:
+        chronics_handler._prev_cache_id = int(prev_cache_id) % int(order.size)
+    metadata_method = getattr(chronics_handler, "_set_current_chronic_metadata", None)
+    if callable(metadata_method):
+        metadata_method()
+    return True
+
+
 def _resolve_chronic_split(
     args: Dict[str, Any], eval_env: bool, chronic_split: Optional[str]
 ) -> Optional[str]:
@@ -393,7 +484,10 @@ def _resolve_chronic_split(
 
 
 def _apply_chronic_split(
-    chronics_handler: Any, args: Dict[str, Any], split_name: str
+    chronics_handler: Any,
+    args: Dict[str, Any],
+    split_name: str,
+    env_index: int = 0,
 ) -> Dict[str, Any]:
     if not hasattr(chronics_handler, "set_filter"):
         raise AttributeError("Grid2Op chronics handler does not expose set_filter().")
@@ -415,6 +509,9 @@ def _apply_chronic_split(
                 f"Chronic split '{split_name}' shard "
                 f"{shard_index}/{shard_count} is empty."
             )
+        ordered_chronics, order_seed = _shuffle_chronic_order(
+            selected_chronics, args, split_name, env_index
+        )
         selected_keys = set()
         for chronic in selected_chronics:
             selected_keys.update(_chronic_key_variants(chronic))
@@ -430,6 +527,8 @@ def _apply_chronic_split(
             "shard_index": shard_index,
             "shard_count": shard_count,
             "exact": True,
+            "order_seed": order_seed,
+            "ordered_chronics": ordered_chronics,
         }
 
     chronics_handler.set_filter(
@@ -445,6 +544,8 @@ def _apply_chronic_split(
         "shard_index": shard_index,
         "shard_count": shard_count,
         "exact": False,
+        "order_seed": None,
+        "ordered_chronics": None,
     }
 
 
@@ -632,9 +733,13 @@ class MAEnvWrapper(MAEnv):
         self.chronic_split = _resolve_chronic_split(args, eval_env, chronic_split)
         self.chronic_split_size = None
         self.chronic_split_total = None
+        split_summary = None
         if self.chronic_split is not None:
             split_summary = _apply_chronic_split(
-                self.g2op_env.chronics_handler, args, self.chronic_split
+                self.g2op_env.chronics_handler,
+                args,
+                self.chronic_split,
+                env_index=idx,
             )
             self.chronic_split_size = split_summary["selected"]
             self.chronic_split_total = split_summary["total"]
@@ -650,13 +755,17 @@ class MAEnvWrapper(MAEnv):
                         f"Chronic split '{self.chronic_split}'{shard_text}: "
                         f"{self.chronic_split_size}/{self.chronic_split_total} chronics"
                     )
+                    print(
+                        f"Chronic split '{self.chronic_split}' order shuffled "
+                        f"with seed {split_summary['order_seed']}",
+                        flush=True,
+                    )
                 else:
                     print(
                         f"Chronic split '{self.chronic_split}'{shard_text}: "
                         "using hash filter "
                         "(exact split size unavailable from Grid2Op handler)"
                     )
-        self.g2op_env.chronics_handler.shuffle()
 
         if args.optimize_mem:
             self.g2op_env.chronics_handler.set_chunk_size(
@@ -668,6 +777,22 @@ class MAEnvWrapper(MAEnv):
         # Create the cache; otherwise it'll only load the first scenario
         # TODO seed setup does not work with this - if we print the seeds, they are different (but agents' obs across envs are still the same)
         self.g2op_env.chronics_handler.reset()
+        if split_summary and split_summary.get("ordered_chronics"):
+            _set_chronics_handler_order(
+                self.g2op_env.chronics_handler,
+                split_summary["ordered_chronics"],
+            )
+        else:
+            order_seed = _stable_int_seed(
+                getattr(args, "seed", 0),
+                env_id,
+                "order",
+                idx,
+            )
+            _shuffle_existing_chronics_handler_order(
+                self.g2op_env.chronics_handler,
+                order_seed,
+            )
 
         # print(self.g2op_env.chronics_handler.max_episode_duration())
 
@@ -943,15 +1068,23 @@ class MAEnvWrapper(MAEnv):
             try:
                 if seed is not None:
                     seed_method = getattr(handler, "seed", None)
-                    if callable(seed_method):
+                    if callable(seed_method) and not isinstance(
+                        handler,
+                        (PathSeededMultifolder, PathSeededMultifolderWithCache),
+                    ):
                         seed_method(int(seed))
                 shuffle_method = getattr(handler, "shuffle", None)
-                if callable(shuffle_method):
+                if seed is None and callable(shuffle_method):
                     shuffle_method()
                     shuffled = True
                 reset_method = getattr(handler, "reset", None)
                 if callable(reset_method):
                     reset_method()
+                if seed is not None:
+                    shuffled = (
+                        _shuffle_existing_chronics_handler_order(handler, int(seed))
+                        or shuffled
+                    )
             except Exception as exc:
                 errors.append(f"{type(handler).__name__}: {exc}")
 
