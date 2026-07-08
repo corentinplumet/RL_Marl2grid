@@ -525,6 +525,11 @@ def main() -> None:
     if target_episodes is None:
         target_episodes = int(split_size) if split_size is not None else 1
     chronic_ids: List[Optional[int]] = [None] * int(target_episodes)
+    chronic_sample_seed = (
+        int(cli.chronic_sample_seed)
+        if cli.chronic_sample_seed is not None
+        else int(env_args.seed)
+    )
     if cli.chronic_sample_mode == "random":
         if split_size is None:
             raise ValueError(
@@ -538,12 +543,7 @@ def main() -> None:
                 "Cannot sample more chronics than the split size without "
                 "--chronic-sample-replacement true."
             )
-        sample_seed = (
-            int(cli.chronic_sample_seed)
-            if cli.chronic_sample_seed is not None
-            else int(env_args.seed)
-        )
-        rng = np.random.default_rng(sample_seed)
+        rng = np.random.default_rng(chronic_sample_seed)
         chronic_ids = [
             int(value)
             for value in rng.choice(
@@ -570,10 +570,7 @@ def main() -> None:
     print(f"Episodes: {target_episodes}")
     print(f"Chronic sample mode: {cli.chronic_sample_mode}")
     if cli.chronic_sample_mode == "random":
-        print(
-            "Random chronic sample seed: "
-            f"{cli.chronic_sample_seed if cli.chronic_sample_seed is not None else env_args.seed}"
-        )
+        print(f"Random chronic sample seed: {chronic_sample_seed}")
         print(
             "Random chronic ids preview: "
             + ", ".join(str(value) for value in chronic_ids[:20])
@@ -744,6 +741,7 @@ def main() -> None:
                     f"greedy={100 * row['greedy_survival']:.2f}% "
                     f"greedy_steps={row['greedy_steps']}/{row['max_steps']} "
                     f"nonidle={row['greedy_nonidle_actions']} "
+                    f"requested_id={row['requested_chronic_id']} "
                     f"g_name={row['greedy_chronic_name']} "
                     f"g_path={row['greedy_chronic_path']} "
                     f"g_idx={row['greedy_chronic_index']} "
@@ -784,6 +782,12 @@ def main() -> None:
         "split": cli.split,
         "reduced_action_space": _safe_path(Path(env_args.reduced_action_space)),
         "n_episodes": len(rows),
+        "chronic_sample_mode": cli.chronic_sample_mode,
+        "chronic_sample_seed": int(chronic_sample_seed),
+        "chronic_sample_replacement": bool(cli.chronic_sample_replacement),
+        "requested_chronic_ids": [
+            None if chronic_id is None else int(chronic_id) for chronic_id in chronic_ids
+        ],
         "decision_rho_threshold": float(cli.decision_rho_threshold),
         "require_improvement": bool(cli.require_improvement),
         "improvement_tolerance": float(cli.improvement_tolerance),

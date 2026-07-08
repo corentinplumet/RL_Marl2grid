@@ -943,17 +943,15 @@ class MAEnvWrapper(MAEnv):
     def set_chronic_id(self, chronic_id: int) -> None:
         """Best-effort request for Grid2Op to use a specific chronic on reset."""
         chronic_id = int(chronic_id)
+        cent_env = getattr(self.g2op_ma_env, "_cent_env", None)
         targets = [
+            cent_env,
+            getattr(cent_env, "chronics_handler", None),
             getattr(self, "g2op_env", None),
-            getattr(self.g2op_ma_env, "_cent_env", None),
             getattr(getattr(self, "g2op_env", None), "chronics_handler", None),
-            getattr(
-                getattr(self.g2op_ma_env, "_cent_env", None),
-                "chronics_handler",
-                None,
-            ),
         ]
         errors = []
+        successes = []
         seen = set()
         for target in targets:
             if target is None or id(target) in seen:
@@ -965,11 +963,13 @@ class MAEnvWrapper(MAEnv):
                     continue
                 try:
                     method(chronic_id)
-                    return
+                    successes.append(f"{type(target).__name__}.{method_name}")
+                    break
                 except Exception as exc:
                     errors.append(f"{type(target).__name__}.{method_name}: {exc}")
-        detail = "; ".join(errors[-4:]) if errors else "no set_id/tell_id method found"
-        raise RuntimeError(f"Could not set chronic id {chronic_id}: {detail}")
+        if not successes:
+            detail = "; ".join(errors[-4:]) if errors else "no set_id/tell_id method found"
+            raise RuntimeError(f"Could not set chronic id {chronic_id}: {detail}")
 
     def reset(self, seed=None, options=None):
         if seed is not None:
