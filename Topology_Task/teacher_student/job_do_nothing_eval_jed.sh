@@ -11,7 +11,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=72
 #SBATCH --mem=32G
-#SBATCH --time=02:00:00
+#SBATCH --time=24:00:00
 #SBATCH --output=Topology_Task/teacher_student/slurm-%x-%j.out
 #SBATCH --error=Topology_Task/teacher_student/slurm-%x-%j.err
 
