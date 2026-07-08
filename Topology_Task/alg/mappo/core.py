@@ -60,6 +60,30 @@ def _scheduled_action0_bonus(args: Namespace, global_step: int) -> float:
     return _linear_schedule(init_bonus, final_bonus, progress)
 
 
+def _lr_schedule_fraction(
+    args: Namespace,
+    *,
+    global_step: int,
+    iteration: int,
+    n_rollouts: int,
+) -> float:
+    final_frac = float(getattr(args, "lr_final_frac", 0.0))
+    if final_frac < 0.0 or final_frac > 1.0:
+        raise ValueError(f"--lr-final-frac must be in [0, 1]. Got {final_frac}.")
+
+    anneal_timesteps = getattr(args, "lr_anneal_timesteps", None)
+    if anneal_timesteps is None:
+        progress = (iteration - 1.0) / max(n_rollouts, 1)
+    else:
+        anneal_timesteps = int(anneal_timesteps)
+        if anneal_timesteps <= 0:
+            raise ValueError(
+                f"--lr-anneal-timesteps must be positive. Got {anneal_timesteps}."
+            )
+        progress = global_step / anneal_timesteps
+    return _linear_schedule(1.0, final_frac, progress)
+
+
 def _truthy_info_value(value: Any) -> bool:
     if isinstance(value, th.Tensor):
         return bool(value.detach().cpu().any().item())
@@ -655,7 +679,12 @@ class MAPPO:
             for iteration in range(init_rollout, n_rollouts + 1):
                 # Annealing the rate if instructed to do so
                 if args.anneal_lr:
-                    frac = 1.0 - (iteration - 1.0) / n_rollouts
+                    frac = _lr_schedule_fraction(
+                        args,
+                        global_step=global_step,
+                        iteration=iteration,
+                        n_rollouts=n_rollouts,
+                    )
                     actor_optim.param_groups[0]["lr"] = frac * args.actor_lr
                     critic_optim.param_groups[0]["lr"] = frac * args.critic_lr
                 entropy_coef = _scheduled_entropy_coef(args, global_step)

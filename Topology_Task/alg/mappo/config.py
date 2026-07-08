@@ -77,6 +77,24 @@ def get_alg_args() -> Namespace:
         default=True,
         help="Toggles learning rate annealing",
     )
+    parser.add_argument(
+        "--lr-anneal-timesteps",
+        type=int,
+        default=None,
+        help=(
+            "If set, anneal actor/critic learning rates over this many "
+            "environment timesteps instead of over --total-timesteps."
+        ),
+    )
+    parser.add_argument(
+        "--lr-final-frac",
+        type=float,
+        default=0.0,
+        help=(
+            "Final learning-rate fraction after annealing. For example, 0.1 "
+            "keeps 10%% of --actor-lr/--critic-lr after the anneal horizon."
+        ),
+    )
 
     parser.add_argument("--gamma", type=float, default=0.9, help="Discount factor")
     parser.add_argument(

@@ -70,8 +70,19 @@ class PathSeededMultifolder(Multifolder):
     stable function of the base Grid2Op seed, scenario index, and path.
     """
 
+    def seed(self, seed: int):
+        self._path_seed_base = int(seed)
+        return super().seed(seed)
+
+    def _seed_base(self) -> int:
+        base_seed = getattr(self, "_path_seed_base", None)
+        if base_seed is None:
+            base_seed = self.seed_used if self.seed_used is not None else 0
+            self._path_seed_base = int(base_seed)
+        return int(base_seed)
+
     def _seed_for_path(self, path: Any, index: Any = None) -> int:
-        base_seed = self.seed_used if self.seed_used is not None else 0
+        base_seed = self._seed_base()
         scenario_key = _chronic_seed_path_key(self.path, path)
         return _stable_int_seed(base_seed, index, scenario_key)
 
@@ -136,8 +147,15 @@ class PathSeededMultifolder(Multifolder):
 class PathSeededMultifolderWithCache(MultifolderWithCache):
     """Cached Multifolder variant with stable per-scenario chronic seeds."""
 
+    def _seed_base(self) -> int:
+        base_seed = getattr(self, "_path_seed_base", None)
+        if base_seed is None:
+            base_seed = self.seed_used if self.seed_used is not None else 0
+            self._path_seed_base = int(base_seed)
+        return int(base_seed)
+
     def _seed_for_path(self, path: Any, index: Any = None) -> int:
-        base_seed = self.seed_used if self.seed_used is not None else 0
+        base_seed = self._seed_base()
         scenario_key = _chronic_seed_path_key(self.path, path)
         return _stable_int_seed(base_seed, index, scenario_key)
 
@@ -184,6 +202,7 @@ class PathSeededMultifolderWithCache(MultifolderWithCache):
         self._set_current_chronic_metadata()
 
     def seed(self, seed: int):
+        self._path_seed_base = int(seed)
         res = Multifolder.seed(self, seed)
         self._refresh_cached_seeds()
         for i, data in enumerate(self._cached_data or []):
