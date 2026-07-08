@@ -73,6 +73,11 @@ def _current_chronic_info(env: MAEnvWrapper) -> Dict[str, str]:
     return {
         "chronic_name": str(info.get("chronic_name", "unknown")),
         "chronic_path": str(info.get("chronic_path", "unknown")),
+        "chronic_seed": str(info.get("chronic_seed", "unknown")),
+        "chronic_index": str(info.get("chronic_index", "unknown")),
+        "chronic_order_position": str(
+            info.get("chronic_order_position", "unknown")
+        ),
         "chronic_fingerprint": str(info.get("chronic_fingerprint", "unknown")),
         "chronic_datetime": str(info.get("chronic_datetime", "unknown")),
         "chronic_reset_count": str(info.get("chronic_reset_count", "unknown")),
@@ -348,6 +353,12 @@ def _write_outputs(
         "do_nothing_chronic_name",
         "greedy_chronic_path",
         "do_nothing_chronic_path",
+        "greedy_chronic_seed",
+        "do_nothing_chronic_seed",
+        "greedy_chronic_index",
+        "do_nothing_chronic_index",
+        "greedy_chronic_order_position",
+        "do_nothing_chronic_order_position",
         "greedy_chronic_fingerprint",
         "do_nothing_chronic_fingerprint",
         "greedy_chronic_datetime",
@@ -554,6 +565,16 @@ def main() -> None:
                 "do_nothing_chronic_name": do_nothing_result["chronic_name"],
                 "greedy_chronic_path": greedy_result["chronic_path"],
                 "do_nothing_chronic_path": do_nothing_result["chronic_path"],
+                "greedy_chronic_seed": greedy_result["chronic_seed"],
+                "do_nothing_chronic_seed": do_nothing_result["chronic_seed"],
+                "greedy_chronic_index": greedy_result["chronic_index"],
+                "do_nothing_chronic_index": do_nothing_result["chronic_index"],
+                "greedy_chronic_order_position": greedy_result[
+                    "chronic_order_position"
+                ],
+                "do_nothing_chronic_order_position": do_nothing_result[
+                    "chronic_order_position"
+                ],
                 "greedy_chronic_fingerprint": greedy_result["chronic_fingerprint"],
                 "do_nothing_chronic_fingerprint": do_nothing_result[
                     "chronic_fingerprint"

@@ -142,6 +142,10 @@ class Evaluator:
 
     def _current_chronic_name(self) -> str:
         """Best-effort label for the currently evaluated Grid2Op chronic."""
+        value = self._current_chronic_field("chronic_name")
+        if value != "unknown":
+            return value
+
         handler = getattr(getattr(self.env, "g2op_env", None), "chronics_handler", None)
         if handler is None:
             return "unknown"
@@ -200,6 +204,17 @@ class Evaluator:
                 if label is not None:
                     return label
         return "unknown"
+
+    def _current_chronic_field(self, field: str) -> str:
+        getter = getattr(self.env, "get_current_chronic_info", None)
+        if not callable(getter):
+            return "unknown"
+        try:
+            info = getter()
+        except Exception:
+            return "unknown"
+        value = info.get(field) if isinstance(info, dict) else None
+        return "unknown" if value is None else str(value)
 
     @staticmethod
     def _format_chronic_names(chronic_names: List[str], max_items: int = 12) -> str:
@@ -330,6 +345,7 @@ class Evaluator:
         trace_episode_step = 0
         trace_step = 0
         episode_chronic_names = []
+        episode_chronic_paths = []
         episode_chronic_fingerprints = []
         while len(ep_survivals) < eval_ep:
             for agent, model in actors.items():
@@ -418,11 +434,28 @@ class Evaluator:
                     self._chronic_name_from_info(info)
                     or self._current_chronic_name()
                 )
+                chronic_path = (
+                    self._chronic_field_from_info(info, "chronic_path")
+                    or self._current_chronic_field("chronic_path")
+                )
+                chronic_seed = (
+                    self._chronic_field_from_info(info, "chronic_seed")
+                    or self._current_chronic_field("chronic_seed")
+                )
+                chronic_index = (
+                    self._chronic_field_from_info(info, "chronic_index")
+                    or self._current_chronic_field("chronic_index")
+                )
+                chronic_order_position = (
+                    self._chronic_field_from_info(info, "chronic_order_position")
+                    or self._current_chronic_field("chronic_order_position")
+                )
                 chronic_fingerprint = (
                     self._chronic_field_from_info(info, "chronic_fingerprint")
                     or "unknown"
                 )
                 episode_chronic_names.append(chronic_name)
+                episode_chronic_paths.append(chronic_path)
                 episode_chronic_fingerprints.append(chronic_fingerprint)
                 ep_survivals.append(episode_survival)
                 if not self.use_heuristic:
@@ -433,7 +466,10 @@ class Evaluator:
                     running_survival = sum(ep_survivals) / max(completed, 1)
                     print(
                         f"{eval_label} chronic {completed}/{eval_ep}: "
-                        f"{chronic_name} survival={episode_survival * 100:.3f}% "
+                        f"{chronic_name} path={chronic_path} "
+                        f"idx={chronic_index} order={chronic_order_position} "
+                        f"seed={chronic_seed} "
+                        f"survival={episode_survival * 100:.3f}% "
                         f"fingerprint={chronic_fingerprint} "
                         f"steps={episode_length}/{self.max_steps} "
                         f"running_mean={running_survival * 100:.3f}%",
@@ -574,6 +610,7 @@ class Evaluator:
         print(
             f"{eval_label} at step {glob_step}, "
             f"chronics={self._format_chronic_names(episode_chronic_names)}, "
+            f"paths={self._format_chronic_names(episode_chronic_paths)}, "
             f"fingerprints={self._format_chronic_names(episode_chronic_fingerprints)}, "
             f"survival={avg_survival * 100:.3f}%, return={avg_return}"
         )

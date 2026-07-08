@@ -47,6 +47,153 @@ RHO_SAFETY_THRESHOLD = 0.90
 CHRONIC_SPLITS = ("train", "test")
 
 
+def _stable_int_seed(*parts: Any) -> int:
+    text = ":".join(str(part) for part in parts).encode("utf-8")
+    digest = hashlib.sha256(text).hexdigest()
+    return int(digest[:8], 16) % (2**31 - 1)
+
+
+def _chronic_seed_path_key(root: Any, path: Any) -> str:
+    try:
+        return os.path.normpath(os.path.relpath(str(path), str(root)))
+    except Exception:
+        return os.path.normpath(str(path))
+
+
+class PathSeededMultifolder(Multifolder):
+    """Multifolder with per-scenario deterministic chronic seeds.
+
+    Grid2Op's WCCI chronic generator samples maintenance during episode
+    initialization. The default Multifolder draws the chronic seed from a
+    stream, so the same scenario can get different maintenance depending on
+    whether train, test, or all is evaluated first. This class makes the seed a
+    stable function of the base Grid2Op seed, scenario index, and path.
+    """
+
+    def _seed_for_path(self, path: Any, index: Any = None) -> int:
+        base_seed = self.seed_used if self.seed_used is not None else 0
+        scenario_key = _chronic_seed_path_key(self.path, path)
+        return _stable_int_seed(base_seed, index, scenario_key)
+
+    def _set_current_chronic_metadata(self) -> None:
+        if self._order is None or len(self._order) == 0:
+            return
+        order_position = int(self._prev_cache_id % len(self._order))
+        id_scenario = int(self._order[order_position])
+        this_path = self.subpaths[id_scenario]
+        seed_chronics = self._seed_for_path(this_path, id_scenario)
+        self.current_chronic_seed = int(seed_chronics)
+        self.current_chronic_index = id_scenario
+        self.current_chronic_order_position = order_position
+        self.current_chronic_path = str(this_path)
+
+    def next_chronics(self):
+        super().next_chronics()
+        self._set_current_chronic_metadata()
+
+    def initialize(
+        self,
+        order_backend_loads,
+        order_backend_prods,
+        order_backend_lines,
+        order_backend_subs,
+        names_chronics_to_backend=None,
+    ):
+        self._order_backend_loads = order_backend_loads
+        self._order_backend_prods = order_backend_prods
+        self._order_backend_lines = order_backend_lines
+        self._order_backend_subs = order_backend_subs
+        self._names_chronics_to_backend = names_chronics_to_backend
+
+        self.n_gen = len(order_backend_prods)
+        self.n_load = len(order_backend_loads)
+        self.n_line = len(order_backend_lines)
+
+        if self._order is None:
+            self.reset()
+
+        id_scenario = self._order[self._prev_cache_id]
+        this_path = self.subpaths[id_scenario]
+        seed_chronics = self._seed_for_path(this_path, id_scenario)
+        self._set_current_chronic_metadata()
+        self.data = self._get_nex_data(this_path)
+        self.data.seed(seed_chronics)
+
+        self.data.initialize(
+            order_backend_loads,
+            order_backend_prods,
+            order_backend_lines,
+            order_backend_subs,
+            names_chronics_to_backend=names_chronics_to_backend,
+        )
+        self.start_datetime = self.data.start_datetime
+        self.current_datetime = self.data.current_datetime
+        if self.action_space is not None:
+            self.data.action_space = self.action_space
+        self._max_iter = self.data.max_iter
+
+
+class PathSeededMultifolderWithCache(MultifolderWithCache):
+    """Cached Multifolder variant with stable per-scenario chronic seeds."""
+
+    def _seed_for_path(self, path: Any, index: Any = None) -> int:
+        base_seed = self.seed_used if self.seed_used is not None else 0
+        scenario_key = _chronic_seed_path_key(self.path, path)
+        return _stable_int_seed(base_seed, index, scenario_key)
+
+    def _set_current_chronic_metadata(self) -> None:
+        if self._order is None or len(self._order) == 0:
+            return
+        order_position = int(self._prev_cache_id % len(self._order))
+        id_scenario = int(self._order[order_position])
+        this_path = self.subpaths[id_scenario]
+        seed_chronics = self._seed_for_path(this_path, id_scenario)
+        self.current_chronic_seed = int(seed_chronics)
+        self.current_chronic_index = id_scenario
+        self.current_chronic_order_position = order_position
+        self.current_chronic_path = str(this_path)
+
+    def _refresh_cached_seeds(self) -> None:
+        self._cached_seeds = np.empty(len(self.subpaths), dtype=np.int64)
+        for i, path in enumerate(self.subpaths):
+            self._cached_seeds[i] = self._seed_for_path(path, i)
+
+    def reset(self):
+        self._refresh_cached_seeds()
+        return super().reset()
+
+    def next_chronics(self):
+        super().next_chronics()
+        self._set_current_chronic_metadata()
+
+    def initialize(
+        self,
+        order_backend_loads,
+        order_backend_prods,
+        order_backend_lines,
+        order_backend_subs,
+        names_chronics_to_backend=None,
+    ):
+        super().initialize(
+            order_backend_loads,
+            order_backend_prods,
+            order_backend_lines,
+            order_backend_subs,
+            names_chronics_to_backend=names_chronics_to_backend,
+        )
+        self._set_current_chronic_metadata()
+
+    def seed(self, seed: int):
+        res = Multifolder.seed(self, seed)
+        self._refresh_cached_seeds()
+        for i, data in enumerate(self._cached_data or []):
+            if data is None:
+                continue
+            data.seed(self._cached_seeds[i])
+            data.regenerate_with_new_seed()
+        return res
+
+
 def _fraction_arg(value: float, name: str) -> float:
     fraction = float(value)
     if fraction > 1.0:
@@ -436,13 +583,26 @@ class MAEnvWrapper(MAEnv):
                 l_ids=list(range(env_config[env_id]["n_line"])), normalize=True
             )
 
+        # Maintenance chronics sample outage schedules from the chronic RNG.
+        # Seed them by scenario identity so train/test/all filters see the same
+        # realization for the same chronic instead of depending on iteration order.
+        deterministic_maintenance = bool(env_config[env_id].get("maintenance", False))
+        if deterministic_maintenance:
+            chronics_class = (
+                PathSeededMultifolder
+                if args.optimize_mem
+                else PathSeededMultifolderWithCache
+            )
+        else:
+            chronics_class = Multifolder if args.optimize_mem else MultifolderWithCache
+
         # With vec envs, infos return an array of dicts (one for each env) containing the rewards
         self.g2op_env = grid2op.make(
             env_config[env_id]["grid2op_id"],
             reward_class=CombinedReward,
             backend=LightSimBackend(),
             other_rewards=rewards,
-            chronics_class=Multifolder if args.optimize_mem else MultifolderWithCache,
+            chronics_class=chronics_class,
         )
 
         ###
@@ -866,18 +1026,21 @@ class MAEnvWrapper(MAEnv):
             seen.add(id(handler))
         return handlers
 
-    def get_current_chronic_name(self) -> str:
-        """Best-effort label for the current Grid2Op chronic.
-
-        This is instrumentation only. Some Grid2Op / multi-agent wrapper
-        combinations expose a stale top-level handler label, so we inspect nested
-        handler data first and fall back conservatively.
-        """
-        handlers = self._current_chronic_handlers()
+    def _current_chronic_objects(self) -> List[Any]:
+        object_groups = []
+        for handler in self._current_chronic_handlers():
+            object_groups.append(self._chronic_objects_from_handler(handler))
 
         objects = []
+        for group in reversed(object_groups):
+            objects.extend(group)
+        return objects
+
+    @staticmethod
+    def _chronic_objects_from_handler(handler: Any) -> List[Any]:
+        objects = []
         seen = set()
-        queue = list(handlers)
+        queue = [handler]
         while queue:
             obj = queue.pop(0)
             if obj is None or id(obj) in seen:
@@ -888,6 +1051,35 @@ class MAEnvWrapper(MAEnv):
                 nested = getattr(obj, attr, None)
                 if nested is not None and id(nested) not in seen:
                     queue.append(nested)
+        return objects
+
+    def _current_chronic_attr(self, *names: str) -> Any:
+        for obj in reversed(self._current_chronic_objects()):
+            for name in names:
+                try:
+                    value = getattr(obj, name)
+                except Exception:
+                    continue
+                if value is not None:
+                    return value
+        return None
+
+    @staticmethod
+    def _format_chronic_attr(value: Any) -> Any:
+        if value is None:
+            return "unknown"
+        if isinstance(value, (int, np.integer)):
+            return int(value)
+        return str(value)
+
+    def get_current_chronic_name(self) -> str:
+        """Best-effort label for the current Grid2Op chronic.
+
+        This is instrumentation only. Some Grid2Op / multi-agent wrapper
+        combinations expose a stale top-level handler label, so we inspect nested
+        handler data first and fall back conservatively.
+        """
+        objects = self._current_chronic_objects()
 
         for obj in reversed(objects):
             for name in ("get_name", "get_id"):
@@ -918,22 +1110,13 @@ class MAEnvWrapper(MAEnv):
 
     def get_current_chronic_path(self) -> str:
         """Best-effort full path/id for the current Grid2Op chronic."""
-        handlers = self._current_chronic_handlers()
+        objects = self._current_chronic_objects()
 
-        objects = []
-        seen = set()
-        queue = list(handlers)
-        while queue:
-            obj = queue.pop(0)
-            if obj is None or id(obj) in seen:
-                continue
-            seen.add(id(obj))
-            objects.append(obj)
-            for attr in ("data", "_data", "real_data", "_real_data"):
-                nested = getattr(obj, attr, None)
-                if nested is not None and id(nested) not in seen:
-                    queue.append(nested)
-
+        for obj in reversed(objects):
+            for name in ("current_chronic_path", "_current_chronic_path"):
+                value = getattr(obj, name, None)
+                if value is not None:
+                    return str(value)
         for obj in reversed(objects):
             getter = getattr(obj, "get_id", None)
             if callable(getter):
@@ -955,6 +1138,23 @@ class MAEnvWrapper(MAEnv):
                 if value is not None:
                     return str(value)
         return "unknown"
+
+    def get_current_chronic_seed(self) -> Any:
+        return self._format_chronic_attr(
+            self._current_chronic_attr("current_chronic_seed", "_current_chronic_seed")
+        )
+
+    def get_current_chronic_index(self) -> Any:
+        return self._format_chronic_attr(
+            self._current_chronic_attr("current_chronic_index", "_current_chronic_index")
+        )
+
+    def get_current_chronic_order_position(self) -> Any:
+        return self._format_chronic_attr(
+            self._current_chronic_attr(
+                "current_chronic_order_position", "_current_chronic_order_position"
+            )
+        )
 
     @staticmethod
     def _hash_obs_value(hasher: "hashlib._Hash", name: str, value: Any) -> bool:
@@ -1047,6 +1247,9 @@ class MAEnvWrapper(MAEnv):
         return {
             "chronic_name": self.current_chronic_name,
             "chronic_path": self.get_current_chronic_path(),
+            "chronic_seed": self.get_current_chronic_seed(),
+            "chronic_index": self.get_current_chronic_index(),
+            "chronic_order_position": self.get_current_chronic_order_position(),
             "chronic_fingerprint": self.current_chronic_fingerprint,
             "chronic_datetime": self.current_chronic_datetime,
             "chronic_reset_count": self.current_chronic_reset_count,
