@@ -72,6 +72,7 @@ def _current_chronic_info(env: MAEnvWrapper) -> Dict[str, str]:
     info = getter() if callable(getter) else {}
     return {
         "chronic_name": str(info.get("chronic_name", "unknown")),
+        "chronic_path": str(info.get("chronic_path", "unknown")),
         "chronic_fingerprint": str(info.get("chronic_fingerprint", "unknown")),
         "chronic_datetime": str(info.get("chronic_datetime", "unknown")),
     }
@@ -167,6 +168,7 @@ def _write_outputs(
     fieldnames = [
         "episode",
         "chronic_name",
+        "chronic_path",
         "chronic_fingerprint",
         "chronic_datetime",
         "steps",
@@ -284,6 +286,7 @@ def main() -> None:
                     f"full={row['full_survival']} "
                     f"rho_peak={row['peak_max_rho']:.4f} "
                     f"name={row['chronic_name']} "
+                    f"path={row['chronic_path']} "
                     f"fp={str(row['chronic_fingerprint'])[:8]} "
                     f"elapsed={_format_duration(elapsed)} "
                     f"eta={_format_duration(eta)}",

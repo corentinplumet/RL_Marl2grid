@@ -899,6 +899,48 @@ class MAEnvWrapper(MAEnv):
                     return label
         return "unknown"
 
+    def get_current_chronic_path(self) -> str:
+        """Best-effort full path/id for the current Grid2Op chronic."""
+        handler = getattr(self.g2op_env, "chronics_handler", None)
+        if handler is None:
+            return "unknown"
+
+        objects = []
+        seen = set()
+        queue = [handler]
+        while queue:
+            obj = queue.pop(0)
+            if obj is None or id(obj) in seen:
+                continue
+            seen.add(id(obj))
+            objects.append(obj)
+            for attr in ("data", "_data", "real_data", "_real_data"):
+                nested = getattr(obj, attr, None)
+                if nested is not None and id(nested) not in seen:
+                    queue.append(nested)
+
+        for obj in reversed(objects):
+            getter = getattr(obj, "get_id", None)
+            if callable(getter):
+                try:
+                    value = getter()
+                except Exception:
+                    value = None
+                if value is not None:
+                    return str(value)
+            for name in (
+                "path",
+                "_path",
+                "chronics_name",
+                "_chronics_name",
+                "current_chronics",
+                "_current_chronics",
+            ):
+                value = getattr(obj, name, None)
+                if value is not None:
+                    return str(value)
+        return "unknown"
+
     @staticmethod
     def _hash_obs_value(hasher: "hashlib._Hash", name: str, value: Any) -> bool:
         if value is None:
@@ -989,6 +1031,7 @@ class MAEnvWrapper(MAEnv):
     def get_current_chronic_info(self) -> Dict[str, Any]:
         return {
             "chronic_name": self.current_chronic_name,
+            "chronic_path": self.get_current_chronic_path(),
             "chronic_fingerprint": self.current_chronic_fingerprint,
             "chronic_datetime": self.current_chronic_datetime,
             "chronic_reset_count": self.current_chronic_reset_count,

@@ -72,6 +72,7 @@ def _current_chronic_info(env: MAEnvWrapper) -> Dict[str, str]:
     info = getter() if callable(getter) else {}
     return {
         "chronic_name": str(info.get("chronic_name", "unknown")),
+        "chronic_path": str(info.get("chronic_path", "unknown")),
         "chronic_fingerprint": str(info.get("chronic_fingerprint", "unknown")),
         "chronic_datetime": str(info.get("chronic_datetime", "unknown")),
         "chronic_reset_count": str(info.get("chronic_reset_count", "unknown")),
@@ -345,6 +346,8 @@ def _write_outputs(
         "requested_chronic_id",
         "greedy_chronic_name",
         "do_nothing_chronic_name",
+        "greedy_chronic_path",
+        "do_nothing_chronic_path",
         "greedy_chronic_fingerprint",
         "do_nothing_chronic_fingerprint",
         "greedy_chronic_datetime",
@@ -549,6 +552,8 @@ def main() -> None:
                 ),
                 "greedy_chronic_name": greedy_result["chronic_name"],
                 "do_nothing_chronic_name": do_nothing_result["chronic_name"],
+                "greedy_chronic_path": greedy_result["chronic_path"],
+                "do_nothing_chronic_path": do_nothing_result["chronic_path"],
                 "greedy_chronic_fingerprint": greedy_result["chronic_fingerprint"],
                 "do_nothing_chronic_fingerprint": do_nothing_result[
                     "chronic_fingerprint"
