@@ -117,6 +117,26 @@ def _candidate_requests(env: MAEnvWrapper, agent_ids: List[str]) -> List[Dict[st
     return requests
 
 
+def _sample_candidate_requests(
+    requests: List[Dict[str, Any]],
+    sample_size: Optional[int],
+    sample_seed: Optional[int],
+) -> List[Dict[str, Any]]:
+    if sample_size is None:
+        return list(requests)
+    sample_size = int(sample_size)
+    if sample_size <= 0:
+        raise ValueError("--candidate-sample-size must be positive when provided.")
+    if sample_size >= len(requests):
+        return list(requests)
+    rng = np.random.default_rng(0 if sample_seed is None else int(sample_seed))
+    sampled_indices = sorted(
+        int(index)
+        for index in rng.choice(len(requests), size=sample_size, replace=False)
+    )
+    return [requests[index] for index in sampled_indices]
+
+
 def _choose_greedy_action(
     *,
     env: MAEnvWrapper,
@@ -428,6 +448,30 @@ def parse_args() -> Namespace:
     parser.add_argument("--decision-rho-threshold", type=float, default=0.90)
     parser.add_argument("--improvement-tolerance", type=float, default=1e-3)
     parser.add_argument("--require-improvement", type=str2bool, default=True)
+    parser.add_argument(
+        "--candidate-sample-size",
+        type=int,
+        default=None,
+        help=(
+            "Optional fixed random subset size of unilateral candidate actions "
+            "to simulate at each greedy decision. Defaults to all candidates."
+        ),
+    )
+    parser.add_argument(
+        "--candidate-sample-seed",
+        type=int,
+        default=None,
+        help="Seed for --candidate-sample-size. Defaults to --seed.",
+    )
+    parser.add_argument(
+        "--compare-do-nothing",
+        type=str2bool,
+        default=True,
+        help=(
+            "Also replay a full do-nothing episode on the same chronic. Set false "
+            "when a separate do-nothing evaluation already exists."
+        ),
+    )
     parser.add_argument("--time-step", type=int, default=1)
     parser.add_argument("--sim-workers", type=int, default=1)
     parser.add_argument(
@@ -458,12 +502,24 @@ def main() -> None:
     chronic_split = None if cli.split == "all" else cli.split
 
     greedy_env = MAEnvWrapper(env_args, eval_env=True, chronic_split=chronic_split)
-    do_nothing_env = MAEnvWrapper(env_args, eval_env=True, chronic_split=chronic_split)
+    do_nothing_env = (
+        MAEnvWrapper(env_args, eval_env=True, chronic_split=chronic_split)
+        if bool(cli.compare_do_nothing)
+        else None
+    )
     agent_ids = list(greedy_env.g2op_ma_env.agents)
     reduced_action_sizes = {
         agent: int(greedy_env.action_space[agent].n) for agent in agent_ids
     }
-    requests = _candidate_requests(greedy_env, agent_ids)
+    all_requests = _candidate_requests(greedy_env, agent_ids)
+    candidate_sample_seed = (
+        int(cli.candidate_sample_seed)
+        if cli.candidate_sample_seed is not None
+        else int(env_args.seed)
+    )
+    requests = _sample_candidate_requests(
+        all_requests, cli.candidate_sample_size, candidate_sample_seed
+    )
     target_episodes = cli.max_episodes
     split_size = getattr(greedy_env, "chronic_split_size", None)
     if target_episodes is None:
@@ -525,11 +581,18 @@ def main() -> None:
     print(f"Decision rho threshold: {cli.decision_rho_threshold}")
     print(f"Require improvement: {cli.require_improvement}")
     print(f"Improvement tolerance: {cli.improvement_tolerance}")
+    print(f"Compare do-nothing episode replay: {cli.compare_do_nothing}")
+    print(
+        "Candidate sample size: "
+        f"{cli.candidate_sample_size if cli.candidate_sample_size is not None else 'all'}"
+    )
+    print(f"Candidate sample seed: {candidate_sample_seed}")
     print(f"Simulator workers: {cli.sim_workers}")
     print(
         "Reduced action sizes: "
         + ", ".join(f"{agent}={reduced_action_sizes[agent]}" for agent in agent_ids)
     )
+    print(f"Candidate unilateral actions total: {len(all_requests)}")
     print(f"Candidate unilateral actions per decision: {len(requests)}")
     print("======================================================")
 
@@ -550,52 +613,99 @@ def main() -> None:
                 max_env_steps=cli.max_env_steps,
                 chronic_id=requested_chronic_id,
             )
-            do_nothing_result = _run_do_nothing_episode(
-                env=do_nothing_env,
-                agent_ids=agent_ids,
-                max_env_steps=cli.max_env_steps,
-                chronic_id=requested_chronic_id,
-            )
+            do_nothing_result: Optional[Dict[str, Any]] = None
+            if do_nothing_env is not None:
+                do_nothing_result = _run_do_nothing_episode(
+                    env=do_nothing_env,
+                    agent_ids=agent_ids,
+                    max_env_steps=cli.max_env_steps,
+                    chronic_id=requested_chronic_id,
+                )
             row = {
                 "episode": episode,
                 "requested_chronic_id": (
                     "" if requested_chronic_id is None else int(requested_chronic_id)
                 ),
                 "greedy_chronic_name": greedy_result["chronic_name"],
-                "do_nothing_chronic_name": do_nothing_result["chronic_name"],
+                "do_nothing_chronic_name": (
+                    do_nothing_result["chronic_name"]
+                    if do_nothing_result is not None
+                    else "skipped"
+                ),
                 "greedy_chronic_path": greedy_result["chronic_path"],
-                "do_nothing_chronic_path": do_nothing_result["chronic_path"],
+                "do_nothing_chronic_path": (
+                    do_nothing_result["chronic_path"]
+                    if do_nothing_result is not None
+                    else "skipped"
+                ),
                 "greedy_chronic_seed": greedy_result["chronic_seed"],
-                "do_nothing_chronic_seed": do_nothing_result["chronic_seed"],
+                "do_nothing_chronic_seed": (
+                    do_nothing_result["chronic_seed"]
+                    if do_nothing_result is not None
+                    else "skipped"
+                ),
                 "greedy_chronic_index": greedy_result["chronic_index"],
-                "do_nothing_chronic_index": do_nothing_result["chronic_index"],
+                "do_nothing_chronic_index": (
+                    do_nothing_result["chronic_index"]
+                    if do_nothing_result is not None
+                    else "skipped"
+                ),
                 "greedy_chronic_order_position": greedy_result[
                     "chronic_order_position"
                 ],
-                "do_nothing_chronic_order_position": do_nothing_result[
-                    "chronic_order_position"
-                ],
+                "do_nothing_chronic_order_position": (
+                    do_nothing_result["chronic_order_position"]
+                    if do_nothing_result is not None
+                    else "skipped"
+                ),
                 "greedy_chronic_fingerprint": greedy_result["chronic_fingerprint"],
-                "do_nothing_chronic_fingerprint": do_nothing_result[
-                    "chronic_fingerprint"
-                ],
+                "do_nothing_chronic_fingerprint": (
+                    do_nothing_result["chronic_fingerprint"]
+                    if do_nothing_result is not None
+                    else "skipped"
+                ),
                 "greedy_chronic_datetime": greedy_result["chronic_datetime"],
-                "do_nothing_chronic_datetime": do_nothing_result["chronic_datetime"],
+                "do_nothing_chronic_datetime": (
+                    do_nothing_result["chronic_datetime"]
+                    if do_nothing_result is not None
+                    else "skipped"
+                ),
                 "greedy_chronic_reset_count": greedy_result["chronic_reset_count"],
-                "do_nothing_chronic_reset_count": do_nothing_result[
-                    "chronic_reset_count"
-                ],
-                "same_chronic_fingerprint": greedy_result["chronic_fingerprint"]
-                == do_nothing_result["chronic_fingerprint"],
+                "do_nothing_chronic_reset_count": (
+                    do_nothing_result["chronic_reset_count"]
+                    if do_nothing_result is not None
+                    else "skipped"
+                ),
+                "same_chronic_fingerprint": (
+                    greedy_result["chronic_fingerprint"]
+                    == do_nothing_result["chronic_fingerprint"]
+                    if do_nothing_result is not None
+                    else False
+                ),
                 "greedy_steps": greedy_result["steps"],
-                "do_nothing_steps": do_nothing_result["steps"],
+                "do_nothing_steps": (
+                    do_nothing_result["steps"]
+                    if do_nothing_result is not None
+                    else float("nan")
+                ),
                 "max_steps": greedy_result["max_steps"],
                 "greedy_survival": greedy_result["survival"],
-                "do_nothing_survival": do_nothing_result["survival"],
+                "do_nothing_survival": (
+                    do_nothing_result["survival"]
+                    if do_nothing_result is not None
+                    else float("nan")
+                ),
                 "greedy_full_survival": greedy_result["full_survival"],
-                "do_nothing_full_survival": do_nothing_result["full_survival"],
-                "survival_delta": greedy_result["survival"]
-                - do_nothing_result["survival"],
+                "do_nothing_full_survival": (
+                    do_nothing_result["full_survival"]
+                    if do_nothing_result is not None
+                    else False
+                ),
+                "survival_delta": (
+                    greedy_result["survival"] - do_nothing_result["survival"]
+                    if do_nothing_result is not None
+                    else float("nan")
+                ),
                 "greedy_nonidle_actions": greedy_result["nonidle_actions"],
                 "greedy_decision_states": greedy_result["decision_states"],
                 "greedy_simulated_actions": greedy_result["simulated_actions"],
@@ -609,28 +719,37 @@ def main() -> None:
                 elapsed = time.perf_counter() - start_time
                 done_eps = episode + 1
                 eta = elapsed / done_eps * (int(target_episodes) - done_eps)
+                if do_nothing_result is not None:
+                    do_nothing_text = (
+                        f"do_nothing={100 * row['do_nothing_survival']:.2f}% "
+                        f"delta={100 * row['survival_delta']:.2f}% "
+                        f"do_nothing_steps={row['do_nothing_steps']}/{row['max_steps']} "
+                        f"same_chronic={row['same_chronic_fingerprint']} "
+                        f"dn_name={row['do_nothing_chronic_name']} "
+                        f"dn_path={row['do_nothing_chronic_path']} "
+                        f"dn_idx={row['do_nothing_chronic_index']} "
+                        f"dn_order={row['do_nothing_chronic_order_position']} "
+                        f"dn_seed={row['do_nothing_chronic_seed']} "
+                        f"fp={str(row['greedy_chronic_fingerprint'])[:8]}/"
+                        f"{str(row['do_nothing_chronic_fingerprint'])[:8]} "
+                    )
+                else:
+                    do_nothing_text = (
+                        "do_nothing=skipped delta=skipped "
+                        f"fp={str(row['greedy_chronic_fingerprint'])[:8]} "
+                    )
                 print(
                     "episode "
                     f"{done_eps}/{target_episodes}: "
                     f"greedy={100 * row['greedy_survival']:.2f}% "
-                    f"do_nothing={100 * row['do_nothing_survival']:.2f}% "
-                    f"delta={100 * row['survival_delta']:.2f}% "
                     f"greedy_steps={row['greedy_steps']}/{row['max_steps']} "
-                    f"do_nothing_steps={row['do_nothing_steps']}/{row['max_steps']} "
                     f"nonidle={row['greedy_nonidle_actions']} "
-                    f"same_chronic={row['same_chronic_fingerprint']} "
                     f"g_name={row['greedy_chronic_name']} "
                     f"g_path={row['greedy_chronic_path']} "
                     f"g_idx={row['greedy_chronic_index']} "
                     f"g_order={row['greedy_chronic_order_position']} "
                     f"g_seed={row['greedy_chronic_seed']} "
-                    f"dn_name={row['do_nothing_chronic_name']} "
-                    f"dn_path={row['do_nothing_chronic_path']} "
-                    f"dn_idx={row['do_nothing_chronic_index']} "
-                    f"dn_order={row['do_nothing_chronic_order_position']} "
-                    f"dn_seed={row['do_nothing_chronic_seed']} "
-                    f"fp={str(row['greedy_chronic_fingerprint'])[:8]}/"
-                    f"{str(row['do_nothing_chronic_fingerprint'])[:8]} "
+                    f"{do_nothing_text}"
                     f"date={row['greedy_chronic_datetime']} "
                     f"elapsed={_format_duration(elapsed)} "
                     f"eta={_format_duration(eta)}",
@@ -668,19 +787,49 @@ def main() -> None:
         "decision_rho_threshold": float(cli.decision_rho_threshold),
         "require_improvement": bool(cli.require_improvement),
         "improvement_tolerance": float(cli.improvement_tolerance),
+        "compare_do_nothing": bool(cli.compare_do_nothing),
+        "candidate_unilateral_actions_total": int(len(all_requests)),
         "candidate_unilateral_actions_per_decision": int(len(requests)),
+        "candidate_sample_size": (
+            None
+            if cli.candidate_sample_size is None
+            else int(cli.candidate_sample_size)
+        ),
+        "candidate_sample_seed": int(candidate_sample_seed),
         "agent_ids": agent_ids,
         "reduced_action_sizes": reduced_action_sizes,
         "greedy_mean_survival": float(greedy_survivals.mean()) if rows else float("nan"),
-        "do_nothing_mean_survival": float(noop_survivals.mean()) if rows else float("nan"),
-        "mean_survival_delta": float(deltas.mean()) if rows else float("nan"),
+        "do_nothing_mean_survival": (
+            float(noop_survivals.mean())
+            if rows and bool(cli.compare_do_nothing)
+            else float("nan")
+        ),
+        "mean_survival_delta": (
+            float(deltas.mean())
+            if rows and bool(cli.compare_do_nothing)
+            else float("nan")
+        ),
         "greedy_full_survival_rate": float(greedy_full.mean()) if rows else float("nan"),
-        "do_nothing_full_survival_rate": float(noop_full.mean()) if rows else float("nan"),
-        "greedy_better_episodes": int((deltas > 0).sum()) if rows else 0,
-        "greedy_equal_episodes": int(np.isclose(deltas, 0.0).sum()) if rows else 0,
-        "greedy_worse_episodes": int((deltas < 0).sum()) if rows else 0,
+        "do_nothing_full_survival_rate": (
+            float(noop_full.mean())
+            if rows and bool(cli.compare_do_nothing)
+            else float("nan")
+        ),
+        "greedy_better_episodes": (
+            int((deltas > 0).sum()) if rows and bool(cli.compare_do_nothing) else 0
+        ),
+        "greedy_equal_episodes": (
+            int(np.isclose(deltas, 0.0).sum())
+            if rows and bool(cli.compare_do_nothing)
+            else 0
+        ),
+        "greedy_worse_episodes": (
+            int((deltas < 0).sum()) if rows and bool(cli.compare_do_nothing) else 0
+        ),
         "same_chronic_fingerprint_rate": (
-            float(same_fingerprints.mean()) if rows else float("nan")
+            float(same_fingerprints.mean())
+            if rows and bool(cli.compare_do_nothing)
+            else float("nan")
         ),
         "episodes": rows,
     }
@@ -693,17 +842,25 @@ def main() -> None:
     print("========== Greedy Evaluation Complete ==========")
     print(f"Episodes: {len(rows)}")
     print(f"Greedy mean survival: {100 * summary['greedy_mean_survival']:.3f}%")
-    print(f"Do-nothing mean survival: {100 * summary['do_nothing_mean_survival']:.3f}%")
-    print(f"Mean survival delta: {100 * summary['mean_survival_delta']:.3f}%")
+    if bool(cli.compare_do_nothing):
+        print(f"Do-nothing mean survival: {100 * summary['do_nothing_mean_survival']:.3f}%")
+        print(f"Mean survival delta: {100 * summary['mean_survival_delta']:.3f}%")
+    else:
+        print("Do-nothing mean survival: skipped")
+        print("Mean survival delta: skipped")
     print(f"Greedy full survival rate: {100 * summary['greedy_full_survival_rate']:.3f}%")
-    print(
-        "Do-nothing full survival rate: "
-        f"{100 * summary['do_nothing_full_survival_rate']:.3f}%"
-    )
-    print(
-        "Same chronic fingerprint rate: "
-        f"{100 * summary['same_chronic_fingerprint_rate']:.3f}%"
-    )
+    if bool(cli.compare_do_nothing):
+        print(
+            "Do-nothing full survival rate: "
+            f"{100 * summary['do_nothing_full_survival_rate']:.3f}%"
+        )
+        print(
+            "Same chronic fingerprint rate: "
+            f"{100 * summary['same_chronic_fingerprint_rate']:.3f}%"
+        )
+    else:
+        print("Do-nothing full survival rate: skipped")
+        print("Same chronic fingerprint rate: skipped")
     print(f"JSON: {_safe_path(json_path)}")
     print(f"CSV: {_safe_path(csv_path)}")
     print("================================================")

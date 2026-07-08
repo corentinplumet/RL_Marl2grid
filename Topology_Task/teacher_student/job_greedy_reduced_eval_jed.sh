@@ -38,6 +38,9 @@ Common overrides:
   DECISION_RHO_THRESHOLD=0.90
   REQUIRE_IMPROVEMENT=true
   IMPROVEMENT_TOLERANCE=1e-3
+  CANDIDATE_SAMPLE_SIZE=     # optional fixed random subset of unilateral actions
+  CANDIDATE_SAMPLE_SEED=     # leave empty to use SEED
+  COMPARE_DO_NOTHING=true
   SIM_WORKERS=71
   OUTPUT_DIR=outputs/teacher_student_greedy_eval
 
@@ -94,6 +97,9 @@ CHRONIC_SAMPLE_REPLACEMENT="${CHRONIC_SAMPLE_REPLACEMENT:-false}"
 DECISION_RHO_THRESHOLD="${DECISION_RHO_THRESHOLD:-0.90}"
 REQUIRE_IMPROVEMENT="${REQUIRE_IMPROVEMENT:-true}"
 IMPROVEMENT_TOLERANCE="${IMPROVEMENT_TOLERANCE:-1e-3}"
+CANDIDATE_SAMPLE_SIZE="${CANDIDATE_SAMPLE_SIZE:-}"
+CANDIDATE_SAMPLE_SEED="${CANDIDATE_SAMPLE_SEED:-}"
+COMPARE_DO_NOTHING="${COMPARE_DO_NOTHING:-true}"
 TIME_STEP="${TIME_STEP:-1}"
 DEFAULT_SIM_WORKERS="${SLURM_CPUS_PER_TASK:-1}"
 if [ "${DEFAULT_SIM_WORKERS}" -gt 1 ]; then
@@ -124,6 +130,7 @@ args=(
     --decision-rho-threshold "${DECISION_RHO_THRESHOLD}"
     --require-improvement "${REQUIRE_IMPROVEMENT}"
     --improvement-tolerance "${IMPROVEMENT_TOLERANCE}"
+    --compare-do-nothing "${COMPARE_DO_NOTHING}"
     --time-step "${TIME_STEP}"
     --sim-workers "${SIM_WORKERS}"
     --sim-start-method "${SIM_START_METHOD}"
@@ -141,6 +148,14 @@ fi
 
 if [ -n "${CHRONIC_SAMPLE_SEED}" ]; then
     args+=(--chronic-sample-seed "${CHRONIC_SAMPLE_SEED}")
+fi
+
+if [ -n "${CANDIDATE_SAMPLE_SIZE}" ]; then
+    args+=(--candidate-sample-size "${CANDIDATE_SAMPLE_SIZE}")
+fi
+
+if [ -n "${CANDIDATE_SAMPLE_SEED}" ]; then
+    args+=(--candidate-sample-seed "${CANDIDATE_SAMPLE_SEED}")
 fi
 
 source "${CONDA_BASE}/etc/profile.d/conda.sh"
@@ -165,6 +180,9 @@ echo "Chronic sample replacement: ${CHRONIC_SAMPLE_REPLACEMENT}"
 echo "Decision rho threshold: ${DECISION_RHO_THRESHOLD}"
 echo "Require improvement: ${REQUIRE_IMPROVEMENT}"
 echo "Improvement tolerance: ${IMPROVEMENT_TOLERANCE}"
+echo "Candidate sample size: ${CANDIDATE_SAMPLE_SIZE:-all}"
+echo "Candidate sample seed: ${CANDIDATE_SAMPLE_SEED:-SEED}"
+echo "Compare do-nothing replay: ${COMPARE_DO_NOTHING}"
 echo "Simulation workers: ${SIM_WORKERS}"
 echo "Output dir: ${OUTPUT_DIR}"
 echo "Extra args: $*"
