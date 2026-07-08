@@ -1,17 +1,16 @@
-#!/usr/bin/env bash
-# EPFL Izar launcher for pure do-nothing evaluation.
-# Submit from the repository root, for example:
-#   ENV_ID=bus36_wcci SPLIT=all MAX_EPISODES=2880 \
-#   sbatch Topology_Task/teacher_student/job_do_nothing_eval_izar.sh
-#SBATCH --job-name=do_nothing_eval
+#!/bin/bash
 #SBATCH --mail-user=corentin.plumet@epfl.ch
-#SBATCH --nodes=1
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=16
-#SBATCH --mem=32G
-#SBATCH --time=24:00:00
+#SBATCH --job-name=do_nothing_eval
 #SBATCH --output=Topology_Task/teacher_student/slurm-%x-%j.out
 #SBATCH --error=Topology_Task/teacher_student/slurm-%x-%j.err
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=40
+#SBATCH --mem=128G
+#SBATCH --time=24:00:00
+#SBATCH --qos=long
+#SBATCH --gres=gpu:1
+
 
 set -euo pipefail
 
