@@ -103,5 +103,5 @@ action0_logit_bonus_fraction = 1.0
 deterministic_eval = true
 eval_episodes = 10
 eval_all_split_chronics = false
-eval_train_chronics = false
+eval_train_chronics = true
 optimize_critic_updates = false
