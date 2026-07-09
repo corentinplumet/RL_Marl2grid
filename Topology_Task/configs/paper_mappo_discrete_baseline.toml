@@ -93,7 +93,7 @@ clip_coef = 0.2
 clip_vfloss = true
 entropy_coef = 0.01
 vf_coef = 0.5
-init_do_nothing_prob = 0.5
+init_do_nothing_prob = 0.0
 norm_reward = false
 
 # Newer branch knobs pinned to no-op values for baseline parity.
