@@ -59,7 +59,6 @@ n1_reward = false
 env_config_path = "scenario.json"
 norm_obs = true
 use_heuristic = false
-heuristic_type = "idle"
 line_margin_reward_weight = 0.0
 topology_reward_weight = 0.0
 optimize_mem = true
