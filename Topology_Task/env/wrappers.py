@@ -26,7 +26,16 @@ class AsyncMultiAgentVecEnv:
 
         # Probe observation and action spaces from first environment
         self.remotes[0].send(("get_spaces", None))
-        self.observation_space, self.action_space = self.remotes[0].recv()
+        spaces = self.remotes[0].recv()
+        if len(spaces) == 2:
+            self.observation_space, self.action_space = spaces
+            self.graph_specs = None
+        elif len(spaces) == 3:
+            self.observation_space, self.action_space, self.graph_specs = spaces
+        else:
+            raise ValueError(
+                f"Expected get_spaces to return 2 or 3 values, got {len(spaces)}."
+            )
 
     def reset(self, seed: int = None):
         for remote in self.remotes:
@@ -143,7 +152,13 @@ class AsyncMultiAgentVecEnv:
                     remote.close()
                     break
                 elif cmd == "get_spaces":
-                    remote.send((env.observation_space, env.action_space))
+                    remote.send(
+                        (
+                            env.observation_space,
+                            env.action_space,
+                            getattr(env, "graph_specs", None),
+                        )
+                    )
                 elif cmd == "get_obs_stats":
                     remote.send(env.get_obs_stats())
                 elif cmd == "set_obs_stats":
