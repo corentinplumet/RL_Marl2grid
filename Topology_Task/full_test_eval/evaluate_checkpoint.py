@@ -590,6 +590,17 @@ def _default_output_json(checkpoint_path: Path, model: Optional[str], step: int)
     return output_dir / f"{label}_step{step}_job{job_id}.json"
 
 
+def _default_action_log_dir(
+    checkpoint_path: Path,
+    model: Optional[str],
+    step: int,
+) -> Path:
+    job_id = os.environ.get("SLURM_JOB_ID", "local")
+    label = _safe_name(model or checkpoint_path.stem)
+    output_dir = TASK_DIR / "outputs" / "full_test_eval_actions"
+    return output_dir / f"{label}_step{step}_job{job_id}"
+
+
 def parse_args() -> Namespace:
     parser = argparse.ArgumentParser(
         description="Evaluate a saved MAPPO checkpoint on the full test split."
@@ -705,6 +716,44 @@ def parse_args() -> Namespace:
         help="Optional path for the JSON result summary.",
     )
     parser.add_argument(
+        "--save-action-summary",
+        type=str2bool,
+        default=False,
+        help=(
+            "Save local action-distribution artifacts for the full evaluation. "
+            "This writes action_summary.json, action_distribution.csv, and "
+            "episode_summary.csv."
+        ),
+    )
+    parser.add_argument(
+        "--save-action-trace",
+        type=str2bool,
+        default=False,
+        help=(
+            "Save an exact per-step CSV trace with executed actions, policy "
+            "actions before heuristic override, and pre-action max-rho line info. "
+            "Can be large on full WCCI evaluations."
+        ),
+    )
+    parser.add_argument(
+        "--action-log-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Directory for action artifacts. Defaults to "
+            "outputs/full_test_eval_actions/<checkpoint>_step<step>_job<jobid>."
+        ),
+    )
+    parser.add_argument(
+        "--decode-action-distribution",
+        type=str2bool,
+        default=False,
+        help=(
+            "Decode observed action ids in action_distribution.csv. This is "
+            "compact because it decodes only unique observed actions, not every step."
+        ),
+    )
+    parser.add_argument(
         "--progress",
         type=str2bool,
         default=True,
@@ -769,6 +818,33 @@ def main() -> None:
             f"{_repo_relative(checkpoint_path)} has global_step={checkpoint_step}."
         )
 
+    action_log_dir = None
+    if cli.save_action_summary or cli.save_action_trace:
+        action_log_dir = cli.action_log_dir or _default_action_log_dir(
+            checkpoint_path, cli.model, checkpoint_step
+        )
+        if not action_log_dir.is_absolute():
+            action_log_dir = (TASK_DIR / action_log_dir).resolve()
+        args.full_test_save_action_summary = True
+        args.full_test_action_summary_json = str(action_log_dir / "action_summary.json")
+        args.full_test_action_distribution_csv = str(
+            action_log_dir / "action_distribution.csv"
+        )
+        args.full_test_episode_summary_csv = str(action_log_dir / "episode_summary.csv")
+        args.full_test_action_trace_csv = (
+            str(action_log_dir / "action_trace.csv") if cli.save_action_trace else ""
+        )
+        args.full_test_decode_action_distribution = bool(
+            cli.decode_action_distribution
+        )
+    else:
+        args.full_test_save_action_summary = False
+        args.full_test_action_summary_json = ""
+        args.full_test_action_distribution_csv = ""
+        args.full_test_episode_summary_csv = ""
+        args.full_test_action_trace_csv = ""
+        args.full_test_decode_action_distribution = False
+
     evaluator = Evaluator(
         args,
         logger=None,
@@ -789,6 +865,9 @@ def main() -> None:
     print(f"Eval heuristic: {getattr(args, 'eval_action_heuristic', 'none')}")
     if getattr(args, "eval_action_heuristic", "none") != "none":
         print(f"Eval rho threshold: {getattr(args, 'eval_action_rho_threshold', 0.90)}")
+    if action_log_dir is not None:
+        print(f"Action artifacts: {_repo_relative(action_log_dir)}")
+        print(f"Exact action trace: {bool(cli.save_action_trace)}")
 
     survival = evaluator.evaluate(checkpoint_step, actors, eval_ep=cli.eval_episodes)
 
@@ -823,6 +902,11 @@ def main() -> None:
         ),
         "survival_frac": float(survival),
         "survival_percent": float(100.0 * survival),
+        "action_artifacts": {
+            key: _repo_relative(Path(value))
+            for key, value in getattr(evaluator, "last_action_artifacts", {}).items()
+            if value
+        },
     }
     with output_json.open("w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2, sort_keys=True)
@@ -831,6 +915,8 @@ def main() -> None:
     print(f"Survival fraction: {survival:.6f}")
     print(f"Survival percent: {100.0 * survival:.3f}%")
     print(f"Saved summary: {_repo_relative(output_json)}")
+    for label, path in summary["action_artifacts"].items():
+        print(f"Saved {label}: {path}")
 
 
 if __name__ == "__main__":

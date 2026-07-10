@@ -1,0 +1,52 @@
+{"kind":"deck","id":"pr/uixpta","name":"Deck"}
+{"kind":"layout","layoutId":"4e25fc97-41d5-4f14-9279-f3f34c818a55","name":"Master","type":"master"}
+{"kind":"layout","layoutId":"3c4f2285-07a8-4c76-8d8d-79e0a3e71e6a","name":"Title Slide","type":"title"}
+{"kind":"slide","id":"sl/42a16e","slide":1,"title":"MAPPO BASELINE","textShapes":13}
+{"kind":"textbox","id":"sh/l87ed8ba","slide":1,"text":"MAPPO BASELINE","textPreview":"MAPPO BASELINE","textChars":14,"textLines":1,"bbox":[42,42,340,30]}
+{"kind":"textbox","id":"sh/ahoza1gv","slide":1,"text":"The run keeps init-code defaults unless the paper specifies otherwise","textPreview":"The run keeps init-code defaults unless the paper specifies otherwise","textChars":69,"textLines":1,"bbox":[42,112,1030,130]}
+{"kind":"textbox","id":"sh/32lszqtc","slide":1,"text":"bus14 topology MAPPO with chronic splitting enabled, no heuristic, no reward normalization, and no action-0 initialization prior.","textPreview":"bus14 topology MAPPO with chronic splitting enabled, no heuristic, no reward normalization, and no action-0 initialization prior.","textChars":129,"textLines":1,"bbox":[42,270,850,58]}
+{"kind":"shape","id":"sh/szqtcj6t","slide":1,"bbox":[42,430,285.5,124]}
+{"kind":"textbox","id":"sh/lkjm1cfa","slide":1,"text":"Grid","textPreview":"Grid","textChars":4,"textLines":1,"bbox":[60,448,249.5,24]}
+{"kind":"textbox","id":"sh/at47y1kr","slide":1,"text":"bus14 topology","textPreview":"bus14 topology","textChars":14,"textLines":1,"bbox":[60,486,249.5,48]}
+{"kind":"shape","id":"sh/3ex0nuxc","slide":1,"bbox":[345.5,430,285.5,124]}
+{"kind":"textbox","id":"sh/w3m94fu1","slide":1,"text":"Parallel envs","textPreview":"Parallel envs","textChars":13,"textLines":1,"bbox":[363.5,448,249.5,24]}
+{"kind":"textbox","id":"sh/loj2t83i","slide":1,"text":"10","textPreview":"10","textChars":2,"textLines":1,"bbox":[363.5,486,249.5,48]}
+{"kind":"shape","id":"sh/9knih4by","slide":1,"bbox":[649,430,285.5,124]}
+{"kind":"textbox","id":"sh/kzupwb2h","slide":1,"text":"Rollout batch","textPreview":"Rollout batch","textChars":13,"textLines":1,"bbox":[667,448,249.5,24]}
+{"kind":"textbox","id":"sh/re1w7mp0","slide":1,"text":"20,000","textPreview":"20,000","textChars":6,"textLines":1,"bbox":[667,486,249.5,48]}
+{"kind":"shape","id":"sh/2t83itgf","slide":1,"bbox":[952.5,430,285.5,124]}
+{"kind":"textbox","id":"sh/9w3m94fu","slide":1,"text":"Training horizon","textPreview":"Training horizon","textChars":16,"textLines":1,"bbox":[970.5,448,249.5,24]}
+{"kind":"textbox","id":"sh/kb6xkf6d","slide":1,"text":"25M steps","textPreview":"25M steps","textChars":9,"textLines":1,"bbox":[970.5,486,249.5,48]}
+{"kind":"textbox","id":"sh/rqd4vmtw","slide":1,"text":"Source: paper_mappo_discrete_baseline.toml; Appendix E Table 10 where marked","textPreview":"Source: paper_mappo_discrete_baseline.toml; Appendix E Table 10 where marked","textChars":76,"textLines":1,"bbox":[42,666,880,24]}
+{"kind":"textbox","id":"sh/25kb6xkf","slide":1,"text":"1","textPreview":"1","textChars":1,"textLines":1,"bbox":[1184,658,54,25]}
+{"kind":"notes","id":"nt/42a16e","slide":1,"text":""}
+{"kind":"slide","id":"sl/odnoll","slide":2,"title":"SETUP AND MODEL","textShapes":5}
+{"kind":"textbox","id":"sh/2t83itgf","slide":2,"text":"SETUP AND MODEL","textPreview":"SETUP AND MODEL","textChars":15,"textLines":1,"bbox":[42,40,420,28]}
+{"kind":"textbox","id":"sh/9knih4by","slide":2,"text":"The baseline stays close to init code outside the paper overrides","textPreview":"The baseline stays close to init code outside the paper overrides","textChars":65,"textLines":1,"bbox":[42,88,1080,96]}
+{"kind":"textbox","id":"sh/kzupwb2h","slide":2,"text":"The table separates environment choices, model shape, and run controls from PPO-specific settings.","textPreview":"The table separates environment choices, model shape, and run controls from PPO-specific settings.","textChars":98,"textLines":1,"bbox":[42,198,1010,40]}
+{"kind":"shape","id":"sh/rqd4vmtw","slide":2,"bbox":[42,252,1196,0]}
+{"kind":"textbox","id":"sh/25kb6xkf","slide":2,"text":"Source: paper_mappo_discrete_baseline.toml; Appendix E Table 10 where marked","textPreview":"Source: paper_mappo_discrete_baseline.toml; Appendix E Table 10 where marked","textChars":76,"textLines":1,"bbox":[42,666,880,24]}
+{"kind":"textbox","id":"sh/9w3m94fu","slide":2,"text":"2","textPreview":"2","textChars":1,"textLines":1,"bbox":[1184,658,54,25]}
+{"kind":"table","id":"tb/5wjudg7a","slide":2,"name":"","rows":10,"cols":4,"preview":"Group | Hyperparameter | Value | Source","bbox":[42,292,1196,354]}
+{"kind":"notes","id":"nt/odnoll","slide":2,"text":""}
+{"kind":"slide","id":"sl/s35600","slide":3,"title":"MODEL AND PAPER OVERRIDES","textShapes":6}
+{"kind":"textbox","id":"sh/xc3ylc7u","slide":3,"text":"MODEL AND PAPER OVERRIDES","textPreview":"MODEL AND PAPER OVERRIDES","textChars":25,"textLines":1,"bbox":[42,40,420,28]}
+{"kind":"textbox","id":"sh/mlkjm1cf","slide":3,"text":"Only the paper-specified PPO settings overwrite init-code defaults","textPreview":"Only the paper-specified PPO settings overwrite init-code defaults","textChars":66,"textLines":1,"bbox":[42,88,1080,96]}
+{"kind":"textbox","id":"sh/f6dcbulw","slide":3,"text":"Model shape remains at the init-code default; the PPO table captures the values reported in Appendix E.","textPreview":"Model shape remains at the init-code default; the PPO table captures the values reported in Appendix E.","textChars":103,"textLines":1,"bbox":[42,198,1010,40]}
+{"kind":"shape","id":"sh/4zidonyd","slide":3,"bbox":[42,252,1196,0]}
+{"kind":"textbox","id":"sh/xkf6dcbu","slide":3,"text":"Source: paper_mappo_discrete_baseline.toml; Appendix E Table 10 where marked","textPreview":"Source: paper_mappo_discrete_baseline.toml; Appendix E Table 10 where marked","textChars":76,"textLines":1,"bbox":[42,666,880,24]}
+{"kind":"textbox","id":"sh/mtwra5gb","slide":3,"text":"3","textPreview":"3","textChars":1,"textLines":1,"bbox":[1184,658,54,25]}
+{"kind":"textbox","id":"sh/xobm58z2","slide":3,"text":"The paper reports MAPPO N steps total as 20,000. With 10 parallel environments, this maps to 2,000 rollout steps per environment.","textPreview":"The paper reports MAPPO N steps total as 20,000. With 10 parallel environments, this maps to 2,000 rollout steps per environment.","textChars":129,"textLines":1,"bbox":[42,538,500,74]}
+{"kind":"table","id":"tb/ahoza1gv","slide":3,"name":"","rows":5,"cols":2,"preview":"Model default kept | Value","bbox":[42,292,500,210]}
+{"kind":"table","id":"tb/lwval87e","slide":3,"name":"","rows":10,"cols":2,"preview":"Paper override | Value","bbox":[600,292,638,354]}
+{"kind":"notes","id":"nt/s35600","slide":3,"text":""}
+{"kind":"slide","id":"sl/zhkkqi","slide":4,"title":"DEFAULTS AND EXCLUSIONS","textShapes":5}
+{"kind":"textbox","id":"sh/sfil0rqd","slide":4,"text":"DEFAULTS AND EXCLUSIONS","textPreview":"DEFAULTS AND EXCLUSIONS","textChars":23,"textLines":1,"bbox":[42,40,420,28]}
+{"kind":"textbox","id":"sh/zupwb2hw","slide":4,"text":"Silent paper fields stay at init-code defaults, while explicit exclusions stay off","textPreview":"Silent paper fields stay at init-code defaults, while explicit exclusions stay off","textChars":82,"textLines":1,"bbox":[42,88,1080,96]}
+{"kind":"textbox","id":"sh/a9w3m94f","slide":4,"text":"This separates ordinary PPO defaults from controls that were disabled to keep the baseline clean.","textPreview":"This separates ordinary PPO defaults from controls that were disabled to keep the baseline clean.","textChars":97,"textLines":1,"bbox":[42,198,1010,40]}
+{"kind":"shape","id":"sh/hcrmhk3q","slide":4,"bbox":[42,252,1196,0]}
+{"kind":"textbox","id":"sh/orytsvu9","slide":4,"text":"Source: paper_mappo_discrete_baseline.toml; Appendix E Table 10 where marked","textPreview":"Source: paper_mappo_discrete_baseline.toml; Appendix E Table 10 where marked","textChars":76,"textLines":1,"bbox":[42,666,880,24]}
+{"kind":"textbox","id":"sh/z61032ls","slide":4,"text":"4","textPreview":"4","textChars":1,"textLines":1,"bbox":[1184,658,54,25]}
+{"kind":"table","id":"tb/ra5gbq1o","slide":4,"name":"","rows":8,"cols":2,"preview":"Init-code default kept | Value","bbox":[42,292,560,304]}
+{"kind":"table","id":"tb/kzupwb2h","slide":4,"name":"","rows":8,"cols":2,"preview":"Explicit exclusion | Value","bbox":[678,292,560,304]}
+{"kind":"notes","id":"nt/zhkkqi","slide":4,"text":""}

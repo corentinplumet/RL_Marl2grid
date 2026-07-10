@@ -141,6 +141,31 @@ class AsyncMultiAgentVecEnv:
             for agent_id in agent_ids
         }
 
+    def get_current_rho_summary(self) -> List[Dict[str, Any]]:
+        """Collect each worker's global pre-action max rho line summary."""
+        if self.waiting:
+            raise RuntimeError(
+                "Cannot query rho summaries while an async env step is pending."
+            )
+        for remote in self.remotes:
+            remote.send(("get_current_rho_summary", None))
+        return [remote.recv() for remote in self.remotes]
+
+    def get_current_agent_rho_summary(self) -> Dict[str, List[Dict[str, Any]]]:
+        """Collect each worker's per-agent local max rho line summary."""
+        if self.waiting:
+            raise RuntimeError(
+                "Cannot query local rho summaries while an async env step is pending."
+            )
+        for remote in self.remotes:
+            remote.send(("get_current_agent_rho_summary", None))
+        per_worker = [remote.recv() for remote in self.remotes]
+        agent_ids = per_worker[0].keys() if per_worker else []
+        return {
+            agent_id: [worker.get(agent_id, {}) for worker in per_worker]
+            for agent_id in agent_ids
+        }
+
     def decode_action_ids(
         self, action_ids_by_agent: Dict[str, List[int]], env_idx: int = 0
     ) -> Dict[str, Dict[int, str]]:
@@ -230,6 +255,10 @@ class AsyncMultiAgentVecEnv:
                     remote.send(env.get_current_max_rho())
                 elif cmd == "get_current_agent_max_rho":
                     remote.send(env.get_current_agent_max_rho())
+                elif cmd == "get_current_rho_summary":
+                    remote.send(env.get_current_rho_summary())
+                elif cmd == "get_current_agent_rho_summary":
+                    remote.send(env.get_current_agent_rho_summary())
                 elif cmd == "decode_action_ids":
                     remote.send(env.decode_action_ids(data))
                 elif cmd == "simulate_action_outcomes":
@@ -346,6 +375,12 @@ class RecordEpisodeStatistics(gym.Wrapper, gym.utils.RecordConstructorArgs):
 
     def get_current_agent_max_rho(self) -> Dict[str, float]:
         return self.env.get_current_agent_max_rho()
+
+    def get_current_rho_summary(self) -> Dict[str, Any]:
+        return self.env.get_current_rho_summary()
+
+    def get_current_agent_rho_summary(self) -> Dict[str, Dict[str, Any]]:
+        return self.env.get_current_agent_rho_summary()
 
     def reshuffle_chronics(self, seed: Optional[int] = None) -> None:
         return self.env.reshuffle_chronics(seed=seed)

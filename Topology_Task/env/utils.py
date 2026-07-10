@@ -1542,6 +1542,93 @@ class MAEnvWrapper(MAEnv):
             )
         return result
 
+    def _line_context(self, line_id: int) -> Dict[str, Any]:
+        """Return stable metadata for a Grid2Op line id."""
+        line_id = int(line_id)
+        if line_id < 0:
+            return {
+                "line_id": -1,
+                "line_name": "",
+                "line_or_subid": -1,
+                "line_ex_subid": -1,
+                "line_agents": [],
+            }
+
+        names = getattr(self.g2op_env, "name_line", None)
+        line_name = ""
+        try:
+            if names is not None and line_id < len(names):
+                line_name = str(names[line_id])
+        except Exception:
+            line_name = ""
+
+        def line_endpoint(attr: str) -> int:
+            values = getattr(self.g2op_env, attr, None)
+            try:
+                if values is not None and line_id < len(values):
+                    return int(values[line_id])
+            except Exception:
+                pass
+            return -1
+
+        line_agents = []
+        for agent_id, line_ids in self.agent_line_domains.items():
+            if line_id in set(np.asarray(line_ids, dtype=np.int64).tolist()):
+                line_agents.append(agent_id)
+
+        return {
+            "line_id": line_id,
+            "line_name": line_name,
+            "line_or_subid": line_endpoint("line_or_to_subid"),
+            "line_ex_subid": line_endpoint("line_ex_to_subid"),
+            "line_agents": line_agents,
+        }
+
+    def _rho_summary_for_line_ids(self, line_ids: Optional[np.ndarray] = None) -> Dict[str, Any]:
+        """Return max rho plus line metadata over all lines or a subset."""
+        rho = getattr(self._obs, "rho", None)
+        rho = np.asarray([] if rho is None else rho, dtype=np.float32)
+        if line_ids is None:
+            candidate_ids = np.arange(rho.size, dtype=np.int64)
+        else:
+            candidate_ids = np.asarray(line_ids, dtype=np.int64)
+            candidate_ids = candidate_ids[
+                (candidate_ids >= 0) & (candidate_ids < rho.size)
+            ]
+
+        if rho.size == 0 or candidate_ids.size == 0:
+            max_rho = float("nan")
+            worst_line = -1
+        else:
+            candidate_rho = rho[candidate_ids]
+            finite = np.isfinite(candidate_rho)
+            if finite.any():
+                finite_ids = candidate_ids[finite]
+                finite_rho = candidate_rho[finite]
+                local_idx = int(np.argmax(finite_rho))
+                worst_line = int(finite_ids[local_idx])
+                max_rho = float(finite_rho[local_idx])
+            else:
+                max_rho = float("nan")
+                worst_line = -1
+
+        summary = {"max_rho": max_rho, "worst_line": worst_line}
+        summary.update(self._line_context(worst_line))
+        return summary
+
+    def get_current_rho_summary(self) -> Dict[str, Any]:
+        """Return current global max rho and the corresponding line metadata."""
+        return self._rho_summary_for_line_ids()
+
+    def get_current_agent_rho_summary(self) -> Dict[str, Dict[str, Any]]:
+        """Return each agent's local max rho and corresponding line metadata."""
+        return {
+            agent_id: self._rho_summary_for_line_ids(
+                self.agent_line_domains.get(agent_id, np.asarray([], dtype=np.int64))
+            )
+            for agent_id in self._agent_ids
+        }
+
     def get_explainability_state(self) -> Dict[str, Any]:
         """Return lightweight physical diagnostics for the current Grid2Op state."""
         obs = self._obs

@@ -1,5 +1,8 @@
+import csv
+import json
 import os
-from collections import deque
+from collections import Counter, deque
+from pathlib import Path
 
 from common.action_trace import (
     build_action_trace_table,
@@ -8,7 +11,11 @@ from common.action_trace import (
     tensor_scalar_to_float,
     tensor_scalar_to_int,
 )
-from common.explainability import explain_arrays_from_infos, summarize_explain_arrays
+from common.explainability import (
+    extract_transition_explain,
+    explain_arrays_from_infos,
+    summarize_explain_arrays,
+)
 from common.imports import *
 from common.logger import Logger
 from common.utils import cast_np_to_tensors, stack_agent_obs_by_env
@@ -107,6 +114,26 @@ class Evaluator:
         self.metric_prefix = metric_prefix
         self.chronic_split = chronic_split
         self.eval_progress_print = bool(getattr(args, "eval_progress_print", False))
+        self.full_test_save_action_summary = bool(
+            getattr(args, "full_test_save_action_summary", False)
+        )
+        self.full_test_action_summary_json = str(
+            getattr(args, "full_test_action_summary_json", "") or ""
+        )
+        self.full_test_action_distribution_csv = str(
+            getattr(args, "full_test_action_distribution_csv", "") or ""
+        )
+        self.full_test_episode_summary_csv = str(
+            getattr(args, "full_test_episode_summary_csv", "") or ""
+        )
+        self.full_test_action_trace_csv = str(
+            getattr(args, "full_test_action_trace_csv", "") or ""
+        )
+        self.full_test_decode_action_distribution = bool(
+            getattr(args, "full_test_decode_action_distribution", False)
+        )
+        self.last_action_artifacts: Dict[str, str] = {}
+        self.last_action_summary: Dict[str, Any] = {}
         # if self.use_heuristic: self.env.set_n_rewards(len(self.reward_tags))
 
     def _should_randomize_eval_chronics(self, eval_ep: int) -> bool:
@@ -277,6 +304,228 @@ class Evaluator:
             return th.zeros_like(action)
         return 0
 
+    @staticmethod
+    def _csv_value(value: Any) -> Any:
+        if isinstance(value, (list, tuple, set)):
+            return "|".join(str(item) for item in value)
+        if value is None:
+            return ""
+        return value
+
+    @staticmethod
+    def _safe_counter_dict(counter: Counter) -> Dict[str, int]:
+        return {str(key): int(value) for key, value in sorted(counter.items())}
+
+    @staticmethod
+    def _most_common_key(counter: Counter) -> int:
+        if not counter:
+            return -1
+        return int(counter.most_common(1)[0][0])
+
+    def _action_trace_columns(self, agent_ids: List[str]) -> List[str]:
+        columns = [
+            "global_step",
+            "eval_label",
+            "step",
+            "episode",
+            "episode_step",
+            "chronic_name",
+            "chronic_path",
+            "chronic_fingerprint",
+            "chronic_datetime",
+            "chronic_reset_count",
+            "pre_max_rho",
+            "pre_worst_line",
+            "pre_worst_line_name",
+            "pre_worst_line_or_subid",
+            "pre_worst_line_ex_subid",
+            "pre_worst_line_agents",
+            "post_max_rho",
+            "post_worst_line",
+            "non_idle_agents",
+            "reward_agent_0",
+            "done",
+        ]
+        for agent in agent_ids:
+            columns.extend(
+                [
+                    f"policy_action_id_{agent}",
+                    f"action_id_{agent}",
+                    f"action_nonidle_{agent}",
+                    f"heuristic_force_noop_{agent}",
+                    f"heuristic_pre_max_rho_{agent}",
+                    f"local_max_rho_{agent}",
+                    f"local_worst_line_{agent}",
+                    f"local_worst_line_name_{agent}",
+                    f"local_worst_line_or_subid_{agent}",
+                    f"local_worst_line_ex_subid_{agent}",
+                    f"local_worst_line_agents_{agent}",
+                ]
+            )
+        return columns
+
+    def _get_rho_summary(self) -> Dict[str, Any]:
+        getter = getattr(self.env, "get_current_rho_summary", None)
+        if not callable(getter):
+            return {}
+        try:
+            return getter()
+        except Exception:
+            return {}
+
+    def _get_agent_rho_summary(self) -> Dict[str, Dict[str, Any]]:
+        getter = getattr(self.env, "get_current_agent_rho_summary", None)
+        if not callable(getter):
+            return {}
+        try:
+            return getter()
+        except Exception:
+            return {}
+
+    def _write_action_artifacts(
+        self,
+        *,
+        glob_step: int,
+        eval_label: str,
+        agent_ids: List[str],
+        eval_ep: int,
+        n_eval_steps: int,
+        action_counts: Dict[str, Counter],
+        policy_action_counts: Dict[str, Counter],
+        heuristic_force_noop_counts: Dict[str, int],
+        heuristic_blocked_nonidle_counts: Dict[str, int],
+        worst_line_counts: Counter,
+        episode_rows: List[Dict[str, Any]],
+    ) -> None:
+        if not self.full_test_save_action_summary:
+            return
+
+        self.last_action_artifacts = dict(self.last_action_artifacts)
+        self.last_action_summary = {}
+
+        decoded_actions = {}
+        if self.full_test_decode_action_distribution:
+            action_ids_by_agent = {
+                agent: sorted(int(action_id) for action_id in counts.keys())
+                for agent, counts in action_counts.items()
+            }
+            decoded_actions = decode_action_ids_safely(
+                self.env.decode_action_ids,
+                action_ids_by_agent,
+            )
+
+        distribution_rows = []
+        for agent in agent_ids:
+            total = sum(action_counts[agent].values())
+            policy_total = sum(policy_action_counts[agent].values())
+            all_action_ids = sorted(
+                set(action_counts[agent].keys())
+                | set(policy_action_counts[agent].keys())
+            )
+            for action_id in all_action_ids:
+                count = int(action_counts[agent].get(action_id, 0))
+                policy_count = int(policy_action_counts[agent].get(action_id, 0))
+                row = {
+                    "agent_id": agent,
+                    "action_id": int(action_id),
+                    "is_action0": int(action_id == 0),
+                    "count": count,
+                    "fraction": count / max(total, 1),
+                    "policy_count": policy_count,
+                    "policy_fraction": policy_count / max(policy_total, 1),
+                }
+                if decoded_actions:
+                    row["decoded_action"] = decoded_actions.get(agent, {}).get(
+                        int(action_id), ""
+                    )
+                distribution_rows.append(row)
+
+        if self.full_test_action_distribution_csv:
+            path = Path(self.full_test_action_distribution_csv)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            columns = [
+                "agent_id",
+                "action_id",
+                "is_action0",
+                "count",
+                "fraction",
+                "policy_count",
+                "policy_fraction",
+            ]
+            if decoded_actions:
+                columns.append("decoded_action")
+            with path.open("w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=columns)
+                writer.writeheader()
+                writer.writerows(distribution_rows)
+            self.last_action_artifacts["action_distribution_csv"] = str(path)
+
+        if self.full_test_episode_summary_csv:
+            path = Path(self.full_test_episode_summary_csv)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if episode_rows:
+                columns = list(episode_rows[0].keys())
+            else:
+                columns = [
+                    "episode",
+                    "chronic_name",
+                    "chronic_fingerprint",
+                    "survival",
+                    "steps",
+                ]
+            with path.open("w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=columns)
+                writer.writeheader()
+                writer.writerows(episode_rows)
+            self.last_action_artifacts["episode_summary_csv"] = str(path)
+
+        summary = {
+            "global_step": int(glob_step),
+            "eval_label": eval_label,
+            "eval_episodes": int(eval_ep),
+            "n_eval_steps": int(n_eval_steps),
+            "action_distribution_csv": self.last_action_artifacts.get(
+                "action_distribution_csv"
+            ),
+            "episode_summary_csv": self.last_action_artifacts.get(
+                "episode_summary_csv"
+            ),
+            "action_trace_csv": self.last_action_artifacts.get("action_trace_csv"),
+            "agents": {},
+            "worst_line_counts": self._safe_counter_dict(worst_line_counts),
+            "most_common_worst_line": self._most_common_key(worst_line_counts),
+        }
+        for agent in agent_ids:
+            total = sum(action_counts[agent].values())
+            action0_count = int(action_counts[agent].get(0, 0))
+            nonidle_count = int(total - action0_count)
+            summary["agents"][agent] = {
+                "n_steps": int(total),
+                "action0_count": action0_count,
+                "action0_fraction": action0_count / max(total, 1),
+                "nonidle_count": nonidle_count,
+                "nonidle_fraction": nonidle_count / max(total, 1),
+                "heuristic_force_noop_count": int(
+                    heuristic_force_noop_counts.get(agent, 0)
+                ),
+                "heuristic_blocked_nonidle_count": int(
+                    heuristic_blocked_nonidle_counts.get(agent, 0)
+                ),
+                "action_counts": self._safe_counter_dict(action_counts[agent]),
+                "policy_action_counts": self._safe_counter_dict(
+                    policy_action_counts[agent]
+                ),
+            }
+
+        if self.full_test_action_summary_json:
+            path = Path(self.full_test_action_summary_json)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with path.open("w", encoding="utf-8") as f:
+                json.dump(summary, f, indent=2, sort_keys=True)
+                f.write("\n")
+            self.last_action_artifacts["action_summary_json"] = str(path)
+        self.last_action_summary = summary
+
     def _log_per_step_reward_metrics(
         self,
         glob_step: int,
@@ -347,142 +596,320 @@ class Evaluator:
         episode_chronic_names = []
         episode_chronic_paths = []
         episode_chronic_fingerprints = []
-        while len(ep_survivals) < eval_ep:
-            for agent, model in actors.items():
-                action[agent] = model.get_eval_action(
-                    obs[agent], deterministic=self.deterministic_eval
+        save_action_logs = bool(
+            self.full_test_save_action_summary or self.full_test_action_trace_csv
+        )
+        action_counts = {agent: Counter() for agent in agent_ids}
+        policy_action_counts = {agent: Counter() for agent in agent_ids}
+        episode_action_counts = {agent: Counter() for agent in agent_ids}
+        episode_policy_action_counts = {agent: Counter() for agent in agent_ids}
+        worst_line_counts = Counter()
+        episode_worst_line_counts = Counter()
+        episode_max_pre_rho = float("-inf")
+        episode_rows: List[Dict[str, Any]] = []
+        trace_file = None
+        trace_writer = None
+        if self.full_test_action_trace_csv:
+            trace_path = Path(self.full_test_action_trace_csv)
+            trace_path.parent.mkdir(parents=True, exist_ok=True)
+            trace_file = trace_path.open("w", newline="", encoding="utf-8")
+            trace_writer = csv.DictWriter(
+                trace_file,
+                fieldnames=self._action_trace_columns(agent_ids),
+            )
+            trace_writer.writeheader()
+            self.last_action_artifacts["action_trace_csv"] = str(trace_path)
+
+        try:
+            while len(ep_survivals) < eval_ep:
+                pre_rho_summary = self._get_rho_summary() if save_action_logs else {}
+                pre_agent_rho_summary = (
+                    self._get_agent_rho_summary() if save_action_logs else {}
+                )
+                chronic_name_before = self._current_chronic_name()
+                chronic_path_before = self._current_chronic_field("chronic_path")
+                chronic_fingerprint_before = self._current_chronic_field(
+                    "chronic_fingerprint"
+                )
+                chronic_datetime_before = self._current_chronic_field(
+                    "chronic_datetime"
+                )
+                chronic_reset_count_before = self._current_chronic_field(
+                    "chronic_reset_count"
                 )
 
-            policy_action_ids = {
-                agent: tensor_scalar_to_int(action[agent]) for agent in agent_ids
-            }
-            force_noop, heuristic_max_rho = self._eval_heuristic_decision(agent_ids)
-            if self.eval_action_heuristic != "none":
-                if any(force_noop.values()):
-                    heuristic_any_force_noop_steps += 1
-                if all(force_noop.values()):
-                    heuristic_all_force_noop_steps += 1
-                for agent in agent_ids:
-                    heuristic_max_rhos[agent].append(heuristic_max_rho[agent])
-                    if force_noop[agent]:
-                        heuristic_force_noop_counts[agent] += 1
-                        heuristic_blocked_nonidle_counts[agent] += int(
-                            policy_action_ids[agent] != 0
-                        )
-                        action[agent] = self._zero_action_like(action[agent])
-                    heuristic_policy_nonidle_counts[agent] += int(
-                        policy_action_ids[agent] != 0
+                for agent, model in actors.items():
+                    action[agent] = model.get_eval_action(
+                        obs[agent], deterministic=self.deterministic_eval
                     )
 
-            action_ids = {
-                agent: tensor_scalar_to_int(action[agent]) for agent in agent_ids
-            }
-            next_obs, reward, terminations, truncations, info = self.env.step(action)
-            for agent, action_id in action_ids.items():
-                action_nonidle_counts[agent] += int(action_id != 0)
-            n_eval_steps += 1
-            step_explain = explain_arrays_from_infos(info)
-            if explain_eval_arrays is None:
-                explain_eval_arrays = {
-                    key: [value] for key, value in step_explain.items()
+                policy_action_ids = {
+                    agent: tensor_scalar_to_int(action[agent]) for agent in agent_ids
                 }
-            else:
-                for key, value in step_explain.items():
-                    explain_eval_arrays[key].append(value)
-            done = bool(
-                np.logical_or(
-                    terminations[agent_ids[0]],
-                    truncations[agent_ids[0]],
+                force_noop, heuristic_max_rho = self._eval_heuristic_decision(agent_ids)
+                if self.eval_action_heuristic != "none":
+                    if any(force_noop.values()):
+                        heuristic_any_force_noop_steps += 1
+                    if all(force_noop.values()):
+                        heuristic_all_force_noop_steps += 1
+                    for agent in agent_ids:
+                        heuristic_max_rhos[agent].append(heuristic_max_rho[agent])
+                        if force_noop[agent]:
+                            heuristic_force_noop_counts[agent] += 1
+                            heuristic_blocked_nonidle_counts[agent] += int(
+                                policy_action_ids[agent] != 0
+                            )
+                            action[agent] = self._zero_action_like(action[agent])
+                        heuristic_policy_nonidle_counts[agent] += int(
+                            policy_action_ids[agent] != 0
+                        )
+
+                action_ids = {
+                    agent: tensor_scalar_to_int(action[agent]) for agent in agent_ids
+                }
+                next_obs, reward, terminations, truncations, info = self.env.step(action)
+                for agent, action_id in action_ids.items():
+                    action_nonidle_counts[agent] += int(action_id != 0)
+                    if save_action_logs:
+                        action_counts[agent][int(action_id)] += 1
+                        policy_action_counts[agent][int(policy_action_ids[agent])] += 1
+                        episode_action_counts[agent][int(action_id)] += 1
+                        episode_policy_action_counts[agent][
+                            int(policy_action_ids[agent])
+                        ] += 1
+                if save_action_logs:
+                    worst_line = int(pre_rho_summary.get("worst_line", -1))
+                    if worst_line >= 0:
+                        worst_line_counts[worst_line] += 1
+                        episode_worst_line_counts[worst_line] += 1
+                    pre_max_rho = float(pre_rho_summary.get("max_rho", np.nan))
+                    if np.isfinite(pre_max_rho):
+                        episode_max_pre_rho = max(episode_max_pre_rho, pre_max_rho)
+                n_eval_steps += 1
+                step_explain = explain_arrays_from_infos(info)
+                if explain_eval_arrays is None:
+                    explain_eval_arrays = {
+                        key: [value] for key, value in step_explain.items()
+                    }
+                else:
+                    for key, value in step_explain.items():
+                        explain_eval_arrays[key].append(value)
+                done = bool(
+                    np.logical_or(
+                        terminations[agent_ids[0]],
+                        truncations[agent_ids[0]],
+                    )
                 )
-            )
-            if (
-                self.logger is not None
-                and self.trace_rollout_actions
-                and len(trace_records) < self.trace_rollout_max_steps
-            ):
-                trace_records.append(
-                    {
-                        "source": self.metric_prefix or "eval",
-                        "rollout": 0,
-                        "global_step": glob_step,
-                        "step": trace_step,
-                        "env_idx": 0,
-                        "episode": trace_episode,
-                        "episode_step": trace_episode_step,
+                transition_explain = extract_transition_explain(info) or {}
+                post_explain = transition_explain.get("post", {})
+                if (
+                    self.logger is not None
+                    and self.trace_rollout_actions
+                    and len(trace_records) < self.trace_rollout_max_steps
+                ):
+                    trace_records.append(
+                        {
+                            "source": self.metric_prefix or "eval",
+                            "rollout": 0,
+                            "global_step": glob_step,
+                            "step": trace_step,
+                            "env_idx": 0,
+                            "episode": trace_episode,
+                            "episode_step": trace_episode_step,
+                            "non_idle_agents": sum(
+                                action_id != 0 for action_id in action_ids.values()
+                            ),
+                            "reward_agent_0": tensor_scalar_to_float(
+                                reward[agent_ids[0]]
+                            ),
+                            "done": done,
+                            "actions": action_ids,
+                        }
+                    )
+                if trace_writer is not None:
+                    row = {
+                        "global_step": int(glob_step),
+                        "eval_label": eval_label,
+                        "step": int(trace_step),
+                        "episode": int(trace_episode),
+                        "episode_step": int(trace_episode_step),
+                        "chronic_name": chronic_name_before,
+                        "chronic_path": chronic_path_before,
+                        "chronic_fingerprint": chronic_fingerprint_before,
+                        "chronic_datetime": chronic_datetime_before,
+                        "chronic_reset_count": chronic_reset_count_before,
+                        "pre_max_rho": pre_rho_summary.get("max_rho", np.nan),
+                        "pre_worst_line": pre_rho_summary.get("worst_line", -1),
+                        "pre_worst_line_name": pre_rho_summary.get("line_name", ""),
+                        "pre_worst_line_or_subid": pre_rho_summary.get(
+                            "line_or_subid", -1
+                        ),
+                        "pre_worst_line_ex_subid": pre_rho_summary.get(
+                            "line_ex_subid", -1
+                        ),
+                        "pre_worst_line_agents": self._csv_value(
+                            pre_rho_summary.get("line_agents", [])
+                        ),
+                        "post_max_rho": post_explain.get("max_rho", np.nan),
+                        "post_worst_line": post_explain.get("worst_line", -1),
                         "non_idle_agents": sum(
                             action_id != 0 for action_id in action_ids.values()
                         ),
-                        "reward_agent_0": tensor_scalar_to_float(
-                            reward[agent_ids[0]]
-                        ),
+                        "reward_agent_0": tensor_scalar_to_float(reward[agent_ids[0]]),
                         "done": done,
-                        "actions": action_ids,
                     }
-                )
-            trace_step += 1
+                    for agent in agent_ids:
+                        local_summary = pre_agent_rho_summary.get(agent, {})
+                        row.update(
+                            {
+                                f"policy_action_id_{agent}": int(
+                                    policy_action_ids[agent]
+                                ),
+                                f"action_id_{agent}": int(action_ids[agent]),
+                                f"action_nonidle_{agent}": int(
+                                    action_ids[agent] != 0
+                                ),
+                                f"heuristic_force_noop_{agent}": int(
+                                    force_noop.get(agent, False)
+                                ),
+                                f"heuristic_pre_max_rho_{agent}": heuristic_max_rho.get(
+                                    agent, np.nan
+                                ),
+                                f"local_max_rho_{agent}": local_summary.get(
+                                    "max_rho", np.nan
+                                ),
+                                f"local_worst_line_{agent}": local_summary.get(
+                                    "worst_line", -1
+                                ),
+                                f"local_worst_line_name_{agent}": local_summary.get(
+                                    "line_name", ""
+                                ),
+                                f"local_worst_line_or_subid_{agent}": local_summary.get(
+                                    "line_or_subid", -1
+                                ),
+                                f"local_worst_line_ex_subid_{agent}": local_summary.get(
+                                    "line_ex_subid", -1
+                                ),
+                                f"local_worst_line_agents_{agent}": self._csv_value(
+                                    local_summary.get("line_agents", [])
+                                ),
+                            }
+                        )
+                    trace_writer.writerow(row)
+                trace_step += 1
 
-            obs = cast_np_to_tensors(next_obs, self.device)
-            if not self.use_heuristic:
-                ep_rewards += list(info["agent_0"]["rewards"].values())
-            # Record rewards for plotting purposes
-            if "episode" in info:  # Denote end of an episode
-                episode_length = max(
-                    int(self.env.g2op_ma_env._cent_env.nb_time_step), 1
-                )
-                episode_survival = episode_length / self.max_steps
-                chronic_name = (
-                    self._chronic_name_from_info(info)
-                    or self._current_chronic_name()
-                )
-                chronic_path = (
-                    self._chronic_field_from_info(info, "chronic_path")
-                    or self._current_chronic_field("chronic_path")
-                )
-                chronic_seed = (
-                    self._chronic_field_from_info(info, "chronic_seed")
-                    or self._current_chronic_field("chronic_seed")
-                )
-                chronic_index = (
-                    self._chronic_field_from_info(info, "chronic_index")
-                    or self._current_chronic_field("chronic_index")
-                )
-                chronic_order_position = (
-                    self._chronic_field_from_info(info, "chronic_order_position")
-                    or self._current_chronic_field("chronic_order_position")
-                )
-                chronic_fingerprint = (
-                    self._chronic_field_from_info(info, "chronic_fingerprint")
-                    or "unknown"
-                )
-                episode_chronic_names.append(chronic_name)
-                episode_chronic_paths.append(chronic_path)
-                episode_chronic_fingerprints.append(chronic_fingerprint)
-                ep_survivals.append(episode_survival)
+                obs = cast_np_to_tensors(next_obs, self.device)
                 if not self.use_heuristic:
-                    ep_returns.append(ep_rewards)
-                    ep_returns_per_step.append(ep_rewards / episode_length)
-                if self.eval_progress_print:
-                    completed = len(ep_survivals)
-                    running_survival = sum(ep_survivals) / max(completed, 1)
-                    print(
-                        f"{eval_label} chronic {completed}/{eval_ep}: "
-                        f"{chronic_name} path={chronic_path} "
-                        f"idx={chronic_index} order={chronic_order_position} "
-                        f"seed={chronic_seed} "
-                        f"survival={episode_survival * 100:.3f}% "
-                        f"fingerprint={chronic_fingerprint} "
-                        f"steps={episode_length}/{self.max_steps} "
-                        f"running_mean={running_survival * 100:.3f}%",
-                        flush=True,
+                    ep_rewards += list(info["agent_0"]["rewards"].values())
+                # Record rewards for plotting purposes
+                if "episode" in info:  # Denote end of an episode
+                    episode_length = max(
+                        int(self.env.g2op_ma_env._cent_env.nb_time_step), 1
                     )
-                obs, _ = self.env.reset()
-                obs = cast_np_to_tensors(obs, self.device)
-                if not self.use_heuristic:
-                    ep_rewards = np.zeros(len(self.reward_tags))
-                trace_episode += 1
-                trace_episode_step = 0
-            else:
-                trace_episode_step += 1
+                    episode_survival = episode_length / self.max_steps
+                    chronic_name = (
+                        self._chronic_name_from_info(info)
+                        or self._current_chronic_name()
+                    )
+                    chronic_path = (
+                        self._chronic_field_from_info(info, "chronic_path")
+                        or self._current_chronic_field("chronic_path")
+                    )
+                    chronic_seed = (
+                        self._chronic_field_from_info(info, "chronic_seed")
+                        or self._current_chronic_field("chronic_seed")
+                    )
+                    chronic_index = (
+                        self._chronic_field_from_info(info, "chronic_index")
+                        or self._current_chronic_field("chronic_index")
+                    )
+                    chronic_order_position = (
+                        self._chronic_field_from_info(info, "chronic_order_position")
+                        or self._current_chronic_field("chronic_order_position")
+                    )
+                    chronic_fingerprint = (
+                        self._chronic_field_from_info(info, "chronic_fingerprint")
+                        or "unknown"
+                    )
+                    if save_action_logs:
+                        episode_row = {
+                            "episode": int(trace_episode),
+                            "chronic_name": chronic_name,
+                            "chronic_path": chronic_path,
+                            "chronic_seed": chronic_seed,
+                            "chronic_index": chronic_index,
+                            "chronic_order_position": chronic_order_position,
+                            "chronic_fingerprint": chronic_fingerprint,
+                            "steps": int(episode_length),
+                            "max_steps": int(self.max_steps),
+                            "survival": float(episode_survival),
+                            "max_pre_action_rho": (
+                                float(episode_max_pre_rho)
+                                if np.isfinite(episode_max_pre_rho)
+                                else float("nan")
+                            ),
+                            "most_common_pre_worst_line": self._most_common_key(
+                                episode_worst_line_counts
+                            ),
+                        }
+                        for agent in agent_ids:
+                            total = sum(episode_action_counts[agent].values())
+                            action0 = int(episode_action_counts[agent].get(0, 0))
+                            episode_row[f"action0_count_{agent}"] = action0
+                            episode_row[f"action0_frac_{agent}"] = action0 / max(
+                                total, 1
+                            )
+                            episode_row[f"nonidle_count_{agent}"] = int(
+                                total - action0
+                            )
+                            episode_row[f"policy_nonidle_count_{agent}"] = int(
+                                sum(
+                                    count
+                                    for action_id, count in episode_policy_action_counts[
+                                        agent
+                                    ].items()
+                                    if int(action_id) != 0
+                                )
+                            )
+                        episode_rows.append(episode_row)
+                    episode_chronic_names.append(chronic_name)
+                    episode_chronic_paths.append(chronic_path)
+                    episode_chronic_fingerprints.append(chronic_fingerprint)
+                    ep_survivals.append(episode_survival)
+                    if not self.use_heuristic:
+                        ep_returns.append(ep_rewards)
+                        ep_returns_per_step.append(ep_rewards / episode_length)
+                    if self.eval_progress_print:
+                        completed = len(ep_survivals)
+                        running_survival = sum(ep_survivals) / max(completed, 1)
+                        print(
+                            f"{eval_label} chronic {completed}/{eval_ep}: "
+                            f"{chronic_name} path={chronic_path} "
+                            f"idx={chronic_index} order={chronic_order_position} "
+                            f"seed={chronic_seed} "
+                            f"survival={episode_survival * 100:.3f}% "
+                            f"fingerprint={chronic_fingerprint} "
+                            f"steps={episode_length}/{self.max_steps} "
+                            f"running_mean={running_survival * 100:.3f}%",
+                            flush=True,
+                        )
+                    obs, _ = self.env.reset()
+                    obs = cast_np_to_tensors(obs, self.device)
+                    if not self.use_heuristic:
+                        ep_rewards = np.zeros(len(self.reward_tags))
+                    trace_episode += 1
+                    trace_episode_step = 0
+                    episode_action_counts = {agent: Counter() for agent in agent_ids}
+                    episode_policy_action_counts = {
+                        agent: Counter() for agent in agent_ids
+                    }
+                    episode_worst_line_counts = Counter()
+                    episode_max_pre_rho = float("-inf")
+                else:
+                    trace_episode_step += 1
+        finally:
+            if trace_file is not None:
+                trace_file.close()
 
         # Calculate average survival rate and return over the evaluated episodes
         avg_survival = sum(ep_survivals) / eval_ep
@@ -490,6 +917,20 @@ class Evaluator:
         avg_return_per_step = [
             sum(r) / eval_ep for r in zip(*ep_returns_per_step)
         ]
+
+        self._write_action_artifacts(
+            glob_step=glob_step,
+            eval_label=eval_label,
+            agent_ids=agent_ids,
+            eval_ep=eval_ep,
+            n_eval_steps=n_eval_steps,
+            action_counts=action_counts,
+            policy_action_counts=policy_action_counts,
+            heuristic_force_noop_counts=heuristic_force_noop_counts,
+            heuristic_blocked_nonidle_counts=heuristic_blocked_nonidle_counts,
+            worst_line_counts=worst_line_counts,
+            episode_rows=episode_rows,
+        )
 
         # Log the metrics if logger is available
         if self.logger:
