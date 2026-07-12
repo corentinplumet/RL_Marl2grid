@@ -391,6 +391,9 @@ class RecordEpisodeStatistics(gym.Wrapper, gym.utils.RecordConstructorArgs):
     def reshuffle_chronics(self, seed: Optional[int] = None) -> None:
         return self.env.reshuffle_chronics(seed=seed)
 
+    def set_chronic_window(self, start: int, count: int) -> Dict[str, int]:
+        return self.env.set_chronic_window(start=start, count=count)
+
     def simulate_action_outcomes(
         self,
         requests: List[Dict[str, Any]],

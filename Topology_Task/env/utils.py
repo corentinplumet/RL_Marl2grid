@@ -409,6 +409,7 @@ def _current_chronic_subpaths(chronics_handler: Any) -> List[str]:
 def _set_chronics_handler_order(
     chronics_handler: Any,
     ordered_chronics: List[str],
+    reset_position: bool = False,
 ) -> bool:
     if not ordered_chronics:
         return False
@@ -439,11 +440,16 @@ def _set_chronics_handler_order(
 
     chronics_handler._order = np.asarray(order, dtype=int)
     prev_cache_id = getattr(chronics_handler, "_prev_cache_id", None)
-    if prev_cache_id is not None:
+    if reset_position and hasattr(chronics_handler, "_prev_cache_id"):
+        chronics_handler._prev_cache_id = -1
+    elif prev_cache_id is not None:
         chronics_handler._prev_cache_id = int(prev_cache_id) % len(order)
-    metadata_method = getattr(chronics_handler, "_set_current_chronic_metadata", None)
-    if callable(metadata_method):
-        metadata_method()
+    if not reset_position and prev_cache_id is not None:
+        metadata_method = getattr(
+            chronics_handler, "_set_current_chronic_metadata", None
+        )
+        if callable(metadata_method):
+            metadata_method()
     return True
 
 
@@ -740,6 +746,7 @@ class MAEnvWrapper(MAEnv):
         self.chronic_split = _resolve_chronic_split(args, eval_env, chronic_split)
         self.chronic_split_size = None
         self.chronic_split_total = None
+        self.chronic_split_order = None
         split_summary = None
         if self.chronic_split is not None:
             split_summary = _apply_chronic_split(
@@ -750,6 +757,8 @@ class MAEnvWrapper(MAEnv):
             )
             self.chronic_split_size = split_summary["selected"]
             self.chronic_split_total = split_summary["total"]
+            if split_summary.get("ordered_chronics"):
+                self.chronic_split_order = list(split_summary["ordered_chronics"])
             if idx == 0 or eval_env:
                 shard_text = (
                     f" shard {split_summary['shard_index']}/"
@@ -788,6 +797,7 @@ class MAEnvWrapper(MAEnv):
             _set_chronics_handler_order(
                 self.g2op_env.chronics_handler,
                 split_summary["ordered_chronics"],
+                reset_position=True,
             )
         else:
             order_seed = _stable_int_seed(
@@ -1119,6 +1129,42 @@ class MAEnvWrapper(MAEnv):
         if not shuffled:
             detail = "; ".join(errors[-4:]) if errors else "no shuffle method found"
             raise RuntimeError(f"Could not reshuffle chronics: {detail}")
+
+    def set_chronic_window(self, start: int, count: int) -> Dict[str, int]:
+        """Rotate the active chronic order so the next reset starts a window.
+
+        This is used by validation when evaluating a small fixed-size subset of
+        a train/test split: eval 0 gets chronics 0..N-1, eval 1 gets N..2N-1,
+        and so on, wrapping around the split when needed.
+        """
+        if not self.chronic_split_order:
+            raise RuntimeError("No explicit chronic split order is available.")
+
+        split_size = len(self.chronic_split_order)
+        if split_size <= 0:
+            raise RuntimeError("The active chronic split is empty.")
+        count = min(max(int(count), 1), split_size)
+        start = int(start) % split_size
+        ordered = self.chronic_split_order[start:] + self.chronic_split_order[:start]
+
+        targets = self._current_chronic_handlers()
+        successes = 0
+        for handler in targets:
+            if _set_chronics_handler_order(handler, ordered, reset_position=True):
+                successes += 1
+        if successes == 0:
+            raise RuntimeError("Could not set the active chronic evaluation window.")
+
+        end = start + count
+        wrapped = end > split_size
+
+        return {
+            "start": start,
+            "count": count,
+            "split_size": split_size,
+            "end_exclusive": end % split_size if wrapped else end,
+            "wrapped": int(wrapped),
+        }
 
     def set_chronic_id(self, chronic_id: int) -> None:
         """Best-effort request for Grid2Op to use a specific chronic on reset."""

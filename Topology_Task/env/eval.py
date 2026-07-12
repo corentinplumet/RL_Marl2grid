@@ -107,6 +107,7 @@ class Evaluator:
         self._eval_all_split_chronics = bool(
             getattr(args, "eval_all_split_chronics", True)
         )
+        self._eval_window_index = 0
         if self._split_chronics and self._eval_all_split_chronics:
             split_size = getattr(self.env.env, "chronic_split_size", None)
             if split_size is not None:
@@ -136,18 +137,36 @@ class Evaluator:
         self.last_action_summary: Dict[str, Any] = {}
         # if self.use_heuristic: self.env.set_n_rewards(len(self.reward_tags))
 
-    def _should_randomize_eval_chronics(self, eval_ep: int) -> bool:
-        """Return whether this eval should draw a fresh random chronic subset."""
-        if self.env_id == "bus14":
-            return False
+    def _should_rotate_eval_chronics(self, eval_ep: int) -> bool:
+        """Return whether this eval should use the next fixed-size split window."""
         if not self._split_chronics:
             return False
-        split_size = getattr(self.env.env, "chronic_split_size", None)
-        if split_size is not None and int(eval_ep) >= int(split_size):
+        if self._eval_all_split_chronics:
             return False
-        return True
+        split_size = getattr(self.env.env, "chronic_split_size", None)
+        if split_size is None:
+            return False
+        return int(eval_ep) < int(split_size)
 
-    def _randomize_eval_chronics(self, glob_step: int, eval_ep: int) -> None:
+    def _apply_eval_chronic_window(self, glob_step: int, eval_ep: int) -> None:
+        if self._should_rotate_eval_chronics(eval_ep):
+            split_size = int(getattr(self.env.env, "chronic_split_size"))
+            window_size = max(int(eval_ep), 1)
+            start = (self._eval_window_index * window_size) % split_size
+            window = self.env.set_chronic_window(start=start, count=window_size)
+            self._eval_window_index += 1
+            if self.eval_progress_print:
+                eval_label = self.metric_prefix or "eval"
+                end = int(window["end_exclusive"])
+                suffix = " wrapped" if int(window["wrapped"]) else ""
+                print(
+                    f"{eval_label} chronic window: "
+                    f"{int(window['start'])}:{end} of {int(window['split_size'])}"
+                    f"{suffix}",
+                    flush=True,
+                )
+            return
+
         if not self._should_randomize_eval_chronics(eval_ep):
             return
         prefix_offset = 0 if self.metric_prefix in {None, "test"} else 1_000_003
@@ -166,6 +185,19 @@ class Evaluator:
                 f"seed={shuffle_seed} episodes={eval_ep}",
                 flush=True,
             )
+
+    def _should_randomize_eval_chronics(self, eval_ep: int) -> bool:
+        """Fallback for split handlers where the exact split order is unavailable."""
+        if self.env_id == "bus14":
+            return False
+        if not self._split_chronics:
+            return False
+        if self._eval_all_split_chronics:
+            return False
+        split_size = getattr(self.env.env, "chronic_split_size", None)
+        if split_size is not None:
+            return False
+        return True
 
     def _current_chronic_name(self) -> str:
         """Best-effort label for the currently evaluated Grid2Op chronic."""
@@ -555,7 +587,7 @@ class Evaluator:
             eval_ep = self.eval_episodes
 
         eval_label = self.metric_prefix or "eval"
-        self._randomize_eval_chronics(glob_step, eval_ep)
+        self._apply_eval_chronic_window(glob_step, eval_ep)
         if self.eval_progress_print:
             print(
                 f"{eval_label} evaluation start: {eval_ep} chronics, "
