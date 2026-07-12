@@ -438,7 +438,12 @@ def _set_chronics_handler_order(
     if not order:
         return False
 
-    chronics_handler._order = np.asarray(order, dtype=int)
+    order_array = np.asarray(order, dtype=int)
+    shuffle_method = getattr(chronics_handler, "shuffle", None)
+    if callable(shuffle_method):
+        shuffle_method(lambda _order, order_array=order_array: order_array.copy())
+    else:
+        chronics_handler._order = order_array
     prev_cache_id = getattr(chronics_handler, "_prev_cache_id", None)
     if reset_position and hasattr(chronics_handler, "_prev_cache_id"):
         chronics_handler._prev_cache_id = -1
@@ -776,6 +781,14 @@ class MAEnvWrapper(MAEnv):
                         f"with seed {split_summary['order_seed']}",
                         flush=True,
                     )
+                    head = ", ".join(
+                        os.path.basename(os.path.normpath(chronic))
+                        for chronic in split_summary["ordered_chronics"][:8]
+                    )
+                    print(
+                        f"Chronic split '{self.chronic_split}' order head: {head}",
+                        flush=True,
+                    )
                 else:
                     print(
                         f"Chronic split '{self.chronic_split}'{shard_text}: "
@@ -882,6 +895,15 @@ class MAEnvWrapper(MAEnv):
         self._agent_ids = set(self.g2op_ma_env.agents)
         self._agent_ids = self.g2op_ma_env.agents
         self.g2op_ma_env.seed(args.seed + idx)
+        if self.chronic_split_order:
+            successes = self._set_active_chronic_order(
+                self.chronic_split_order, reset_position=True
+            )
+            if successes == 0:
+                raise RuntimeError(
+                    "Could not apply the shuffled chronic order to the active "
+                    "training/evaluation handler."
+                )
 
         # Prepare action and observation spaces
         state_attrs = config["state_attrs"]
@@ -1130,6 +1152,30 @@ class MAEnvWrapper(MAEnv):
             detail = "; ".join(errors[-4:]) if errors else "no shuffle method found"
             raise RuntimeError(f"Could not reshuffle chronics: {detail}")
 
+    def _set_active_chronic_order(
+        self, ordered_chronics: List[str], *, reset_position: bool
+    ) -> int:
+        """Apply a chronic order to every live handler backing this env."""
+        targets = []
+        if hasattr(self, "g2op_ma_env"):
+            targets.extend(self._current_chronic_handlers())
+        else:
+            targets.append(
+                getattr(getattr(self, "g2op_env", None), "chronics_handler", None)
+            )
+
+        successes = 0
+        seen = set()
+        for handler in targets:
+            if handler is None or id(handler) in seen:
+                continue
+            seen.add(id(handler))
+            if _set_chronics_handler_order(
+                handler, ordered_chronics, reset_position=reset_position
+            ):
+                successes += 1
+        return successes
+
     def set_chronic_window(self, start: int, count: int) -> Dict[str, int]:
         """Rotate the active chronic order so the next reset starts a window.
 
@@ -1147,11 +1193,7 @@ class MAEnvWrapper(MAEnv):
         start = int(start) % split_size
         ordered = self.chronic_split_order[start:] + self.chronic_split_order[:start]
 
-        targets = self._current_chronic_handlers()
-        successes = 0
-        for handler in targets:
-            if _set_chronics_handler_order(handler, ordered, reset_position=True):
-                successes += 1
+        successes = self._set_active_chronic_order(ordered, reset_position=True)
         if successes == 0:
             raise RuntimeError("Could not set the active chronic evaluation window.")
 
