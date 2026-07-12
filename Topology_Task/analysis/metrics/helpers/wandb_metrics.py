@@ -2747,6 +2747,124 @@ def _resolve_exact_run_names(expected_names, *, label=None, history=None):
     return _unique_text(resolved)
 
 
+def _resolve_named_plot_spec(spec, *, history=None):
+    """Resolve a user-editable plot spec into a plot_run_means spec.
+
+    Supported selectors:
+    - ``name`` or ``run_name``: one exact W&B run name.
+    - ``runs``: a list of exact W&B run names.
+    - ``prefix``: every available run whose name starts with this prefix.
+    - ``contains``: every available run whose name contains this text.
+    - ``regex``: every available run whose name matches this regular expression.
+    - ``run_dir``: a local run_data folder named ``<run_name>__<run_id>``.
+    """
+    history = _get_history(history)
+    available = available_run_names(history=history)
+    available_set = set(available)
+    resolved = []
+
+    if "run_dir" in spec and spec["run_dir"]:
+        run_dir = Path(spec["run_dir"]).expanduser()
+        run_name = run_dir.name.rsplit("__", 1)[0]
+        resolved.extend(_resolve_exact_run_names([run_name], label=spec.get("label") or run_name, history=history))
+
+    if "name" in spec and spec["name"]:
+        resolved.extend(_resolve_exact_run_names([spec["name"]], label=spec.get("label") or spec["name"], history=history))
+
+    if "run_name" in spec and spec["run_name"]:
+        resolved.extend(_resolve_exact_run_names([spec["run_name"]], label=spec.get("label") or spec["run_name"], history=history))
+
+    if "runs" in spec and spec["runs"]:
+        resolved.extend(_resolve_exact_run_names(spec["runs"], label=spec.get("label"), history=history))
+
+    if "prefix" in spec and spec["prefix"]:
+        prefix = str(spec["prefix"])
+        matches = [name for name in available if str(name).startswith(prefix)]
+        if not matches:
+            print(f"Missing runs for prefix {prefix!r}")
+        resolved.extend(matches)
+
+    if "contains" in spec and spec["contains"]:
+        needle = str(spec["contains"])
+        matches = [name for name in available if needle in str(name)]
+        if not matches:
+            print(f"Missing runs containing {needle!r}")
+        resolved.extend(matches)
+
+    if "regex" in spec and spec["regex"]:
+        pattern = re.compile(str(spec["regex"]))
+        matches = [name for name in available if pattern.search(str(name))]
+        if not matches:
+            print(f"Missing runs matching regex {spec['regex']!r}")
+        resolved.extend(matches)
+
+    resolved = _unique_text(name for name in resolved if name in available_set)
+    label = spec.get("label") or spec.get("name") or spec.get("run_name") or spec.get("prefix") or spec.get("regex") or "run"
+    output = {
+        "label": label,
+        "runs": resolved,
+    }
+    for key in (
+        "color",
+        "dash",
+        "width",
+        "line_width",
+        "opacity",
+        "show_std",
+        "std_alpha",
+        "show_members",
+        "member_alpha",
+    ):
+        if key in spec:
+            output[key] = spec[key]
+    return output
+
+
+def resolve_named_plot_specs(specs, *, history=None):
+    """Resolve a list of editable run selectors into mean-curve specs."""
+    resolved = [_resolve_named_plot_spec(spec, history=history) for spec in specs]
+    return [spec for spec in resolved if spec.get("runs")]
+
+
+def plot_named_run_means(
+    specs,
+    *,
+    title,
+    split="test",
+    metric=None,
+    smooth=5,
+    show_members=True,
+    show_std=True,
+    min_members=1,
+    y_range=(0, 105),
+    width=1300,
+    height=550,
+    save_name=None,
+    history=None,
+):
+    """Plot a single editable multi-curve survival chart from named specs."""
+    history = _get_history(history)
+    mean_runs = resolve_named_plot_specs(specs, history=history)
+    if not mean_runs:
+        raise RuntimeError("No requested runs were found for the editable plot specs.")
+    fig = plot_run_means(
+        mean_runs,
+        split=split,
+        metric=metric,
+        smooth=smooth,
+        show_members=show_members,
+        show_std=show_std,
+        min_members=min_members,
+        title=title,
+        y_range=list(y_range) if y_range is not None else None,
+        width=width,
+        height=height,
+        save_name=save_name,
+        history=history,
+    )
+    return {"fig": fig, "mean_runs": mean_runs}
+
+
 def plot_rerun_gine_best00_comparisons(seeds=(0, 1, 2)):
     """Compare GINE best_00 against best_10, best_11, best_12, best_13, and best_14."""
     baseline_runs = _resolve_seeded_prefix(RERUN_GINE_BEST00_PREFIX, seeds=seeds)

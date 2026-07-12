@@ -57,6 +57,58 @@ control experiments. The final version should specify the graph construction,
 node and edge features, message-passing layers, pooling/readout operation, and
 how the actor and critic heads consume the encoded graph representation.
 
+\chapter{Full-Test Checkpoint Registry}
+\label{app:full-test-checkpoint-registry}
+
+Table~\ref{tab:full-test-checkpoint-steps} reports the checkpoint step used for
+each full-test result table. The values are the
+\texttt{checkpoint\_global\_step} fields stored in the corresponding JSON files
+under \texttt{Topology\_Task/outputs/full\_test\_eval}. The do-nothing policy has
+no learned checkpoint. For the behavioral cloning students, the stored step is
+the student checkpoint's optimizer-step count rather than a MAPPO environment
+step.
+
+\begin{landscape}
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Checkpoint steps used for the full-test evaluations.}
+  \label{tab:full-test-checkpoint-steps}
+  \setlength{\tabcolsep}{5pt}
+  \resizebox{\linewidth}{!}{%
+  \begin{tabular}{L{0.54\linewidth}rrr}
+    \toprule
+    Run type & Seed 0 checkpoint step & Seed 1 checkpoint step &
+    Seed 2 checkpoint step \\
+    \midrule
+    Do-nothing policy & -- & -- & -- \\
+    Baseline flat policy & 14{,}764{,}032 & 12{,}939{,}264 & 15{,}344{,}640 \\
+    Global rho heuristic, \(\rho_{safe}=0.90\) & 13{,}920{,}000 & 14{,}320{,}000 & 14{,}800{,}000 \\
+    Local rho heuristic, \(\rho_{safe}=0.90\) & 14{,}160{,}000 & 14{,}400{,}000 & 14{,}160{,}000 \\
+    Intervention gate, final-action MAP & 12{,}000{,}000 & 12{,}720{,}000 & 13{,}760{,}000 \\
+    Intervention gate, hierarchical greedy & 7{,}120{,}000 & 14{,}720{,}000 & 13{,}760{,}000 \\
+    Flat Sparse16, \(\lambda_{fixed}=0.000\) & 9{,}600{,}000 & 12{,}160{,}000 & 7{,}920{,}000 \\
+    Flat Sparse16, \(\lambda_{fixed}=0.001\) & 10{,}640{,}000 & 11{,}520{,}000 & 11{,}600{,}000 \\
+    Flat Sparse16, \(\lambda_{fixed}=0.003\) & 12{,}000{,}000 & 12{,}960{,}000 & 12{,}480{,}000 \\
+    Flat Sparse16, \(\lambda_{fixed}=0.010\) & 8{,}960{,}000 & 5{,}760{,}000 & 12{,}560{,}000 \\
+    Gated Sparse16, \(\lambda_{fixed}=0.000\) & 8{,}480{,}000 & 4{,}320{,}000 & 6{,}000{,}000 \\
+    Gated Sparse16, \(\lambda_{fixed}=0.001\) & 5{,}760{,}000 & 7{,}600{,}000 & 3{,}280{,}000 \\
+    Gated Sparse16, \(\lambda_{fixed}=0.003\) & 8{,}960{,}000 & 7{,}120{,}000 & 7{,}600{,}000 \\
+    Gated Sparse16, \(\lambda_{fixed}=0.010\) & 12{,}000{,}000 & 7{,}840{,}000 & 7{,}920{,}000 \\
+    Flat local-safe AIB, \(d=0.20\) & 13{,}120{,}000 & 9{,}360{,}000 & 12{,}160{,}000 \\
+    Flat local-safe AIB, \(d=0.10\) & 12{,}880{,}000 & 13{,}200{,}000 & 12{,}720{,}000 \\
+    Flat local-safe AIB, \(d=0.35\) & 12{,}800{,}000 & 5{,}360{,}000 & 11{,}520{,}000 \\
+    Gated local-safe AIB, \(d=0.20\), hierarchical greedy & 14{,}960{,}000 & 5{,}280{,}000 & 16{,}800{,}000 \\
+    Flat non-idle AIB, \(d=0.20\) & 12{,}480{,}000 & 14{,}880{,}000 & 11{,}920{,}000 \\
+    Teacher: MAPPO with local rho heuristic & 14{,}160{,}000 & 14{,}400{,}000 & 14{,}160{,}000 \\
+    Student BC, balanced non-idle 0.50, weight 5, aux 0.50 & 12{,}375 & 14{,}994 & 13{,}617 \\
+    Student BC, balanced non-idle 0.20, weight 3, aux 0.25 & 12{,}375 & 14{,}994 & 13{,}617 \\
+    \bottomrule
+  \end{tabular}
+  }
+\end{table}
+\end{landscape}
+
 \nocite{*}
 \printbibliography
 

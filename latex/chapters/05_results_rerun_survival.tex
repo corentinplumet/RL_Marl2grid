@@ -774,6 +774,162 @@ and rho-threshold sensitivity.
   \end{tabular}
 \end{table}
 
+\paragraph{Full-test checkpoint summaries.}
+The following tables report the average full-test episodic survival over the
+three evaluated seeds. The survival values are computed directly from the JSON
+files in \texttt{Topology\_Task/outputs/full\_test\_eval}. These JSON files also
+record where the compact action-distribution artifacts were written. The
+action-0 fractions are computed from the corresponding local
+\texttt{Topology\_Task/outputs/full\_test\_eval\_actions/*/action\_summary.json}
+files and averaged over seeds. The all-agent action-0 column is the arithmetic
+mean of the three per-agent action-0 fractions. The do-nothing row is a
+reference policy that always selects action 0; its survival is computed from
+\texttt{Topology\_Task/outputs/do\_nothing\_eval/bus14\_test\_20}. Remaining
+``--'' entries indicate that the compact action summaries for those full-test
+jobs are not available locally.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Full-test summary for evaluation-time rho heuristics.}
+  \label{tab:a0-heuristic-full-test}
+  \setlength{\tabcolsep}{4pt}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{L{0.34\textwidth}rrrrr}
+    \toprule
+    Run type & Avg. episodic survival (\%) & Avg. action-0 all agents &
+    Avg. action-0 agent 0 & Avg. action-0 agent 1 &
+    Avg. action-0 agent 2 \\
+    \midrule
+    Do-nothing policy & 20.25 & 1.000 & 1.000 & 1.000 & 1.000 \\
+    Baseline flat policy & 97.05 & 0.426 & 0.557 & 0.362 & 0.360 \\
+    Global rho heuristic, \(\rho_{safe}=0.90\) & 98.36 & 0.936 & 0.933 & 0.936 & 0.940 \\
+    Local rho heuristic, \(\rho_{safe}=0.90\) & 97.07 & 0.968 & 0.992 & 0.985 & 0.928 \\
+    \bottomrule
+  \end{tabular}
+  }
+\end{table}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Full-test summary for intervention-gated actors.}
+  \label{tab:a0-gate-full-test}
+  \setlength{\tabcolsep}{4pt}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{L{0.34\textwidth}rrrrr}
+    \toprule
+    Run type & Avg. episodic survival (\%) & Avg. action-0 all agents &
+    Avg. action-0 agent 0 & Avg. action-0 agent 1 &
+    Avg. action-0 agent 2 \\
+    \midrule
+    Do-nothing policy & 20.25 & 1.000 & 1.000 & 1.000 & 1.000 \\
+    Baseline flat policy & 97.05 & 0.426 & 0.557 & 0.362 & 0.360 \\
+    Intervention gate, final-action MAP & 89.82 & 0.802 & 0.826 & 0.889 & 0.690 \\
+    Intervention gate, hierarchical greedy & 93.66 & 0.395 & 0.066 & 0.844 & 0.276 \\
+    \bottomrule
+  \end{tabular}
+  }
+\end{table}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Full-test summary for Sparse16 flat-policy runs.}
+  \label{tab:a0-sparse16-flat-full-test}
+  \setlength{\tabcolsep}{4pt}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{L{0.34\textwidth}rrrrr}
+    \toprule
+    Run type & Avg. episodic survival (\%) & Avg. action-0 all agents &
+    Avg. action-0 agent 0 & Avg. action-0 agent 1 &
+    Avg. action-0 agent 2 \\
+    \midrule
+    Do-nothing policy & 20.25 & 1.000 & 1.000 & 1.000 & 1.000 \\
+    Baseline flat policy & 97.05 & 0.426 & 0.557 & 0.362 & 0.360 \\
+    Flat Sparse16, \(\lambda_{fixed}=0.000\) & 98.23 & 0.494 & 0.524 & 0.463 & 0.496 \\
+    Flat Sparse16, \(\lambda_{fixed}=0.001\) & 96.75 & 0.486 & 0.642 & 0.401 & 0.416 \\
+    Flat Sparse16, \(\lambda_{fixed}=0.003\) & 93.97 & 0.575 & 0.691 & 0.346 & 0.688 \\
+    Flat Sparse16, \(\lambda_{fixed}=0.010\) & 97.44 & 0.905 & 0.907 & 0.954 & 0.853 \\
+    \bottomrule
+  \end{tabular}
+  }
+\end{table}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Full-test summary for Sparse16 gated-policy runs.}
+  \label{tab:a0-sparse16-gated-full-test}
+  \setlength{\tabcolsep}{4pt}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{L{0.34\textwidth}rrrrr}
+    \toprule
+    Run type & Avg. episodic survival (\%) & Avg. action-0 all agents &
+    Avg. action-0 agent 0 & Avg. action-0 agent 1 &
+    Avg. action-0 agent 2 \\
+    \midrule
+    Do-nothing policy & 20.25 & 1.000 & 1.000 & 1.000 & 1.000 \\
+    Baseline flat policy & 97.05 & 0.426 & 0.557 & 0.362 & 0.360 \\
+    Gated Sparse16, \(\lambda_{fixed}=0.000\) & 78.51 & 0.787 & 0.747 & 0.949 & 0.665 \\
+    Gated Sparse16, \(\lambda_{fixed}=0.001\) & 73.82 & 0.862 & 0.956 & 0.832 & 0.799 \\
+    Gated Sparse16, \(\lambda_{fixed}=0.003\) & 94.59 & 0.887 & 0.934 & 0.929 & 0.799 \\
+    Gated Sparse16, \(\lambda_{fixed}=0.010\) & 85.69 & 0.974 & 0.990 & 0.984 & 0.947 \\
+    \bottomrule
+  \end{tabular}
+  }
+\end{table}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Full-test summary for adaptive intervention budget runs.}
+  \label{tab:a0-aib-full-test}
+  \setlength{\tabcolsep}{4pt}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{L{0.34\textwidth}rrrrr}
+    \toprule
+    Run type & Avg. episodic survival (\%) & Avg. action-0 all agents &
+    Avg. action-0 agent 0 & Avg. action-0 agent 1 &
+    Avg. action-0 agent 2 \\
+    \midrule
+    Do-nothing policy & 20.25 & 1.000 & 1.000 & 1.000 & 1.000 \\
+    Baseline flat policy & 97.05 & 0.426 & 0.557 & 0.362 & 0.360 \\
+    Flat local-safe AIB, \(d=0.20\) & 98.31 & 0.978 & 0.980 & 0.989 & 0.966 \\
+    Flat local-safe AIB, \(d=0.10\) & 98.39 & 0.979 & 0.992 & 0.995 & 0.949 \\
+    Flat local-safe AIB, \(d=0.35\) & 96.61 & 0.934 & 0.959 & 0.947 & 0.896 \\
+    Gated local-safe AIB, \(d=0.20\), hierarchical greedy &
+    33.87 & 0.999 & 1.000 & 1.000 & 0.998 \\
+    Flat non-idle AIB, \(d=0.20\) & 95.08 & 0.986 & 0.997 & 0.992 & 0.970 \\
+    \bottomrule
+  \end{tabular}
+  }
+\end{table}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Full-test summary for the teacher-student distillation runs.}
+  \label{tab:teacher-student-full-test}
+  \setlength{\tabcolsep}{4pt}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{L{0.34\textwidth}rrrrr}
+    \toprule
+    Run type & Avg. episodic survival (\%) & Avg. action-0 all agents &
+    Avg. action-0 agent 0 & Avg. action-0 agent 1 &
+    Avg. action-0 agent 2 \\
+    \midrule
+    Do-nothing policy & 20.25 & 1.000 & 1.000 & 1.000 & 1.000 \\
+    Teacher: MAPPO with local rho heuristic & 97.07 & 0.968 & 0.992 & 0.985 & 0.928 \\
+    Student BC, balanced non-idle 0.50, weight 5, aux 0.50 &
+    92.14 & -- & -- & -- & -- \\
+    Student BC, balanced non-idle 0.20, weight 3, aux 0.25 &
+    90.76 & -- & -- & -- & -- \\
+    \bottomrule
+  \end{tabular}
+  }
+\end{table}
+
 \paragraph{Metrics to report.}
 The main performance metric remains episodic survival. It should be paired with
 sparsity and physical-diagnostic metrics: per-agent action-0 fractions,
