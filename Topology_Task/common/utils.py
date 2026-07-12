@@ -34,10 +34,29 @@ def get_state_graph_obs(obs_dict):
     return obs["state_graph"]
 
 
+def get_state_token_obs(obs_dict):
+    first_agent = sorted(obs_dict.keys())[0]
+    obs = obs_dict[first_agent]
+    if not isinstance(obs, dict) or "state_tokens" not in obs:
+        raise ValueError(
+            "A transformer critic/mixer requires token observations, but no "
+            "state_tokens were found."
+        )
+    return obs["state_tokens"]
+
+
 def strip_state_graph(obs):
-    if isinstance(obs, dict) and "state_graph" in obs:
-        return {key: value for key, value in obs.items() if key != "state_graph"}
+    if isinstance(obs, dict) and ("state_graph" in obs or "state_tokens" in obs):
+        return {
+            key: value
+            for key, value in obs.items()
+            if key not in {"state_graph", "state_tokens"}
+        }
     return obs
+
+
+def strip_state_tokens(obs):
+    return strip_state_graph(obs)
 
 
 # Creating the joint obs from the tensor dict
@@ -56,7 +75,11 @@ def get_joint_obs(obs_dict, encoder: str, decentralized: bool = True):
         return flat
     if encoder == "gnn":
         return {"flat": flat, "state_graph": get_state_graph_obs(obs_dict)}
-    raise ValueError(f"Unsupported encoder '{encoder}'. Use 'mlp' or 'gnn'.")
+    if encoder == "transformer":
+        return {"flat": flat, "state_tokens": get_state_token_obs(obs_dict)}
+    raise ValueError(
+        f"Unsupported encoder '{encoder}'. Use 'mlp', 'gnn', or 'transformer'."
+    )
 
 
 def clone_nested(obj):
@@ -115,6 +138,19 @@ def any_gnn_enabled(args) -> bool:
         "mixer_encoder",
     ]
     return any(getattr(args, key, "mlp") == "gnn" for key in encoder_keys)
+
+
+def any_transformer_enabled(args) -> bool:
+    encoder_keys = [
+        "actor_encoder",
+        "critic_encoder",
+        "cost_critic_encoder",
+        "q_encoder",
+        "mixer_encoder",
+    ]
+    return any(
+        getattr(args, key, "mlp") == "transformer" for key in encoder_keys
+    )
 
 
 def merge_namespaces(*namespaces: Namespace) -> Namespace:

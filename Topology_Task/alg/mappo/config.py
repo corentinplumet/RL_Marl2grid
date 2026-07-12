@@ -544,5 +544,119 @@ def get_alg_args() -> Namespace:
         choices=["bus"],
         help="Graph type for thesis-style gnn encoders.",
     )
+    parser.add_argument(
+        "--tokenizer-type",
+        type=str,
+        default="group",
+        choices=["group", "entity", "hybrid"],
+        help="Token schema used by transformer encoders.",
+    )
+    parser.add_argument(
+        "--tokenizer-include-neighbors",
+        type=str2bool,
+        default=True,
+        help=(
+            "For transformer local actor tokens, include one-hop neighboring "
+            "substations and touching lines."
+        ),
+    )
+    parser.add_argument(
+        "--tokenizer-include-maintenance",
+        type=str2bool,
+        default=True,
+        help="Include maintenance features in transformer token observations.",
+    )
+    parser.add_argument(
+        "--tokenizer-max-feature-dim",
+        type=int,
+        default=128,
+        help="Fixed padded feature width for every raw token.",
+    )
+    parser.add_argument(
+        "--tokenizer-include-busbar-tokens",
+        type=str2bool,
+        default=False,
+        help="Add explicit busbar entity tokens to entity/hybrid tokenizers.",
+    )
+    parser.add_argument(
+        "--transformer-d-model",
+        type=int,
+        default=128,
+        help="Transformer token embedding dimension.",
+    )
+    parser.add_argument(
+        "--transformer-n-heads",
+        type=int,
+        default=4,
+        help="Number of transformer attention heads.",
+    )
+    parser.add_argument(
+        "--transformer-layers",
+        type=int,
+        default=3,
+        help="Number of transformer encoder layers.",
+    )
+    parser.add_argument(
+        "--transformer-ff-dim",
+        type=int,
+        default=512,
+        help="Feed-forward hidden dimension inside transformer encoder layers.",
+    )
+    parser.add_argument(
+        "--transformer-dropout",
+        type=float,
+        default=0.05,
+        help="Dropout used inside transformer encoder layers.",
+    )
+    parser.add_argument(
+        "--transformer-activation",
+        type=str,
+        default="gelu",
+        choices=["relu", "gelu"],
+        help="Transformer feed-forward activation.",
+    )
+    parser.add_argument(
+        "--transformer-pool",
+        type=str,
+        default="cls",
+        choices=["cls", "mean"],
+        help="How to pool token outputs before actor/critic heads.",
+    )
+    parser.add_argument(
+        "--transformer-concat-flat",
+        type=str2bool,
+        default=False,
+        help="Concatenate the flat observation to the transformer token embedding.",
+    )
+    parser.add_argument(
+        "--transformer-use-entity-id-embeddings",
+        type=str2bool,
+        default=True,
+        help="Add learned entity-id embeddings to token inputs.",
+    )
+    parser.add_argument(
+        "--transformer-use-substation-embeddings",
+        type=str2bool,
+        default=True,
+        help="Add learned substation/endpoint embeddings to token inputs.",
+    )
+    parser.add_argument(
+        "--transformer-use-bus-embeddings",
+        type=str2bool,
+        default=True,
+        help="Add learned busbar embeddings to token inputs.",
+    )
+    parser.add_argument(
+        "--transformer-use-agent-embeddings",
+        type=str2bool,
+        default=True,
+        help="Add learned agent/domain id embeddings to token inputs.",
+    )
+    parser.add_argument(
+        "--transformer-layer-norm-eps",
+        type=float,
+        default=1e-5,
+        help="LayerNorm epsilon used in transformer encoders.",
+    )
 
     return parser.parse_known_args()[0]

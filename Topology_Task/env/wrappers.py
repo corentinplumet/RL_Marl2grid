@@ -26,7 +26,12 @@ class AsyncMultiAgentVecEnv:
 
         # Probe observation and action spaces from first environment
         self.remotes[0].send(("get_spaces", None))
-        self.observation_space, self.action_space, self.graph_specs = (
+        (
+            self.observation_space,
+            self.action_space,
+            self.graph_specs,
+            self.token_specs,
+        ) = (
             self.remotes[0].recv()
         )
 
@@ -244,6 +249,7 @@ class AsyncMultiAgentVecEnv:
                             env.observation_space,
                             env.action_space,
                             getattr(env, "graph_specs", None),
+                            getattr(env, "token_specs", None),
                         )
                     )
                 elif cmd == "get_obs_stats":

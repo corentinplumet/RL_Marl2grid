@@ -524,6 +524,14 @@ class MAPPO:
             critic.load_state_dict(ckpt.loaded_run["critic"])
 
         actor_params = _unique_parameters(list(actors.values()))
+        actor_param_count = int(sum(param.numel() for param in actor_params))
+        critic_param_count = int(sum(param.numel() for param in critic.parameters()))
+        token_specs = getattr(envs, "token_specs", None) or {}
+        token_count_metrics = {
+            f"model/token_count_{key}": int(spec["n_tokens"])
+            for key, spec in token_specs.items()
+            if isinstance(spec, dict) and "n_tokens" in spec
+        }
         if continuous_actions:
             raise ("Redispatching actions are not yet implemented")
         actor_optim = optim.Adam(actor_params, lr=args.actor_lr, eps=1e-5)
@@ -1126,6 +1134,8 @@ class MAPPO:
                         joint_non_idle_hist / max(joint_non_idle_counts.size, 1)
                     )
                     metrics_to_log: Dict[str, Any] = {
+                        "model/actor_params": float(actor_param_count),
+                        "model/critic_params": float(critic_param_count),
                         "train/lr_actor": float(actor_optim.param_groups[0]["lr"]),
                         "train/lr_critic": float(critic_optim.param_groups[0]["lr"]),
                         "train/entropy_coef": float(entropy_coef),
@@ -1138,6 +1148,7 @@ class MAPPO:
                         "train/frac_any_non_idle": float(np.mean(joint_non_idle_counts > 0)),
                         "train/frac_multi_agent_non_idle": float(np.mean(joint_non_idle_counts > 1)),
                     }
+                    metrics_to_log.update(token_count_metrics)
                     for count, frac in enumerate(joint_non_idle_frac):
                         metrics_to_log[
                             f"train/non_idle_agents_count_{count}_frac"

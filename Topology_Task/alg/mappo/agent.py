@@ -2,6 +2,7 @@ from torch.distributions import Categorical, Normal
 
 from common.imports import *
 from common.gnn import GraphAndFlatEncoder, GraphEncoder
+from common.token_transformer import TokenAndFlatEncoder
 from common.utils import Linear, get_flat_obs, th_act_fns
 
 
@@ -78,9 +79,23 @@ class Actor(nn.Module):
                 graph_encoder=shared_graph_encoder,
             )
             actor_input_dim = self.encoder.out_dim
+        elif self.encoder_type == "transformer":
+            if getattr(envs, "token_specs", None) is None:
+                raise ValueError(
+                    "actor_encoder=transformer requires tokenizer observations."
+                )
+            flat_dim = int(np.prod(envs.observation_space[agent_id].shape))
+            self.encoder = TokenAndFlatEncoder(
+                envs.token_specs[agent_id],
+                flat_dim=flat_dim,
+                args=args,
+                use_flat=getattr(args, "transformer_concat_flat", False),
+            )
+            actor_input_dim = self.encoder.out_dim
         else:
             raise ValueError(
-                f"Unsupported actor encoder '{self.encoder_type}'. Use 'mlp' or 'gnn'."
+                f"Unsupported actor encoder '{self.encoder_type}'. "
+                "Use 'mlp', 'gnn', or 'transformer'."
             )
 
         actor_layers = args.actor_layers
@@ -145,6 +160,8 @@ class Actor(nn.Module):
     def _encode(self, x: th.Tensor) -> th.Tensor:
         if self.encoder_type == "gnn":
             return self.encoder(x, graph_key="graph")
+        if self.encoder_type == "transformer":
+            return self.encoder(x, token_key="tokens")
         if self.encoder is not None:
             return self.encoder(x)
         return get_flat_obs(x)
@@ -358,9 +375,27 @@ class Critic(nn.Module):
                 use_flat=getattr(args, "gnn_concat_flat", False),
             )
             critic_input_dim = self.encoder.out_dim
+        elif self.encoder_type == "transformer":
+            if getattr(envs, "token_specs", None) is None:
+                raise ValueError(
+                    "critic_encoder=transformer requires tokenizer observations."
+                )
+            flat_dim = (
+                sum(space.shape[0] for space in envs.observation_space.values())
+                if args.decentralized
+                else envs.observation_space["agent_0"].shape[-1]
+            )
+            self.encoder = TokenAndFlatEncoder(
+                envs.token_specs["state"],
+                flat_dim=flat_dim,
+                args=args,
+                use_flat=getattr(args, "transformer_concat_flat", False),
+            )
+            critic_input_dim = self.encoder.out_dim
         else:
             raise ValueError(
-                f"Unsupported critic encoder '{self.encoder_type}'. Use 'mlp' or 'gnn'."
+                f"Unsupported critic encoder '{self.encoder_type}'. "
+                "Use 'mlp', 'gnn', or 'transformer'."
             )
         self.critic = build_mlp_head(
             critic_input_dim, critic_layers, 1, args.critic_act_fn
@@ -377,6 +412,8 @@ class Critic(nn.Module):
         """
         if self.encoder_type == "gnn":
             x = self.encoder(x, graph_key="state_graph")
+        elif self.encoder_type == "transformer":
+            x = self.encoder(x, token_key="state_tokens")
         elif self.encoder is not None:
             x = self.encoder(x)
         else:

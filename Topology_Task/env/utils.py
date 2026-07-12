@@ -22,7 +22,8 @@ from ray.rllib.env.multi_agent_env import MultiAgentEnv as MAEnv
 from common.imports import *
 from common.explainability import EXPLAIN_INFO_KEY
 from common.graph import GridGraphBuilder
-from common.utils import any_gnn_enabled
+from common.tokenizer import GridTokenBuilder
+from common.utils import any_gnn_enabled, any_transformer_enabled
 from .reward import (
     LineMarginReward,
     RedispRewardv1,
@@ -674,6 +675,12 @@ class MAEnvWrapper(MAEnv):
         env_id = args.env_id
         env_type = args.action_type.lower()
         self.use_graph_obs = any_gnn_enabled(args)
+        self.use_token_obs = any_transformer_enabled(args)
+        if self.use_graph_obs and self.use_token_obs:
+            raise ValueError(
+                "Mixing GNN and transformer structured observations is not "
+                "supported yet. Use only mlp/gnn or mlp/transformer encoders."
+            )
 
         env_config = config["environments"]
         assert env_id in env_config.keys(), (
@@ -912,6 +919,27 @@ class MAEnvWrapper(MAEnv):
                 include_maintenance=env_config[env_id]["maintenance"],
             )
             self.graph_specs = self.graph_builder.specs
+        self.token_builder = None
+        self.token_specs = None
+        if self.use_token_obs:
+            self.token_builder = GridTokenBuilder(
+                self.g2op_env,
+                self.observation_domains,
+                tokenizer_type=getattr(args, "tokenizer_type", "group"),
+                include_neighbors=getattr(args, "tokenizer_include_neighbors", True),
+                include_maintenance=getattr(
+                    args,
+                    "tokenizer_include_maintenance",
+                    env_config[env_id]["maintenance"],
+                ),
+                max_token_feature_dim=getattr(
+                    args, "tokenizer_max_feature_dim", 128
+                ),
+                include_busbar_tokens=getattr(
+                    args, "tokenizer_include_busbar_tokens", False
+                ),
+            )
+            self.token_specs = self.token_builder.specs
         self.agent_line_domains = self._make_agent_line_domains()
 
         # to avoid "weird" pickle issues
@@ -1436,6 +1464,17 @@ class MAEnvWrapper(MAEnv):
                     "flat": gym_obs[agent_id],
                     "graph": graphs[agent_id],
                     "state_graph": graphs["state"],
+                }
+                for agent_id in self.g2op_ma_env.agents
+            }
+
+        if self.use_token_obs:
+            tokens = self.token_builder.build(self._obs)
+            return {
+                agent_id: {
+                    "flat": gym_obs[agent_id],
+                    "tokens": tokens[agent_id],
+                    "state_tokens": tokens["state"],
                 }
                 for agent_id in self.g2op_ma_env.agents
             }

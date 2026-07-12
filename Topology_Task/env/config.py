@@ -162,14 +162,14 @@ def get_env_args(argv: Optional[List[str]] = None) -> Namespace:
         "--actor-encoder",
         type=str,
         default="mlp",
-        choices=["mlp", "gnn"],
+        choices=["mlp", "gnn", "transformer"],
         help="Encoder used by each actor policy.",
     )
     parser.add_argument(
         "--critic-encoder",
         type=str,
         default="mlp",
-        choices=["mlp", "gnn"],
+        choices=["mlp", "gnn", "transformer"],
         help="Encoder used by the centralized critic.",
     )
     parser.add_argument(

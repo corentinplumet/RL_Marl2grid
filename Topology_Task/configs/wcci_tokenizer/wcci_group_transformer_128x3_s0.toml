@@ -1,0 +1,115 @@
+# WCCI 36 reduced-action MAPPO with broad feature-group transformer tokens.
+
+[run]
+name = "wcci_group_transformer_128x3_s0"
+run_dir = "outputs/jed-{config_name}-{job_id}"
+seed_from_slurm_array = false
+extra_args = []
+
+[launcher]
+use_srun = true
+cpu_bind = "cores"
+print_python_summary = true
+
+[environment]
+PYTHONUNBUFFERED = "1"
+OMP_NUM_THREADS = "1"
+MKL_NUM_THREADS = "1"
+OPENBLAS_NUM_THREADS = "1"
+NUMEXPR_NUM_THREADS = "1"
+VECLIB_MAXIMUM_THREADS = "1"
+MAX_TIME_LIMIT_MINUTES = "10080"
+MPLCONFIGDIR = "{run_dir}/matplotlib"
+WANDB_DIR = "{run_dir}/wandb"
+XDG_CACHE_HOME = "{run_dir}/cache"
+
+[args]
+time_limit = 5040
+checkpoint = true
+alg = "MAPPO"
+seed = 0
+verbose = true
+exp_tag = "wcci_group_transformer_128x3_s0"
+track = true
+wandb_project = "Grid2Op"
+wandb_entity = "corentin-plumet-epfl"
+wandb_mode = "online"
+th_deterministic = false
+cuda = false
+n_threads = 4
+
+env_id = "bus36_wcci"
+n_envs = 72
+action_type = "topology"
+reduced_action_space = "outputs/teacher_student_datasets/wcci_full2048a_90_v3/metadata/reduced_action_space_wcci_full2048a_90_v3_mk256.json"
+difficulty = 0
+decentralized = true
+n1_reward = false
+env_config_path = "scenario.json"
+norm_obs = true
+use_heuristic = false
+heuristic_type = "idle"
+line_margin_reward_weight = 0.0
+topology_reward_weight = 0.0
+optimize_mem = true
+constraints_type = 0
+split_chronics = true
+test_chronics_pct = 0.2
+chronic_split_seed = 0
+
+actor_encoder = "transformer"
+critic_encoder = "transformer"
+tokenizer_type = "group"
+tokenizer_include_neighbors = true
+tokenizer_include_maintenance = true
+tokenizer_max_feature_dim = 128
+tokenizer_include_busbar_tokens = false
+transformer_d_model = 128
+transformer_n_heads = 4
+transformer_layers = 3
+transformer_ff_dim = 512
+transformer_dropout = 0.05
+transformer_activation = "gelu"
+transformer_pool = "cls"
+transformer_concat_flat = false
+transformer_use_entity_id_embeddings = true
+transformer_use_substation_embeddings = true
+transformer_use_bus_embeddings = true
+transformer_use_agent_embeddings = true
+
+total_timesteps = 60000000
+n_steps = 576
+eval_freq = 82944
+actor_layers = [256]
+critic_layers = [256]
+actor_act_fn = "relu"
+critic_act_fn = "relu"
+actor_lr = 0.00005
+critic_lr = 0.00005
+anneal_lr = true
+gamma = 0.9
+gae_lambda = 0.95
+update_epochs = 10
+n_minibatches = 16
+max_grad_norm = 0.5
+target_kl = 0.02
+norm_adv = true
+clip_coef = 0.2
+clip_vfloss = true
+entropy_coef = 0.01
+vf_coef = 0.5
+init_do_nothing_prob = 0.0
+norm_reward = true
+deterministic_eval = true
+eval_episodes = 10
+eval_all_split_chronics = false
+eval_train_chronics = true
+
+intervention_gate = false
+intervention_gate_eval_mode = "final_action_map"
+intervention_penalty = 0.0
+safe_intervention_penalty = 0.0
+safe_intervention_rho_threshold = 0.90
+eval_action_heuristic = "none"
+eval_action_rho_threshold = 0.90
+
