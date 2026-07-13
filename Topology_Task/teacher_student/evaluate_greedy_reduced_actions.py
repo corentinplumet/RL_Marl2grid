@@ -400,7 +400,17 @@ def _choose_greedy_action(
     improvement_tolerance: float,
     require_improvement: bool,
 ) -> Tuple[Dict[str, int], Dict[str, Any], List[Dict[str, int]]]:
-    if sim_pool is not None:
+    do_nothing_request = [{"agent_id": agent_ids[0], "action_id": 0}]
+
+    worker_fallback = False
+    worker_error = ""
+    do_nothing_outcome: Dict[str, Any]
+    outcomes: List[Dict[str, Any]]
+
+    try:
+        if sim_pool is None:
+            raise RuntimeError("no simulation worker pool")
+
         current_max_rho = float(env.get_current_max_rho())
         if str(sim_worker_sync_mode) == "replay":
             sim_pool.reset(
@@ -421,15 +431,19 @@ def _choose_greedy_action(
             )
             pending_worker_actions = []
 
-    do_nothing_request = [{"agent_id": agent_ids[0], "action_id": 0}]
-    if sim_pool is not None:
         combined_outcomes = sim_pool.simulate(
             do_nothing_request + requests,
             time_step=time_step,
         )
         do_nothing_outcome = combined_outcomes[0]
         outcomes = combined_outcomes[1:]
-    else:
+    except Exception as exc:
+        # WCCI opponent / maintenance environments are not always exactly
+        # reproducible by replaying actions inside long-lived worker envs. When
+        # the guard catches drift, keep the evaluation correct by simulating
+        # from the live main observation for this decision instead of crashing.
+        worker_fallback = sim_pool is not None
+        worker_error = f"{type(exc).__name__}: {exc}"[:500]
         do_nothing_outcome = env.simulate_action_outcomes(
             do_nothing_request,
             time_step=time_step,
@@ -440,6 +454,7 @@ def _choose_greedy_action(
             time_step=time_step,
             num_workers=1,
         )
+        pending_worker_actions = []
     rho_after_do_nothing = float(do_nothing_outcome["rho_after"])
 
     best_request: Optional[Dict[str, Any]] = None
@@ -471,6 +486,8 @@ def _choose_greedy_action(
             "delta_vs_do_nothing": float("nan"),
             "valid_candidates": valid_count,
             "improving_candidates": improved_count,
+            "worker_fallback": bool(worker_fallback),
+            "worker_error": worker_error,
         }, pending_worker_actions
 
     delta_vs_do_nothing = best_rho - rho_after_do_nothing
@@ -487,6 +504,8 @@ def _choose_greedy_action(
             "delta_vs_do_nothing": delta_vs_do_nothing,
             "valid_candidates": valid_count,
             "improving_candidates": improved_count,
+            "worker_fallback": bool(worker_fallback),
+            "worker_error": worker_error,
         }, pending_worker_actions
 
     action = {agent: 0 for agent in agent_ids}
@@ -502,6 +521,8 @@ def _choose_greedy_action(
         "delta_vs_do_nothing": delta_vs_do_nothing,
         "valid_candidates": valid_count,
         "improving_candidates": improved_count,
+        "worker_fallback": bool(worker_fallback),
+        "worker_error": worker_error,
     }, pending_worker_actions
 
 
@@ -604,6 +625,8 @@ def _run_greedy_episode(
     selected_by_agent = {agent: 0 for agent in agent_ids}
     pending_worker_actions: List[Dict[str, int]] = []
     episode_actions: List[Dict[str, int]] = []
+    worker_fallback_decisions = 0
+    last_worker_error = ""
 
     while not done:
         if max_env_steps is not None and steps >= int(max_env_steps):
@@ -627,6 +650,9 @@ def _run_greedy_episode(
                 require_improvement=require_improvement,
             )
             simulated_actions += len(requests) + 1
+            if bool(decision.get("worker_fallback", False)):
+                worker_fallback_decisions += 1
+                last_worker_error = str(decision.get("worker_error", ""))
             if bool(decision["selected"]):
                 nonidle_actions += 1
                 improving_selected_actions += int(
@@ -662,6 +688,8 @@ def _run_greedy_episode(
             else float("nan")
         ),
         "selected_by_agent": selected_by_agent,
+        "worker_fallback_decisions": int(worker_fallback_decisions),
+        "last_worker_error": last_worker_error,
     }
 
 
@@ -713,7 +741,9 @@ def _write_outputs(
         "greedy_nonidle_actions",
         "greedy_decision_states",
         "greedy_simulated_actions",
+        "greedy_worker_fallback_decisions",
         "greedy_mean_selected_delta_vs_do_nothing",
+        "greedy_last_worker_error",
     ]
     with csv_path.open("w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -1213,9 +1243,13 @@ def main() -> None:
                 "greedy_nonidle_actions": greedy_result["nonidle_actions"],
                 "greedy_decision_states": greedy_result["decision_states"],
                 "greedy_simulated_actions": greedy_result["simulated_actions"],
+                "greedy_worker_fallback_decisions": greedy_result[
+                    "worker_fallback_decisions"
+                ],
                 "greedy_mean_selected_delta_vs_do_nothing": greedy_result[
                     "mean_selected_delta_vs_do_nothing"
                 ],
+                "greedy_last_worker_error": greedy_result["last_worker_error"],
                 "greedy_selected_by_agent": greedy_result["selected_by_agent"],
             }
             rows.append(row)
@@ -1248,6 +1282,7 @@ def main() -> None:
                     f"greedy={100 * row['greedy_survival']:.2f}% "
                     f"greedy_steps={row['greedy_steps']}/{row['max_steps']} "
                     f"nonidle={row['greedy_nonidle_actions']} "
+                    f"worker_fallbacks={row['greedy_worker_fallback_decisions']} "
                     f"requested_id={row['requested_chronic_id']} "
                     f"requested_env_idx={row['requested_env_idx']} "
                     f"requested_fp={str(row['requested_chronic_fingerprint'])[:8]} "
@@ -1278,6 +1313,9 @@ def main() -> None:
     same_fingerprints = np.asarray(
         [bool(row["same_chronic_fingerprint"]) for row in rows], dtype=bool
     )
+    worker_fallbacks = np.asarray(
+        [int(row["greedy_worker_fallback_decisions"]) for row in rows], dtype=np.int64
+    )
     summary = {
         "created_at": datetime.now(timezone.utc).isoformat(),
         "env_id": env_args.env_id,
@@ -1302,6 +1340,12 @@ def main() -> None:
         "improvement_tolerance": float(cli.improvement_tolerance),
         "compare_do_nothing": bool(cli.compare_do_nothing),
         "sim_worker_sync_mode": str(cli.sim_worker_sync_mode),
+        "greedy_worker_fallback_decisions": (
+            int(worker_fallbacks.sum()) if rows else 0
+        ),
+        "greedy_worker_fallback_episodes": (
+            int((worker_fallbacks > 0).sum()) if rows else 0
+        ),
         "candidate_unilateral_actions_total": int(len(all_requests)),
         "candidate_unilateral_actions_per_decision": int(len(requests)),
         "candidate_sample_size": (
@@ -1363,6 +1407,11 @@ def main() -> None:
         print("Do-nothing mean survival: skipped")
         print("Mean survival delta: skipped")
     print(f"Greedy full survival rate: {100 * summary['greedy_full_survival_rate']:.3f}%")
+    print(
+        "Worker fallback decisions: "
+        f"{summary['greedy_worker_fallback_decisions']} "
+        f"across {summary['greedy_worker_fallback_episodes']} episode(s)"
+    )
     if bool(cli.compare_do_nothing):
         print(
             "Do-nothing full survival rate: "
