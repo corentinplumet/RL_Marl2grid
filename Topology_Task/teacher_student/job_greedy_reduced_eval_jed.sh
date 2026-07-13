@@ -50,6 +50,7 @@ Common overrides:
   CANDIDATE_SAMPLE_SEED=     # leave empty to use SEED
   COMPARE_DO_NOTHING=true
   SIM_WORKERS=71
+  SIM_WORKER_SYNC_MODE=replay
   OUTPUT_DIR=outputs/teacher_student_greedy_eval
 
 Extra arguments are forwarded to evaluate_greedy_reduced_actions.py.
@@ -123,6 +124,7 @@ if [ "${DEFAULT_SIM_WORKERS}" -gt 1 ]; then
 fi
 SIM_WORKERS="${SIM_WORKERS:-${DEFAULT_SIM_WORKERS}}"
 SIM_START_METHOD="${SIM_START_METHOD:-spawn}"
+SIM_WORKER_SYNC_MODE="${SIM_WORKER_SYNC_MODE:-replay}"
 OUTPUT_DIR="${OUTPUT_DIR:-outputs/teacher_student_greedy_eval}"
 PROGRESS="${PROGRESS:-true}"
 
@@ -150,6 +152,7 @@ args=(
     --time-step "${TIME_STEP}"
     --sim-workers "${SIM_WORKERS}"
     --sim-start-method "${SIM_START_METHOD}"
+    --sim-worker-sync-mode "${SIM_WORKER_SYNC_MODE}"
     --output-dir "${OUTPUT_DIR}"
     --progress "${PROGRESS}"
 )
@@ -235,6 +238,7 @@ echo "Candidate sample size: ${CANDIDATE_SAMPLE_SIZE:-all}"
 echo "Candidate sample seed: ${CANDIDATE_SAMPLE_SEED:-SEED}"
 echo "Compare do-nothing replay: ${COMPARE_DO_NOTHING}"
 echo "Simulation workers: ${SIM_WORKERS}"
+echo "Worker sync mode: ${SIM_WORKER_SYNC_MODE}"
 echo "Output dir: ${OUTPUT_DIR}"
 echo "Extra args: $*"
 

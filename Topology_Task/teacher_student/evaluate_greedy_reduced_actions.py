@@ -391,32 +391,56 @@ def _choose_greedy_action(
     requests: List[Dict[str, Any]],
     sim_pool: Optional[SimulationWorkerPool],
     pending_worker_actions: List[Dict[str, int]],
+    episode_actions: List[Dict[str, int]],
+    episode_start_max_rho: float,
+    episode_chronic_id: Optional[int],
+    episode_chronic_path: Optional[str],
+    sim_worker_sync_mode: str,
     time_step: int,
     improvement_tolerance: float,
     require_improvement: bool,
 ) -> Tuple[Dict[str, int], Dict[str, Any], List[Dict[str, int]]]:
     if sim_pool is not None:
-        sim_pool.sync(
-            pending_worker_actions,
-            reference_max_rho=float(env.get_current_max_rho()),
+        current_max_rho = float(env.get_current_max_rho())
+        if str(sim_worker_sync_mode) == "replay":
+            sim_pool.reset(
+                float(episode_start_max_rho),
+                chronic_id=episode_chronic_id,
+                target_chronic_path=episode_chronic_path,
+            )
+            if episode_actions:
+                sim_pool.sync(
+                    episode_actions,
+                    reference_max_rho=current_max_rho,
+                )
+            pending_worker_actions = []
+        else:
+            sim_pool.sync(
+                pending_worker_actions,
+                reference_max_rho=current_max_rho,
+            )
+            pending_worker_actions = []
+
+    do_nothing_request = [{"agent_id": agent_ids[0], "action_id": 0}]
+    if sim_pool is not None:
+        combined_outcomes = sim_pool.simulate(
+            do_nothing_request + requests,
+            time_step=time_step,
         )
-        pending_worker_actions = []
-
-    do_nothing_outcome = env.simulate_action_outcomes(
-        [{"agent_id": agent_ids[0], "action_id": 0}],
-        time_step=time_step,
-        num_workers=1,
-    )[0]
-    rho_after_do_nothing = float(do_nothing_outcome["rho_after"])
-
-    if sim_pool is None:
+        do_nothing_outcome = combined_outcomes[0]
+        outcomes = combined_outcomes[1:]
+    else:
+        do_nothing_outcome = env.simulate_action_outcomes(
+            do_nothing_request,
+            time_step=time_step,
+            num_workers=1,
+        )[0]
         outcomes = env.simulate_action_outcomes(
             requests,
             time_step=time_step,
             num_workers=1,
         )
-    else:
-        outcomes = sim_pool.simulate(requests, time_step=time_step)
+    rho_after_do_nothing = float(do_nothing_outcome["rho_after"])
 
     best_request: Optional[Dict[str, Any]] = None
     best_outcome: Optional[Dict[str, Any]] = None
@@ -540,6 +564,7 @@ def _run_greedy_episode(
     target_chronic_path: Optional[str],
     expected_fingerprint: Optional[str],
     strict_fingerprint: bool,
+    sim_worker_sync_mode: str,
 ) -> Dict[str, Any]:
     if target_chronic_path is not None:
         _set_env_chronic_sequence(env, [str(target_chronic_path)])
@@ -553,11 +578,18 @@ def _run_greedy_episode(
         strict=strict_fingerprint,
         context="greedy",
     )
+    episode_start_max_rho = float(env.get_current_max_rho())
+    episode_chronic_path = target_chronic_path
+    if not episode_chronic_path:
+        info_path = str(chronic_info.get("chronic_path", ""))
+        if info_path and info_path != "unknown":
+            episode_chronic_path = info_path
+    episode_chronic_id = chronic_id
     if sim_pool is not None:
         sim_pool.reset(
-            float(env.get_current_max_rho()),
-            chronic_id=chronic_id,
-            target_chronic_path=target_chronic_path,
+            episode_start_max_rho,
+            chronic_id=episode_chronic_id,
+            target_chronic_path=episode_chronic_path,
         )
 
     max_steps = _max_episode_duration(env)
@@ -571,6 +603,7 @@ def _run_greedy_episode(
     cumulative_delta = 0.0
     selected_by_agent = {agent: 0 for agent in agent_ids}
     pending_worker_actions: List[Dict[str, int]] = []
+    episode_actions: List[Dict[str, int]] = []
 
     while not done:
         if max_env_steps is not None and steps >= int(max_env_steps):
@@ -584,6 +617,11 @@ def _run_greedy_episode(
                 requests=requests,
                 sim_pool=sim_pool,
                 pending_worker_actions=pending_worker_actions,
+                episode_actions=episode_actions,
+                episode_start_max_rho=episode_start_max_rho,
+                episode_chronic_id=episode_chronic_id,
+                episode_chronic_path=episode_chronic_path,
+                sim_worker_sync_mode=sim_worker_sync_mode,
                 time_step=time_step,
                 improvement_tolerance=improvement_tolerance,
                 require_improvement=require_improvement,
@@ -600,7 +638,8 @@ def _run_greedy_episode(
             actions = {agent: 0 for agent in agent_ids}
 
         _, reward, terminations, truncations, _ = env.step(actions)
-        if sim_pool is not None:
+        episode_actions.append(dict(actions))
+        if sim_pool is not None and str(sim_worker_sync_mode) == "incremental":
             pending_worker_actions.append(dict(actions))
         total_reward += _reward_scalar(reward)
         done = bool(terminations[agent_ids[0]] or truncations[agent_ids[0]])
@@ -812,6 +851,19 @@ def parse_args() -> Namespace:
         choices=["spawn", "fork", "forkserver"],
     )
     parser.add_argument(
+        "--sim-worker-sync-mode",
+        type=str,
+        default="replay",
+        choices=["replay", "incremental"],
+        help=(
+            "How process simulation workers are synchronized before each greedy "
+            "decision. replay resets workers to the episode start and replays "
+            "the realized action history, which is safer for opponent/maintenance "
+            "environments. incremental keeps the old faster behavior and only "
+            "replays actions since the previous decision."
+        ),
+    )
+    parser.add_argument(
         "--output-dir",
         type=Path,
         default=Path("outputs/teacher_student_greedy_eval"),
@@ -957,6 +1009,7 @@ def main() -> None:
     )
     print(f"Candidate sample seed: {candidate_sample_seed}")
     print(f"Simulator workers: {cli.sim_workers}")
+    print(f"Simulator worker sync mode: {cli.sim_worker_sync_mode}")
     print(
         "Reduced action sizes: "
         + ", ".join(f"{agent}={reduced_action_sizes[agent]}" for agent in agent_ids)
@@ -1053,6 +1106,7 @@ def main() -> None:
                 target_chronic_path=target_chronic_path,
                 expected_fingerprint=expected_fingerprint,
                 strict_fingerprint=bool(cli.target_fingerprint_strict),
+                sim_worker_sync_mode=str(cli.sim_worker_sync_mode),
             )
             do_nothing_result: Optional[Dict[str, Any]] = None
             if do_nothing_env is not None:
@@ -1247,6 +1301,7 @@ def main() -> None:
         "require_improvement": bool(cli.require_improvement),
         "improvement_tolerance": float(cli.improvement_tolerance),
         "compare_do_nothing": bool(cli.compare_do_nothing),
+        "sim_worker_sync_mode": str(cli.sim_worker_sync_mode),
         "candidate_unilateral_actions_total": int(len(all_requests)),
         "candidate_unilateral_actions_per_decision": int(len(requests)),
         "candidate_sample_size": (

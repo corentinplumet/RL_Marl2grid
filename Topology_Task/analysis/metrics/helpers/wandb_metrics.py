@@ -1758,6 +1758,11 @@ def plot_run_mean_groups(
     ncols=2,
     subplot_height=420,
     width=1500,
+    horizontal_spacing=None,
+    vertical_spacing=None,
+    margin=None,
+    title_font_size=None,
+    subplot_title_font_size=None,
     save_name=None,
     show=False,
     history=None,
@@ -1767,6 +1772,13 @@ def plot_run_mean_groups(
 
     `groups` is a dict like {"subplot title": mean_runs, ...}. Each `mean_runs`
     value accepts the same format as `plot_run_means`.
+
+    `title_font_size` controls the main figure title. `subplot_title_font_size`
+    controls the per-subplot titles generated from the `groups` keys.
+    `horizontal_spacing` and `vertical_spacing` are forwarded to Plotly
+    `make_subplots`; smaller values make subplot panels sit closer together.
+    `margin` can override layout margins, for example `{"l": 50, "r": 20,
+    "t": 60, "b": 45}`.
     """
     history = _get_history(history)
     group_items = _normalize_groups(groups)
@@ -1781,7 +1793,13 @@ def plot_run_mean_groups(
         subplot_titles=[title for title, _ in group_items],
         shared_xaxes=False,
         shared_yaxes=False,
+        horizontal_spacing=horizontal_spacing,
+        vertical_spacing=vertical_spacing,
     )
+    if subplot_title_font_size is not None:
+        for annotation in fig.layout.annotations:
+            annotation.font.size = subplot_title_font_size
+
     metric_candidates = _metric_candidates(metric=metric, split=split)
     added = 0
     legend_layouts = {}
@@ -1823,14 +1841,18 @@ def plot_run_mean_groups(
             showarrow=False,
         )
 
+    layout_margin = {"l": 70, "r": 30, "t": 90, "b": 60}
+    if margin is not None:
+        layout_margin.update(margin)
+
     layout = {
-        "title": title,
+        "title": title if title_font_size is None else {"text": title, "font": {"size": title_font_size}},
         "template": "plotly_white",
         "width": width,
         "height": max(520, subplot_height * nrows),
         "hovermode": "x unified",
         "showlegend": True,
-        "margin": {"l": 70, "r": 30, "t": 90, "b": 60},
+        "margin": layout_margin,
     }
     layout.update(legend_layouts)
     fig.update_layout(**layout)
