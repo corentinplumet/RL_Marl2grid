@@ -1,13 +1,18 @@
-#!/usr/bin/env bash
-#SBATCH --job-name=full_test_eval
+#!/bin/bash
+# IZAR / EPFL SLURM launcher.
 #SBATCH --mail-user=corentin.plumet@epfl.ch
-#SBATCH --nodes=1
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=16
-#SBATCH --mem=64G
-#SBATCH --time=12:00:00
+#SBATCH --job-name=marl2grid_izar
 #SBATCH --output=Topology_Task/full_test_eval/slurm-%x-%j.out
 #SBATCH --error=Topology_Task/full_test_eval/slurm-%x-%j.err
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=40
+#SBATCH --mem=128G
+#SBATCH --time=12:00:00
+#SBATCH --partition=gpu
+#SBATCH --qos=long
+#SBATCH --gres=gpu:1
+
 
 set -euo pipefail
 

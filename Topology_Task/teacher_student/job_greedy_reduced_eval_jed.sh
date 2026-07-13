@@ -40,7 +40,8 @@ Common overrides:
   TARGET_CHRONIC_NAME=
   TARGET_CHRONIC_NAMES=
   TARGET_CHRONIC_PATHS=
-  TARGET_ENV_INDICES=        # defaults to 0,1,... for target fingerprints
+  TARGET_ENV_INDICES=        # defaults to 0 for all target fingerprints
+  TARGET_RESOLVE_FINGERPRINTS=true
   TARGET_FINGERPRINT_STRICT=true
   DECISION_RHO_THRESHOLD=0.90
   REQUIRE_IMPROVEMENT=true
@@ -107,6 +108,7 @@ TARGET_CHRONIC_NAME="${TARGET_CHRONIC_NAME:-}"
 TARGET_CHRONIC_NAMES="${TARGET_CHRONIC_NAMES:-}"
 TARGET_CHRONIC_PATHS="${TARGET_CHRONIC_PATHS:-}"
 TARGET_ENV_INDICES="${TARGET_ENV_INDICES:-}"
+TARGET_RESOLVE_FINGERPRINTS="${TARGET_RESOLVE_FINGERPRINTS:-true}"
 TARGET_FINGERPRINT_STRICT="${TARGET_FINGERPRINT_STRICT:-true}"
 DECISION_RHO_THRESHOLD="${DECISION_RHO_THRESHOLD:-0.90}"
 REQUIRE_IMPROVEMENT="${REQUIRE_IMPROVEMENT:-true}"
@@ -188,6 +190,7 @@ if [ -n "${TARGET_ENV_INDICES}" ]; then
     args+=(--target-env-indices "${TARGET_ENV_INDICES}")
 fi
 
+args+=(--target-resolve-fingerprints "${TARGET_RESOLVE_FINGERPRINTS}")
 args+=(--target-fingerprint-strict "${TARGET_FINGERPRINT_STRICT}")
 
 if [ -n "${CANDIDATE_SAMPLE_SIZE}" ]; then
@@ -222,7 +225,8 @@ echo "Target chronic fingerprints: ${TARGET_CHRONIC_FINGERPRINTS:-none}"
 echo "Target chronic name: ${TARGET_CHRONIC_NAME:-none}"
 echo "Target chronic names: ${TARGET_CHRONIC_NAMES:-none}"
 echo "Target chronic paths: ${TARGET_CHRONIC_PATHS:-none}"
-echo "Target env indices: ${TARGET_ENV_INDICES:-0..N-1}"
+echo "Target env indices: ${TARGET_ENV_INDICES:-0}"
+echo "Target resolve fingerprints: ${TARGET_RESOLVE_FINGERPRINTS}"
 echo "Target fingerprint strict: ${TARGET_FINGERPRINT_STRICT}"
 echo "Decision rho threshold: ${DECISION_RHO_THRESHOLD}"
 echo "Require improvement: ${REQUIRE_IMPROVEMENT}"

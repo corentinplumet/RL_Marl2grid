@@ -112,6 +112,80 @@ def _resolve_target_chronic_path(
     return str(matches[0])
 
 
+def _ordered_fingerprint_search_paths(
+    env: MAEnvWrapper,
+    chronic_name_hints: List[Optional[str]],
+) -> List[str]:
+    candidates = _get_candidate_chronic_paths(env)
+    if not chronic_name_hints:
+        return candidates
+
+    ordered = []
+    seen = set()
+    hint_names = {str(name) for name in chronic_name_hints if name}
+    for path in candidates:
+        if _chronic_basename(path) in hint_names and path not in seen:
+            ordered.append(path)
+            seen.add(path)
+    for path in candidates:
+        if path not in seen:
+            ordered.append(path)
+            seen.add(path)
+    return ordered
+
+
+def _resolve_target_paths_by_fingerprint(
+    env: MAEnvWrapper,
+    *,
+    fingerprints: List[str],
+    chronic_name_hints: List[Optional[str]],
+    env_idx: int,
+    progress: bool,
+) -> Dict[str, str]:
+    targets = {str(fingerprint) for fingerprint in fingerprints if fingerprint}
+    if not targets:
+        return {}
+
+    candidate_paths = _ordered_fingerprint_search_paths(env, chronic_name_hints)
+    if not candidate_paths:
+        raise RuntimeError("No candidate chronic paths are available to search.")
+
+    resolved: Dict[str, str] = {}
+    samples = []
+    for searched, path in enumerate(candidate_paths, start=1):
+        _set_env_chronic_sequence(env, [path])
+        _, info = env.reset()
+        fingerprint = str(info.get("chronic_fingerprint", "unknown"))
+        if len(samples) < 8:
+            samples.append(f"{_chronic_basename(path)}->{fingerprint}")
+        if fingerprint in targets and fingerprint not in resolved:
+            resolved[fingerprint] = str(path)
+            if progress:
+                print(
+                    "Resolved target fingerprint "
+                    f"{fingerprint} on env_idx={env_idx}: "
+                    f"{_chronic_basename(path)}",
+                    flush=True,
+                )
+            if set(resolved) == targets:
+                return resolved
+        if progress and searched % 250 == 0:
+            print(
+                "Searching target fingerprints "
+                f"env_idx={env_idx}: {searched}/{len(candidate_paths)} paths, "
+                f"resolved={len(resolved)}/{len(targets)}",
+                flush=True,
+            )
+
+    missing = sorted(targets.difference(resolved))
+    raise RuntimeError(
+        "Could not resolve target fingerprint(s) in the active split for "
+        f"env_idx={env_idx}: {', '.join(missing)}. "
+        f"Searched {len(candidate_paths)} paths. "
+        "Sample path->fingerprint values: " + ", ".join(samples)
+    )
+
+
 def _set_env_chronic_sequence(env: MAEnvWrapper, chronic_paths: List[str]) -> None:
     setter = getattr(env, "_set_active_chronic_order", None)
     if not callable(setter):
@@ -176,7 +250,7 @@ def _build_target_specs(cli: Namespace) -> List[Dict[str, Any]]:
     paths = _parse_csv_tokens(cli.target_chronic_paths)
     env_indices = _parse_int_tokens(cli.target_env_indices)
     if not env_indices:
-        env_indices = list(range(len(fingerprints)))
+        env_indices = [0] * len(fingerprints)
 
     names = _repeat_or_validate(names, len(fingerprints), "--target-chronic-names")
     paths = _repeat_or_validate(paths, len(fingerprints), "--target-chronic-paths")
@@ -684,7 +758,16 @@ def parse_args() -> Namespace:
         default="",
         help=(
             "Comma- or space-separated MAEnvWrapper idx values for target "
-            "fingerprints. Defaults to 0..N-1."
+            "fingerprints. Defaults to 0 for all target fingerprints."
+        ),
+    )
+    parser.add_argument(
+        "--target-resolve-fingerprints",
+        type=str2bool,
+        default=True,
+        help=(
+            "Resolve target chronic paths by scanning the active split for the "
+            "requested fingerprints. Chronic names are treated as hints."
         ),
     )
     parser.add_argument(
@@ -844,6 +927,7 @@ def main() -> None:
     print(f"Chronic sample mode: {cli.chronic_sample_mode}")
     if target_mode:
         print("Target fingerprint mode: true")
+        print(f"Target resolve fingerprints: {cli.target_resolve_fingerprints}")
         print(
             "Target env indices: "
             + ", ".join(str(spec["env_idx"]) for spec in target_specs)
@@ -882,6 +966,7 @@ def main() -> None:
     print("======================================================")
 
     rows: List[Dict[str, Any]] = []
+    resolved_paths_by_env_idx: Dict[int, Dict[str, str]] = {}
     start_time = time.perf_counter()
     try:
         for episode in range(int(target_episodes)):
@@ -920,15 +1005,40 @@ def main() -> None:
             expected_fingerprint = (
                 str(target_spec["fingerprint"]) if target_spec is not None else None
             )
-            target_chronic_path = (
-                _resolve_target_chronic_path(
-                    greedy_env,
-                    chronic_name=target_spec.get("chronic_name"),
-                    chronic_path=target_spec.get("chronic_path"),
-                )
-                if target_spec is not None
-                else None
-            )
+            target_chronic_path = None
+            if target_spec is not None:
+                explicit_path = target_spec.get("chronic_path")
+                if explicit_path:
+                    target_chronic_path = str(explicit_path)
+                elif expected_fingerprint and bool(cli.target_resolve_fingerprints):
+                    if current_env_idx not in resolved_paths_by_env_idx:
+                        specs_for_env = [
+                            spec
+                            for spec in target_specs
+                            if int(spec["env_idx"]) == current_env_idx
+                        ]
+                        resolved_paths_by_env_idx[current_env_idx] = (
+                            _resolve_target_paths_by_fingerprint(
+                                greedy_env,
+                                fingerprints=[
+                                    str(spec["fingerprint"]) for spec in specs_for_env
+                                ],
+                                chronic_name_hints=[
+                                    spec.get("chronic_name") for spec in specs_for_env
+                                ],
+                                env_idx=current_env_idx,
+                                progress=bool(cli.progress),
+                            )
+                        )
+                    target_chronic_path = resolved_paths_by_env_idx[current_env_idx][
+                        expected_fingerprint
+                    ]
+                else:
+                    target_chronic_path = _resolve_target_chronic_path(
+                        greedy_env,
+                        chronic_name=target_spec.get("chronic_name"),
+                        chronic_path=None,
+                    )
             greedy_result = _run_greedy_episode(
                 env=greedy_env,
                 agent_ids=agent_ids,
@@ -1124,6 +1234,7 @@ def main() -> None:
         "chronic_sample_seed": int(chronic_sample_seed),
         "chronic_sample_replacement": bool(cli.chronic_sample_replacement),
         "target_fingerprint_mode": bool(target_mode),
+        "target_resolve_fingerprints": bool(cli.target_resolve_fingerprints),
         "target_fingerprint_strict": bool(cli.target_fingerprint_strict),
         "target_chronic_fingerprints": [
             str(spec["fingerprint"]) for spec in target_specs
