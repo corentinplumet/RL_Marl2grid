@@ -766,12 +766,36 @@ def _suppress_grid2op_cleanup_stderr():
             yield
 
 
-def _simulation_worker_main(remote, env_args: Namespace, chronic_split: Optional[str]) -> None:
+def _set_env_chronic_sequence(env: MAEnvWrapper, chronic_paths: List[str]) -> None:
+    if not chronic_paths:
+        return
+    setter = getattr(env, "_set_active_chronic_order", None)
+    if not callable(setter):
+        raise RuntimeError("Environment does not support setting a chronic sequence.")
+    successes = setter([str(path) for path in chronic_paths], reset_position=True)
+    if successes == 0:
+        raise RuntimeError(
+            "Could not set worker chronic sequence to: "
+            + ", ".join(str(path) for path in chronic_paths)
+        )
+
+
+def _simulation_worker_main(
+    remote,
+    env_args: Namespace,
+    chronic_split: Optional[str],
+    env_idx: int = 0,
+) -> None:
     env = None
     exit_code = 0
     try:
         set_random_seed(int(env_args.seed))
-        env = MAEnvWrapper(env_args, eval_env=True, chronic_split=chronic_split)
+        env = MAEnvWrapper(
+            env_args,
+            idx=int(env_idx),
+            eval_env=True,
+            chronic_split=chronic_split,
+        )
         agent_ids = list(env.g2op_ma_env.agents)
 
         while True:
@@ -782,7 +806,11 @@ def _simulation_worker_main(remote, env_args: Namespace, chronic_split: Optional
 
             if cmd == "reset":
                 chronic_id = data.get("chronic_id", None)
-                if chronic_id is not None:
+                target_chronic_path = data.get("target_chronic_path", None)
+                if target_chronic_path:
+                    _set_env_chronic_sequence(env, [str(target_chronic_path)])
+                    reset_repeats = 1
+                elif chronic_id is not None:
                     env.set_chronic_id(int(chronic_id))
                     reset_repeats = 1
                 else:
@@ -871,6 +899,7 @@ class SimulationWorkerPool:
         chronic_split: Optional[str],
         num_workers: int,
         start_method: str,
+        env_idx: int = 0,
         sync_tolerance: float = 1e-5,
     ) -> None:
         self.num_workers = max(0, int(num_workers))
@@ -883,7 +912,7 @@ class SimulationWorkerPool:
             parent_remote, child_remote = self.ctx.Pipe()
             process = self.ctx.Process(
                 target=_simulation_worker_main,
-                args=(child_remote, env_args, chronic_split),
+                args=(child_remote, env_args, chronic_split, int(env_idx)),
             )
             process.daemon = True
             process.start()
@@ -901,6 +930,7 @@ class SimulationWorkerPool:
         self,
         reference_max_rho: float,
         chronic_id: Optional[int] = None,
+        target_chronic_path: Optional[str] = None,
         reset_repeats: int = 1,
     ) -> None:
         reset_repeats = max(1, int(reset_repeats))
@@ -910,6 +940,7 @@ class SimulationWorkerPool:
                     "reset",
                     {
                         "chronic_id": chronic_id,
+                        "target_chronic_path": target_chronic_path,
                         "reset_repeats": reset_repeats,
                     },
                 )

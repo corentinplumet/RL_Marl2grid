@@ -1,7 +1,7 @@
-# MLP baseline on l2rpn_wcci_2020 with a learned reduced topology action space.
+# WCCI reduced-action MLP baseline with adaptive intervention-budget overlay.
 
 [run]
-name = "wcci_reduced_mlp_baseline_72x576_s2"
+name = "wcci_aib_01_flat_local_t010_72x576_lr20m_f010_s2"
 run_dir = "outputs/jed-{config_name}-{job_id}"
 seed_from_slurm_array = false
 extra_args = []
@@ -30,7 +30,7 @@ checkpoint = true
 alg = "MAPPO"
 seed = 2
 verbose = true
-exp_tag = "wcci_reduced_mlp_baseline_72x576_s2"
+exp_tag = "wcci_aib_01_flat_local_t010_72x576_lr20m_f010_s2"
 track = true
 wandb_project = "Grid2Op"
 wandb_entity = "corentin-plumet-epfl"
@@ -74,6 +74,8 @@ critic_act_fn = "relu"
 actor_lr = 0.0001
 critic_lr = 0.0001
 anneal_lr = true
+lr_anneal_timesteps = 20000000
+lr_final_frac = 0.1
 gamma = 0.9
 gae_lambda = 0.95
 update_epochs = 10
@@ -95,11 +97,10 @@ eval_episodes = 10
 eval_all_split_chronics = false
 eval_train_chronics = true
 
-# experiment overlay: plain baseline, no gate and no eval-time heuristic
-intervention_gate = false
-intervention_gate_eval_mode = "final_action_map"
-intervention_penalty = 0.0
-safe_intervention_penalty = 0.0
-safe_intervention_rho_threshold = 0.90
-eval_action_heuristic = "none"
-eval_action_rho_threshold = 0.90
+# experiment overlay copied from a0_aib
+adaptive_intervention_budget = true
+intervention_budget_cost_mode = "local_safe"
+intervention_budget_target = 0.10
+intervention_budget_lr = 0.02
+intervention_budget_rho_threshold = 0.90
+intervention_budget_rho_sharpness = 25.0

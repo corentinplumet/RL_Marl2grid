@@ -1,7 +1,7 @@
 # Wider MLP baseline on l2rpn_wcci_2020 with a learned reduced topology action space.
 
 [run]
-name = "wcci_reduced_mlp_baseline_512x512x512_72x576_lr20m_f010_s0"
+name = "wcci_mlp_baseline_512x512x512_72x576_lr20m_f010_s2"
 run_dir = "outputs/jed-{config_name}-{job_id}"
 seed_from_slurm_array = false
 extra_args = []
@@ -28,9 +28,9 @@ XDG_CACHE_HOME = "{run_dir}/cache"
 time_limit = 5040
 checkpoint = true
 alg = "MAPPO"
-seed = 0
+seed = 2
 verbose = true
-exp_tag = "wcci_reduced_mlp_baseline_512x512x512_72x576_lr20m_f010_s0"
+exp_tag = "wcci_mlp_baseline_512x512x512_72x576_lr20m_f010_s2"
 track = true
 wandb_project = "Grid2Op"
 wandb_entity = "corentin-plumet-epfl"

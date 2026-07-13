@@ -44,6 +44,179 @@ def _safe_path(path: Path) -> str:
         return str(path.resolve())
 
 
+def _parse_csv_tokens(value: Optional[str]) -> List[str]:
+    if value is None:
+        return []
+    text = str(value).replace("\n", ",").replace(" ", ",")
+    return [token.strip() for token in text.split(",") if token.strip()]
+
+
+def _parse_int_tokens(value: Optional[str]) -> List[int]:
+    return [int(token) for token in _parse_csv_tokens(value)]
+
+
+def _chronic_basename(path: Any) -> str:
+    return Path(str(path).rstrip("/")).name
+
+
+def _get_candidate_chronic_paths(env: MAEnvWrapper) -> List[str]:
+    candidates = [str(path) for path in (getattr(env, "chronic_split_order", None) or [])]
+    if candidates:
+        return candidates
+    handlers = getattr(env, "_current_chronic_handlers", lambda: [])()
+    seen = set()
+    for handler in handlers:
+        for attr in ("subpaths", "_subpaths", "paths", "_paths"):
+            value = getattr(handler, attr, None)
+            if value is None:
+                continue
+            for path in list(value):
+                path = str(path)
+                if path not in seen:
+                    candidates.append(path)
+                    seen.add(path)
+    return candidates
+
+
+def _resolve_target_chronic_path(
+    env: MAEnvWrapper,
+    *,
+    chronic_name: Optional[str],
+    chronic_path: Optional[str],
+) -> str:
+    if chronic_path:
+        return str(chronic_path)
+    if not chronic_name:
+        raise ValueError(
+            "Target fingerprint mode needs --target-chronic-name, "
+            "--target-chronic-names, or --target-chronic-paths."
+        )
+    matches = [
+        path
+        for path in _get_candidate_chronic_paths(env)
+        if _chronic_basename(path) == str(chronic_name)
+    ]
+    if not matches:
+        preview = ", ".join(
+            _chronic_basename(path) for path in _get_candidate_chronic_paths(env)[:12]
+        )
+        raise ValueError(
+            f"Could not find chronic name {chronic_name!r} in the active split. "
+            f"First available names: {preview}"
+        )
+    if len(matches) > 1:
+        raise ValueError(
+            f"Chronic name {chronic_name!r} is ambiguous. Use "
+            "--target-chronic-paths with one exact path per fingerprint."
+        )
+    return str(matches[0])
+
+
+def _set_env_chronic_sequence(env: MAEnvWrapper, chronic_paths: List[str]) -> None:
+    setter = getattr(env, "_set_active_chronic_order", None)
+    if not callable(setter):
+        raise RuntimeError("Environment does not support setting a chronic sequence.")
+    successes = setter([str(path) for path in chronic_paths], reset_position=True)
+    if successes == 0:
+        raise RuntimeError(
+            "Could not set the active chronic sequence to: "
+            + ", ".join(str(path) for path in chronic_paths)
+        )
+
+
+def _validate_target_fingerprint(
+    chronic_info: Dict[str, str],
+    expected_fingerprint: Optional[str],
+    *,
+    strict: bool,
+    context: str,
+) -> None:
+    if not expected_fingerprint:
+        return
+    actual = str(chronic_info.get("chronic_fingerprint", "unknown"))
+    if actual == str(expected_fingerprint):
+        return
+    message = (
+        f"{context} target fingerprint mismatch: expected "
+        f"{expected_fingerprint}, got {actual} for "
+        f"{chronic_info.get('chronic_name', 'unknown')} "
+        f"path={chronic_info.get('chronic_path', 'unknown')} "
+        f"seed={chronic_info.get('chronic_seed', 'unknown')} "
+        f"idx={chronic_info.get('chronic_index', 'unknown')}."
+    )
+    if strict:
+        raise RuntimeError(message)
+    print("WARNING:", message, flush=True)
+
+
+def _repeat_or_validate(values: List[Any], n_items: int, name: str) -> List[Any]:
+    if not values:
+        return [None] * n_items
+    if len(values) == 1 and n_items > 1:
+        return values * n_items
+    if len(values) != n_items:
+        raise ValueError(
+            f"{name} must provide either one value or exactly {n_items} values."
+        )
+    return values
+
+
+def _build_target_specs(cli: Namespace) -> List[Dict[str, Any]]:
+    fingerprints = _parse_csv_tokens(cli.target_chronic_fingerprints)
+    if not fingerprints:
+        return []
+
+    names = _parse_csv_tokens(cli.target_chronic_names)
+    if cli.target_chronic_name:
+        if names:
+            raise ValueError(
+                "Use either --target-chronic-name or --target-chronic-names, not both."
+            )
+        names = [str(cli.target_chronic_name)]
+    paths = _parse_csv_tokens(cli.target_chronic_paths)
+    env_indices = _parse_int_tokens(cli.target_env_indices)
+    if not env_indices:
+        env_indices = list(range(len(fingerprints)))
+
+    names = _repeat_or_validate(names, len(fingerprints), "--target-chronic-names")
+    paths = _repeat_or_validate(paths, len(fingerprints), "--target-chronic-paths")
+    env_indices = _repeat_or_validate(
+        env_indices, len(fingerprints), "--target-env-indices"
+    )
+
+    if any(path is not None for path in paths) and any(name is not None for name in names):
+        raise ValueError(
+            "Use either target chronic names or target chronic paths, not both."
+        )
+
+    return [
+        {
+            "fingerprint": fingerprint,
+            "chronic_name": names[idx],
+            "chronic_path": paths[idx],
+            "env_idx": int(env_indices[idx]),
+        }
+        for idx, fingerprint in enumerate(fingerprints)
+    ]
+
+
+def _close_eval_resources(
+    sim_pool: Optional[SimulationWorkerPool],
+    greedy_env: Optional[MAEnvWrapper],
+    do_nothing_env: Optional[MAEnvWrapper],
+) -> None:
+    if sim_pool is not None:
+        sim_pool.close()
+    for env in (greedy_env, do_nothing_env):
+        if env is None:
+            continue
+        with _suppress_grid2op_cleanup_stderr():
+            try:
+                env.close()
+            except Exception:
+                pass
+
+
 def _build_env_args(cli: Namespace) -> Namespace:
     env_args = get_env_args([])
     env_args.env_id = cli.env_id
@@ -240,11 +413,22 @@ def _run_do_nothing_episode(
     agent_ids: List[str],
     max_env_steps: Optional[int],
     chronic_id: Optional[int],
+    target_chronic_path: Optional[str],
+    expected_fingerprint: Optional[str],
+    strict_fingerprint: bool,
 ) -> Dict[str, Any]:
-    if chronic_id is not None:
+    if target_chronic_path is not None:
+        _set_env_chronic_sequence(env, [str(target_chronic_path)])
+    elif chronic_id is not None:
         env.set_chronic_id(int(chronic_id))
     _, _ = env.reset()
     chronic_info = _current_chronic_info(env)
+    _validate_target_fingerprint(
+        chronic_info,
+        expected_fingerprint,
+        strict=strict_fingerprint,
+        context="do-nothing",
+    )
     max_steps = _max_episode_duration(env)
     steps = 0
     total_reward = 0.0
@@ -279,14 +463,29 @@ def _run_greedy_episode(
     require_improvement: bool,
     max_env_steps: Optional[int],
     chronic_id: Optional[int],
+    target_chronic_path: Optional[str],
+    expected_fingerprint: Optional[str],
+    strict_fingerprint: bool,
 ) -> Dict[str, Any]:
-    if chronic_id is not None:
+    if target_chronic_path is not None:
+        _set_env_chronic_sequence(env, [str(target_chronic_path)])
+    elif chronic_id is not None:
         env.set_chronic_id(int(chronic_id))
     _, _ = env.reset()
-    if sim_pool is not None:
-        sim_pool.reset(float(env.get_current_max_rho()), chronic_id=chronic_id)
-
     chronic_info = _current_chronic_info(env)
+    _validate_target_fingerprint(
+        chronic_info,
+        expected_fingerprint,
+        strict=strict_fingerprint,
+        context="greedy",
+    )
+    if sim_pool is not None:
+        sim_pool.reset(
+            float(env.get_current_max_rho()),
+            chronic_id=chronic_id,
+            target_chronic_path=target_chronic_path,
+        )
+
     max_steps = _max_episode_duration(env)
     steps = 0
     total_reward = 0.0
@@ -369,6 +568,10 @@ def _write_outputs(
     fieldnames = [
         "episode",
         "requested_chronic_id",
+        "requested_env_idx",
+        "requested_chronic_name",
+        "requested_chronic_path",
+        "requested_chronic_fingerprint",
         "greedy_chronic_name",
         "do_nothing_chronic_name",
         "greedy_chronic_path",
@@ -445,6 +648,51 @@ def parse_args() -> Namespace:
         default=False,
         help="Sample random chronic ids with replacement.",
     )
+    parser.add_argument(
+        "--target-chronic-fingerprints",
+        type=str,
+        default="",
+        help=(
+            "Comma- or space-separated initial-state fingerprints to evaluate "
+            "exactly. When set, these define the episode list."
+        ),
+    )
+    parser.add_argument(
+        "--target-chronic-name",
+        type=str,
+        default="",
+        help="Single chronic basename to use for all target fingerprints.",
+    )
+    parser.add_argument(
+        "--target-chronic-names",
+        type=str,
+        default="",
+        help="Comma- or space-separated chronic basenames, one per target fingerprint.",
+    )
+    parser.add_argument(
+        "--target-chronic-paths",
+        type=str,
+        default="",
+        help=(
+            "Comma- or space-separated exact chronic paths, one per target "
+            "fingerprint. Use this if names are ambiguous."
+        ),
+    )
+    parser.add_argument(
+        "--target-env-indices",
+        type=str,
+        default="",
+        help=(
+            "Comma- or space-separated MAEnvWrapper idx values for target "
+            "fingerprints. Defaults to 0..N-1."
+        ),
+    )
+    parser.add_argument(
+        "--target-fingerprint-strict",
+        type=str2bool,
+        default=True,
+        help="Abort when a targeted reset does not match its requested fingerprint.",
+    )
     parser.add_argument("--decision-rho-threshold", type=float, default=0.90)
     parser.add_argument("--improvement-tolerance", type=float, default=1e-3)
     parser.add_argument("--require-improvement", type=str2bool, default=True)
@@ -500,10 +748,32 @@ def main() -> None:
     env_args = _build_env_args(cli)
     set_random_seed(env_args.seed)
     chronic_split = None if cli.split == "all" else cli.split
+    target_specs = _build_target_specs(cli)
+    target_mode = bool(target_specs)
+    if (
+        target_mode
+        and cli.max_episodes is not None
+        and int(cli.max_episodes) != len(target_specs)
+    ):
+        raise ValueError(
+            "--max-episodes is ignored in target fingerprint mode; either omit it "
+            f"or set it to {len(target_specs)}."
+        )
+    current_env_idx = int(target_specs[0]["env_idx"]) if target_mode else 0
 
-    greedy_env = MAEnvWrapper(env_args, eval_env=True, chronic_split=chronic_split)
+    greedy_env = MAEnvWrapper(
+        env_args,
+        idx=current_env_idx,
+        eval_env=True,
+        chronic_split=chronic_split,
+    )
     do_nothing_env = (
-        MAEnvWrapper(env_args, eval_env=True, chronic_split=chronic_split)
+        MAEnvWrapper(
+            env_args,
+            idx=current_env_idx,
+            eval_env=True,
+            chronic_split=chronic_split,
+        )
         if bool(cli.compare_do_nothing)
         else None
     )
@@ -520,7 +790,7 @@ def main() -> None:
     requests = _sample_candidate_requests(
         all_requests, cli.candidate_sample_size, candidate_sample_seed
     )
-    target_episodes = cli.max_episodes
+    target_episodes = len(target_specs) if target_mode else cli.max_episodes
     split_size = getattr(greedy_env, "chronic_split_size", None)
     if target_episodes is None:
         target_episodes = int(split_size) if split_size is not None else 1
@@ -530,7 +800,9 @@ def main() -> None:
         if cli.chronic_sample_seed is not None
         else int(env_args.seed)
     )
-    if cli.chronic_sample_mode == "random":
+    if target_mode:
+        chronic_ids = [None] * int(target_episodes)
+    elif cli.chronic_sample_mode == "random":
         if split_size is None:
             raise ValueError(
                 "--chronic-sample-mode=random requires an exact chronic split size."
@@ -560,6 +832,7 @@ def main() -> None:
             chronic_split=chronic_split,
             num_workers=cli.sim_workers,
             start_method=cli.sim_start_method,
+            env_idx=current_env_idx,
         )
 
     print("========== Greedy Reduced Action Evaluation ==========")
@@ -569,6 +842,21 @@ def main() -> None:
     print(f"Output dir: {_safe_path(output_dir)}")
     print(f"Episodes: {target_episodes}")
     print(f"Chronic sample mode: {cli.chronic_sample_mode}")
+    if target_mode:
+        print("Target fingerprint mode: true")
+        print(
+            "Target env indices: "
+            + ", ".join(str(spec["env_idx"]) for spec in target_specs)
+        )
+        print(
+            "Target fingerprints: "
+            + ", ".join(str(spec["fingerprint"]) for spec in target_specs)
+        )
+        chronic_labels = [
+            spec["chronic_path"] or spec["chronic_name"] or "unknown"
+            for spec in target_specs
+        ]
+        print("Target chronics: " + ", ".join(str(value) for value in chronic_labels))
     if cli.chronic_sample_mode == "random":
         print(f"Random chronic sample seed: {chronic_sample_seed}")
         print(
@@ -597,7 +885,50 @@ def main() -> None:
     start_time = time.perf_counter()
     try:
         for episode in range(int(target_episodes)):
+            target_spec = target_specs[episode] if target_mode else None
+            if target_spec is not None and int(target_spec["env_idx"]) != current_env_idx:
+                _close_eval_resources(sim_pool, greedy_env, do_nothing_env)
+                sim_pool = None
+                gc.collect()
+                current_env_idx = int(target_spec["env_idx"])
+                greedy_env = MAEnvWrapper(
+                    env_args,
+                    idx=current_env_idx,
+                    eval_env=True,
+                    chronic_split=chronic_split,
+                )
+                do_nothing_env = (
+                    MAEnvWrapper(
+                        env_args,
+                        idx=current_env_idx,
+                        eval_env=True,
+                        chronic_split=chronic_split,
+                    )
+                    if bool(cli.compare_do_nothing)
+                    else None
+                )
+                if cli.sim_workers > 1:
+                    sim_pool = SimulationWorkerPool(
+                        env_args=env_args,
+                        chronic_split=chronic_split,
+                        num_workers=cli.sim_workers,
+                        start_method=cli.sim_start_method,
+                        env_idx=current_env_idx,
+                    )
+
             requested_chronic_id = chronic_ids[episode]
+            expected_fingerprint = (
+                str(target_spec["fingerprint"]) if target_spec is not None else None
+            )
+            target_chronic_path = (
+                _resolve_target_chronic_path(
+                    greedy_env,
+                    chronic_name=target_spec.get("chronic_name"),
+                    chronic_path=target_spec.get("chronic_path"),
+                )
+                if target_spec is not None
+                else None
+            )
             greedy_result = _run_greedy_episode(
                 env=greedy_env,
                 agent_ids=agent_ids,
@@ -609,6 +940,9 @@ def main() -> None:
                 require_improvement=bool(cli.require_improvement),
                 max_env_steps=cli.max_env_steps,
                 chronic_id=requested_chronic_id,
+                target_chronic_path=target_chronic_path,
+                expected_fingerprint=expected_fingerprint,
+                strict_fingerprint=bool(cli.target_fingerprint_strict),
             )
             do_nothing_result: Optional[Dict[str, Any]] = None
             if do_nothing_env is not None:
@@ -617,12 +951,21 @@ def main() -> None:
                     agent_ids=agent_ids,
                     max_env_steps=cli.max_env_steps,
                     chronic_id=requested_chronic_id,
+                    target_chronic_path=target_chronic_path,
+                    expected_fingerprint=expected_fingerprint,
+                    strict_fingerprint=bool(cli.target_fingerprint_strict),
                 )
             row = {
                 "episode": episode,
                 "requested_chronic_id": (
                     "" if requested_chronic_id is None else int(requested_chronic_id)
                 ),
+                "requested_env_idx": int(current_env_idx),
+                "requested_chronic_name": (
+                    target_spec.get("chronic_name") if target_spec is not None else ""
+                ),
+                "requested_chronic_path": target_chronic_path or "",
+                "requested_chronic_fingerprint": expected_fingerprint or "",
                 "greedy_chronic_name": greedy_result["chronic_name"],
                 "do_nothing_chronic_name": (
                     do_nothing_result["chronic_name"]
@@ -742,6 +1085,8 @@ def main() -> None:
                     f"greedy_steps={row['greedy_steps']}/{row['max_steps']} "
                     f"nonidle={row['greedy_nonidle_actions']} "
                     f"requested_id={row['requested_chronic_id']} "
+                    f"requested_env_idx={row['requested_env_idx']} "
+                    f"requested_fp={str(row['requested_chronic_fingerprint'])[:8]} "
                     f"g_name={row['greedy_chronic_name']} "
                     f"g_path={row['greedy_chronic_path']} "
                     f"g_idx={row['greedy_chronic_index']} "
@@ -754,14 +1099,7 @@ def main() -> None:
                     flush=True,
                 )
     finally:
-        if sim_pool is not None:
-            sim_pool.close()
-        for env in (greedy_env, do_nothing_env):
-            with _suppress_grid2op_cleanup_stderr():
-                try:
-                    env.close()
-                except Exception:
-                    pass
+        _close_eval_resources(sim_pool, greedy_env, do_nothing_env)
         gc.collect()
 
     greedy_survivals = np.asarray([row["greedy_survival"] for row in rows], dtype=float)
@@ -785,6 +1123,12 @@ def main() -> None:
         "chronic_sample_mode": cli.chronic_sample_mode,
         "chronic_sample_seed": int(chronic_sample_seed),
         "chronic_sample_replacement": bool(cli.chronic_sample_replacement),
+        "target_fingerprint_mode": bool(target_mode),
+        "target_fingerprint_strict": bool(cli.target_fingerprint_strict),
+        "target_chronic_fingerprints": [
+            str(spec["fingerprint"]) for spec in target_specs
+        ],
+        "target_env_indices": [int(spec["env_idx"]) for spec in target_specs],
         "requested_chronic_ids": [
             None if chronic_id is None else int(chronic_id) for chronic_id in chronic_ids
         ],

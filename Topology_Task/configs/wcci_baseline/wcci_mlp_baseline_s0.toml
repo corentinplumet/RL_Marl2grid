@@ -1,7 +1,7 @@
-# Wider MLP baseline on l2rpn_wcci_2020 with a learned reduced topology action space.
+# MLP baseline on l2rpn_wcci_2020 with a learned reduced topology action space.
 
 [run]
-name = "wcci_reduced_mlp_baseline_512x512x512_72x576_lr20m_f010_s2"
+name = "wcci_mlp_baseline_s0"
 run_dir = "outputs/jed-{config_name}-{job_id}"
 seed_from_slurm_array = false
 extra_args = []
@@ -28,9 +28,9 @@ XDG_CACHE_HOME = "{run_dir}/cache"
 time_limit = 5040
 checkpoint = true
 alg = "MAPPO"
-seed = 2
+seed = 0
 verbose = true
-exp_tag = "wcci_reduced_mlp_baseline_512x512x512_72x576_lr20m_f010_s2"
+exp_tag = "wcci_mlp_baseline_s0"
 track = true
 wandb_project = "Grid2Op"
 wandb_entity = "corentin-plumet-epfl"
@@ -41,8 +41,8 @@ n_threads = 4
 
 # environment
 env_id = "bus36_wcci"
-n_envs = 72
-action_type = "topology"
+n_envs = 20
+action_type = "topology" 
 reduced_action_space = "outputs/teacher_student_datasets/wcci_full2048a_90_v3/metadata/reduced_action_space_wcci_full2048a_90_v3_mk256.json"
 difficulty = 0
 decentralized = true
@@ -64,18 +64,16 @@ actor_encoder = "mlp"
 critic_encoder = "mlp"
 
 # ppo
-total_timesteps = 60000000
-n_steps = 576
-eval_freq = 82944
-actor_layers = [512, 512, 512]
-critic_layers = [512, 512, 512]
+total_timesteps = 20000000
+n_steps = 2000
+eval_freq = 80000
+actor_layers = [256, 256, 256]
+critic_layers = [256, 256, 256]
 actor_act_fn = "relu"
 critic_act_fn = "relu"
 actor_lr = 0.0001
 critic_lr = 0.0001
 anneal_lr = true
-lr_anneal_timesteps = 20000000
-lr_final_frac = 0.1
 gamma = 0.9
 gae_lambda = 0.95
 update_epochs = 10
@@ -105,4 +103,3 @@ safe_intervention_penalty = 0.0
 safe_intervention_rho_threshold = 0.90
 eval_action_heuristic = "none"
 eval_action_rho_threshold = 0.90
-

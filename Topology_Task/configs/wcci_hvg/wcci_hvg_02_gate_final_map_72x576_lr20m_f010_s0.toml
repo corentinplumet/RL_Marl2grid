@@ -1,7 +1,7 @@
-# MLP baseline on l2rpn_wcci_2020 with a learned reduced topology action space.
+# WCCI reduced-action MLP HVG experiment: intervention gate with final-action MAP evaluation.
 
 [run]
-name = "wcci_reduced_mlp_baseline_72x576_lr20m_f010_s0"
+name = "wcci_hvg_02_gate_final_map_72x576_lr20m_f010_s0"
 run_dir = "outputs/jed-{config_name}-{job_id}"
 seed_from_slurm_array = false
 extra_args = []
@@ -30,7 +30,7 @@ checkpoint = true
 alg = "MAPPO"
 seed = 0
 verbose = true
-exp_tag = "wcci_reduced_mlp_baseline_72x576_lr20m_f010_s0"
+exp_tag = "wcci_hvg_02_gate_final_map_72x576_lr20m_f010_s0"
 track = true
 wandb_project = "Grid2Op"
 wandb_entity = "corentin-plumet-epfl"
@@ -97,8 +97,8 @@ eval_episodes = 10
 eval_all_split_chronics = false
 eval_train_chronics = true
 
-# experiment overlay: plain baseline, no gate and no eval-time heuristic
-intervention_gate = false
+# experiment overlay copied from a0_hvg
+intervention_gate = true
 intervention_gate_eval_mode = "final_action_map"
 intervention_penalty = 0.0
 safe_intervention_penalty = 0.0
