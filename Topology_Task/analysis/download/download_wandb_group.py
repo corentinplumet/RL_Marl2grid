@@ -98,7 +98,13 @@ def _load_env_file(path: Path) -> dict[str, str]:
         if "=" not in line:
             continue
         key, value = line.split("=", 1)
-        value = value.strip().strip('"').strip("'")
+        value = value.strip()
+        if value.startswith(("'", '"')):
+            quote = value[0]
+            end = value.find(quote, 1)
+            value = value[1:end] if end >= 0 else value[1:]
+        else:
+            value = value.split("#", 1)[0].strip()
         values[key.strip()] = value
     return values
 
