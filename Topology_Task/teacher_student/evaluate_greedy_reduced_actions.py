@@ -110,11 +110,81 @@ def _resolve_target_chronic_ids(
     for chronic_id, path in enumerate(candidate_paths):
         name_to_ids.setdefault(_chronic_basename(path), []).append(int(chronic_id))
 
+    fingerprint_matches: Dict[str, List[Tuple[int, Dict[str, str]]]] = {}
+    requested_fingerprints = [str(value) for value in fingerprints if value]
+    if requested_fingerprints:
+        wanted = set(requested_fingerprints)
+        if progress:
+            print(
+                "Resolving target fingerprints in active split: "
+                f"{len(wanted)} unique requested fingerprint(s)",
+                flush=True,
+            )
+        for chronic_id in range(len(candidate_paths)):
+            env.set_chronic_id(int(chronic_id))
+            _, _ = env.reset()
+            info = _current_chronic_info(env)
+            fingerprint = str(info.get("chronic_fingerprint", "unknown"))
+            if fingerprint in wanted:
+                fingerprint_matches.setdefault(fingerprint, []).append(
+                    (int(chronic_id), dict(info))
+                )
+                if progress:
+                    print(
+                        "Resolved target fingerprint "
+                        f"{fingerprint}: id={chronic_id} "
+                        f"name={info.get('chronic_name', 'unknown')} "
+                        f"path={info.get('chronic_path', 'unknown')}",
+                        flush=True,
+                    )
+                if len(fingerprint_matches) == len(wanted):
+                    break
+            if progress and (chronic_id + 1) % 250 == 0:
+                print(
+                    "Searching target fingerprints: "
+                    f"{chronic_id + 1}/{len(candidate_paths)}, "
+                    f"resolved={len(fingerprint_matches)}/{len(wanted)}",
+                    flush=True,
+                )
+
     resolved_ids: List[Optional[int]] = []
-    unresolved_fingerprints: Dict[str, int] = {}
     for target_idx, (name, fingerprint) in enumerate(zip(names, fingerprints)):
         chronic_id: Optional[int] = None
-        if name:
+        if fingerprint:
+            matches = fingerprint_matches.get(str(fingerprint), [])
+            if len(matches) > 1:
+                raise ValueError(
+                    f"Target fingerprint {fingerprint!r} is ambiguous in the "
+                    "active split: "
+                    + ", ".join(str(value[0]) for value in matches)
+                )
+            if matches:
+                chronic_id, info = matches[0]
+                if name:
+                    actual_name = str(info.get("chronic_name", "unknown"))
+                    actual_base = _chronic_basename(
+                        str(info.get("chronic_path", actual_name))
+                    )
+                    if name not in {actual_name, actual_base}:
+                        print(
+                            "WARNING: target name/fingerprint pair resolved by "
+                            f"fingerprint but name differs: requested {name!r}, "
+                            f"resolved name={actual_name!r}, path={info.get('chronic_path', 'unknown')!r}.",
+                            flush=True,
+                        )
+            elif strict_fingerprint:
+                raise RuntimeError(
+                    "Could not resolve target fingerprint in the active split: "
+                    f"{fingerprint}"
+                )
+            elif name:
+                print(
+                    "WARNING: could not resolve target fingerprint "
+                    f"{fingerprint}; falling back to target name {name!r}.",
+                    flush=True,
+                )
+
+        if chronic_id is None and name:
             matches = name_to_ids.get(str(name), [])
             if not matches:
                 preview = ", ".join(_chronic_basename(path) for path in candidate_paths[:12])
@@ -128,60 +198,12 @@ def _resolve_target_chronic_ids(
                     + ", ".join(str(value) for value in matches)
                 )
             chronic_id = int(matches[0])
-            if fingerprint:
-                env.set_chronic_id(chronic_id)
-                _, _ = env.reset()
-                info = _current_chronic_info(env)
-                actual = str(info.get("chronic_fingerprint", "unknown"))
-                if actual != str(fingerprint):
-                    message = (
-                        f"Target fingerprint mismatch for {name}: expected "
-                        f"{fingerprint}, got {actual} at chronic_id={chronic_id}."
-                    )
-                    if strict_fingerprint:
-                        raise RuntimeError(message)
-                    print("WARNING:", message, flush=True)
-        elif fingerprint:
-            unresolved_fingerprints[str(fingerprint)] = int(target_idx)
-        else:
+
+        if chronic_id is None:
             raise ValueError(
                 "Each target needs either a chronic name or a fingerprint."
             )
         resolved_ids.append(chronic_id)
-
-    if unresolved_fingerprints:
-        found = {}
-        for chronic_id in range(len(candidate_paths)):
-            env.set_chronic_id(int(chronic_id))
-            _, _ = env.reset()
-            info = _current_chronic_info(env)
-            fingerprint = str(info.get("chronic_fingerprint", "unknown"))
-            if fingerprint in unresolved_fingerprints and fingerprint not in found:
-                found[fingerprint] = int(chronic_id)
-                if progress:
-                    print(
-                        "Resolved target fingerprint "
-                        f"{fingerprint}: id={chronic_id} "
-                        f"{_chronic_basename(candidate_paths[chronic_id])}",
-                        flush=True,
-                    )
-                if len(found) == len(unresolved_fingerprints):
-                    break
-            if progress and (chronic_id + 1) % 250 == 0:
-                print(
-                    "Searching target fingerprints: "
-                    f"{chronic_id + 1}/{len(candidate_paths)}, "
-                    f"resolved={len(found)}/{len(unresolved_fingerprints)}",
-                    flush=True,
-                )
-        missing = sorted(set(unresolved_fingerprints).difference(found))
-        if missing:
-            raise RuntimeError(
-                "Could not resolve target fingerprint(s) in the active split: "
-                + ", ".join(missing)
-            )
-        for fingerprint, target_idx in unresolved_fingerprints.items():
-            resolved_ids[target_idx] = int(found[fingerprint])
 
     if progress:
         print(
