@@ -31,10 +31,14 @@ Common overrides:
   ENV_ID=bus36
   REDUCED_ACTION_SPACE=outputs/.../reduced_action_space.json
   SPLIT=test
+  CHRONIC_SPLIT_SEED=        # set to match the split used to produce target fingerprints
   MAX_EPISODES=              # leave empty for all chronics in split
   CHRONIC_SAMPLE_MODE=sequential
   CHRONIC_SAMPLE_SEED=
   CHRONIC_SAMPLE_REPLACEMENT=false
+  TARGET_CHRONIC_NAMES=
+  TARGET_CHRONIC_FINGERPRINTS=
+  TARGET_FINGERPRINT_STRICT=true
   DECISION_RHO_THRESHOLD=0.90
   REQUIRE_IMPROVEMENT=true
   IMPROVEMENT_TOLERANCE=1e-3
@@ -85,6 +89,7 @@ REDUCED_ACTION_SPACE="${REDUCED_ACTION_SPACE:-}"
 SPLIT="${SPLIT:-test}"
 SPLIT_CHRONICS="${SPLIT_CHRONICS:-true}"
 TEST_CHRONICS_PCT="${TEST_CHRONICS_PCT:-0.2}"
+CHRONIC_SPLIT_SEED="${CHRONIC_SPLIT_SEED:-}"
 SEED="${SEED:-0}"
 DIFFICULTY="${DIFFICULTY:-0}"
 DECENTRALIZED="${DECENTRALIZED:-true}"
@@ -94,6 +99,9 @@ MAX_ENV_STEPS="${MAX_ENV_STEPS:-}"
 CHRONIC_SAMPLE_MODE="${CHRONIC_SAMPLE_MODE:-sequential}"
 CHRONIC_SAMPLE_SEED="${CHRONIC_SAMPLE_SEED:-}"
 CHRONIC_SAMPLE_REPLACEMENT="${CHRONIC_SAMPLE_REPLACEMENT:-false}"
+TARGET_CHRONIC_NAMES="${TARGET_CHRONIC_NAMES:-}"
+TARGET_CHRONIC_FINGERPRINTS="${TARGET_CHRONIC_FINGERPRINTS:-}"
+TARGET_FINGERPRINT_STRICT="${TARGET_FINGERPRINT_STRICT:-true}"
 DECISION_RHO_THRESHOLD="${DECISION_RHO_THRESHOLD:-0.90}"
 REQUIRE_IMPROVEMENT="${REQUIRE_IMPROVEMENT:-true}"
 IMPROVEMENT_TOLERANCE="${IMPROVEMENT_TOLERANCE:-1e-3}"
@@ -127,6 +135,9 @@ args=(
     --optimize-mem "${OPTIMIZE_MEM}"
     --chronic-sample-mode "${CHRONIC_SAMPLE_MODE}"
     --chronic-sample-replacement "${CHRONIC_SAMPLE_REPLACEMENT}"
+    --target-chronic-names "${TARGET_CHRONIC_NAMES}"
+    --target-chronic-fingerprints "${TARGET_CHRONIC_FINGERPRINTS}"
+    --target-fingerprint-strict "${TARGET_FINGERPRINT_STRICT}"
     --decision-rho-threshold "${DECISION_RHO_THRESHOLD}"
     --require-improvement "${REQUIRE_IMPROVEMENT}"
     --improvement-tolerance "${IMPROVEMENT_TOLERANCE}"
@@ -140,6 +151,10 @@ args=(
 
 if [ -n "${MAX_EPISODES}" ]; then
     args+=(--max-episodes "${MAX_EPISODES}")
+fi
+
+if [ -n "${CHRONIC_SPLIT_SEED}" ]; then
+    args+=(--chronic-split-seed "${CHRONIC_SPLIT_SEED}")
 fi
 
 if [ -n "${MAX_ENV_STEPS}" ]; then
@@ -173,10 +188,14 @@ echo "Conda env: ${CONDA_ENV}"
 echo "Env id: ${ENV_ID}"
 echo "Reduced action space: ${REDUCED_ACTION_SPACE}"
 echo "Split: ${SPLIT}"
+echo "Chronic split seed: ${CHRONIC_SPLIT_SEED:-SEED}"
 echo "Max episodes: ${MAX_EPISODES:-split size}"
 echo "Chronic sample mode: ${CHRONIC_SAMPLE_MODE}"
 echo "Chronic sample seed: ${CHRONIC_SAMPLE_SEED:-SEED}"
 echo "Chronic sample replacement: ${CHRONIC_SAMPLE_REPLACEMENT}"
+echo "Target chronic names: ${TARGET_CHRONIC_NAMES:-none}"
+echo "Target chronic fingerprints: ${TARGET_CHRONIC_FINGERPRINTS:-none}"
+echo "Target fingerprint strict: ${TARGET_FINGERPRINT_STRICT}"
 echo "Decision rho threshold: ${DECISION_RHO_THRESHOLD}"
 echo "Require improvement: ${REQUIRE_IMPROVEMENT}"
 echo "Improvement tolerance: ${IMPROVEMENT_TOLERANCE}"

@@ -44,6 +44,154 @@ def _safe_path(path: Path) -> str:
         return str(path.resolve())
 
 
+def _parse_csv_tokens(value: Optional[str]) -> List[str]:
+    if value is None:
+        return []
+    text = str(value).replace("\n", ",").replace(" ", ",")
+    return [token.strip() for token in text.split(",") if token.strip()]
+
+
+def _chronic_basename(path: Any) -> str:
+    return Path(str(path).rstrip("/")).name
+
+
+def _get_candidate_chronic_paths(env: MAEnvWrapper) -> List[str]:
+    candidates = [str(path) for path in (getattr(env, "chronic_split_order", None) or [])]
+    if candidates:
+        return candidates
+    handlers = getattr(env, "_current_chronic_handlers", lambda: [])()
+    seen = set()
+    for handler in handlers:
+        for attr in ("subpaths", "_subpaths", "paths", "_paths"):
+            value = getattr(handler, attr, None)
+            if value is None:
+                continue
+            for path in list(value):
+                path = str(path)
+                if path not in seen:
+                    candidates.append(path)
+                    seen.add(path)
+    return candidates
+
+
+def _repeat_or_validate(values: List[Any], n_items: int, name: str) -> List[Any]:
+    if not values:
+        return [None] * n_items
+    if len(values) == 1 and n_items > 1:
+        return values * n_items
+    if len(values) != n_items:
+        raise ValueError(
+            f"{name} must provide either one value or exactly {n_items} values."
+        )
+    return values
+
+
+def _resolve_target_chronic_ids(
+    env: MAEnvWrapper,
+    *,
+    target_names: List[str],
+    target_fingerprints: List[str],
+    strict_fingerprint: bool,
+    progress: bool,
+) -> List[Optional[int]]:
+    if not target_names and not target_fingerprints:
+        return []
+
+    n_targets = max(len(target_names), len(target_fingerprints))
+    names = _repeat_or_validate(target_names, n_targets, "--target-chronic-names")
+    fingerprints = _repeat_or_validate(
+        target_fingerprints, n_targets, "--target-chronic-fingerprints"
+    )
+    candidate_paths = _get_candidate_chronic_paths(env)
+    if not candidate_paths:
+        raise RuntimeError("No candidate chronic paths are available to target.")
+
+    name_to_ids: Dict[str, List[int]] = {}
+    for chronic_id, path in enumerate(candidate_paths):
+        name_to_ids.setdefault(_chronic_basename(path), []).append(int(chronic_id))
+
+    resolved_ids: List[Optional[int]] = []
+    unresolved_fingerprints: Dict[str, int] = {}
+    for target_idx, (name, fingerprint) in enumerate(zip(names, fingerprints)):
+        chronic_id: Optional[int] = None
+        if name:
+            matches = name_to_ids.get(str(name), [])
+            if not matches:
+                preview = ", ".join(_chronic_basename(path) for path in candidate_paths[:12])
+                raise ValueError(
+                    f"Could not find target chronic name {name!r} in the active split. "
+                    f"First available names: {preview}"
+                )
+            if len(matches) > 1:
+                raise ValueError(
+                    f"Target chronic name {name!r} is ambiguous in the active split: "
+                    + ", ".join(str(value) for value in matches)
+                )
+            chronic_id = int(matches[0])
+            if fingerprint:
+                env.set_chronic_id(chronic_id)
+                _, _ = env.reset()
+                info = _current_chronic_info(env)
+                actual = str(info.get("chronic_fingerprint", "unknown"))
+                if actual != str(fingerprint):
+                    message = (
+                        f"Target fingerprint mismatch for {name}: expected "
+                        f"{fingerprint}, got {actual} at chronic_id={chronic_id}."
+                    )
+                    if strict_fingerprint:
+                        raise RuntimeError(message)
+                    print("WARNING:", message, flush=True)
+        elif fingerprint:
+            unresolved_fingerprints[str(fingerprint)] = int(target_idx)
+        else:
+            raise ValueError(
+                "Each target needs either a chronic name or a fingerprint."
+            )
+        resolved_ids.append(chronic_id)
+
+    if unresolved_fingerprints:
+        found = {}
+        for chronic_id in range(len(candidate_paths)):
+            env.set_chronic_id(int(chronic_id))
+            _, _ = env.reset()
+            info = _current_chronic_info(env)
+            fingerprint = str(info.get("chronic_fingerprint", "unknown"))
+            if fingerprint in unresolved_fingerprints and fingerprint not in found:
+                found[fingerprint] = int(chronic_id)
+                if progress:
+                    print(
+                        "Resolved target fingerprint "
+                        f"{fingerprint}: id={chronic_id} "
+                        f"{_chronic_basename(candidate_paths[chronic_id])}",
+                        flush=True,
+                    )
+                if len(found) == len(unresolved_fingerprints):
+                    break
+            if progress and (chronic_id + 1) % 250 == 0:
+                print(
+                    "Searching target fingerprints: "
+                    f"{chronic_id + 1}/{len(candidate_paths)}, "
+                    f"resolved={len(found)}/{len(unresolved_fingerprints)}",
+                    flush=True,
+                )
+        missing = sorted(set(unresolved_fingerprints).difference(found))
+        if missing:
+            raise RuntimeError(
+                "Could not resolve target fingerprint(s) in the active split: "
+                + ", ".join(missing)
+            )
+        for fingerprint, target_idx in unresolved_fingerprints.items():
+            resolved_ids[target_idx] = int(found[fingerprint])
+
+    if progress:
+        print(
+            "Target chronic ids: "
+            + ", ".join("" if value is None else str(value) for value in resolved_ids),
+            flush=True,
+        )
+    return resolved_ids
+
+
 def _build_env_args(cli: Namespace) -> Namespace:
     env_args = get_env_args([])
     env_args.env_id = cli.env_id
@@ -369,6 +517,8 @@ def _write_outputs(
     fieldnames = [
         "episode",
         "requested_chronic_id",
+        "requested_chronic_name",
+        "requested_chronic_fingerprint",
         "greedy_chronic_name",
         "do_nothing_chronic_name",
         "greedy_chronic_path",
@@ -445,6 +595,30 @@ def parse_args() -> Namespace:
         default=False,
         help="Sample random chronic ids with replacement.",
     )
+    parser.add_argument(
+        "--target-chronic-names",
+        type=str,
+        default="",
+        help=(
+            "Comma- or space-separated chronic basenames to evaluate exactly. "
+            "When set, this overrides sequential/random chronic sampling."
+        ),
+    )
+    parser.add_argument(
+        "--target-chronic-fingerprints",
+        type=str,
+        default="",
+        help=(
+            "Comma- or space-separated initial-state fingerprints to evaluate "
+            "exactly, or to validate --target-chronic-names."
+        ),
+    )
+    parser.add_argument(
+        "--target-fingerprint-strict",
+        type=str2bool,
+        default=True,
+        help="Abort when a named target chronic does not match its fingerprint.",
+    )
     parser.add_argument("--decision-rho-threshold", type=float, default=0.90)
     parser.add_argument("--improvement-tolerance", type=float, default=1e-3)
     parser.add_argument("--require-improvement", type=str2bool, default=True)
@@ -520,7 +694,18 @@ def main() -> None:
     requests = _sample_candidate_requests(
         all_requests, cli.candidate_sample_size, candidate_sample_seed
     )
-    target_episodes = cli.max_episodes
+    target_names = _parse_csv_tokens(cli.target_chronic_names)
+    target_fingerprints = _parse_csv_tokens(cli.target_chronic_fingerprints)
+    target_chronic_ids = _resolve_target_chronic_ids(
+        greedy_env,
+        target_names=target_names,
+        target_fingerprints=target_fingerprints,
+        strict_fingerprint=bool(cli.target_fingerprint_strict),
+        progress=bool(cli.progress),
+    )
+    target_mode = bool(target_chronic_ids)
+
+    target_episodes = len(target_chronic_ids) if target_mode else cli.max_episodes
     split_size = getattr(greedy_env, "chronic_split_size", None)
     if target_episodes is None:
         target_episodes = int(split_size) if split_size is not None else 1
@@ -530,7 +715,11 @@ def main() -> None:
         if cli.chronic_sample_seed is not None
         else int(env_args.seed)
     )
-    if cli.chronic_sample_mode == "random":
+    if target_mode:
+        if cli.max_episodes is not None:
+            target_episodes = min(int(cli.max_episodes), len(target_chronic_ids))
+        chronic_ids = target_chronic_ids[: int(target_episodes)]
+    elif cli.chronic_sample_mode == "random":
         if split_size is None:
             raise ValueError(
                 "--chronic-sample-mode=random requires an exact chronic split size."
@@ -569,6 +758,19 @@ def main() -> None:
     print(f"Output dir: {_safe_path(output_dir)}")
     print(f"Episodes: {target_episodes}")
     print(f"Chronic sample mode: {cli.chronic_sample_mode}")
+    if target_mode:
+        print("Target chronic mode: true")
+        print(f"Target fingerprint strict: {cli.target_fingerprint_strict}")
+        print(
+            "Target chronic names preview: "
+            + ", ".join(target_names[:10])
+            + ("..." if len(target_names) > 10 else "")
+        )
+        print(
+            "Target fingerprints preview: "
+            + ", ".join(target_fingerprints[:10])
+            + ("..." if len(target_fingerprints) > 10 else "")
+        )
     if cli.chronic_sample_mode == "random":
         print(f"Random chronic sample seed: {chronic_sample_seed}")
         print(
@@ -622,6 +824,14 @@ def main() -> None:
                 "episode": episode,
                 "requested_chronic_id": (
                     "" if requested_chronic_id is None else int(requested_chronic_id)
+                ),
+                "requested_chronic_name": (
+                    target_names[episode] if target_mode and episode < len(target_names) else ""
+                ),
+                "requested_chronic_fingerprint": (
+                    target_fingerprints[episode]
+                    if target_mode and episode < len(target_fingerprints)
+                    else ""
                 ),
                 "greedy_chronic_name": greedy_result["chronic_name"],
                 "do_nothing_chronic_name": (
@@ -785,6 +995,10 @@ def main() -> None:
         "chronic_sample_mode": cli.chronic_sample_mode,
         "chronic_sample_seed": int(chronic_sample_seed),
         "chronic_sample_replacement": bool(cli.chronic_sample_replacement),
+        "target_chronic_mode": bool(target_mode),
+        "target_chronic_names": target_names,
+        "target_chronic_fingerprints": target_fingerprints,
+        "target_fingerprint_strict": bool(cli.target_fingerprint_strict),
         "requested_chronic_ids": [
             None if chronic_id is None else int(chronic_id) for chronic_id in chronic_ids
         ],

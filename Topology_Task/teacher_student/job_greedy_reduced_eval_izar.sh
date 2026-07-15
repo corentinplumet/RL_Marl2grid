@@ -37,6 +37,9 @@ Common overrides:
   CHRONIC_SAMPLE_MODE=sequential
   CHRONIC_SAMPLE_SEED=
   CHRONIC_SAMPLE_REPLACEMENT=false
+  TARGET_CHRONIC_NAMES=
+  TARGET_CHRONIC_FINGERPRINTS=
+  TARGET_FINGERPRINT_STRICT=true
   DECISION_RHO_THRESHOLD=0.90
   REQUIRE_IMPROVEMENT=true
   IMPROVEMENT_TOLERANCE=1e-3
@@ -104,6 +107,9 @@ MAX_ENV_STEPS="${MAX_ENV_STEPS:-}"
 CHRONIC_SAMPLE_MODE="${CHRONIC_SAMPLE_MODE:-sequential}"
 CHRONIC_SAMPLE_SEED="${CHRONIC_SAMPLE_SEED:-}"
 CHRONIC_SAMPLE_REPLACEMENT="${CHRONIC_SAMPLE_REPLACEMENT:-false}"
+TARGET_CHRONIC_NAMES="${TARGET_CHRONIC_NAMES:-}"
+TARGET_CHRONIC_FINGERPRINTS="${TARGET_CHRONIC_FINGERPRINTS:-}"
+TARGET_FINGERPRINT_STRICT="${TARGET_FINGERPRINT_STRICT:-true}"
 DECISION_RHO_THRESHOLD="${DECISION_RHO_THRESHOLD:-0.90}"
 REQUIRE_IMPROVEMENT="${REQUIRE_IMPROVEMENT:-true}"
 IMPROVEMENT_TOLERANCE="${IMPROVEMENT_TOLERANCE:-1e-3}"
@@ -137,6 +143,9 @@ args=(
     --optimize-mem "${OPTIMIZE_MEM}"
     --chronic-sample-mode "${CHRONIC_SAMPLE_MODE}"
     --chronic-sample-replacement "${CHRONIC_SAMPLE_REPLACEMENT}"
+    --target-chronic-names "${TARGET_CHRONIC_NAMES}"
+    --target-chronic-fingerprints "${TARGET_CHRONIC_FINGERPRINTS}"
+    --target-fingerprint-strict "${TARGET_FINGERPRINT_STRICT}"
     --decision-rho-threshold "${DECISION_RHO_THRESHOLD}"
     --require-improvement "${REQUIRE_IMPROVEMENT}"
     --improvement-tolerance "${IMPROVEMENT_TOLERANCE}"
@@ -196,6 +205,9 @@ echo "Max episodes: ${MAX_EPISODES:-split size}"
 echo "Chronic sample mode: ${CHRONIC_SAMPLE_MODE}"
 echo "Chronic sample seed: ${CHRONIC_SAMPLE_SEED:-SEED}"
 echo "Chronic sample replacement: ${CHRONIC_SAMPLE_REPLACEMENT}"
+echo "Target chronic names: ${TARGET_CHRONIC_NAMES:-none}"
+echo "Target chronic fingerprints: ${TARGET_CHRONIC_FINGERPRINTS:-none}"
+echo "Target fingerprint strict: ${TARGET_FINGERPRINT_STRICT}"
 echo "Decision rho threshold: ${DECISION_RHO_THRESHOLD}"
 echo "Require improvement: ${REQUIRE_IMPROVEMENT}"
 echo "Improvement tolerance: ${IMPROVEMENT_TOLERANCE}"
