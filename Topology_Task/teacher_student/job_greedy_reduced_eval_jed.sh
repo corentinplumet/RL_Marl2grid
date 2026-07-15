@@ -32,17 +32,9 @@ Common overrides:
   REDUCED_ACTION_SPACE=outputs/.../reduced_action_space.json
   SPLIT=test
   MAX_EPISODES=              # leave empty for all chronics in split
-  CHRONIC_SPLIT_SEED=        # set to match the training split, e.g. 0
   CHRONIC_SAMPLE_MODE=sequential
   CHRONIC_SAMPLE_SEED=
   CHRONIC_SAMPLE_REPLACEMENT=false
-  TARGET_CHRONIC_FINGERPRINTS=
-  TARGET_CHRONIC_NAME=
-  TARGET_CHRONIC_NAMES=
-  TARGET_CHRONIC_PATHS=
-  TARGET_ENV_INDICES=        # defaults to 0 for all target fingerprints
-  TARGET_RESOLVE_FINGERPRINTS=true
-  TARGET_FINGERPRINT_STRICT=true
   DECISION_RHO_THRESHOLD=0.90
   REQUIRE_IMPROVEMENT=true
   IMPROVEMENT_TOLERANCE=1e-3
@@ -50,7 +42,6 @@ Common overrides:
   CANDIDATE_SAMPLE_SEED=     # leave empty to use SEED
   COMPARE_DO_NOTHING=true
   SIM_WORKERS=71
-  SIM_WORKER_SYNC_MODE=replay
   OUTPUT_DIR=outputs/teacher_student_greedy_eval
 
 Extra arguments are forwarded to evaluate_greedy_reduced_actions.py.
@@ -94,7 +85,6 @@ REDUCED_ACTION_SPACE="${REDUCED_ACTION_SPACE:-}"
 SPLIT="${SPLIT:-test}"
 SPLIT_CHRONICS="${SPLIT_CHRONICS:-true}"
 TEST_CHRONICS_PCT="${TEST_CHRONICS_PCT:-0.2}"
-CHRONIC_SPLIT_SEED="${CHRONIC_SPLIT_SEED:-}"
 SEED="${SEED:-0}"
 DIFFICULTY="${DIFFICULTY:-0}"
 DECENTRALIZED="${DECENTRALIZED:-true}"
@@ -104,13 +94,6 @@ MAX_ENV_STEPS="${MAX_ENV_STEPS:-}"
 CHRONIC_SAMPLE_MODE="${CHRONIC_SAMPLE_MODE:-sequential}"
 CHRONIC_SAMPLE_SEED="${CHRONIC_SAMPLE_SEED:-}"
 CHRONIC_SAMPLE_REPLACEMENT="${CHRONIC_SAMPLE_REPLACEMENT:-false}"
-TARGET_CHRONIC_FINGERPRINTS="${TARGET_CHRONIC_FINGERPRINTS:-}"
-TARGET_CHRONIC_NAME="${TARGET_CHRONIC_NAME:-}"
-TARGET_CHRONIC_NAMES="${TARGET_CHRONIC_NAMES:-}"
-TARGET_CHRONIC_PATHS="${TARGET_CHRONIC_PATHS:-}"
-TARGET_ENV_INDICES="${TARGET_ENV_INDICES:-}"
-TARGET_RESOLVE_FINGERPRINTS="${TARGET_RESOLVE_FINGERPRINTS:-true}"
-TARGET_FINGERPRINT_STRICT="${TARGET_FINGERPRINT_STRICT:-true}"
 DECISION_RHO_THRESHOLD="${DECISION_RHO_THRESHOLD:-0.90}"
 REQUIRE_IMPROVEMENT="${REQUIRE_IMPROVEMENT:-true}"
 IMPROVEMENT_TOLERANCE="${IMPROVEMENT_TOLERANCE:-1e-3}"
@@ -124,7 +107,6 @@ if [ "${DEFAULT_SIM_WORKERS}" -gt 1 ]; then
 fi
 SIM_WORKERS="${SIM_WORKERS:-${DEFAULT_SIM_WORKERS}}"
 SIM_START_METHOD="${SIM_START_METHOD:-spawn}"
-SIM_WORKER_SYNC_MODE="${SIM_WORKER_SYNC_MODE:-replay}"
 OUTPUT_DIR="${OUTPUT_DIR:-outputs/teacher_student_greedy_eval}"
 PROGRESS="${PROGRESS:-true}"
 
@@ -152,14 +134,9 @@ args=(
     --time-step "${TIME_STEP}"
     --sim-workers "${SIM_WORKERS}"
     --sim-start-method "${SIM_START_METHOD}"
-    --sim-worker-sync-mode "${SIM_WORKER_SYNC_MODE}"
     --output-dir "${OUTPUT_DIR}"
     --progress "${PROGRESS}"
 )
-
-if [ -n "${CHRONIC_SPLIT_SEED}" ]; then
-    args+=(--chronic-split-seed "${CHRONIC_SPLIT_SEED}")
-fi
 
 if [ -n "${MAX_EPISODES}" ]; then
     args+=(--max-episodes "${MAX_EPISODES}")
@@ -172,29 +149,6 @@ fi
 if [ -n "${CHRONIC_SAMPLE_SEED}" ]; then
     args+=(--chronic-sample-seed "${CHRONIC_SAMPLE_SEED}")
 fi
-
-if [ -n "${TARGET_CHRONIC_FINGERPRINTS}" ]; then
-    args+=(--target-chronic-fingerprints "${TARGET_CHRONIC_FINGERPRINTS}")
-fi
-
-if [ -n "${TARGET_CHRONIC_NAME}" ]; then
-    args+=(--target-chronic-name "${TARGET_CHRONIC_NAME}")
-fi
-
-if [ -n "${TARGET_CHRONIC_NAMES}" ]; then
-    args+=(--target-chronic-names "${TARGET_CHRONIC_NAMES}")
-fi
-
-if [ -n "${TARGET_CHRONIC_PATHS}" ]; then
-    args+=(--target-chronic-paths "${TARGET_CHRONIC_PATHS}")
-fi
-
-if [ -n "${TARGET_ENV_INDICES}" ]; then
-    args+=(--target-env-indices "${TARGET_ENV_INDICES}")
-fi
-
-args+=(--target-resolve-fingerprints "${TARGET_RESOLVE_FINGERPRINTS}")
-args+=(--target-fingerprint-strict "${TARGET_FINGERPRINT_STRICT}")
 
 if [ -n "${CANDIDATE_SAMPLE_SIZE}" ]; then
     args+=(--candidate-sample-size "${CANDIDATE_SAMPLE_SIZE}")
@@ -219,18 +173,10 @@ echo "Conda env: ${CONDA_ENV}"
 echo "Env id: ${ENV_ID}"
 echo "Reduced action space: ${REDUCED_ACTION_SPACE}"
 echo "Split: ${SPLIT}"
-echo "Chronic split seed: ${CHRONIC_SPLIT_SEED:-SEED}"
 echo "Max episodes: ${MAX_EPISODES:-split size}"
 echo "Chronic sample mode: ${CHRONIC_SAMPLE_MODE}"
 echo "Chronic sample seed: ${CHRONIC_SAMPLE_SEED:-SEED}"
 echo "Chronic sample replacement: ${CHRONIC_SAMPLE_REPLACEMENT}"
-echo "Target chronic fingerprints: ${TARGET_CHRONIC_FINGERPRINTS:-none}"
-echo "Target chronic name: ${TARGET_CHRONIC_NAME:-none}"
-echo "Target chronic names: ${TARGET_CHRONIC_NAMES:-none}"
-echo "Target chronic paths: ${TARGET_CHRONIC_PATHS:-none}"
-echo "Target env indices: ${TARGET_ENV_INDICES:-0}"
-echo "Target resolve fingerprints: ${TARGET_RESOLVE_FINGERPRINTS}"
-echo "Target fingerprint strict: ${TARGET_FINGERPRINT_STRICT}"
 echo "Decision rho threshold: ${DECISION_RHO_THRESHOLD}"
 echo "Require improvement: ${REQUIRE_IMPROVEMENT}"
 echo "Improvement tolerance: ${IMPROVEMENT_TOLERANCE}"
@@ -238,7 +184,6 @@ echo "Candidate sample size: ${CANDIDATE_SAMPLE_SIZE:-all}"
 echo "Candidate sample seed: ${CANDIDATE_SAMPLE_SEED:-SEED}"
 echo "Compare do-nothing replay: ${COMPARE_DO_NOTHING}"
 echo "Simulation workers: ${SIM_WORKERS}"
-echo "Worker sync mode: ${SIM_WORKER_SYNC_MODE}"
 echo "Output dir: ${OUTPUT_DIR}"
 echo "Extra args: $*"
 
