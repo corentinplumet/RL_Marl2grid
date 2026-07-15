@@ -141,47 +141,57 @@ def _resolve_target_paths_by_fingerprint(
     chronic_name_hints: List[Optional[str]],
     env_idx: int,
     progress: bool,
-) -> Dict[str, str]:
+) -> Dict[str, Dict[str, Any]]:
     targets = {str(fingerprint) for fingerprint in fingerprints if fingerprint}
     if not targets:
         return {}
 
-    candidate_paths = _ordered_fingerprint_search_paths(env, chronic_name_hints)
+    candidate_paths = _get_candidate_chronic_paths(env)
     if not candidate_paths:
         raise RuntimeError("No candidate chronic paths are available to search.")
+    path_to_chronic_id = {str(path): int(idx) for idx, path in enumerate(candidate_paths)}
+    search_paths = _ordered_fingerprint_search_paths(env, chronic_name_hints)
 
-    resolved: Dict[str, str] = {}
+    resolved: Dict[str, Dict[str, Any]] = {}
     samples = []
-    for searched, path in enumerate(candidate_paths, start=1):
-        _set_env_chronic_sequence(env, [path])
-        _, info = env.reset()
-        fingerprint = str(info.get("chronic_fingerprint", "unknown"))
-        if len(samples) < 8:
-            samples.append(f"{_chronic_basename(path)}->{fingerprint}")
-        if fingerprint in targets and fingerprint not in resolved:
-            resolved[fingerprint] = str(path)
-            if progress:
+    try:
+        _set_env_chronic_sequence(env, candidate_paths)
+        for searched, path in enumerate(search_paths, start=1):
+            chronic_id = int(path_to_chronic_id[str(path)])
+            env.set_chronic_id(chronic_id)
+            _, info = env.reset()
+            fingerprint = str(info.get("chronic_fingerprint", "unknown"))
+            if len(samples) < 8:
+                samples.append(f"{_chronic_basename(path)}->{fingerprint}")
+            if fingerprint in targets and fingerprint not in resolved:
+                resolved[fingerprint] = {
+                    "path": str(path),
+                    "chronic_id": int(chronic_id),
+                }
+                if progress:
+                    print(
+                        "Resolved target fingerprint "
+                        f"{fingerprint} on env_idx={env_idx}: "
+                        f"id={chronic_id} {_chronic_basename(path)}",
+                        flush=True,
+                    )
+                if set(resolved) == targets:
+                    return resolved
+            if progress and searched % 250 == 0:
                 print(
-                    "Resolved target fingerprint "
-                    f"{fingerprint} on env_idx={env_idx}: "
-                    f"{_chronic_basename(path)}",
+                    "Searching target fingerprints "
+                    f"env_idx={env_idx}: {searched}/{len(search_paths)} paths, "
+                    f"resolved={len(resolved)}/{len(targets)}",
                     flush=True,
                 )
-            if set(resolved) == targets:
-                return resolved
-        if progress and searched % 250 == 0:
-            print(
-                "Searching target fingerprints "
-                f"env_idx={env_idx}: {searched}/{len(candidate_paths)} paths, "
-                f"resolved={len(resolved)}/{len(targets)}",
-                flush=True,
-            )
+    finally:
+        _set_env_chronic_sequence(env, candidate_paths)
 
     missing = sorted(targets.difference(resolved))
     raise RuntimeError(
         "Could not resolve target fingerprint(s) in the active split for "
         f"env_idx={env_idx}: {', '.join(missing)}. "
-        f"Searched {len(candidate_paths)} paths. "
+        f"Searched {len(search_paths)} paths. "
         "Sample path->fingerprint values: " + ", ".join(samples)
     )
 
@@ -536,10 +546,10 @@ def _run_do_nothing_episode(
     expected_fingerprint: Optional[str],
     strict_fingerprint: bool,
 ) -> Dict[str, Any]:
-    if target_chronic_path is not None:
-        _set_env_chronic_sequence(env, [str(target_chronic_path)])
-    elif chronic_id is not None:
+    if chronic_id is not None:
         env.set_chronic_id(int(chronic_id))
+    elif target_chronic_path is not None:
+        _set_env_chronic_sequence(env, [str(target_chronic_path)])
     _, _ = env.reset()
     chronic_info = _current_chronic_info(env)
     _validate_target_fingerprint(
@@ -587,10 +597,10 @@ def _run_greedy_episode(
     strict_fingerprint: bool,
     sim_worker_sync_mode: str,
 ) -> Dict[str, Any]:
-    if target_chronic_path is not None:
-        _set_env_chronic_sequence(env, [str(target_chronic_path)])
-    elif chronic_id is not None:
+    if chronic_id is not None:
         env.set_chronic_id(int(chronic_id))
+    elif target_chronic_path is not None:
+        _set_env_chronic_sequence(env, [str(target_chronic_path)])
     _, _ = env.reset()
     chronic_info = _current_chronic_info(env)
     _validate_target_fingerprint(
@@ -610,7 +620,9 @@ def _run_greedy_episode(
         sim_pool.reset(
             episode_start_max_rho,
             chronic_id=episode_chronic_id,
-            target_chronic_path=episode_chronic_path,
+            target_chronic_path=(
+                None if episode_chronic_id is not None else episode_chronic_path
+            ),
         )
 
     max_steps = _max_episode_duration(env)
@@ -1049,7 +1061,7 @@ def main() -> None:
     print("======================================================")
 
     rows: List[Dict[str, Any]] = []
-    resolved_paths_by_env_idx: Dict[int, Dict[str, str]] = {}
+    resolved_targets_by_env_idx: Dict[int, Dict[str, Dict[str, Any]]] = {}
     start_time = time.perf_counter()
     try:
         for episode in range(int(target_episodes)):
@@ -1089,18 +1101,19 @@ def main() -> None:
                 str(target_spec["fingerprint"]) if target_spec is not None else None
             )
             target_chronic_path = None
+            target_chronic_id = requested_chronic_id
             if target_spec is not None:
                 explicit_path = target_spec.get("chronic_path")
                 if explicit_path:
                     target_chronic_path = str(explicit_path)
                 elif expected_fingerprint and bool(cli.target_resolve_fingerprints):
-                    if current_env_idx not in resolved_paths_by_env_idx:
+                    if current_env_idx not in resolved_targets_by_env_idx:
                         specs_for_env = [
                             spec
                             for spec in target_specs
                             if int(spec["env_idx"]) == current_env_idx
                         ]
-                        resolved_paths_by_env_idx[current_env_idx] = (
+                        resolved_targets_by_env_idx[current_env_idx] = (
                             _resolve_target_paths_by_fingerprint(
                                 greedy_env,
                                 fingerprints=[
@@ -1113,9 +1126,11 @@ def main() -> None:
                                 progress=bool(cli.progress),
                             )
                         )
-                    target_chronic_path = resolved_paths_by_env_idx[current_env_idx][
+                    resolved_target = resolved_targets_by_env_idx[current_env_idx][
                         expected_fingerprint
                     ]
+                    target_chronic_path = str(resolved_target["path"])
+                    target_chronic_id = int(resolved_target["chronic_id"])
                 else:
                     target_chronic_path = _resolve_target_chronic_path(
                         greedy_env,
@@ -1132,7 +1147,7 @@ def main() -> None:
                 improvement_tolerance=float(cli.improvement_tolerance),
                 require_improvement=bool(cli.require_improvement),
                 max_env_steps=cli.max_env_steps,
-                chronic_id=requested_chronic_id,
+                chronic_id=target_chronic_id,
                 target_chronic_path=target_chronic_path,
                 expected_fingerprint=expected_fingerprint,
                 strict_fingerprint=bool(cli.target_fingerprint_strict),
@@ -1144,7 +1159,7 @@ def main() -> None:
                     env=do_nothing_env,
                     agent_ids=agent_ids,
                     max_env_steps=cli.max_env_steps,
-                    chronic_id=requested_chronic_id,
+                    chronic_id=target_chronic_id,
                     target_chronic_path=target_chronic_path,
                     expected_fingerprint=expected_fingerprint,
                     strict_fingerprint=bool(cli.target_fingerprint_strict),
@@ -1152,7 +1167,7 @@ def main() -> None:
             row = {
                 "episode": episode,
                 "requested_chronic_id": (
-                    "" if requested_chronic_id is None else int(requested_chronic_id)
+                    "" if target_chronic_id is None else int(target_chronic_id)
                 ),
                 "requested_env_idx": int(current_env_idx),
                 "requested_chronic_name": (
@@ -1333,7 +1348,12 @@ def main() -> None:
         ],
         "target_env_indices": [int(spec["env_idx"]) for spec in target_specs],
         "requested_chronic_ids": [
-            None if chronic_id is None else int(chronic_id) for chronic_id in chronic_ids
+            (
+                None
+                if row["requested_chronic_id"] == ""
+                else int(row["requested_chronic_id"])
+            )
+            for row in rows
         ],
         "decision_rho_threshold": float(cli.decision_rho_threshold),
         "require_improvement": bool(cli.require_improvement),
