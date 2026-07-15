@@ -78,6 +78,16 @@ def get_env_args(argv: Optional[List[str]] = None) -> Namespace:
         default="scenario.json",
         help="Path to environment configuration file",
     )
+    parser.add_argument(
+        "--obs-attrs",
+        nargs="+",
+        default=None,
+        help=(
+            "Optional explicit Grid2Op observation attributes to keep in the "
+            "flat observation. When unset, attributes are derived from "
+            "scenario.json as before."
+        ),
+    )
 
     # Normalization
     parser.add_argument(

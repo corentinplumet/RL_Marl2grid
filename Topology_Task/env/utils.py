@@ -907,11 +907,29 @@ class MAEnvWrapper(MAEnv):
 
         # Prepare action and observation spaces
         state_attrs = config["state_attrs"]
-        obs_attrs = list(state_attrs["default"])
-        if env_config[env_id]["maintenance"]:
-            obs_attrs += state_attrs["maintenance"]
+        if env_type != "topology":
+            raise NotImplementedError(
+                "Redispatching environments are not implemented yet!"
+            )
+        custom_obs_attrs = getattr(args, "obs_attrs", None)
+        if custom_obs_attrs:
+            obs_attrs = list(dict.fromkeys(str(attr) for attr in custom_obs_attrs))
+            known_obs_attrs = {
+                attr for attrs in state_attrs.values() for attr in attrs
+            }
+            unknown_obs_attrs = [
+                attr for attr in obs_attrs if attr not in known_obs_attrs
+            ]
+            if unknown_obs_attrs:
+                raise ValueError(
+                    "Unknown obs_attrs entries: "
+                    f"{unknown_obs_attrs}. Known attributes: {sorted(known_obs_attrs)}"
+                )
+        else:
+            obs_attrs = list(state_attrs["default"])
+            if env_config[env_id]["maintenance"]:
+                obs_attrs += state_attrs["maintenance"]
 
-        if env_type == "topology":
             obs_attrs += state_attrs["topology"]
             if not self.use_graph_obs:
                 obs_attrs += state_attrs["redispatch"]
@@ -919,10 +937,6 @@ class MAEnvWrapper(MAEnv):
                     obs_attrs += state_attrs["curtailment"]
                 if env_config[env_id]["battery"]:
                     obs_attrs += state_attrs["storage"]
-        else:
-            raise NotImplementedError(
-                "Redispatching environments are not implemented yet!"
-            )
 
         # MARL spaces
         self._aux_observation_space = {
