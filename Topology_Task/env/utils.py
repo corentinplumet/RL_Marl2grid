@@ -21,7 +21,8 @@ from ray.rllib.env.multi_agent_env import MultiAgentEnv as MAEnv
 
 from common.imports import *
 from common.explainability import EXPLAIN_INFO_KEY
-from common.graph import GridGraphBuilder
+from common.graph import make_grid_graph_builder
+from common.graph_normalization import GraphFeatureProcessor
 from common.tokenizer import GridTokenBuilder
 from common.utils import any_gnn_enabled, any_transformer_enabled
 from .reward import (
@@ -957,14 +958,43 @@ class MAEnvWrapper(MAEnv):
 
         self.graph_builder = None
         self.graph_specs = None
+        self.graph_feature_processor = None
         if self.use_graph_obs:
-            self.graph_builder = GridGraphBuilder(
+            sparse_gt_enabled = (
+                str(getattr(args, "gnn_type", "")).lower() == "sparse_transformer"
+            )
+            sparse_gt_add_self_edges = getattr(
+                args, "sparse_gt_add_self_edges", None
+            )
+            if sparse_gt_add_self_edges is None:
+                sparse_gt_add_self_edges = sparse_gt_enabled
+            add_substation_edges = getattr(
+                args, "gnn_add_substation_edges", None
+            )
+            if add_substation_edges is None:
+                add_substation_edges = getattr(
+                    args, "sparse_gt_add_substation_edges", None
+                )
+            if add_substation_edges is None:
+                add_substation_edges = sparse_gt_enabled
+            self.graph_builder = make_grid_graph_builder(
+                getattr(args, "gnn_graph_type", "bus"),
                 self.g2op_env,
                 self.observation_domains,
                 include_neighbors=getattr(args, "gnn_include_neighbors", False),
                 include_maintenance=env_config[env_id]["maintenance"],
+                add_self_edges=sparse_gt_add_self_edges,
+                add_substation_edges=add_substation_edges,
             )
             self.graph_specs = self.graph_builder.specs
+            self.graph_feature_processor = GraphFeatureProcessor(
+                self.g2op_env,
+                self.graph_specs["state"],
+                physical_scaling=getattr(args, "gnn_physical_scaling", False),
+                running_normalization=getattr(args, "gnn_running_norm", False),
+                power_scale_mw=getattr(args, "gnn_power_scale_mw", 0.0),
+                clip=getattr(args, "gnn_norm_clip", 10.0),
+            )
         self.token_builder = None
         self.token_specs = None
         if self.use_token_obs:
@@ -1561,6 +1591,11 @@ class MAEnvWrapper(MAEnv):
 
         if self.use_graph_obs:
             graphs = self.graph_builder.build(self._obs)
+            if self.graph_feature_processor is not None:
+                graphs = self.graph_feature_processor.process(
+                    graphs,
+                    update=not self.eval_env,
+                )
             return {
                 agent_id: {
                     "flat": gym_obs[agent_id],
@@ -1615,27 +1650,37 @@ class MAEnvWrapper(MAEnv):
         return norm_obs
 
     def get_obs_stats(self):
-        if not self.norm_obs:
-            return {}
-        return {
-            agent_id: {
-                "count": s["count"],
-                "mean": None if s["mean"] is None else s["mean"].copy(),
-                "var": None if s["var"] is None else s["var"].copy(),
-            }
-            for agent_id, s in self.obs_stats.items()
-        }
+        stats = {}
+        if self.norm_obs:
+            stats.update(
+                {
+                    agent_id: {
+                        "count": s["count"],
+                        "mean": None if s["mean"] is None else s["mean"].copy(),
+                        "var": None if s["var"] is None else s["var"].copy(),
+                    }
+                    for agent_id, s in self.obs_stats.items()
+                }
+            )
+        if self.graph_feature_processor is not None:
+            stats.update(self.graph_feature_processor.get_stats())
+        return stats
 
     def set_obs_stats(self, stats):
-        if not self.norm_obs or not stats:
+        if not stats:
             return
-        self.obs_stats.clear()
-        for agent_id, s in stats.items():
-            self.obs_stats[agent_id] = {
-                "count": s["count"],
-                "mean": None if s["mean"] is None else s["mean"].copy(),
-                "var": None if s["var"] is None else s["var"].copy(),
-            }
+        if self.norm_obs:
+            self.obs_stats.clear()
+            for agent_id, s in stats.items():
+                if str(agent_id).startswith(GraphFeatureProcessor.STATS_PREFIX):
+                    continue
+                self.obs_stats[agent_id] = {
+                    "count": s["count"],
+                    "mean": None if s["mean"] is None else s["mean"].copy(),
+                    "var": None if s["var"] is None else s["var"].copy(),
+                }
+        if self.graph_feature_processor is not None:
+            self.graph_feature_processor.set_stats(stats)
 
     def get_current_max_rho(self) -> float:
         """Return the current Grid2Op max rho before the next action is applied."""

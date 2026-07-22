@@ -99,6 +99,17 @@ def validate_args(config_args: dict[str, Any]) -> None:
             f"Invalid config: eval_freq={eval_freq} must be divisible by n_envs={n_envs}."
         )
 
+    gnn_type = str(config_args.get("gnn_type", "gat")).lower()
+    readout = str(config_args.get("gnn_readout_aggr", "mean")).lower()
+    if gnn_type == "sparse_transformer":
+        readout = str(config_args.get("sparse_gt_pooling", "") or readout).lower()
+    elif readout not in {"mean", "sum", "max", "virtual_node"}:
+        raise SystemExit(
+            "Invalid config: readout "
+            f"'{readout}' is only implemented for gnn_type=sparse_transformer. "
+            "Use mean, sum, max, or virtual_node with ordinary GNN encoders."
+        )
+
 
 def print_python_summary() -> None:
     print("========== Python environment summary ==========")

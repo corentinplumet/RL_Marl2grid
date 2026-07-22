@@ -1,0 +1,1596 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/t4qhca",
+    "id": "t4qhca",
+    "slide": 4,
+    "layoutId": "4fe4d5da-ecf8-4cb9-81e7-cbd4444b3e97",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "7d876e22-4717-43f5-8847-5a148d9fdc1c",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#FFFFFF",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "4fe4d5da-ecf8-4cb9-81e7-cbd4444b3e97",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "7d876e22-4717-43f5-8847-5a148d9fdc1c",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "7d876e22-4717-43f5-8847-5a148d9fdc1c",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/d8vupoje",
+      "id": "1",
+      "name": "slide4-title",
+      "bbox": [
+        48,
+        27,
+        1184,
+        51
+      ],
+      "geometry": "rect",
+      "text": "The graph encoder maps injections to nodes and line conditions to edges",
+      "textPreview": "The graph encoder maps injections to nodes and line conditions to edges",
+      "resolvedFontSize": 30,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 30,
+        "typeface": "+mn-lt",
+        "color": "#111820",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "The graph encoder maps injections to nodes and line conditions to edges"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "The graph encoder maps injections to nodes and line conditions to edges",
+          "resolvedTextStyle": {
+            "fontSize": 30,
+            "color": "#111820",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "The graph encoder maps injections to nodes and line conditions to edges",
+              "fontSize": 30,
+              "color": "#111820",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ql4vet0n",
+      "id": "2",
+      "name": "slide4-subtitle",
+      "bbox": [
+        50,
+        80,
+        1160,
+        26
+      ],
+      "geometry": "rect",
+      "text": "WCCI-36 adds maintenance information on edges; redispatch and curtailment stay outside the core graph",
+      "textPreview": "WCCI-36 adds maintenance information on edges; redispatch and curtailment stay outside the core graph",
+      "resolvedFontSize": 15,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 15,
+        "typeface": "+mn-lt",
+        "color": "#5A6875",
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "WCCI-36 adds maintenance information on edges; redispatch and curtailment stay outside the core graph"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "WCCI-36 adds maintenance information on edges; redispatch and curtailment stay outside the core graph",
+          "resolvedTextStyle": {
+            "fontSize": 15,
+            "color": "#5A6875",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "WCCI-36 adds maintenance information on edges; redispatch and curtailment stay outside the core graph",
+              "fontSize": 15,
+              "color": "#5A6875",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/rmdcny18",
+      "id": "3",
+      "name": "feature-table-frame",
+      "bbox": [
+        32,
+        122,
+        1216,
+        526
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FBFCFD",
+      "lineColor": "#D7E3EC",
+      "lineWidth": 1
+    },
+    {
+      "order": 4,
+      "kind": "table",
+      "scope": "slide",
+      "aid": "tb/1wfmhcf6",
+      "id": "4",
+      "bbox": [
+        48,
+        138,
+        1184,
+        494
+      ],
+      "text": "Feature category | Observation variables | Graph role\nGeneration | gen_p, gen_theta | Node\nDemand | load_p, load_theta | Node\nLine loading | rho | Edge\nLine status | line_status | Edge + active mask\nOverload duration | timestep_overflow | Edge\nLine cooldown | time_before_cooldown_line | Edge\nSubstation cooldown | time_before_cooldown_sub | Node\nTopology | topo_vect | Busbar nodes + edge mask\nMaintenance forecast | time_next_maintenance, duration_next_maintenance | Edge · WCCI-36 only\nRedispatch state | target_dispatch, actual_dispatch, gen_margin_up/down | Outside core graph\nCurtailment state | gen_p_before_curtail, curtailment, curtailment_limit | Outside core graph\nControlled region | Agent's assigned substations | Node · domain_mask",
+      "textPreview": "Feature category | Observation variables | Graph role | Generation | gen_p, gen_theta | Node | Demand | load_p, load_theta | Node | Line ...",
+      "rows": 13,
+      "cols": 3,
+      "cells": [
+        {
+          "index": 1,
+          "row": 1,
+          "column": 1,
+          "bbox": [
+            48,
+            138,
+            260,
+            38
+          ],
+          "text": "Feature category",
+          "textPreview": "Feature category",
+          "fillColor": "#F1F4F6",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Feature category",
+              "resolvedTextStyle": {
+                "fontSize": 14,
+                "color": "#263641",
+                "bold": true
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Feature category",
+                  "fontSize": 14,
+                  "color": "#263641",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "row": 1,
+          "column": 2,
+          "bbox": [
+            308,
+            138,
+            620,
+            38
+          ],
+          "text": "Observation variables",
+          "textPreview": "Observation variables",
+          "fillColor": "#F1F4F6",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Observation variables",
+              "resolvedTextStyle": {
+                "fontSize": 14,
+                "color": "#263641",
+                "bold": true
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Observation variables",
+                  "fontSize": 14,
+                  "color": "#263641",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "row": 1,
+          "column": 3,
+          "bbox": [
+            928,
+            138,
+            304,
+            38
+          ],
+          "text": "Graph role",
+          "textPreview": "Graph role",
+          "fillColor": "#F1F4F6",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Graph role",
+              "resolvedTextStyle": {
+                "fontSize": 14,
+                "color": "#263641",
+                "bold": true
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Graph role",
+                  "fontSize": 14,
+                  "color": "#263641",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "row": 2,
+          "column": 1,
+          "bbox": [
+            48,
+            176,
+            260,
+            38
+          ],
+          "text": "Generation",
+          "textPreview": "Generation",
+          "fillColor": "#FFFFFF",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Generation",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#263641",
+                "bold": true
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Generation",
+                  "fontSize": 12.51,
+                  "color": "#263641",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "row": 2,
+          "column": 2,
+          "bbox": [
+            308,
+            176,
+            620,
+            38
+          ],
+          "text": "gen_p, gen_theta",
+          "textPreview": "gen_p, gen_theta",
+          "fillColor": "#FFFFFF",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "gen_p, gen_theta",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#415466"
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "gen_p, gen_theta",
+                  "fontSize": 12.51,
+                  "color": "#415466"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "row": 2,
+          "column": 3,
+          "bbox": [
+            928,
+            176,
+            304,
+            38
+          ],
+          "text": "Node",
+          "textPreview": "Node",
+          "fillColor": "#EAF3FA",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Node",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#276F9A",
+                "bold": true
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Node",
+                  "fontSize": 12.51,
+                  "color": "#276F9A",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "row": 3,
+          "column": 1,
+          "bbox": [
+            48,
+            214,
+            260,
+            38
+          ],
+          "text": "Demand",
+          "textPreview": "Demand",
+          "fillColor": "#FFFFFF",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Demand",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#263641",
+                "bold": true
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Demand",
+                  "fontSize": 12.51,
+                  "color": "#263641",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "row": 3,
+          "column": 2,
+          "bbox": [
+            308,
+            214,
+            620,
+            38
+          ],
+          "text": "load_p, load_theta",
+          "textPreview": "load_p, load_theta",
+          "fillColor": "#FFFFFF",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "load_p, load_theta",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#415466"
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "load_p, load_theta",
+                  "fontSize": 12.51,
+                  "color": "#415466"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "row": 3,
+          "column": 3,
+          "bbox": [
+            928,
+            214,
+            304,
+            38
+          ],
+          "text": "Node",
+          "textPreview": "Node",
+          "fillColor": "#EAF3FA",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Node",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#276F9A",
+                "bold": true
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Node",
+                  "fontSize": 12.51,
+                  "color": "#276F9A",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "row": 4,
+          "column": 1,
+          "bbox": [
+            48,
+            252,
+            260,
+            38
+          ],
+          "text": "Line loading",
+          "textPreview": "Line loading",
+          "fillColor": "#FFFFFF",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Line loading",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#263641",
+                "bold": true
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Line loading",
+                  "fontSize": 12.51,
+                  "color": "#263641",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 11,
+          "row": 4,
+          "column": 2,
+          "bbox": [
+            308,
+            252,
+            620,
+            38
+          ],
+          "text": "rho",
+          "textPreview": "rho",
+          "fillColor": "#FFFFFF",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "rho",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#415466"
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "rho",
+                  "fontSize": 12.51,
+                  "color": "#415466"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 12,
+          "row": 4,
+          "column": 3,
+          "bbox": [
+            928,
+            252,
+            304,
+            38
+          ],
+          "text": "Edge",
+          "textPreview": "Edge",
+          "fillColor": "#EAF8F7",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Edge",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#146E6B",
+                "bold": true
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Edge",
+                  "fontSize": 12.51,
+                  "color": "#146E6B",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 13,
+          "row": 5,
+          "column": 1,
+          "bbox": [
+            48,
+            290,
+            260,
+            38
+          ],
+          "text": "Line status",
+          "textPreview": "Line status",
+          "fillColor": "#FFFFFF",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Line status",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#263641",
+                "bold": true
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Line status",
+                  "fontSize": 12.51,
+                  "color": "#263641",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 14,
+          "row": 5,
+          "column": 2,
+          "bbox": [
+            308,
+            290,
+            620,
+            38
+          ],
+          "text": "line_status",
+          "textPreview": "line_status",
+          "fillColor": "#FFFFFF",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "line_status",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#415466"
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "line_status",
+                  "fontSize": 12.51,
+                  "color": "#415466"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 15,
+          "row": 5,
+          "column": 3,
+          "bbox": [
+            928,
+            290,
+            304,
+            38
+          ],
+          "text": "Edge + active mask",
+          "textPreview": "Edge + active mask",
+          "fillColor": "#F2EAF8",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Edge + active mask",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#80579E",
+                "bold": true
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Edge + active mask",
+                  "fontSize": 12.51,
+                  "color": "#80579E",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 16,
+          "row": 6,
+          "column": 1,
+          "bbox": [
+            48,
+            328,
+            260,
+            38
+          ],
+          "text": "Overload duration",
+          "textPreview": "Overload duration",
+          "fillColor": "#FFFFFF",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Overload duration",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#263641",
+                "bold": true
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Overload duration",
+                  "fontSize": 12.51,
+                  "color": "#263641",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 17,
+          "row": 6,
+          "column": 2,
+          "bbox": [
+            308,
+            328,
+            620,
+            38
+          ],
+          "text": "timestep_overflow",
+          "textPreview": "timestep_overflow",
+          "fillColor": "#FFFFFF",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "timestep_overflow",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#415466"
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "timestep_overflow",
+                  "fontSize": 12.51,
+                  "color": "#415466"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 18,
+          "row": 6,
+          "column": 3,
+          "bbox": [
+            928,
+            328,
+            304,
+            38
+          ],
+          "text": "Edge",
+          "textPreview": "Edge",
+          "fillColor": "#EAF8F7",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Edge",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#146E6B",
+                "bold": true
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Edge",
+                  "fontSize": 12.51,
+                  "color": "#146E6B",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 19,
+          "row": 7,
+          "column": 1,
+          "bbox": [
+            48,
+            366,
+            260,
+            38
+          ],
+          "text": "Line cooldown",
+          "textPreview": "Line cooldown",
+          "fillColor": "#FFFFFF",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Line cooldown",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#263641",
+                "bold": true
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Line cooldown",
+                  "fontSize": 12.51,
+                  "color": "#263641",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 20,
+          "row": 7,
+          "column": 2,
+          "bbox": [
+            308,
+            366,
+            620,
+            38
+          ],
+          "text": "time_before_cooldown_line",
+          "textPreview": "time_before_cooldown_line",
+          "fillColor": "#FFFFFF",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "time_before_cooldown_line",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#415466"
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "time_before_cooldown_line",
+                  "fontSize": 12.51,
+                  "color": "#415466"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 21,
+          "row": 7,
+          "column": 3,
+          "bbox": [
+            928,
+            366,
+            304,
+            38
+          ],
+          "text": "Edge",
+          "textPreview": "Edge",
+          "fillColor": "#EAF8F7",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Edge",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#146E6B",
+                "bold": true
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Edge",
+                  "fontSize": 12.51,
+                  "color": "#146E6B",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 22,
+          "row": 8,
+          "column": 1,
+          "bbox": [
+            48,
+            404,
+            260,
+            38
+          ],
+          "text": "Substation cooldown",
+          "textPreview": "Substation cooldown",
+          "fillColor": "#FFFFFF",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Substation cooldown",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#263641",
+                "bold": true
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Substation cooldown",
+                  "fontSize": 12.51,
+                  "color": "#263641",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 23,
+          "row": 8,
+          "column": 2,
+          "bbox": [
+            308,
+            404,
+            620,
+            38
+          ],
+          "text": "time_before_cooldown_sub",
+          "textPreview": "time_before_cooldown_sub",
+          "fillColor": "#FFFFFF",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "time_before_cooldown_sub",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#415466"
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "time_before_cooldown_sub",
+                  "fontSize": 12.51,
+                  "color": "#415466"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 24,
+          "row": 8,
+          "column": 3,
+          "bbox": [
+            928,
+            404,
+            304,
+            38
+          ],
+          "text": "Node",
+          "textPreview": "Node",
+          "fillColor": "#EAF3FA",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Node",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#276F9A",
+                "bold": true
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Node",
+                  "fontSize": 12.51,
+                  "color": "#276F9A",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 25,
+          "row": 9,
+          "column": 1,
+          "bbox": [
+            48,
+            442,
+            260,
+            38
+          ],
+          "text": "Topology",
+          "textPreview": "Topology",
+          "fillColor": "#FFFFFF",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Topology",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#263641",
+                "bold": true
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Topology",
+                  "fontSize": 12.51,
+                  "color": "#263641",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 26,
+          "row": 9,
+          "column": 2,
+          "bbox": [
+            308,
+            442,
+            620,
+            38
+          ],
+          "text": "topo_vect",
+          "textPreview": "topo_vect",
+          "fillColor": "#FFFFFF",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "topo_vect",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#415466"
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "topo_vect",
+                  "fontSize": 12.51,
+                  "color": "#415466"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 27,
+          "row": 9,
+          "column": 3,
+          "bbox": [
+            928,
+            442,
+            304,
+            38
+          ],
+          "text": "Busbar nodes + edge mask",
+          "textPreview": "Busbar nodes + edge mask",
+          "fillColor": "#F2EAF8",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Busbar nodes + edge mask",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#80579E",
+                "bold": true
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Busbar nodes + edge mask",
+                  "fontSize": 12.51,
+                  "color": "#80579E",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 28,
+          "row": 10,
+          "column": 1,
+          "bbox": [
+            48,
+            480,
+            260,
+            38
+          ],
+          "text": "Maintenance forecast",
+          "textPreview": "Maintenance forecast",
+          "fillColor": "#FFFFFF",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Maintenance forecast",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#263641",
+                "bold": true
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Maintenance forecast",
+                  "fontSize": 12.51,
+                  "color": "#263641",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 29,
+          "row": 10,
+          "column": 2,
+          "bbox": [
+            308,
+            480,
+            620,
+            38
+          ],
+          "text": "time_next_maintenance, duration_next_maintenance",
+          "textPreview": "time_next_maintenance, duration_next_maintenance",
+          "fillColor": "#FFFFFF",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "time_next_maintenance, duration_next_maintenance",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#415466"
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "time_next_maintenance, duration_next_maintenance",
+                  "fontSize": 12.51,
+                  "color": "#415466"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 30,
+          "row": 10,
+          "column": 3,
+          "bbox": [
+            928,
+            480,
+            304,
+            38
+          ],
+          "text": "Edge · WCCI-36 only",
+          "textPreview": "Edge · WCCI-36 only",
+          "fillColor": "#EAF8F7",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Edge · WCCI-36 only",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#146E6B",
+                "bold": true
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Edge · WCCI-36 only",
+                  "fontSize": 12.51,
+                  "color": "#146E6B",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 31,
+          "row": 11,
+          "column": 1,
+          "bbox": [
+            48,
+            518,
+            260,
+            38
+          ],
+          "text": "Redispatch state",
+          "textPreview": "Redispatch state",
+          "fillColor": "#FFFFFF",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Redispatch state",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#263641",
+                "bold": true
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Redispatch state",
+                  "fontSize": 12.51,
+                  "color": "#263641",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 32,
+          "row": 11,
+          "column": 2,
+          "bbox": [
+            308,
+            518,
+            620,
+            38
+          ],
+          "text": "target_dispatch, actual_dispatch, gen_margin_up/down",
+          "textPreview": "target_dispatch, actual_dispatch, gen_margin_up/down",
+          "fillColor": "#FFFFFF",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "target_dispatch, actual_dispatch, gen_margin_up/down",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#415466"
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "target_dispatch, actual_dispatch, gen_margin_up/down",
+                  "fontSize": 12.51,
+                  "color": "#415466"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 33,
+          "row": 11,
+          "column": 3,
+          "bbox": [
+            928,
+            518,
+            304,
+            38
+          ],
+          "text": "Outside core graph",
+          "textPreview": "Outside core graph",
+          "fillColor": "#FFF2E8",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Outside core graph",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#A75A24",
+                "bold": true
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Outside core graph",
+                  "fontSize": 12.51,
+                  "color": "#A75A24",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 34,
+          "row": 12,
+          "column": 1,
+          "bbox": [
+            48,
+            556,
+            260,
+            38
+          ],
+          "text": "Curtailment state",
+          "textPreview": "Curtailment state",
+          "fillColor": "#FFFFFF",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Curtailment state",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#263641",
+                "bold": true
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Curtailment state",
+                  "fontSize": 12.51,
+                  "color": "#263641",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 35,
+          "row": 12,
+          "column": 2,
+          "bbox": [
+            308,
+            556,
+            620,
+            38
+          ],
+          "text": "gen_p_before_curtail, curtailment, curtailment_limit",
+          "textPreview": "gen_p_before_curtail, curtailment, curtailment_limit",
+          "fillColor": "#FFFFFF",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "gen_p_before_curtail, curtailment, curtailment_limit",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#415466"
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "gen_p_before_curtail, curtailment, curtailment_limit",
+                  "fontSize": 12.51,
+                  "color": "#415466"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 36,
+          "row": 12,
+          "column": 3,
+          "bbox": [
+            928,
+            556,
+            304,
+            38
+          ],
+          "text": "Outside core graph",
+          "textPreview": "Outside core graph",
+          "fillColor": "#FFF2E8",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Outside core graph",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#A75A24",
+                "bold": true
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Outside core graph",
+                  "fontSize": 12.51,
+                  "color": "#A75A24",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 37,
+          "row": 13,
+          "column": 1,
+          "bbox": [
+            48,
+            594,
+            260,
+            38
+          ],
+          "text": "Controlled region",
+          "textPreview": "Controlled region",
+          "fillColor": "#FFFFFF",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Controlled region",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#263641",
+                "bold": true
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Controlled region",
+                  "fontSize": 12.51,
+                  "color": "#263641",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 38,
+          "row": 13,
+          "column": 2,
+          "bbox": [
+            308,
+            594,
+            620,
+            38
+          ],
+          "text": "Agent's assigned substations",
+          "textPreview": "Agent's assigned substations",
+          "fillColor": "#FFFFFF",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Agent's assigned substations",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#415466"
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Agent's assigned substations",
+                  "fontSize": 12.51,
+                  "color": "#415466"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 39,
+          "row": 13,
+          "column": 3,
+          "bbox": [
+            928,
+            594,
+            304,
+            38
+          ],
+          "text": "Node · domain_mask",
+          "textPreview": "Node · domain_mask",
+          "fillColor": "#EAF3FA",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Node · domain_mask",
+              "resolvedTextStyle": {
+                "fontSize": 12.51,
+                "color": "#276F9A",
+                "bold": true
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Node · domain_mask",
+                  "fontSize": 12.51,
+                  "color": "#276F9A",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1cfut8ja",
+      "id": "5",
+      "name": "slide4-source",
+      "bbox": [
+        50,
+        658,
+        700,
+        21
+      ],
+      "geometry": "rect",
+      "text": "Source: observation schema implemented in GridGraphBuilder",
+      "textPreview": "Source: observation schema implemented in GridGraphBuilder",
+      "resolvedFontSize": 11,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 11,
+        "typeface": "+mn-lt",
+        "color": "#77838C",
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Source: observation schema implemented in GridGraphBuilder"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Source: observation schema implemented in GridGraphBuilder",
+          "resolvedTextStyle": {
+            "fontSize": 11,
+            "color": "#77838C",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Source: observation schema implemented in GridGraphBuilder",
+              "fontSize": 11,
+              "color": "#77838C",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}

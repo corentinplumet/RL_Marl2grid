@@ -68,11 +68,26 @@ With this flag enabled, training environments use the train split and periodic e
 
 To also log evaluation performance on the seen training chronics, add `--eval-train-chronics True`. This logs the same evaluation metrics for both splits, including `train_eval/charts/episodic_survival`, `train_eval/<reward name>`, `test/charts/episodic_survival`, and `test/<reward name>`. Checkpoint selection remains based on the test split.
 
-Actor and critic encoders can use the default MLP, a dynamic busbar graph GNN, or a heterogeneous element graph GNN:
+Actor and critic encoders can use the default MLP or a GNN. GNN observations support the aggregated busbar representation, a heterogeneous representation with separate busbar/generator/load nodes, and a heterogeneous representation in which transmission lines are also explicit nodes:
 
 ```bash
-python main.py --env-id bus14 --alg MAPPO --actor-encoder busbar_gnn --critic-encoder busbar_gnn
-python main.py --env-id bus14 --alg MAPPO --actor-encoder hetero_gnn --critic-encoder hetero_gnn
+python main.py --env-id bus14 --alg MAPPO --actor-encoder gnn --critic-encoder gnn --gnn-graph-type bus
+python main.py --env-id bus14 --alg MAPPO --actor-encoder gnn --critic-encoder gnn --gnn-graph-type heterogeneous
+python main.py --env-id bus14 --alg MAPPO --actor-encoder gnn --critic-encoder gnn --gnn-graph-type heterogeneous_line
 ```
 
 The GNN size is controlled with `--gnn-hidden-dim` and `--gnn-layers`.
+Set `--gnn-readout-aggr virtual_node` to append one learned virtual node per
+graph, connect it bidirectionally to every included busbar, and use its final
+embedding instead of pooling all node embeddings. This readout works with all
+graph representations and GNN types, including the sparse graph transformer.
+
+Set `--gnn-add-substation-nodes True` to add one learned substation node for
+each included substation. Each node exchanges messages with all busbars in its
+substation. When combined with `virtual_node` readout, the hierarchy is
+busbars → substation nodes → virtual graph node.
+
+Set `--gnn-add-substation-edges True` to add direct bidirectional relations
+between every pair of distinct busbars in the same substation. These structural
+edges can be used with or without substation nodes and do not represent physical
+transmission lines.

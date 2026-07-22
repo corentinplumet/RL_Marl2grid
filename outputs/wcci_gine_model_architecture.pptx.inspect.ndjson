@@ -1,0 +1,77 @@
+{"kind":"deck","id":"pr/hfe87o","name":"Deck"}
+{"kind":"layout","layoutId":"c152d60c-f6f7-4758-a914-f2fc333f4ad6","name":"Master","type":"master"}
+{"kind":"layout","layoutId":"88067e07-abe4-4f6d-8c31-8de49ae3f2d6","name":"Title Slide","type":"title"}
+{"kind":"slide","id":"sl/4os1bs","slide":1,"title":"Four local GINE actors choose topology actions; one global critic guides MAPPO","textShapes":32}
+{"kind":"textbox","id":"sh/oju5ojmp","slide":1,"name":"title","text":"Four local GINE actors choose topology actions; one global critic guides MAPPO","textPreview":"Four local GINE actors choose topology actions; one global critic guides MAPPO","textChars":78,"textLines":1,"bbox":[48,27,1184,51]}
+{"kind":"textbox","id":"sh/nilovelk","slide":1,"name":"subtitle","text":"Current WCCI-36 configuration · decentralized execution · centralized training","textPreview":"Current WCCI-36 configuration · decentralized execution · centralized training","textChars":78,"textLines":1,"bbox":[50,80,930,26]}
+{"kind":"shape","id":"sh/mhcnmt4z","slide":1,"name":"actor-band","bbox":[32,120,1216,315]}
+{"kind":"textbox","id":"sh/1g3mto3e","slide":1,"name":"actor-label","text":"DECENTRALIZED ACTOR  πᵢ","textPreview":"DECENTRALIZED ACTOR  πᵢ","textChars":23,"textLines":1,"bbox":[48,128,260,25]}
+{"kind":"textbox","id":"sh/0fa5kjmt","slide":1,"name":"actor-repeat","text":"× 4 agents  ·  same architecture  ·  weights not shared","textPreview":"× 4 agents  ·  same architecture  ·  weights not shared","textChars":55,"textLines":1,"bbox":[844,127,370,24]}
+{"kind":"shape","id":"sh/ze14re58","slide":1,"name":"local-graph","bbox":[50,185,170,148]}
+{"kind":"shape","id":"sh/edsni94n","slide":1,"name":"local-graph-accent","bbox":[50,185,7,148]}
+{"kind":"textbox","id":"sh/5cn6583i","slide":1,"name":"local-graph-title","text":"Local busbar graph  Gᵢ","textPreview":"Local busbar graph  Gᵢ","textChars":22,"textLines":1,"bbox":[67,194,144,27]}
+{"kind":"textbox","id":"sh/kbe5w3mx","slide":1,"name":"local-graph-body","text":"Nodes: local busbars\nEdges: feasible line connections\nTopology: active-edge mask","textPreview":"Nodes: local busbars | Edges: feasible line connections | Topology: active-edge mask","textChars":80,"textLines":3,"bbox":[67,222,143,105]}
+{"kind":"shape","id":"sh/ydg7qpcn","slide":1,"name":"node-tensor","bbox":[257,165,164,123]}
+{"kind":"shape","id":"sh/jepozud8","slide":1,"name":"node-tensor-accent","bbox":[257,165,7,123]}
+{"kind":"textbox","id":"sh/kfypszut","slide":1,"name":"node-tensor-title","text":"Node tensor","textPreview":"Node tensor","textChars":11,"textLines":1,"bbox":[274,174,138,27]}
+{"kind":"textbox","id":"sh/lg7614ve","slide":1,"name":"node-tensor-body","text":"6 physical features\n+ 8-D substation ID\n+ 8-D busbar ID\n\n22 features / node","textPreview":"6 physical features | + 8-D substation ID | + 8-D busbar ID |  | 22 features / node","textChars":75,"textLines":5,"bbox":[274,202,137,80]}
+{"kind":"shape","id":"sh/a9w7m5cr","slide":1,"name":"edge-tensor","bbox":[257,303,164,102]}
+{"kind":"shape","id":"sh/ba5ovadc","slide":1,"name":"edge-tensor-accent","bbox":[257,303,7,102]}
+{"kind":"textbox","id":"sh/wbepofuh","slide":1,"name":"edge-tensor-title","text":"Edge tensor","textPreview":"Edge tensor","textChars":11,"textLines":1,"bbox":[274,312,138,27]}
+{"kind":"textbox","id":"sh/xc76xkv2","slide":1,"name":"edge-tensor-body","text":"6 line features\nstatus · ρ · overload\ncooldown · maintenance","textPreview":"6 line features | status · ρ · overload | cooldown · maintenance","textChars":60,"textLines":3,"bbox":[274,340,137,59]}
+{"kind":"shape","id":"sh/u507y9cv","slide":1,"name":"gine-encoder","bbox":[462,181,190,169]}
+{"kind":"shape","id":"sh/v6987etg","slide":1,"name":"gine-encoder-accent","bbox":[462,181,7,169]}
+{"kind":"textbox","id":"sh/rehc32pg","slide":1,"name":"gine-encoder-title","text":"GINE graph encoder","textPreview":"GINE graph encoder","textChars":18,"textLines":1,"bbox":[479,190,164,27]}
+{"kind":"textbox","id":"sh/qd8vahob","slide":1,"name":"gine-encoder-body","text":"Node MLP: 22 → 64\nReLU · LayerNorm\n\n1 edge-aware message-passing layer\nhidden dimension: 64","textPreview":"Node MLP: 22 → 64 | ReLU · LayerNorm |  | 1 edge-aware message-passing layer | hidden dimension: 64","textChars":91,"textLines":5,"bbox":[479,218,163,126]}
+{"kind":"shape","id":"sh/dgju5c7m","slide":1,"name":"pool-readout","bbox":[693,195,157,140]}
+{"kind":"shape","id":"sh/sfadc761","slide":1,"name":"pool-readout-accent","bbox":[693,195,7,140]}
+{"kind":"textbox","id":"sh/f21w7mps","slide":1,"name":"pool-readout-title","text":"Graph readout","textPreview":"Graph readout","textChars":13,"textLines":1,"bbox":[710,204,131,27]}
+{"kind":"textbox","id":"sh/ehsveho7","slide":1,"name":"pool-readout-body","text":"Mean pooling\nover local nodes\n\nLinear 64 → 64 · ReLU","textPreview":"Mean pooling | over local nodes |  | Linear 64 → 64 · ReLU","textChars":52,"textLines":4,"bbox":[710,232,130,97]}
+{"kind":"shape","id":"sh/14je9w7y","slide":1,"name":"actor-mlp","bbox":[891,211,139,108]}
+{"kind":"shape","id":"sh/03adgr6d","slide":1,"name":"actor-mlp-accent","bbox":[891,211,7,108]}
+{"kind":"textbox","id":"sh/n61wbmpo","slide":1,"name":"actor-mlp-title","text":"Actor MLP","textPreview":"Actor MLP","textChars":9,"textLines":1,"bbox":[908,220,113,27]}
+{"kind":"textbox","id":"sh/25svi1o3","slide":1,"name":"actor-mlp-body","text":"64 → 128 → 128\nReLU activations","textPreview":"64 → 128 → 128 | ReLU activations","textChars":31,"textLines":2,"bbox":[908,248,112,65]}
+{"kind":"shape","id":"sh/kbud8rmh","slide":1,"name":"policy-head","bbox":[1069,190,158,150]}
+{"kind":"shape","id":"sh/lc3u1w32","slide":1,"name":"policy-head-accent","bbox":[1069,190,7,150]}
+{"kind":"textbox","id":"sh/y9cb614b","slide":1,"name":"policy-head-title","text":"Categorical policy","textPreview":"Categorical policy","textChars":18,"textLines":1,"bbox":[1086,199,132,27]}
+{"kind":"textbox","id":"sh/zalcz6lw","slide":1,"name":"policy-head-body","text":"128 → Kᵢ action logits\n\ntrain: sample aᵢ\neval: argmax aᵢ","textPreview":"128 → Kᵢ action logits |  | train: sample aᵢ | eval: argmax aᵢ","textChars":56,"textLines":4,"bbox":[1086,227,131,107]}
+{"kind":"shape","id":"sh/c7ut4rm5","slide":1,"bbox":[220,226.5,37,32.5]}
+{"kind":"shape","id":"sh/x83uxw3q","slide":1,"bbox":[220,259,37,95]}
+{"kind":"shape","id":"sh/a5sb2h4f","slide":1,"bbox":[421,226.5,41,39]}
+{"kind":"shape","id":"sh/b61cvml0","slide":1,"bbox":[421,265.5,41,88.5]}
+{"kind":"shape","id":"sh/ojat07m9","slide":1,"bbox":[652,265,41,0.5]}
+{"kind":"shape","id":"sh/p4jutc3u","slide":1,"bbox":[850,265,41,0]}
+{"kind":"shape","id":"sh/doza18jm","slide":1,"bbox":[1030,265,39,0]}
+{"kind":"textbox","id":"sh/snq9sn21","slide":1,"name":"graph-dim-note","text":"nᵢ = 2 × controlled substations","textPreview":"nᵢ = 2 × controlled substations","textChars":31,"textLines":1,"bbox":[48,349,176,38]}
+{"kind":"shape","id":"sh/rmx8zi1g","slide":1,"name":"training-band","bbox":[32,458,1216,220]}
+{"kind":"textbox","id":"sh/qlorqdkv","slide":1,"name":"critic-label","text":"CENTRALIZED TRAINING","textPreview":"CENTRALIZED TRAINING","textChars":20,"textLines":1,"bbox":[48,466,260,25]}
+{"kind":"shape","id":"sh/1cza5sji","slide":1,"name":"joint-observation","bbox":[52,520,185,116]}
+{"kind":"shape","id":"sh/0bq9wn2x","slide":1,"name":"joint-observation-accent","bbox":[52,520,7,116]}
+{"kind":"textbox","id":"sh/fahs3i1s","slide":1,"name":"joint-observation-title","text":"Joint flat observation","textPreview":"Joint flat observation","textChars":22,"textLines":1,"bbox":[69,529,159,27]}
+{"kind":"textbox","id":"sh/ep8rudk7","slide":1,"name":"joint-observation-body","text":"[o₀ ∥ o₁ ∥ o₂ ∥ o₃]\n77 + 150 + 139 + 377\n= 743 features","textPreview":"[o₀ ∥ o₁ ∥ o₂ ∥ o₃] | 77 + 150 + 139 + 377 | = 743 features","textChars":55,"textLines":3,"bbox":[69,557,158,73]}
+{"kind":"shape","id":"sh/hgfqtoje","slide":1,"name":"critic-mlp","bbox":[286,528,203,100]}
+{"kind":"shape","id":"sh/wfm90j2t","slide":1,"name":"critic-mlp-accent","bbox":[286,528,7,100]}
+{"kind":"textbox","id":"sh/mlk7up0r","slide":1,"name":"critic-mlp-title","text":"Centralized critic","textPreview":"Centralized critic","textChars":18,"textLines":1,"bbox":[303,537,177,27]}
+{"kind":"textbox","id":"sh/7mto3uhc","slide":1,"name":"critic-mlp-body","text":"MLP 743 → 128 → 128 → 1\nReLU activations","textPreview":"MLP 743 → 128 → 128 → 1 | ReLU activations","textChars":40,"textLines":2,"bbox":[303,565,176,57]}
+{"kind":"shape","id":"sh/8n2pwzix","slide":1,"name":"state-value","bbox":[538,535,159,85]}
+{"kind":"shape","id":"sh/9ov654z2","slide":1,"name":"state-value-accent","bbox":[538,535,7,85]}
+{"kind":"textbox","id":"sh/up47y90n","slide":1,"name":"state-value-title","text":"State value  V(s)","textPreview":"State value  V(s)","textChars":17,"textLines":1,"bbox":[555,544,133,27]}
+{"kind":"textbox","id":"sh/vqdo7eh8","slide":1,"name":"state-value-body","text":"Single scalar estimate","textPreview":"Single scalar estimate","textChars":22,"textLines":1,"bbox":[555,572,132,42]}
+{"kind":"shape","id":"sh/wrmp0jit","slide":1,"name":"mappo-update","bbox":[760,516,207,124]}
+{"kind":"shape","id":"sh/hsv694ze","slide":1,"name":"mappo-update-accent","bbox":[760,516,7,124]}
+{"kind":"textbox","id":"sh/at0nm50j","slide":1,"name":"mappo-update-title","text":"MAPPO update","textPreview":"MAPPO update","textChars":12,"textLines":1,"bbox":[777,525,181,27]}
+{"kind":"textbox","id":"sh/bu9ovah4","slide":1,"name":"mappo-update-body","text":"GAE advantages + returns\nClipped policy loss\nEntropy bonus + value loss","textPreview":"GAE advantages + returns | Clipped policy loss | Entropy bonus + value loss","textChars":71,"textLines":3,"bbox":[777,553,180,81]}
+{"kind":"shape","id":"sh/fyp436xw","slide":1,"name":"grid-environment","bbox":[1035,510,188,135]}
+{"kind":"shape","id":"sh/exg3u1gb","slide":1,"name":"grid-environment-accent","bbox":[1035,510,7,135]}
+{"kind":"textbox","id":"sh/107m5gf2","slide":1,"name":"grid-environment-title","text":"WCCI-36 environment","textPreview":"WCCI-36 environment","textChars":19,"textLines":1,"bbox":[1052,519,162,27]}
+{"kind":"textbox","id":"sh/0zylwbyh","slide":1,"name":"grid-environment-body","text":"Joint action (a₀…a₃)\nAC power flow\nreward · next state","textPreview":"Joint action (a₀…a₃) | AC power flow | reward · next state","textChars":54,"textLines":3,"bbox":[1052,547,161,92]}
+{"kind":"shape","id":"sh/ra5kz6xk","slide":1,"bbox":[237,578,49,0]}
+{"kind":"shape","id":"sh/q9w3q1gf","slide":1,"bbox":[489,577.5,49,0.5]}
+{"kind":"shape","id":"sh/dwn21gfq","slide":1,"bbox":[697,577.5,63,0.5]}
+{"kind":"shape","id":"sh/svelsby5","slide":1,"bbox":[387.5,628,476,12]}
+{"kind":"shape","id":"sh/bq94bqx4","slide":1,"bbox":[1129,340,19,170]}
+{"kind":"shape","id":"sh/a5032lgj","slide":1,"bbox":[967,577.5,68,0.5]}
+{"kind":"shape","id":"sh/8zq9g3ap","slide":1,"bbox":[863.5,319,97,197]}
+{"kind":"textbox","id":"sh/90za98ra","slide":1,"name":"actor-update-label","text":"policy gradients","textPreview":"policy gradients","textChars":16,"textLines":1,"bbox":[844,440,112,22]}
+{"kind":"textbox","id":"sh/mx8retsj","slide":1,"name":"critic-update-label","text":"value gradients","textPreview":"value gradients","textChars":15,"textLines":1,"bbox":[300,645,118,20]}
+{"kind":"notes","id":"nt/4os1bs","slide":1,"text":""}

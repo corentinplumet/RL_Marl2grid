@@ -437,7 +437,7 @@ def get_alg_args() -> Namespace:
         "--gnn-type",
         type=str,
         default="gat",
-        choices=["gcn", "gat", "gine", "graphsage"],
+        choices=["gcn", "gat", "gine", "graphsage", "sparse_transformer"],
         help="PyTorch Geometric convolution used by thesis-style gnn encoders.",
     )
     parser.add_argument(
@@ -468,8 +468,113 @@ def get_alg_args() -> Namespace:
         "--gnn-readout-aggr",
         type=str,
         default="mean",
-        choices=["mean", "sum", "max"],
-        help="Graph-level node pooling used by thesis-style gnn encoders.",
+        choices=[
+            "mean",
+            "sum",
+            "max",
+            "attention",
+            "controlled_mean",
+            "controlled_attention",
+            "virtual_node",
+        ],
+        help=(
+            "Graph-level readout used by thesis-style GNN encoders. "
+            "virtual_node appends a learned node connected to every busbar and "
+            "uses its final state instead of pooling."
+        ),
+    )
+    parser.add_argument(
+        "--sparse-gt-pooling",
+        type=str,
+        default="",
+        choices=[
+            "",
+            "mean",
+            "sum",
+            "max",
+            "attention",
+            "controlled_mean",
+            "controlled_attention",
+            "virtual_node",
+        ],
+        help=(
+            "Optional readout override for --gnn-type sparse_transformer. "
+            "When unset, --gnn-readout-aggr is used."
+        ),
+    )
+    parser.add_argument(
+        "--gnn-add-substation-nodes",
+        type=str2bool,
+        default=False,
+        help=(
+            "Append one learned node per included substation and connect it "
+            "bidirectionally to that substation's busbars."
+        ),
+    )
+    parser.add_argument(
+        "--gnn-add-substation-edges",
+        type=str2bool,
+        default=None,
+        help=(
+            "Add bidirectional typed edges between distinct busbars belonging "
+            "to the same substation. When unset, the legacy sparse-transformer "
+            "default is preserved."
+        ),
+    )
+    parser.add_argument(
+        "--sparse-gt-add-self-edges",
+        type=str2bool,
+        default=None,
+        help=(
+            "Add explicit self-attention graph edges for sparse graph "
+            "transformers. Defaults to true only when --gnn-type is "
+            "sparse_transformer."
+        ),
+    )
+    parser.add_argument(
+        "--sparse-gt-add-substation-edges",
+        type=str2bool,
+        default=None,
+        help=(
+            "Legacy sparse-transformer-specific same-substation edge option. "
+            "Used only when --gnn-add-substation-edges is unset."
+        ),
+    )
+    parser.add_argument(
+        "--sparse-gt-use-edge-attr",
+        type=str2bool,
+        default=True,
+        help="Use Grid2Op line edge attributes in sparse graph transformer attention.",
+    )
+    parser.add_argument(
+        "--sparse-gt-use-edge-type-embeddings",
+        type=str2bool,
+        default=True,
+        help="Use learned relation embeddings for sparse graph transformer edge types.",
+    )
+    parser.add_argument(
+        "--sparse-gt-relation-bias",
+        type=str2bool,
+        default=True,
+        help="Use learned per-relation attention biases in sparse graph transformers.",
+    )
+    parser.add_argument(
+        "--sparse-gt-dropout",
+        type=float,
+        default=0.0,
+        help="Dropout inside sparse graph transformer residual and feed-forward blocks.",
+    )
+    parser.add_argument(
+        "--sparse-gt-attention-dropout",
+        type=float,
+        default=0.0,
+        help="Dropout applied to sparse graph transformer attention weights.",
+    )
+    parser.add_argument(
+        "--sparse-gt-ffn-multiplier",
+        type=int,
+        default=4,
+        help="Feed-forward hidden-size multiplier inside sparse graph transformer layers.",
     )
     parser.add_argument(
         "--graphsage-aggr",
@@ -502,6 +607,43 @@ def get_alg_args() -> Namespace:
         help="Use layer normalization inside thesis-style gnn layers.",
     )
     parser.add_argument(
+        "--gnn-physical-scaling",
+        type=str2bool,
+        default=False,
+        help=(
+            "Scale continuous graph inputs to dimensionless physical ranges "
+            "before GNN encoding. Disabled by default for checkpoint and "
+            "experiment reproducibility."
+        ),
+    )
+    parser.add_argument(
+        "--gnn-running-norm",
+        type=str2bool,
+        default=False,
+        help=(
+            "Apply mask-aware running standardization to continuous graph "
+            "features using statistics shared by all agents."
+        ),
+    )
+    parser.add_argument(
+        "--gnn-power-scale-mw",
+        type=float,
+        default=0.0,
+        help=(
+            "Power base in MW used by physical graph scaling. Values <= 0 "
+            "select the largest installed generator rating automatically."
+        ),
+    )
+    parser.add_argument(
+        "--gnn-norm-clip",
+        type=float,
+        default=10.0,
+        help=(
+            "Absolute clipping threshold after graph running "
+            "standardization; values <= 0 disable clipping."
+        ),
+    )
+    parser.add_argument(
         "--gnn-node-pre-encoder",
         type=str2bool,
         default=False,
@@ -517,7 +659,10 @@ def get_alg_args() -> Namespace:
         "--gnn-node-id-embeddings",
         type=str2bool,
         default=False,
-        help="Concatenate learned substation and busbar id embeddings to each busbar node feature.",
+        help=(
+            "Concatenate learned substation and node-slot embeddings to each "
+            "graph node feature."
+        ),
     )
     parser.add_argument(
         "--gnn-node-id-emb-dim",
@@ -541,8 +686,12 @@ def get_alg_args() -> Namespace:
         "--gnn-graph-type",
         type=str,
         default="bus",
-        choices=["bus"],
-        help="Graph type for thesis-style gnn encoders.",
+        choices=["bus", "heterogeneous", "heterogeneous_line"],
+        help=(
+            "Graph representation used by GNN encoders: aggregated busbar nodes "
+            "or typed equipment nodes, optionally with transmission lines as "
+            "explicit nodes."
+        ),
     )
     parser.add_argument(
         "--tokenizer-type",

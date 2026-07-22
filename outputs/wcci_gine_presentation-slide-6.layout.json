@@ -1,0 +1,1516 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/ceu6tp",
+    "id": "ceu6tp",
+    "slide": 6,
+    "layoutId": "4fe4d5da-ecf8-4cb9-81e7-cbd4444b3e97",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "7d876e22-4717-43f5-8847-5a148d9fdc1c",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#FFFFFF",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "4fe4d5da-ecf8-4cb9-81e7-cbd4444b3e97",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "7d876e22-4717-43f5-8847-5a148d9fdc1c",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "7d876e22-4717-43f5-8847-5a148d9fdc1c",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/3y58zed8",
+      "id": "1",
+      "name": "slide6-title",
+      "bbox": [
+        48,
+        27,
+        1184,
+        51
+      ],
+      "geometry": "rect",
+      "text": "References",
+      "textPreview": "References",
+      "resolvedFontSize": 30,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 30,
+        "typeface": "+mn-lt",
+        "color": "#111820",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "References"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "References",
+          "resolvedTextStyle": {
+            "fontSize": 30,
+            "color": "#111820",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "References",
+              "fontSize": 30,
+              "color": "#111820",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/4zepsjud",
+      "id": "2",
+      "name": "slide6-subtitle",
+      "bbox": [
+        50,
+        80,
+        1080,
+        26
+      ],
+      "geometry": "rect",
+      "text": "Representative Grid2Op / L2RPN topology-control literature cited in the review",
+      "textPreview": "Representative Grid2Op / L2RPN topology-control literature cited in the review",
+      "resolvedFontSize": 15,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 15,
+        "typeface": "+mn-lt",
+        "color": "#5A6875",
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Representative Grid2Op / L2RPN topology-control literature cited in the review"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Representative Grid2Op / L2RPN topology-control literature cited in the review",
+          "resolvedTextStyle": {
+            "fontSize": 15,
+            "color": "#5A6875",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Representative Grid2Op / L2RPN topology-control literature cited in the review",
+              "fontSize": 15,
+              "color": "#5A6875",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/50nq1ovy",
+      "id": "3",
+      "name": "reference-divider",
+      "bbox": [
+        636,
+        138,
+        1,
+        494
+      ],
+      "geometry": "rect",
+      "fillColor": "#DCE4EA",
+      "lineColor": "#DCE4EA",
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/u9c7m9wb",
+      "id": "4",
+      "name": "ref1-number",
+      "bbox": [
+        58,
+        149,
+        35,
+        35
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#2F7CA8",
+      "lineColor": "#2F7CA8",
+      "lineWidth": 0
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/va58vedw",
+      "id": "5",
+      "name": "ref1-number-text",
+      "bbox": [
+        58,
+        150,
+        35,
+        31
+      ],
+      "geometry": "rect",
+      "text": "1",
+      "textPreview": "1",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "center",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "1"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "1",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "1",
+              "fontSize": 14,
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/gbepojeh",
+      "id": "6",
+      "name": "ref1-citation",
+      "bbox": [
+        108,
+        146,
+        500,
+        91
+      ],
+      "geometry": "rect",
+      "text": "Subramanian, M., Viebahn, J., Tindemans, S. H., Donnot, B., & Marot, A. (2021). Exploring grid topology reconfiguration using a simple deep reinforcement learning approach. IEEE Madrid PowerTech.",
+      "textPreview": "Subramanian, M., Viebahn, J., Tindemans, S. H., Donnot, B., & Marot, A. (2021). Exploring grid topology reconfiguration using a simple de...",
+      "resolvedFontSize": 14.51,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 14.51,
+        "typeface": "+mn-lt",
+        "color": "#2D3F4D",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Subramanian, M., Viebahn, J., Tindemans, S. H., Donnot, B., & Marot, A."
+          },
+          {
+            "index": 2,
+            "text": "(2021). Exploring grid topology reconfiguration using a simple deep"
+          },
+          {
+            "index": 3,
+            "text": "reinforcement learning approach. IEEE Madrid PowerTech."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Subramanian, M., Viebahn, J., Tindemans, S. H., Donnot, B., & Marot, A. (2021). Exploring grid topology reconfiguration using a simple deep reinforcement learning approach. IEEE Madrid PowerTech.",
+          "resolvedTextStyle": {
+            "fontSize": 14.51,
+            "color": "#2D3F4D",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Subramanian, M., Viebahn, J., Tindemans, S. H., Donnot, B., & Marot, A. (2021). Exploring grid topology reconfiguration using a simple deep reinforcement learning approach. IEEE Madrid PowerTech.",
+              "fontSize": 14.51,
+              "color": "#2D3F4D",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/hcnqx4v2",
+      "id": "7",
+      "name": "ref1-link",
+      "bbox": [
+        108,
+        237,
+        500,
+        25
+      ],
+      "geometry": "rect",
+      "text": "doi.org/10.1109/PowerTech46648.2021.9494879",
+      "textPreview": "doi.org/10.1109/PowerTech46648.2021.9494879",
+      "resolvedFontSize": 11.51,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 11.51,
+        "typeface": "+mn-lt",
+        "color": "#2F7CA8",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "doi.org/10.1109/PowerTech46648.2021.9494879"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "doi.org/10.1109/PowerTech46648.2021.9494879",
+          "resolvedTextStyle": {
+            "fontSize": 11.51,
+            "color": "#2F7CA8",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "doi.org/10.1109/PowerTech46648.2021.9494879",
+              "fontSize": 11.51,
+              "color": "#2F7CA8",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/65c7ipwf",
+      "id": "8",
+      "name": "ref2-number",
+      "bbox": [
+        58,
+        311,
+        35,
+        35
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#2F7CA8",
+      "lineColor": "#2F7CA8",
+      "lineWidth": 0
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/76l8rud0",
+      "id": "9",
+      "name": "ref2-number-text",
+      "bbox": [
+        58,
+        312,
+        35,
+        31
+      ],
+      "geometry": "rect",
+      "text": "2",
+      "textPreview": "2",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "center",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "2"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "2",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "2",
+              "fontSize": 14,
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/r69snm9w",
+      "id": "10",
+      "name": "ref2-citation",
+      "bbox": [
+        108,
+        308,
+        500,
+        91
+      ],
+      "geometry": "rect",
+      "text": "Yoon, D., Hong, S., Lee, B.-J., & Kim, K.-E. (2021). Winning the L2RPN Challenge: Power grid management via semi-Markov afterstate actor-critic. ICLR 2021.",
+      "textPreview": "Yoon, D., Hong, S., Lee, B.-J., & Kim, K.-E. (2021). Winning the L2RPN Challenge: Power grid management via semi-Markov afterstate actor-...",
+      "resolvedFontSize": 14.51,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 14.51,
+        "typeface": "+mn-lt",
+        "color": "#2D3F4D",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Yoon, D., Hong, S., Lee, B.-J., & Kim, K.-E. (2021). Winning the L2RPN"
+          },
+          {
+            "index": 2,
+            "text": "Challenge: Power grid management via semi-Markov afterstate"
+          },
+          {
+            "index": 3,
+            "text": "actor-critic. ICLR 2021."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Yoon, D., Hong, S., Lee, B.-J., & Kim, K.-E. (2021). Winning the L2RPN Challenge: Power grid management via semi-Markov afterstate actor-critic. ICLR 2021.",
+          "resolvedTextStyle": {
+            "fontSize": 14.51,
+            "color": "#2D3F4D",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Yoon, D., Hong, S., Lee, B.-J., & Kim, K.-E. (2021). Winning the L2RPN Challenge: Power grid management via semi-Markov afterstate actor-critic. ICLR 2021.",
+              "fontSize": 14.51,
+              "color": "#2D3F4D",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/q50ruhsb",
+      "id": "11",
+      "name": "ref2-link",
+      "bbox": [
+        108,
+        399,
+        500,
+        25
+      ],
+      "geometry": "rect",
+      "text": "openreview.net/forum?id=LmUJqB1Cz8",
+      "textPreview": "openreview.net/forum?id=LmUJqB1Cz8",
+      "resolvedFontSize": 11.51,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 11.51,
+        "typeface": "+mn-lt",
+        "color": "#2F7CA8",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "openreview.net/forum?id=LmUJqB1Cz8"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "openreview.net/forum?id=LmUJqB1Cz8",
+          "resolvedTextStyle": {
+            "fontSize": 11.51,
+            "color": "#2F7CA8",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "openreview.net/forum?id=LmUJqB1Cz8",
+              "fontSize": 11.51,
+              "color": "#2F7CA8",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/d8rapwrm",
+      "id": "12",
+      "name": "ref3-number",
+      "bbox": [
+        58,
+        473,
+        35,
+        35
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#2F7CA8",
+      "lineColor": "#2F7CA8",
+      "lineWidth": 0
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/s7i9wrah",
+      "id": "13",
+      "name": "ref3-number-text",
+      "bbox": [
+        58,
+        474,
+        35,
+        31
+      ],
+      "geometry": "rect",
+      "text": "3",
+      "textPreview": "3",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "center",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "3"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "3",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "3",
+              "fontSize": 14,
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/fatsrm9s",
+      "id": "14",
+      "name": "ref3-citation",
+      "bbox": [
+        108,
+        470,
+        500,
+        91
+      ],
+      "geometry": "rect",
+      "text": "Zhou, B., Zeng, H., Liu, Y., Li, K., Wang, F., & Tian, H. (2021). Action set based policy optimization for safe power grid management. ECML PKDD 2021.",
+      "textPreview": "Zhou, B., Zeng, H., Liu, Y., Li, K., Wang, F., & Tian, H. (2021). Action set based policy optimization for safe power grid management. EC...",
+      "resolvedFontSize": 14.51,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 14.51,
+        "typeface": "+mn-lt",
+        "color": "#2D3F4D",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Zhou, B., Zeng, H., Liu, Y., Li, K., Wang, F., & Tian, H. (2021). Action set"
+          },
+          {
+            "index": 2,
+            "text": "based policy optimization for safe power grid management. ECML PKDD"
+          },
+          {
+            "index": 3,
+            "text": "2021."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Zhou, B., Zeng, H., Liu, Y., Li, K., Wang, F., & Tian, H. (2021). Action set based policy optimization for safe power grid management. ECML PKDD 2021.",
+          "resolvedTextStyle": {
+            "fontSize": 14.51,
+            "color": "#2D3F4D",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Zhou, B., Zeng, H., Liu, Y., Li, K., Wang, F., & Tian, H. (2021). Action set based policy optimization for safe power grid management. ECML PKDD 2021.",
+              "fontSize": 14.51,
+              "color": "#2D3F4D",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/e90ryhs7",
+      "id": "15",
+      "name": "ref3-link",
+      "bbox": [
+        108,
+        561,
+        500,
+        25
+      ],
+      "geometry": "rect",
+      "text": "arxiv.org/abs/2106.15200",
+      "textPreview": "arxiv.org/abs/2106.15200",
+      "resolvedFontSize": 11.51,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 11.51,
+        "typeface": "+mn-lt",
+        "color": "#2F7CA8",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "arxiv.org/abs/2106.15200"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "arxiv.org/abs/2106.15200",
+          "resolvedTextStyle": {
+            "fontSize": 11.51,
+            "color": "#2F7CA8",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "arxiv.org/abs/2106.15200",
+              "fontSize": 11.51,
+              "color": "#2F7CA8",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 16,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1cbatwry",
+      "id": "16",
+      "name": "ref4-number",
+      "bbox": [
+        671,
+        149,
+        35,
+        35
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#16817C",
+      "lineColor": "#16817C",
+      "lineWidth": 0
+    },
+    {
+      "order": 17,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0b290rad",
+      "id": "17",
+      "name": "ref4-number-text",
+      "bbox": [
+        671,
+        150,
+        35,
+        31
+      ],
+      "geometry": "rect",
+      "text": "4",
+      "textPreview": "4",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "center",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "4"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "4",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "4",
+              "fontSize": 14,
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 18,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vep8f2to",
+      "id": "18",
+      "name": "ref4-citation",
+      "bbox": [
+        721,
+        146,
+        500,
+        91
+      ],
+      "geometry": "rect",
+      "text": "van der Sar, E., Zocca, A., & Bhulai, S. (2023). Multi-agent reinforcement learning for power grid topology optimization. arXiv:2310.02605.",
+      "textPreview": "van der Sar, E., Zocca, A., & Bhulai, S. (2023). Multi-agent reinforcement learning for power grid topology optimization. arXiv:2310.02605.",
+      "resolvedFontSize": 14.51,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 14.51,
+        "typeface": "+mn-lt",
+        "color": "#2D3F4D",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "van der Sar, E., Zocca, A., & Bhulai, S. (2023). Multi-agent reinforcement"
+          },
+          {
+            "index": 2,
+            "text": "learning for power grid topology optimization. arXiv:2310.02605."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "van der Sar, E., Zocca, A., & Bhulai, S. (2023). Multi-agent reinforcement learning for power grid topology optimization. arXiv:2310.02605.",
+          "resolvedTextStyle": {
+            "fontSize": 14.51,
+            "color": "#2D3F4D",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "van der Sar, E., Zocca, A., & Bhulai, S. (2023). Multi-agent reinforcement learning for power grid topology optimization. arXiv:2310.02605.",
+              "fontSize": 14.51,
+              "color": "#2D3F4D",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 19,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/udgrmxs3",
+      "id": "19",
+      "name": "ref4-link",
+      "bbox": [
+        721,
+        237,
+        500,
+        25
+      ],
+      "geometry": "rect",
+      "text": "arxiv.org/abs/2310.02605",
+      "textPreview": "arxiv.org/abs/2310.02605",
+      "resolvedFontSize": 11.51,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 11.51,
+        "typeface": "+mn-lt",
+        "color": "#16817C",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "arxiv.org/abs/2310.02605"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "arxiv.org/abs/2310.02605",
+          "resolvedTextStyle": {
+            "fontSize": 11.51,
+            "color": "#16817C",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "arxiv.org/abs/2310.02605",
+              "fontSize": 11.51,
+              "color": "#16817C",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 20,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ytovu5cr",
+      "id": "20",
+      "name": "ref5-number",
+      "bbox": [
+        671,
+        311,
+        35,
+        35
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#16817C",
+      "lineColor": "#16817C",
+      "lineWidth": 0
+    },
+    {
+      "order": 21,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/zuxcnatc",
+      "id": "21",
+      "name": "ref5-number-text",
+      "bbox": [
+        671,
+        312,
+        35,
+        31
+      ],
+      "geometry": "rect",
+      "text": "5",
+      "textPreview": "5",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "center",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "5"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "5",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "5",
+              "fontSize": 14,
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 22,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/kv6dwfux",
+      "id": "22",
+      "name": "ref5-citation",
+      "bbox": [
+        721,
+        308,
+        500,
+        91
+      ],
+      "geometry": "rect",
+      "text": "de Mol, B., Barbieri, D., Viebahn, J., & Grossi, D. (2025). Centrally coordinated multi-agent reinforcement learning for power grid topology control. arXiv:2502.08681.",
+      "textPreview": "de Mol, B., Barbieri, D., Viebahn, J., & Grossi, D. (2025). Centrally coordinated multi-agent reinforcement learning for power grid topol...",
+      "resolvedFontSize": 14.51,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 14.51,
+        "typeface": "+mn-lt",
+        "color": "#2D3F4D",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "de Mol, B., Barbieri, D., Viebahn, J., & Grossi, D. (2025). Centrally"
+          },
+          {
+            "index": 2,
+            "text": "coordinated multi-agent reinforcement learning for power grid topology"
+          },
+          {
+            "index": 3,
+            "text": "control. arXiv:2502.08681."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "de Mol, B., Barbieri, D., Viebahn, J., & Grossi, D. (2025). Centrally coordinated multi-agent reinforcement learning for power grid topology control. arXiv:2502.08681.",
+          "resolvedTextStyle": {
+            "fontSize": 14.51,
+            "color": "#2D3F4D",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "de Mol, B., Barbieri, D., Viebahn, J., & Grossi, D. (2025). Centrally coordinated multi-agent reinforcement learning for power grid topology control. arXiv:2502.08681.",
+              "fontSize": 14.51,
+              "color": "#2D3F4D",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 23,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/lwfup0b2",
+      "id": "23",
+      "name": "ref5-link",
+      "bbox": [
+        721,
+        399,
+        500,
+        25
+      ],
+      "geometry": "rect",
+      "text": "arxiv.org/abs/2502.08681",
+      "textPreview": "arxiv.org/abs/2502.08681",
+      "resolvedFontSize": 11.51,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 11.51,
+        "typeface": "+mn-lt",
+        "color": "#16817C",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "arxiv.org/abs/2502.08681"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "arxiv.org/abs/2502.08681",
+          "resolvedTextStyle": {
+            "fontSize": 11.51,
+            "color": "#16817C",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "arxiv.org/abs/2502.08681",
+              "fontSize": 11.51,
+              "color": "#16817C",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 24,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/a54bqlcf",
+      "id": "24",
+      "name": "ref6-number",
+      "bbox": [
+        671,
+        473,
+        35,
+        35
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#16817C",
+      "lineColor": "#16817C",
+      "lineWidth": 0
+    },
+    {
+      "order": 25,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/b6dcjqt0",
+      "id": "25",
+      "name": "ref6-number-text",
+      "bbox": [
+        671,
+        474,
+        35,
+        31
+      ],
+      "geometry": "rect",
+      "text": "6",
+      "textPreview": "6",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "center",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "6"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "6",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "6",
+              "fontSize": 14,
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 26,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/c7mtsvul",
+      "id": "26",
+      "name": "ref6-citation",
+      "bbox": [
+        721,
+        470,
+        500,
+        91
+      ],
+      "geometry": "rect",
+      "text": "Marchesini, E., Boguslawski, E., Leite, A., Amato, C., Dussartre, M., Schoenauer, M., Donnot, B., & Donti, P. L. (2026). MARL2Grid-TR: A multi-agent RL benchmark in power grid operations. ICLR 2026.",
+      "textPreview": "Marchesini, E., Boguslawski, E., Leite, A., Amato, C., Dussartre, M., Schoenauer, M., Donnot, B., & Donti, P. L. (2026). MARL2Grid-TR: A ...",
+      "resolvedFontSize": 14.51,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 14.51,
+        "typeface": "+mn-lt",
+        "color": "#2D3F4D",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Marchesini, E., Boguslawski, E., Leite, A., Amato, C., Dussartre, M.,"
+          },
+          {
+            "index": 2,
+            "text": "Schoenauer, M., Donnot, B., & Donti, P. L. (2026). MARL2Grid-TR: A"
+          },
+          {
+            "index": 3,
+            "text": "multi-agent RL benchmark in power grid operations. ICLR 2026."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Marchesini, E., Boguslawski, E., Leite, A., Amato, C., Dussartre, M., Schoenauer, M., Donnot, B., & Donti, P. L. (2026). MARL2Grid-TR: A multi-agent RL benchmark in power grid operations. ICLR 2026.",
+          "resolvedTextStyle": {
+            "fontSize": 14.51,
+            "color": "#2D3F4D",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Marchesini, E., Boguslawski, E., Leite, A., Amato, C., Dussartre, M., Schoenauer, M., Donnot, B., & Donti, P. L. (2026). MARL2Grid-TR: A multi-agent RL benchmark in power grid operations. ICLR 2026.",
+              "fontSize": 14.51,
+              "color": "#2D3F4D",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 27,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/xsvul0b6",
+      "id": "27",
+      "name": "ref6-link",
+      "bbox": [
+        721,
+        561,
+        500,
+        25
+      ],
+      "geometry": "rect",
+      "text": "openreview.net/forum?id=mpAMH1OyMO",
+      "textPreview": "openreview.net/forum?id=mpAMH1OyMO",
+      "resolvedFontSize": 11.51,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 11.51,
+        "typeface": "+mn-lt",
+        "color": "#16817C",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "openreview.net/forum?id=mpAMH1OyMO"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "openreview.net/forum?id=mpAMH1OyMO",
+          "resolvedTextStyle": {
+            "fontSize": 11.51,
+            "color": "#16817C",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "openreview.net/forum?id=mpAMH1OyMO",
+              "fontSize": 11.51,
+              "color": "#16817C",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}

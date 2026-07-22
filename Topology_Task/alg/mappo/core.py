@@ -541,6 +541,18 @@ class MAPPO:
             actor_optim.load_state_dict(ckpt.loaded_run["actor_optim"])
             critic_optim.load_state_dict(ckpt.loaded_run["critic_optim"])
 
+        loaded_training_state = (
+            ckpt.loaded_run.get("training_state", {}) if ckpt.resumed else {}
+        )
+        normalization_enabled = bool(
+            getattr(args, "norm_obs", False)
+            or getattr(args, "gnn_running_norm", False)
+        )
+        if ckpt.resumed and normalization_enabled:
+            saved_obs_stats = loaded_training_state.get("obs_stats", {})
+            if saved_obs_stats:
+                envs.set_obs_stats(saved_obs_stats)
+
         next_obs, _ = envs.reset()
         next_obs = cast_np_to_tensors(next_obs, device)
         joint_obs_template = get_joint_obs(
@@ -629,7 +641,6 @@ class MAPPO:
             float(getattr(args, "safe_intervention_penalty", 0.0)) > 0.0
         )
         adaptive_budget_enabled = _adaptive_intervention_budget_enabled(args)
-        loaded_training_state = ckpt.loaded_run.get("training_state", {}) if ckpt.resumed else {}
         loaded_lambdas = loaded_training_state.get("intervention_lambdas", {})
         intervention_lambdas = {
             agent: float(
@@ -679,7 +690,7 @@ class MAPPO:
 
         def _current_training_state() -> Dict[str, Any]:
             state = {"intervention_lambdas": dict(intervention_lambdas)}
-            if getattr(args, "norm_obs", False):
+            if normalization_enabled:
                 state["obs_stats"] = envs.get_obs_stats()
             return state
 

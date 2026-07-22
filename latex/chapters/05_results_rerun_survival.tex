@@ -511,7 +511,7 @@ available reduced actions and executes the best improving one.
   \caption{One-step greedy evaluation of WCCI reduced action spaces on 50
   random test chronics. All rows use the same chronic sample
   (\texttt{chronic\_sample\_seed=0}); the do-nothing mean survival on this
-  sample is \(36.35\%\).}
+  sample is \(28.30\%\).}
   \label{tab:wcci-h1-greedy-reduced-action-spaces}
   \setlength{\tabcolsep}{4pt}
   \resizebox{\textwidth}{!}{%
@@ -521,10 +521,12 @@ available reduced actions and executes the best improving one.
     \((a_0,a_1,a_2,a_3)\) & Greedy survival (\%) &
     Do-nothing survival (\%) & Survival delta (\%) & Greedy full survival (\%) \\
     \midrule
-    Do-nothing reference & \(1,1,1,1\) & -- & 36.35 & -- & -- \\
-    WCCI \(h=1\), \texttt{mk256} & \(77,256,127,256\) & 69.43 & 36.35 & 33.08 & 56.00 \\
-    WCCI \(h=1\), \texttt{mk512} & \(77,512,127,512\) & 65.46 & 36.35 & 29.11 & 48.00 \\
-    WCCI \(h=1\), \texttt{mk1024} & \(77,1024,127,1024\) & 74.39 & 36.35 & 38.03 & 64.00 \\
+    Do-nothing reference & \(1,1,1,1\) & -- & 28.30 & -- & -- \\
+    WCCI \(h=1\), \texttt{mk64} & \(64,64,64,64\) & 55.24 & 28.30 & 26.94 & 22.00 \\
+    WCCI \(h=1\), \texttt{mk128} & \(77,128,127,128\) & 60.65 & 28.30 & 32.35 & 22.00 \\
+    WCCI \(h=1\), \texttt{mk256} & \(77,256,127,256\) & 68.61 & 28.30 & 40.31 & 36.00 \\
+    WCCI \(h=1\), \texttt{mk512} & \(77,512,127,512\) & 71.21 & 28.30 & 42.90 & 40.00 \\
+    WCCI \(h=1\), \texttt{mk1024} & \(77,1024,127,1024\) & 78.18 & 28.30 & 49.87 & 54.00 \\
     \bottomrule
   \end{tabular}
   }

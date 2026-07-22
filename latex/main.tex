@@ -46,6 +46,7 @@
 
 \pagenumbering{arabic}
 \input{chapters/00_plan}
+\input{chapters/04_methods}
 \input{chapters/05_results_rerun_survival}
 
 \appendix
@@ -53,9 +54,10 @@
 \label{app:gine-architecture}
 
 This appendix will describe the GINE encoder used in the graph-based topology
-control experiments. The final version should specify the graph construction,
-node and edge features, message-passing layers, pooling/readout operation, and
-how the actor and critic heads consume the encoded graph representation.
+control experiments. Building on the graph definition in
+Section~\ref{sec:graph-representation}, the final version should specify the
+message-passing layers, pooling/readout operation, and how the actor and critic
+heads consume the encoded graph representation.
 
 \chapter{Full-Test Checkpoint Registry}
 \label{app:full-test-checkpoint-registry}

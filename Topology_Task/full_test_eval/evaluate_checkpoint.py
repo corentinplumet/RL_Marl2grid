@@ -519,20 +519,23 @@ def _configure_obs_normalization(
     explicit fallback instead of crashing on missing stats.
     """
 
-    if not getattr(args, "norm_obs", False):
+    flat_norm_enabled = bool(getattr(args, "norm_obs", False))
+    graph_norm_enabled = bool(getattr(args, "gnn_running_norm", False))
+    if not flat_norm_enabled and not graph_norm_enabled:
         return args, {}, "disabled_by_checkpoint"
 
     if mode == "disable":
         args.norm_obs = False
+        args.gnn_running_norm = False
         return args, {}, "disabled_by_cli"
 
     if obs_stats:
         return args, obs_stats, "checkpoint_stats"
 
     message = (
-        "Checkpoint has norm_obs=True but does not contain training observation "
-        "normalization stats. Old checkpoints were saved before obs_stats were "
-        "included. "
+        "Checkpoint enables observation or graph running normalization but does "
+        "not contain training normalization statistics. Old checkpoints were "
+        "saved before obs_stats were included. "
     )
     if mode == "require":
         raise RuntimeError(
@@ -542,6 +545,7 @@ def _configure_obs_normalization(
         )
 
     args.norm_obs = False
+    args.gnn_running_norm = False
     print(
         "WARNING: "
         + message
@@ -892,6 +896,12 @@ def main() -> None:
         "obs_normalization": obs_norm_mode,
         "obs_stats_available": bool(obs_stats),
         "norm_obs_effective": bool(getattr(args, "norm_obs", False)),
+        "gnn_physical_scaling_effective": bool(
+            getattr(args, "gnn_physical_scaling", False)
+        ),
+        "gnn_running_norm_effective": bool(
+            getattr(args, "gnn_running_norm", False)
+        ),
         "eval_action_heuristic": getattr(args, "eval_action_heuristic", "none"),
         "eval_action_rho_threshold": float(
             getattr(args, "eval_action_rho_threshold", 0.90)

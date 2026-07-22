@@ -81,11 +81,12 @@ class AsyncMultiAgentVecEnv:
         self.closed = True
 
     def get_obs_stats(self):
-        """Collect obs_stats from every worker and merge them with parallel Welford.
+        """Collect normalization stats and merge them with parallel Welford.
 
-        Returns a dict {agent_id: {"count": float, "mean": np.ndarray, "var": np.ndarray}}
-        where `var` is the running sum of squared deviations (M2), matching the
-        representation MAEnvWrapper uses internally.
+        Entries include per-agent flat-observation statistics and, when graph
+        running normalization is enabled, shared graph node/edge statistics.
+        ``var`` is the running sum of squared deviations (M2), matching the
+        representation used inside ``MAEnvWrapper``.
         """
         for remote in self.remotes:
             remote.send(("get_obs_stats", None))
@@ -114,7 +115,7 @@ class AsyncMultiAgentVecEnv:
         return merged
 
     def set_obs_stats(self, stats):
-        """Broadcast an obs_stats dict to every worker."""
+        """Broadcast flat and graph normalization statistics to every worker."""
         for remote in self.remotes:
             remote.send(("set_obs_stats", stats))
         for remote in self.remotes:

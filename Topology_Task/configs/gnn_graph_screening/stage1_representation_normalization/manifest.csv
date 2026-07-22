@@ -1,0 +1,13 @@
+config,seed,graph_type,normalization,physical_scaling,running_normalization,substation_edges,substation_nodes,virtual_node,encoder,timesteps
+gs_s1_bus_n0_none_s0.toml,0,bus,n0_none,False,False,False,False,False,gine,8000000
+gs_s1_bus_n1_physical_s0.toml,0,bus,n1_physical,True,False,False,False,False,gine,8000000
+gs_s1_bus_n2_running_s0.toml,0,bus,n2_running,False,True,False,False,False,gine,8000000
+gs_s1_bus_n3_both_s0.toml,0,bus,n3_both,True,True,False,False,False,gine,8000000
+gs_s1_hetero_n0_none_s0.toml,0,heterogeneous,n0_none,False,False,False,False,False,gine,8000000
+gs_s1_hetero_n1_physical_s0.toml,0,heterogeneous,n1_physical,True,False,False,False,False,gine,8000000
+gs_s1_hetero_n2_running_s0.toml,0,heterogeneous,n2_running,False,True,False,False,False,gine,8000000
+gs_s1_hetero_n3_both_s0.toml,0,heterogeneous,n3_both,True,True,False,False,False,gine,8000000
+gs_s1_hetero_line_n0_none_s0.toml,0,heterogeneous_line,n0_none,False,False,False,False,False,gine,8000000
+gs_s1_hetero_line_n1_physical_s0.toml,0,heterogeneous_line,n1_physical,True,False,False,False,False,gine,8000000
+gs_s1_hetero_line_n2_running_s0.toml,0,heterogeneous_line,n2_running,False,True,False,False,False,gine,8000000
+gs_s1_hetero_line_n3_both_s0.toml,0,heterogeneous_line,n3_both,True,True,False,False,False,gine,8000000

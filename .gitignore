@@ -4,4 +4,10 @@ Topology_Task/notebooks/wandb/
 **/wandb/
 **/.ipynb_checkpoints/
 .DS_Store
-latex/
+latex/*
+!latex/chapters/
+latex/chapters/*
+!latex/chapters/*.tex
+!latex/figures/
+latex/figures/*
+!latex/figures/graph_*.png
