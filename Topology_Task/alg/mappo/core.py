@@ -471,7 +471,10 @@ class MAPPO:
         """
         # Load algorithm-specific arguments if not resuming from a checkpoint
         if not ckpt.resumed:
-            args = ap.Namespace(**vars(args), **vars(get_alg_args()))
+            # ``main`` already composes these arguments before creating the
+            # environments. Keep this merge for direct MAPPO callers while
+            # allowing the already-present keys to be refreshed safely.
+            args = ap.Namespace(**{**vars(args), **vars(get_alg_args())})
 
         assert args.n_steps % args.n_envs == 0, (
             f"Invalid train frequency (n_steps): {args.n_steps}. Must be multiple of n_envs {args.n_envs}"

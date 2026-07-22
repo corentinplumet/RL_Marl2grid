@@ -1,9 +1,11 @@
 from time import time
 from pathlib import Path
 
+from alg.mappo.config import get_alg_args
 from alg.mappo.core import MAPPO
 from common.checkpoint import MAPPOCheckpoint
 from common.imports import *
+from common.runtime_config import merge_runtime_args
 from common.utils import set_random_seed, set_torch, str2bool
 from env.config import get_env_args
 from env.utils import MAEnvWrapper
@@ -13,6 +15,22 @@ from env.wrappers import AsyncMultiAgentVecEnv
 ALGORITHMS: Dict[str, Type[Any]] = {
     "MAPPO": MAPPO,
 }
+
+
+def _compose_runtime_args(
+    base_args: Namespace,
+    env_args: Optional[Namespace] = None,
+    alg_args: Optional[Namespace] = None,
+) -> Namespace:
+    """Parse and merge every argument group before constructing environments.
+
+    Structured-observation settings live in the MAPPO parser but are required by
+    ``MAEnvWrapper``.  Keeping the merge here ensures training and evaluation
+    environments are built from the same graph and normalization configuration.
+    """
+    env_args = get_env_args() if env_args is None else env_args
+    alg_args = get_alg_args() if alg_args is None else alg_args
+    return merge_runtime_args(base_args, env_args, alg_args)
 
 
 def _checkpoint_stem(checkpoint_name: str) -> str:
@@ -40,8 +58,10 @@ def main(args: Namespace) -> None:
 
     start_time = time()
 
-    # Update args with environment arguments
-    args = ap.Namespace(**vars(args), **vars(get_env_args()))
+    # Graph construction and preprocessing depend on both environment and
+    # algorithm arguments, so compose the complete configuration before any
+    # training environment (or checkpoint saver) is created.
+    args = _compose_runtime_args(args)
     assert args.n_envs >= 1, f"Invalid n° of environments: {args.n_envs}. Must be >= 1"
 
     alg = args.alg.upper()

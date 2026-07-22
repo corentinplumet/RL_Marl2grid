@@ -23,6 +23,7 @@ from common.imports import *
 from common.explainability import EXPLAIN_INFO_KEY
 from common.graph import make_grid_graph_builder
 from common.graph_normalization import GraphFeatureProcessor
+from common.runtime_config import sparse_transformer_self_edges_enabled
 from common.tokenizer import GridTokenBuilder
 from common.utils import any_gnn_enabled, any_transformer_enabled
 from .reward import (
@@ -966,8 +967,12 @@ class MAEnvWrapper(MAEnv):
             sparse_gt_add_self_edges = getattr(
                 args, "sparse_gt_add_self_edges", None
             )
-            if sparse_gt_add_self_edges is None:
-                sparse_gt_add_self_edges = sparse_gt_enabled
+            # This option controls explicit self-attention edges for the sparse
+            # graph transformer. Ordinary PyG convolutions already implement
+            # their own self-message behavior where applicable.
+            sparse_gt_add_self_edges = sparse_transformer_self_edges_enabled(
+                getattr(args, "gnn_type", ""), sparse_gt_add_self_edges
+            )
             add_substation_edges = getattr(
                 args, "gnn_add_substation_edges", None
             )
