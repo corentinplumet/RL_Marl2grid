@@ -104,6 +104,30 @@ control training cost; evaluate the selected checkpoints afterward on at least
 30 episodes or the complete held-out chronic split.  Promote the confirmed
 winner, rather than the original single-seed run, into Stage 2.
 
+## Stage 1c: provisional structural screen
+
+Seven spare cluster slots can be used while Stage 1b is running to screen the
+three binary structural factors on the provisional `bus + n0_none + GINE`
+winner.  The Stage 1b `e0n0v0` run is the baseline, so Stage 1c contains exactly
+the other seven combinations of same-substation edges (`e`), substation summary
+nodes (`n`), and virtual-node readout (`v`).  All runs use seed 0, 8M steps, and
+the 2,880-minute training limit.
+
+Create, validate, and launch the seven runs with:
+
+```bash
+python tools/gnn_graph_screening.py provisional-structure
+python tools/gnn_graph_screening.py validate \
+  configs/gnn_graph_screening/stage1c_provisional_structure
+bash configs/gnn_graph_screening/stage1c_provisional_structure/launch_all.sh
+```
+
+This is an early use of otherwise idle compute, not a replacement for Stage 2.
+If Stage 1b confirms `bus + n0_none`, its baseline and these seven runs form the
+complete structural factorial.  If another Stage 1b configuration wins, rerun
+the promising structural choices with that confirmed representation and
+normalization before drawing a final structural conclusion.
+
 ## Stage 2: structural factors
 
 Promote the actual stage-1 winner. This creates all eight binary combinations

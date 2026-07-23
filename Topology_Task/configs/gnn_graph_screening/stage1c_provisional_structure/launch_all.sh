@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+sbatch job_jed.sh configs/gnn_graph_screening/stage1c_provisional_structure/gs_s1c_bus_n0_none_e0n0v1_s0.toml
+sbatch job_jed.sh configs/gnn_graph_screening/stage1c_provisional_structure/gs_s1c_bus_n0_none_e0n1v0_s0.toml
+sbatch job_jed.sh configs/gnn_graph_screening/stage1c_provisional_structure/gs_s1c_bus_n0_none_e0n1v1_s0.toml
+sbatch job_jed.sh configs/gnn_graph_screening/stage1c_provisional_structure/gs_s1c_bus_n0_none_e1n0v0_s0.toml
+sbatch job_jed.sh configs/gnn_graph_screening/stage1c_provisional_structure/gs_s1c_bus_n0_none_e1n0v1_s0.toml
+sbatch job_jed.sh configs/gnn_graph_screening/stage1c_provisional_structure/gs_s1c_bus_n0_none_e1n1v0_s0.toml
+sbatch job_jed.sh configs/gnn_graph_screening/stage1c_provisional_structure/gs_s1c_bus_n0_none_e1n1v1_s0.toml

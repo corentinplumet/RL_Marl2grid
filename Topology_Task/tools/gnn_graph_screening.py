@@ -28,6 +28,7 @@ if str(TASK_DIR) not in sys.path:
 SCREENING_ROOT = TASK_DIR / "configs" / "gnn_graph_screening"
 STAGE1_DIR = SCREENING_ROOT / "stage1_representation_normalization"
 STAGE1B_DIR = SCREENING_ROOT / "stage1b_normalization_confirmation"
+STAGE1C_DIR = SCREENING_ROOT / "stage1c_provisional_structure"
 STAGE2_DIR = SCREENING_ROOT / "stage2_structure"
 STAGE3_DIR = SCREENING_ROOT / "stage3_encoder"
 STAGE4_DIR = SCREENING_ROOT / "stage4_confirmation"
@@ -43,6 +44,11 @@ STAGE1B_FINALISTS = (
     ("bus", "n0_none"),
     ("bus", "n1_physical"),
     ("heterogeneous", "n0_none"),
+)
+STAGE1C_STRUCTURES = tuple(
+    structure
+    for structure in itertools.product((False, True), repeat=3)
+    if structure != (False, False, False)
 )
 ENCODERS = ("gcn", "gat", "gine", "graphsage", "sparse_transformer")
 
@@ -375,6 +381,43 @@ def create_stage1b(
     return config_paths
 
 
+def create_stage1c(
+    output_dir: Path = STAGE1C_DIR, force: bool = False
+) -> list[Path]:
+    """Create the seven non-baseline structural runs for the provisional winner."""
+
+    config_paths: list[Path] = []
+    for edges, nodes, virtual in STAGE1C_STRUCTURES:
+        suffix = f"e{int(edges)}n{int(nodes)}v{int(virtual)}"
+        name = f"gs_s1c_bus_n0_none_{suffix}_s0"
+        content = BASE_CONFIG.format(
+            name=name,
+            graph_type="bus",
+            physical_scaling=_bool(False),
+            running_norm=_bool(False),
+        )
+        content = _apply_values(
+            content,
+            {
+                ("environment", "MAX_TIME_LIMIT_MINUTES"): "2880",
+                ("args", "seed"): 0,
+                ("args", "time_limit"): 2880,
+                ("args", "total_timesteps"): 8_000_000,
+                ("args", "gnn_add_substation_edges"): edges,
+                ("args", "gnn_add_substation_nodes"): nodes,
+                ("args", "gnn_readout_aggr"): "virtual_node" if virtual else "mean",
+                ("args", "sparse_gt_pooling"): "",
+                ("args", "sparse_gt_add_substation_edges"): edges,
+            },
+        )
+        path = output_dir / f"{name}.toml"
+        _write(path, content, force)
+        config_paths.append(path)
+    _write_launch_script(output_dir, config_paths, force)
+    _write_manifest(output_dir, config_paths, force)
+    return config_paths
+
+
 def _promoted_name(prefix: str, source_args: dict[str, Any], suffix: str) -> str:
     graph_type = str(source_args.get("gnn_graph_type", "bus")).replace(
         "heterogeneous", "hetero"
@@ -513,6 +556,13 @@ def _parser() -> argparse.ArgumentParser:
     confirm_normalization.add_argument("--output", type=Path, default=STAGE1B_DIR)
     confirm_normalization.add_argument("--force", action="store_true")
 
+    provisional_structure = subparsers.add_parser(
+        "provisional-structure",
+        help="Create the seven non-baseline Stage 1c structural configs.",
+    )
+    provisional_structure.add_argument("--output", type=Path, default=STAGE1C_DIR)
+    provisional_structure.add_argument("--force", action="store_true")
+
     structure = subparsers.add_parser(
         "promote-structure", help="Create eight stage-2 configs from the stage-1 winner."
     )
@@ -545,6 +595,8 @@ def main() -> int:
         paths = create_stage1(args.output, args.force)
     elif args.command == "confirm-normalization":
         paths = create_stage1b(args.output, args.force)
+    elif args.command == "provisional-structure":
+        paths = create_stage1c(args.output, args.force)
     elif args.command == "promote-structure":
         paths = create_stage2(args.winner, args.output, args.force)
     elif args.command == "promote-encoder":

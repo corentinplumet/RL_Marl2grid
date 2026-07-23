@@ -13,9 +13,11 @@ from tools.gnn_graph_screening import (
     GRAPH_TYPES,
     NORMALIZATION_MODES,
     STAGE1B_FINALISTS,
+    STAGE1C_STRUCTURES,
     create_confirmation,
     create_stage1,
     create_stage1b,
+    create_stage1c,
     create_stage2,
     create_stage3,
     validate_configs,
@@ -28,6 +30,42 @@ def load_args(path: Path):
 
 
 class GraphScreeningConfigTests(unittest.TestCase):
+    def test_stage1c_covers_the_seven_nonbaseline_structures(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp) / "stage1c"
+            configs = create_stage1c(output_dir)
+            self.assertEqual(len(configs), 7)
+            validate_configs([output_dir])
+
+            observed = set()
+            for path in configs:
+                with path.open("rb") as file:
+                    config = tomllib.load(file)
+                args = config["args"]
+                structure = (
+                    args["gnn_add_substation_edges"],
+                    args["gnn_add_substation_nodes"],
+                    args["gnn_readout_aggr"] == "virtual_node",
+                )
+                observed.add(structure)
+                self.assertEqual(
+                    args["sparse_gt_add_substation_edges"], structure[0]
+                )
+                self.assertEqual(args["gnn_graph_type"], "bus")
+                self.assertEqual(args["gnn_type"], "gine")
+                self.assertEqual(args["critic_encoder"], "mlp")
+                self.assertFalse(args["gnn_physical_scaling"])
+                self.assertFalse(args["gnn_running_norm"])
+                self.assertEqual(args["seed"], 0)
+                self.assertEqual(args["total_timesteps"], 8_000_000)
+                self.assertEqual(args["time_limit"], 2880)
+                self.assertEqual(
+                    config["environment"]["MAX_TIME_LIMIT_MINUTES"], "2880"
+                )
+
+            self.assertEqual(observed, set(STAGE1C_STRUCTURES))
+            self.assertNotIn((False, False, False), observed)
+
     def test_stage1b_confirms_three_finalists_with_three_seeds(self):
         with tempfile.TemporaryDirectory() as tmp:
             output_dir = Path(tmp) / "stage1b"
