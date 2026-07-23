@@ -1,0 +1,9 @@
+config,seed,graph_type,normalization,physical_scaling,running_normalization,substation_edges,substation_nodes,virtual_node,encoder,generator_direction,load_direction,line_direction,summary_direction,timesteps
+gs_s1d_hetero_n0_none_gbi_la2b_s0.toml,0,heterogeneous,n0_none,False,False,False,False,False,gine,bidirectional,asset_to_busbar,bidirectional,bidirectional,8000000
+gs_s1d_hetero_n0_none_gbi_lb2a_s0.toml,0,heterogeneous,n0_none,False,False,False,False,False,gine,bidirectional,busbar_to_asset,bidirectional,bidirectional,8000000
+gs_s1d_hetero_n0_none_ga2b_lbi_s0.toml,0,heterogeneous,n0_none,False,False,False,False,False,gine,asset_to_busbar,bidirectional,bidirectional,bidirectional,8000000
+gs_s1d_hetero_n0_none_ga2b_la2b_s0.toml,0,heterogeneous,n0_none,False,False,False,False,False,gine,asset_to_busbar,asset_to_busbar,bidirectional,bidirectional,8000000
+gs_s1d_hetero_n0_none_ga2b_lb2a_s0.toml,0,heterogeneous,n0_none,False,False,False,False,False,gine,asset_to_busbar,busbar_to_asset,bidirectional,bidirectional,8000000
+gs_s1d_hetero_n0_none_gb2a_lbi_s0.toml,0,heterogeneous,n0_none,False,False,False,False,False,gine,busbar_to_asset,bidirectional,bidirectional,bidirectional,8000000
+gs_s1d_hetero_n0_none_gb2a_la2b_s0.toml,0,heterogeneous,n0_none,False,False,False,False,False,gine,busbar_to_asset,asset_to_busbar,bidirectional,bidirectional,8000000
+gs_s1d_hetero_n0_none_gb2a_lb2a_s0.toml,0,heterogeneous,n0_none,False,False,False,False,False,gine,busbar_to_asset,busbar_to_asset,bidirectional,bidirectional,8000000

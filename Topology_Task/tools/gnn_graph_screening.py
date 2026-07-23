@@ -29,6 +29,7 @@ SCREENING_ROOT = TASK_DIR / "configs" / "gnn_graph_screening"
 STAGE1_DIR = SCREENING_ROOT / "stage1_representation_normalization"
 STAGE1B_DIR = SCREENING_ROOT / "stage1b_normalization_confirmation"
 STAGE1C_DIR = SCREENING_ROOT / "stage1c_provisional_structure"
+STAGE1D_DIR = SCREENING_ROOT / "stage1d_heterogeneous_directions"
 STAGE2_DIR = SCREENING_ROOT / "stage2_structure"
 STAGE3_DIR = SCREENING_ROOT / "stage3_encoder"
 STAGE4_DIR = SCREENING_ROOT / "stage4_confirmation"
@@ -50,6 +51,21 @@ STAGE1C_STRUCTURES = tuple(
     for structure in itertools.product((False, True), repeat=3)
     if structure != (False, False, False)
 )
+ASSET_EDGE_DIRECTIONS = (
+    "bidirectional",
+    "asset_to_busbar",
+    "busbar_to_asset",
+)
+STAGE1D_DIRECTIONS = tuple(
+    directions
+    for directions in itertools.product(ASSET_EDGE_DIRECTIONS, repeat=2)
+    if directions != ("bidirectional", "bidirectional")
+)
+DIRECTION_LABELS = {
+    "bidirectional": "bi",
+    "asset_to_busbar": "a2b",
+    "busbar_to_asset": "b2a",
+}
 ENCODERS = ("gcn", "gat", "gine", "graphsage", "sparse_transformer")
 
 
@@ -308,6 +324,16 @@ def _manifest_row(path: Path) -> dict[str, Any]:
         "substation_nodes": args.get("gnn_add_substation_nodes", False),
         "virtual_node": args.get("gnn_readout_aggr") == "virtual_node",
         "encoder": args.get("gnn_type", "gine"),
+        "generator_direction": args.get(
+            "gnn_generator_edge_direction", "bidirectional"
+        ),
+        "load_direction": args.get("gnn_load_edge_direction", "bidirectional"),
+        "line_direction": args.get(
+            "gnn_line_node_edge_direction", "bidirectional"
+        ),
+        "summary_direction": args.get(
+            "gnn_summary_edge_direction", "bidirectional"
+        ),
         "timesteps": args.get("total_timesteps"),
     }
 
@@ -408,6 +434,43 @@ def create_stage1c(
                 ("args", "gnn_readout_aggr"): "virtual_node" if virtual else "mean",
                 ("args", "sparse_gt_pooling"): "",
                 ("args", "sparse_gt_add_substation_edges"): edges,
+            },
+        )
+        path = output_dir / f"{name}.toml"
+        _write(path, content, force)
+        config_paths.append(path)
+    _write_launch_script(output_dir, config_paths, force)
+    _write_manifest(output_dir, config_paths, force)
+    return config_paths
+
+
+def create_stage1d(
+    output_dir: Path = STAGE1D_DIR, force: bool = False
+) -> list[Path]:
+    """Create the non-baseline heterogeneous asset-direction factorial."""
+
+    config_paths: list[Path] = []
+    for generator_direction, load_direction in STAGE1D_DIRECTIONS:
+        direction_suffix = (
+            f"g{DIRECTION_LABELS[generator_direction]}_"
+            f"l{DIRECTION_LABELS[load_direction]}"
+        )
+        name = f"gs_s1d_hetero_n0_none_{direction_suffix}_s0"
+        content = BASE_CONFIG.format(
+            name=name,
+            graph_type="heterogeneous",
+            physical_scaling=_bool(False),
+            running_norm=_bool(False),
+        )
+        content = _apply_values(
+            content,
+            {
+                ("environment", "MAX_TIME_LIMIT_MINUTES"): "2880",
+                ("args", "seed"): 0,
+                ("args", "time_limit"): 2880,
+                ("args", "total_timesteps"): 8_000_000,
+                ("args", "gnn_generator_edge_direction"): generator_direction,
+                ("args", "gnn_load_edge_direction"): load_direction,
             },
         )
         path = output_dir / f"{name}.toml"
@@ -563,6 +626,13 @@ def _parser() -> argparse.ArgumentParser:
     provisional_structure.add_argument("--output", type=Path, default=STAGE1C_DIR)
     provisional_structure.add_argument("--force", action="store_true")
 
+    heterogeneous_directions = subparsers.add_parser(
+        "heterogeneous-directions",
+        help="Create the eight non-baseline Stage 1d asset-direction configs.",
+    )
+    heterogeneous_directions.add_argument("--output", type=Path, default=STAGE1D_DIR)
+    heterogeneous_directions.add_argument("--force", action="store_true")
+
     structure = subparsers.add_parser(
         "promote-structure", help="Create eight stage-2 configs from the stage-1 winner."
     )
@@ -597,6 +667,8 @@ def main() -> int:
         paths = create_stage1b(args.output, args.force)
     elif args.command == "provisional-structure":
         paths = create_stage1c(args.output, args.force)
+    elif args.command == "heterogeneous-directions":
+        paths = create_stage1d(args.output, args.force)
     elif args.command == "promote-structure":
         paths = create_stage2(args.winner, args.output, args.force)
     elif args.command == "promote-encoder":

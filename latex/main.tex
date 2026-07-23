@@ -70,7 +70,7 @@ only the active directed set $\mathcal{E}^{(a)}_t$. The source of
 $u\rightarrow v$ sends a message and $v$ aggregates it. Node and edge masks do
 not become learned features.
 
-In the screening configuration, each raw node vector $\mathbf{x}_v$ first
+Each raw node vector $\mathbf{x}_v$ first
 passes through
 \begin{equation}
   \mathbf{h}^{(0)}_v =
@@ -80,10 +80,9 @@ passes through
   \label{eq:graph-node-pre-encoder}
 \end{equation}
 which produces a 128-dimensional node state. Learned global node-identifier
-embeddings are disabled. The optional external edge pre-encoder is also
-disabled in the screen. This does not mean that raw edge features bypass
-learning: every GINE or GAT layer still contains its own trainable projection
-of the edge vector to the dimension required by that layer.
+embeddings and the optional external edge pre-encoder are disabled. Every GINE
+or GAT layer nevertheless contains its own trainable projection of the edge
+vector to the dimension required by that layer.
 
 Two message-passing layers are used. After each layer, the implementation
 applies ReLU followed by LayerNorm:
@@ -154,7 +153,7 @@ For head $r$, the implementation has the form
        \alpha^{(k,r)}_{uv}\mathbf{W}_{r}\mathbf{h}^{(k)}_u.
   \label{eq:gat-layer}
 \end{align}
-The screen configures $H=4$ heads and
+GAT uses $H=4$ heads and
 \texttt{concat=false}, so the four head outputs are averaged and the layer
 still returns 128 features. The edge embedding affects
 $\alpha_{uv}$: it changes how much attention the receiver assigns to the
@@ -164,8 +163,7 @@ from GINE.
 
 GAT internally adds a self-loop for every node. That computational self-loop
 is separate from the optional explicit \texttt{relation\_self} edge in the
-graph schema. Stage 1 disables explicit self edges, so every node has one GAT
-self-message but no additional schema-level self relation.
+graph schema.
 
 \begin{table}[H]
   \centering
@@ -191,7 +189,8 @@ self-message but no additional schema-level self relation.
 \section{Pooling and graph output}
 \label{sec:gnn-pooling-action}
 
-After the second message-passing layer, the default screen uses mean pooling:
+With mean pooling, the graph representation after the second message-passing
+layer is
 \begin{equation}
   \overline{\mathbf{h}}_G =
   \frac{\sum_v m_v\mathbf{h}^{(K)}_v}
@@ -225,8 +224,8 @@ same.
 \section{Agent-specific action head}
 \label{sec:gnn-action-head}
 
-The graph screen does not concatenate the flat observation to
-$\mathbf{z}_a$. Each agent has its own two-layer MLP action head:
+The flat observation is not concatenated to $\mathbf{z}_a$. Each agent has its
+own two-layer MLP action head:
 \begin{align}
   \mathbf{q}^{(1)}_a &=
     \operatorname{ReLU}(\mathbf{W}^{(1)}_a\mathbf{z}_a+\mathbf{b}^{(1)}_a), \\
@@ -245,10 +244,9 @@ $\arg\max_j\ell_{a,j}$. Action zero is the local do-nothing action.
 
 Only the GNN encoder and graph output projection are shared across agents. The
 action heads are agent-specific because agents can have different local action
-sets and therefore different output widths $|\mathcal{A}_a|$. The Stage-1
-critic is a separate MLP over the centralized flat state; it does not reuse the
-actor GINE/GAT embedding. The intervention-gated two-head policy described in
-Section~\ref{subsec:sparse-control-gate} is not used in the graph screen.
+sets and therefore different output widths $|\mathcal{A}_a|$. The critic is a
+separate MLP over the centralized flat state and does not reuse the actor
+GINE/GAT embedding.
 
 \section{Exact node inputs by representation}
 \label{sec:gnn-node-input-inventory}

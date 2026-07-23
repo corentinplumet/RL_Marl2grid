@@ -128,6 +128,31 @@ complete structural factorial.  If another Stage 1b configuration wins, rerun
 the promising structural choices with that confirmed representation and
 normalization before drawing a final structural conclusion.
 
+## Stage 1d: heterogeneous asset-edge directions
+
+The direct heterogeneous graph has two independently configurable asset
+relations: generator attachments and load attachments.  Each relation can be
+bidirectional, asset-to-busbar, or busbar-to-asset.  Their full factorial has
+nine combinations; the Stage 1b heterogeneous `bidirectional/bidirectional`
+run supplies the baseline, leaving eight Stage 1d jobs.
+
+All eight runs keep the direct heterogeneous representation, no input
+preprocessing, GINE, mean pooling, no hierarchy augmentation, seed 0, 8M steps,
+and the 2,880-minute limit.  Create, validate, and launch them with:
+
+```bash
+python tools/gnn_graph_screening.py heterogeneous-directions
+python tools/gnn_graph_screening.py validate \
+  configs/gnn_graph_screening/stage1d_heterogeneous_directions
+bash configs/gnn_graph_screening/stage1d_heterogeneous_directions/launch_all.sh
+```
+
+This screen tests whether equipment should only send state toward its busbar,
+only receive busbar context, or exchange messages in both directions.  It keeps
+the encoder fixed so a direction effect cannot be mistaken for a GAT-versus-GINE
+effect.  As with Stage 1c, treat the result as provisional until Stage 1b
+confirms the base representation and normalization.
+
 ## Stage 2: structural factors
 
 Promote the actual stage-1 winner. This creates all eight binary combinations

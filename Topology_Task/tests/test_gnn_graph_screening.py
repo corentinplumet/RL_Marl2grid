@@ -12,12 +12,14 @@ from tools.gnn_graph_screening import (
     ENCODERS,
     GRAPH_TYPES,
     NORMALIZATION_MODES,
+    STAGE1D_DIRECTIONS,
     STAGE1B_FINALISTS,
     STAGE1C_STRUCTURES,
     create_confirmation,
     create_stage1,
     create_stage1b,
     create_stage1c,
+    create_stage1d,
     create_stage2,
     create_stage3,
     validate_configs,
@@ -30,6 +32,41 @@ def load_args(path: Path):
 
 
 class GraphScreeningConfigTests(unittest.TestCase):
+    def test_stage1d_covers_the_eight_nonbaseline_direction_pairs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp) / "stage1d"
+            configs = create_stage1d(output_dir)
+            self.assertEqual(len(configs), 8)
+            validate_configs([output_dir])
+
+            observed = set()
+            for path in configs:
+                with path.open("rb") as file:
+                    config = tomllib.load(file)
+                args = config["args"]
+                directions = (
+                    args["gnn_generator_edge_direction"],
+                    args["gnn_load_edge_direction"],
+                )
+                observed.add(directions)
+                self.assertEqual(args["gnn_graph_type"], "heterogeneous")
+                self.assertEqual(args["gnn_type"], "gine")
+                self.assertEqual(args["critic_encoder"], "mlp")
+                self.assertFalse(args["gnn_physical_scaling"])
+                self.assertFalse(args["gnn_running_norm"])
+                self.assertFalse(args["gnn_add_substation_edges"])
+                self.assertFalse(args["gnn_add_substation_nodes"])
+                self.assertEqual(args["gnn_readout_aggr"], "mean")
+                self.assertEqual(args["seed"], 0)
+                self.assertEqual(args["total_timesteps"], 8_000_000)
+                self.assertEqual(args["time_limit"], 2880)
+                self.assertEqual(
+                    config["environment"]["MAX_TIME_LIMIT_MINUTES"], "2880"
+                )
+
+            self.assertEqual(observed, set(STAGE1D_DIRECTIONS))
+            self.assertNotIn(("bidirectional", "bidirectional"), observed)
+
     def test_stage1c_covers_the_seven_nonbaseline_structures(self):
         with tempfile.TemporaryDirectory() as tmp:
             output_dir = Path(tmp) / "stage1c"
