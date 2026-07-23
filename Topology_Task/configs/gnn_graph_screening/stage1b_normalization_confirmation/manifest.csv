@@ -1,0 +1,10 @@
+config,seed,graph_type,normalization,physical_scaling,running_normalization,substation_edges,substation_nodes,virtual_node,encoder,timesteps
+gs_s1b_bus_n0_none_s0.toml,0,bus,n0_none,False,False,False,False,False,gine,8000000
+gs_s1b_bus_n0_none_s1.toml,1,bus,n0_none,False,False,False,False,False,gine,8000000
+gs_s1b_bus_n0_none_s2.toml,2,bus,n0_none,False,False,False,False,False,gine,8000000
+gs_s1b_bus_n1_physical_s0.toml,0,bus,n1_physical,True,False,False,False,False,gine,8000000
+gs_s1b_bus_n1_physical_s1.toml,1,bus,n1_physical,True,False,False,False,False,gine,8000000
+gs_s1b_bus_n1_physical_s2.toml,2,bus,n1_physical,True,False,False,False,False,gine,8000000
+gs_s1b_hetero_n0_none_s0.toml,0,heterogeneous,n0_none,False,False,False,False,False,gine,8000000
+gs_s1b_hetero_n0_none_s1.toml,1,heterogeneous,n0_none,False,False,False,False,False,gine,8000000
+gs_s1b_hetero_n0_none_s2.toml,2,heterogeneous,n0_none,False,False,False,False,False,gine,8000000

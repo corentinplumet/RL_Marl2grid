@@ -990,6 +990,15 @@ class MAEnvWrapper(MAEnv):
                 include_maintenance=env_config[env_id]["maintenance"],
                 add_self_edges=sparse_gt_add_self_edges,
                 add_substation_edges=add_substation_edges,
+                generator_edge_direction=getattr(
+                    args, "gnn_generator_edge_direction", "bidirectional"
+                ),
+                load_edge_direction=getattr(
+                    args, "gnn_load_edge_direction", "bidirectional"
+                ),
+                line_node_edge_direction=getattr(
+                    args, "gnn_line_node_edge_direction", "bidirectional"
+                ),
             )
             self.graph_specs = self.graph_builder.specs
             self.graph_feature_processor = GraphFeatureProcessor(

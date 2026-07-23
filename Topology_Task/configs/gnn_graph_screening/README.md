@@ -18,7 +18,27 @@ The settings used to isolate graph generalization are:
 - two message-passing layers, which allow information to cross an explicit
   transmission-line node;
 - LayerNorm enabled in every screening condition;
+- all equipment, line-node, and hierarchy relations kept bidirectional for the
+  backwards-compatible screening baseline;
 - the same chronic split, action space, critic, and PPO settings.
+
+The heterogeneous builders also support relation-specific one-way message
+passing. The four controls are:
+
+- `gnn_generator_edge_direction`: `bidirectional`, `asset_to_busbar`, or
+  `busbar_to_asset`;
+- `gnn_load_edge_direction`: the same three choices;
+- `gnn_line_node_edge_direction`: `bidirectional`, `line_to_busbar`, or
+  `busbar_to_line` for the explicit-line representation;
+- `gnn_summary_edge_direction`: `bidirectional` or `toward_summary` for
+  busbar-to-substation and substation-to-virtual-node hierarchy links.
+
+Direct physical transmission relations and same-substation busbar relations
+remain bidirectional. A useful follow-up to the main screen is to take its
+winning heterogeneous configuration and compare the bidirectional baseline
+with `asset_to_busbar`, `line_to_busbar`, and `toward_summary`, which makes the
+busbar/hierarchy backbone aggregate equipment state without sending its context
+back to terminal equipment nodes.
 
 The MLP critic is deliberately kept fixed during screening. The critic is used
 only for centralized training, while the graph representation being screened
@@ -55,6 +75,34 @@ python tools/gnn_graph_screening.py validate \
 Select the stage-1 winner using held-out deterministic evaluation, with
 survival/completion as the primary metric and reward, overloads, topology-action
 count, training stability, runtime, and memory as secondary diagnostics.
+
+## Stage 1b: focused normalization confirmation
+
+The first screen did not reach the configured 8M steps before its 12-hour
+training limit.  The focused confirmation therefore retains only the three
+credible finalists:
+
+- bus graph without input preprocessing;
+- bus graph with deterministic physical scaling;
+- direct heterogeneous graph without input preprocessing.
+
+Each finalist is trained from scratch with seeds 0, 1, and 2 for 8M steps.  The
+training limit is 2,880 minutes (48 hours) so the comparison is governed by environment
+steps rather than the previous 720-minute cutoff.  Create, validate, and launch
+the nine runs with:
+
+```bash
+python tools/gnn_graph_screening.py confirm-normalization
+python tools/gnn_graph_screening.py validate \
+  configs/gnn_graph_screening/stage1b_normalization_confirmation
+bash configs/gnn_graph_screening/stage1b_normalization_confirmation/launch_all.sh
+```
+
+Rank configurations at the common 8M-step endpoint using the mean and standard
+deviation across seeds.  The periodic evaluation remains at ten episodes to
+control training cost; evaluate the selected checkpoints afterward on at least
+30 episodes or the complete held-out chronic split.  Promote the confirmed
+winner, rather than the original single-seed run, into Stage 2.
 
 ## Stage 2: structural factors
 

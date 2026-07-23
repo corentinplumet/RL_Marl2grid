@@ -508,7 +508,19 @@ def get_alg_args() -> Namespace:
         default=False,
         help=(
             "Append one learned node per included substation and connect it "
-            "bidirectionally to that substation's busbars."
+            "to that substation's busbars according to "
+            "--gnn-summary-edge-direction."
+        ),
+    )
+    parser.add_argument(
+        "--gnn-summary-edge-direction",
+        type=str,
+        default="bidirectional",
+        choices=["bidirectional", "toward_summary"],
+        help=(
+            "Direction of encoder-added hierarchy edges. bidirectional exchanges "
+            "messages in both directions; toward_summary keeps only busbar-to-"
+            "substation and substation-to-virtual-node messages."
         ),
     )
     parser.add_argument(
@@ -691,6 +703,30 @@ def get_alg_args() -> Namespace:
             "Graph representation used by GNN encoders: aggregated busbar nodes "
             "or typed equipment nodes, optionally with transmission lines as "
             "explicit nodes."
+        ),
+    )
+    parser.add_argument(
+        "--gnn-generator-edge-direction",
+        type=str,
+        default="bidirectional",
+        choices=["bidirectional", "asset_to_busbar", "busbar_to_asset"],
+        help="Message direction for generator--busbar attachment relations.",
+    )
+    parser.add_argument(
+        "--gnn-load-edge-direction",
+        type=str,
+        default="bidirectional",
+        choices=["bidirectional", "asset_to_busbar", "busbar_to_asset"],
+        help="Message direction for load--busbar attachment relations.",
+    )
+    parser.add_argument(
+        "--gnn-line-node-edge-direction",
+        type=str,
+        default="bidirectional",
+        choices=["bidirectional", "line_to_busbar", "busbar_to_line"],
+        help=(
+            "Message direction for busbar--line-node attachments when "
+            "--gnn-graph-type=heterogeneous_line."
         ),
     )
     parser.add_argument(

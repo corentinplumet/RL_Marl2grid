@@ -13,6 +13,7 @@
 \usepackage{graphicx}
 \usepackage{pdflscape}
 \usepackage{amsmath}
+\usepackage{amssymb}
 \usepackage{float}
 \usepackage[backend=biber,style=ieee]{biblatex}
 
@@ -50,22 +51,289 @@
 \input{chapters/05_results_rerun_survival}
 
 \appendix
-\chapter{GINE Architecture}
+\chapter{GINE and GAT Graph-Actor Architectures}
 \label{app:gine-architecture}
 
-This appendix will describe the GINE encoder used in the graph-based topology
-control experiments. Building on the graph definition in
-Section~\ref{sec:graph-representation}, the final version should specify the
-message-passing layers, pooling/readout operation, and how the actor and critic
-heads consume the encoded graph representation.
+This appendix specifies the complete edge-aware actor used in the graph
+experiments. GINE and GAT receive the same graph inputs and use the same
+pooling and action head. Their only architectural difference is the
+message-passing operator: GINE inserts an edge embedding into the message
+content, whereas GAT uses an edge embedding to decide how strongly the message
+is weighted.
+
+\section{Shared input and encoder pipeline}
+
+For agent $a$, the encoder receives the local graph
+$\mathcal{G}^{(a)}_t$. Candidate edges with
+\texttt{edge\_mask}$=0$ are removed before message passing, so the layer sees
+only the active directed set $\mathcal{E}^{(a)}_t$. The source of
+$u\rightarrow v$ sends a message and $v$ aggregates it. Node and edge masks do
+not become learned features.
+
+In the screening configuration, each raw node vector $\mathbf{x}_v$ first
+passes through
+\begin{equation}
+  \mathbf{h}^{(0)}_v =
+  \operatorname{LayerNorm}\!\left(
+    \operatorname{ReLU}(\mathbf{W}_{x}\mathbf{x}_v+\mathbf{b}_{x})
+  \right),
+  \label{eq:graph-node-pre-encoder}
+\end{equation}
+which produces a 128-dimensional node state. Learned global node-identifier
+embeddings are disabled. The optional external edge pre-encoder is also
+disabled in the screen. This does not mean that raw edge features bypass
+learning: every GINE or GAT layer still contains its own trainable projection
+of the edge vector to the dimension required by that layer.
+
+Two message-passing layers are used. After each layer, the implementation
+applies ReLU followed by LayerNorm:
+\begin{equation}
+  \mathbf{h}^{(k+1)}_v =
+  \operatorname{LayerNorm}\!\left(
+    \operatorname{ReLU}(\widetilde{\mathbf{h}}^{(k+1)}_v)
+  \right).
+  \label{eq:graph-post-convolution}
+\end{equation}
+The same encoder parameters are shared by all agents. Each agent nevertheless
+passes its own local graph, with its own node set, active edges, and one-hop
+context, through that shared encoder.
+
+\section{GINE message passing}
+\label{sec:gine-message-passing}
+
+For an active edge $u\rightarrow v$, layer $k$ projects the complete edge
+feature vector and adds it to the sender state:
+\begin{align}
+  \widetilde{\mathbf{e}}^{(k)}_{uv}
+    &= \mathbf{W}^{(k)}_e\mathbf{e}_{uv}+\mathbf{b}^{(k)}_e, \\
+  \mathbf{m}^{(k)}_{u\rightarrow v}
+    &= \operatorname{ReLU}\!\left(
+      \mathbf{h}^{(k)}_u+\widetilde{\mathbf{e}}^{(k)}_{uv}
+    \right), \\
+  \widetilde{\mathbf{h}}^{(k+1)}_v
+    &= \operatorname{MLP}^{(k)}\!\left(
+      (1+\epsilon)\mathbf{h}^{(k)}_v
+      +\sum_{u:(u,v)\in\mathcal{E}_t}
+       \mathbf{m}^{(k)}_{u\rightarrow v}
+    \right).
+  \label{eq:gine-layer}
+\end{align}
+The implementation uses the PyTorch Geometric default $\epsilon=0$ without a
+trainable epsilon parameter. Each internal GINE MLP is
+Linear--ReLU--Linear and outputs 128 features. Equation~\ref{eq:gine-layer}
+shows why edge attributes are part of the message content. Two identical node
+states can send different messages when one edge is an overloaded physical
+line and the other is an asset-attachment relation. Likewise, reversing a
+typed heterogeneous edge activates a different relation-one-hot column and can
+produce a different message.
+
+GINE uses an unweighted sum over incoming active edges. It does not learn a
+softmax competition between neighbors. The edge embedding changes what is
+sent; the number of incoming messages and their vector sum determine the
+aggregate.
+
+\section{GAT message passing}
+\label{sec:gat-message-passing}
+
+GAT first computes a score for every active incoming edge and attention head.
+For head $r$, the implementation has the form
+\begin{align}
+  s^{(k,r)}_{uv}
+    &= \operatorname{LeakyReLU}\!\left(
+      \mathbf{a}_{s,r}^{\top}\mathbf{W}_{s,r}\mathbf{h}^{(k)}_u
+      +\mathbf{a}_{d,r}^{\top}\mathbf{W}_{d,r}\mathbf{h}^{(k)}_v
+      +\mathbf{a}_{e,r}^{\top}\mathbf{W}_{e,r}\mathbf{e}_{uv}
+    \right), \\
+  \alpha^{(k,r)}_{uv}
+    &= \frac{\exp s^{(k,r)}_{uv}}
+      {\sum_{w:(w,v)\in\mathcal{E}_t}\exp s^{(k,r)}_{wv}},
+  \label{eq:gat-attention}\\
+  \widetilde{\mathbf{h}}^{(k+1)}_v
+    &= \frac{1}{H}\sum_{r=1}^{H}
+       \sum_{u:(u,v)\in\mathcal{E}_t}
+       \alpha^{(k,r)}_{uv}\mathbf{W}_{r}\mathbf{h}^{(k)}_u.
+  \label{eq:gat-layer}
+\end{align}
+The screen configures $H=4$ heads and
+\texttt{concat=false}, so the four head outputs are averaged and the layer
+still returns 128 features. The edge embedding affects
+$\alpha_{uv}$: it changes how much attention the receiver assigns to the
+sender. In the standard GAT operator used here, the edge vector is not added to
+the value vector $\mathbf{W}_{r}\mathbf{h}_u$. This is the central difference
+from GINE.
+
+GAT internally adds a self-loop for every node. That computational self-loop
+is separate from the optional explicit \texttt{relation\_self} edge in the
+graph schema. Stage 1 disables explicit self edges, so every node has one GAT
+self-message but no additional schema-level self relation.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Exact architectural difference between the implemented GINE and
+  GAT actors.}
+  \label{tab:gine-gat-comparison}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{L{0.23\textwidth}L{0.33\textwidth}L{0.33\textwidth}}
+    \toprule
+    Component & GINE & GAT \\
+    \midrule
+    Edge use & Added to the sender state inside every message & Enters the attention score for every incoming edge \\
+    Neighbor aggregation & Unweighted sum & Softmax-weighted sum \\
+    Self information & Explicit $(1+\epsilon)\mathbf{h}_v$ term & Internal GAT self-loop \\
+    Multiple heads & Not used & Four heads, averaged rather than concatenated \\
+    Post-layer operation & ReLU, then LayerNorm & ReLU, then LayerNorm \\
+    Pooling and action head & Shared implementation & Shared implementation \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Pooling and graph output}
+\label{sec:gnn-pooling-action}
+
+After the second message-passing layer, the default screen uses mean pooling:
+\begin{equation}
+  \overline{\mathbf{h}}_G =
+  \frac{\sum_v m_v\mathbf{h}^{(K)}_v}
+       {\max(1,\sum_v m_v)},
+  \label{eq:gnn-mean-pooling}
+\end{equation}
+where $m_v$ is the valid-node mask. This is one mean over all valid node types.
+It is not a separate mean per type. Therefore:
+\begin{itemize}
+  \item the busbar graph pools all busbars;
+  \item the direct heterogeneous graph pools busbars, generators, and loads;
+  \item the explicit-line graph also pools transmission-line nodes.
+\end{itemize}
+For a local actor graph, one-hop contextual nodes are included in the mean. The
+ordinary GINE/GAT mean readout does not restrict pooling to controlled nodes.
+Sum and maximum pooling change only Equation~\ref{eq:gnn-mean-pooling}; they do
+not change message passing.
+
+The pooled 128-dimensional vector then passes through the shared graph output
+projection
+\begin{equation}
+  \mathbf{z}_a =
+  \operatorname{ReLU}(\mathbf{W}_{o}\overline{\mathbf{h}}_G+\mathbf{b}_{o}),
+  \qquad \mathbf{z}_a\in\mathbb{R}^{128}.
+  \label{eq:gnn-output-projection}
+\end{equation}
+When virtual-node readout is selected, the final virtual-node state replaces
+$\overline{\mathbf{h}}_G$; the output projection and its dimension stay the
+same.
+
+\section{Agent-specific action head}
+\label{sec:gnn-action-head}
+
+The graph screen does not concatenate the flat observation to
+$\mathbf{z}_a$. Each agent has its own two-layer MLP action head:
+\begin{align}
+  \mathbf{q}^{(1)}_a &=
+    \operatorname{ReLU}(\mathbf{W}^{(1)}_a\mathbf{z}_a+\mathbf{b}^{(1)}_a), \\
+  \mathbf{q}^{(2)}_a &=
+    \operatorname{ReLU}(\mathbf{W}^{(2)}_a\mathbf{q}^{(1)}_a+\mathbf{b}^{(2)}_a), \\
+  \boldsymbol{\ell}_a &=
+    \mathbf{W}^{(3)}_a\mathbf{q}^{(2)}_a+\mathbf{b}^{(3)}_a,
+  \qquad \boldsymbol{\ell}_a\in\mathbb{R}^{|\mathcal{A}_a|}, \\
+  \pi_a(\cdot\mid\mathcal{G}^{(a)}_t)
+    &= \operatorname{Categorical}(\text{logits}=\boldsymbol{\ell}_a).
+  \label{eq:gnn-action-head}
+\end{align}
+Both hidden layers contain 128 units. During training, an action is sampled
+from this categorical distribution. Deterministic evaluation selects
+$\arg\max_j\ell_{a,j}$. Action zero is the local do-nothing action.
+
+Only the GNN encoder and graph output projection are shared across agents. The
+action heads are agent-specific because agents can have different local action
+sets and therefore different output widths $|\mathcal{A}_a|$. The Stage-1
+critic is a separate MLP over the centralized flat state; it does not reuse the
+actor GINE/GAT embedding. The intervention-gated two-head policy described in
+Section~\ref{subsec:sparse-control-gate} is not used in the graph screen.
+
+\section{Exact node inputs by representation}
+\label{sec:gnn-node-input-inventory}
+
+All node types of one representation receive the same feature columns. Columns
+not listed for a node type are zero. Type identity reaches GINE and GAT through
+the \texttt{is\_*} columns.
+
+\begin{table}[H]
+  \centering
+  \scriptsize
+  \caption{Node types and nonzero input features received by GINE and GAT.}
+  \label{tab:gine-gat-node-inventory}
+  \setlength{\tabcolsep}{3pt}
+  \begin{tabular}{L{0.18\textwidth}L{0.17\textwidth}L{0.56\textwidth}}
+    \toprule
+    Representation & Node type & Populated input features \\
+    \midrule
+    \texttt{bus} & Busbar & \texttt{gen\_p}, \texttt{gen\_theta}, \texttt{load\_p}, \texttt{load\_theta}, \texttt{time\_before\_cooldown\_sub}, \texttt{domain\_mask} \\
+    \midrule
+    \texttt{heterogeneous} & Busbar & \texttt{is\_busbar}, \texttt{time\_before\_cooldown\_sub}, \texttt{connected}, \texttt{domain\_mask} \\
+     & Generator & \texttt{is\_generator}, \texttt{p}=\texttt{gen\_p}, \texttt{theta}=\texttt{gen\_theta}, \texttt{connected}, \texttt{domain\_mask} \\
+     & Load & \texttt{is\_load}, \texttt{p}=\texttt{load\_p}, \texttt{theta}=\texttt{load\_theta}, \texttt{connected}, \texttt{domain\_mask} \\
+    \midrule
+    \texttt{heterogeneous\_line} & Busbar & \texttt{is\_busbar}, \texttt{time\_before\_cooldown\_sub}, \texttt{connected}, \texttt{domain\_mask} \\
+     & Generator & \texttt{is\_generator}, \texttt{p}=\texttt{gen\_p}, \texttt{theta}=\texttt{gen\_theta}, \texttt{connected}, \texttt{domain\_mask} \\
+     & Load & \texttt{is\_load}, \texttt{p}=\texttt{load\_p}, \texttt{theta}=\texttt{load\_theta}, \texttt{connected}, \texttt{domain\_mask} \\
+     & Transmission line & \texttt{is\_transmission\_line}, \texttt{line\_status}, \texttt{rho}, \texttt{timestep\_overflow}, \texttt{time\_before\_cooldown\_line}, optional maintenance times, \texttt{connected}, \texttt{domain\_mask} \\
+    \midrule
+    Any augmented schema & Substation summary & Learned substation-indexed vector; no raw physical feature row \\
+     & Virtual node & One learned vector shared across graphs; no raw physical feature row \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Exact edge inputs by representation}
+\label{sec:gnn-edge-input-inventory}
+
+The edge vector contains all edge information consumed by GINE and GAT.
+Inactive candidates are filtered out before the vectors in
+Table~\ref{tab:gine-gat-edge-inventory} reach a convolution.
+
+\begin{table}[H]
+  \centering
+  \scriptsize
+  \caption{Directed edge relations and edge-feature vectors received by GINE
+  and GAT. ``Relation'' denotes one active relation-one-hot column.}
+  \label{tab:gine-gat-edge-inventory}
+  \setlength{\tabcolsep}{3pt}
+  \begin{tabular}{L{0.18\textwidth}L{0.28\textwidth}L{0.45\textwidth}}
+    \toprule
+    Representation & Directed relation & Edge features \\
+    \midrule
+    \texttt{bus} & Physical busbar $\leftrightarrow$ busbar & \texttt{line\_status}, \texttt{rho}, \texttt{timestep\_overflow}, \texttt{time\_before\_cooldown\_line}, optional maintenance times; no relation one-hot \\
+     & Optional self or same-substation & Same width; physical values zero and \texttt{rho}$=1$; no relation one-hot \\
+    \midrule
+    \texttt{heterogeneous} & Physical busbar $\leftrightarrow$ busbar & Complete measured physical-line block plus \texttt{relation\_physical\_line} \\
+     & Generator $\leftrightarrow$ busbar & Neutral physical block plus direction-specific generator relation \\
+     & Load $\leftrightarrow$ busbar & Neutral physical block plus direction-specific load relation \\
+     & Optional self or same-substation & Neutral physical block plus the corresponding relation \\
+    \midrule
+    \texttt{heterogeneous\_line} & Busbar $\leftrightarrow$ line node & Measured \texttt{rho} plus an origin/extremity-and-direction relation \\
+     & Generator $\leftrightarrow$ busbar & \texttt{rho}$=1$ plus direction-specific generator relation \\
+     & Load $\leftrightarrow$ busbar & \texttt{rho}$=1$ plus direction-specific load relation \\
+     & Optional self or same-substation & \texttt{rho}$=1$ plus the corresponding relation \\
+    \midrule
+    Any augmented schema & Busbar $\rightarrow$ summary/virtual, with optional reverse & Zero edge vector except neutral \texttt{rho}$=1$ when present; no dedicated relation one-hot in the ordinary GINE/GAT encoder \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The complete relation names and activation rules are given in
+Tables~\ref{tab:heterogeneous-edge-features}
+and~\ref{tab:heterogeneous-line-edge-features}. Those tables distinguish, for
+example, generator-to-busbar from busbar-to-generator and origin from
+extremity line attachments. These distinctions matter directly to both
+edge-aware models: GINE changes message content and GAT changes attention.
 
 \chapter{Full-Test Checkpoint Registry}
 \label{app:full-test-checkpoint-registry}
 
 Table~\ref{tab:full-test-checkpoint-steps} reports the checkpoint step used for
 each full-test result table. The values are the
-\texttt{checkpoint\_global\_step} fields stored in the corresponding JSON files
-under \texttt{Topology\_Task/outputs/full\_test\_eval}. The do-nothing policy has
+\path{checkpoint_global_step} fields stored in the corresponding JSON files
+under \path{Topology_Task/outputs/full_test_eval}. The do-nothing policy has
 no learned checkpoint. For the behavioral cloning students, the stored step is
 the student checkpoint's optimizer-step count rather than a MAPPO environment
 step.

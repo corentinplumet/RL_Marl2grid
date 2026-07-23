@@ -27,6 +27,7 @@ if str(TASK_DIR) not in sys.path:
     sys.path.insert(0, str(TASK_DIR))
 SCREENING_ROOT = TASK_DIR / "configs" / "gnn_graph_screening"
 STAGE1_DIR = SCREENING_ROOT / "stage1_representation_normalization"
+STAGE1B_DIR = SCREENING_ROOT / "stage1b_normalization_confirmation"
 STAGE2_DIR = SCREENING_ROOT / "stage2_structure"
 STAGE3_DIR = SCREENING_ROOT / "stage3_encoder"
 STAGE4_DIR = SCREENING_ROOT / "stage4_confirmation"
@@ -38,6 +39,11 @@ NORMALIZATION_MODES = {
     "n2_running": (False, True),
     "n3_both": (True, True),
 }
+STAGE1B_FINALISTS = (
+    ("bus", "n0_none"),
+    ("bus", "n1_physical"),
+    ("heterogeneous", "n0_none"),
+)
 ENCODERS = ("gcn", "gat", "gine", "graphsage", "sparse_transformer")
 
 
@@ -123,6 +129,12 @@ gnn_concat_flat = false
 share_actor_gnn = true
 gnn_graph_type = "{graph_type}"
 gnn_include_neighbors = true
+
+# Relation directions (held at the backwards-compatible baseline)
+gnn_generator_edge_direction = "bidirectional"
+gnn_load_edge_direction = "bidirectional"
+gnn_line_node_edge_direction = "bidirectional"
+gnn_summary_edge_direction = "bidirectional"
 
 # Structural factors (held off in stage 1)
 gnn_add_substation_edges = false
@@ -329,6 +341,40 @@ def create_stage1(output_dir: Path = STAGE1_DIR, force: bool = False) -> list[Pa
     return config_paths
 
 
+def create_stage1b(
+    output_dir: Path = STAGE1B_DIR, force: bool = False
+) -> list[Path]:
+    """Create the focused multi-seed normalization confirmation screen."""
+
+    config_paths: list[Path] = []
+    for graph_type, norm_label in STAGE1B_FINALISTS:
+        graph_label = graph_type.replace("heterogeneous", "hetero")
+        physical, running = NORMALIZATION_MODES[norm_label]
+        for seed in (0, 1, 2):
+            name = f"gs_s1b_{graph_label}_{norm_label}_s{seed}"
+            content = BASE_CONFIG.format(
+                name=name,
+                graph_type=graph_type,
+                physical_scaling=_bool(physical),
+                running_norm=_bool(running),
+            )
+            content = _apply_values(
+                content,
+                {
+                    ("environment", "MAX_TIME_LIMIT_MINUTES"): "2880",
+                    ("args", "seed"): seed,
+                    ("args", "time_limit"): 2880,
+                    ("args", "total_timesteps"): 8_000_000,
+                },
+            )
+            path = output_dir / f"{name}.toml"
+            _write(path, content, force)
+            config_paths.append(path)
+    _write_launch_script(output_dir, config_paths, force)
+    _write_manifest(output_dir, config_paths, force)
+    return config_paths
+
+
 def _promoted_name(prefix: str, source_args: dict[str, Any], suffix: str) -> str:
     graph_type = str(source_args.get("gnn_graph_type", "bus")).replace(
         "heterogeneous", "hetero"
@@ -460,6 +506,13 @@ def _parser() -> argparse.ArgumentParser:
     init.add_argument("--output", type=Path, default=STAGE1_DIR)
     init.add_argument("--force", action="store_true")
 
+    confirm_normalization = subparsers.add_parser(
+        "confirm-normalization",
+        help="Create the three-finalist, three-seed Stage 1b configs.",
+    )
+    confirm_normalization.add_argument("--output", type=Path, default=STAGE1B_DIR)
+    confirm_normalization.add_argument("--force", action="store_true")
+
     structure = subparsers.add_parser(
         "promote-structure", help="Create eight stage-2 configs from the stage-1 winner."
     )
@@ -490,6 +543,8 @@ def main() -> int:
     args = _parser().parse_args()
     if args.command == "init":
         paths = create_stage1(args.output, args.force)
+    elif args.command == "confirm-normalization":
+        paths = create_stage1b(args.output, args.force)
     elif args.command == "promote-structure":
         paths = create_stage2(args.winner, args.output, args.force)
     elif args.command == "promote-encoder":

@@ -1,0 +1,531 @@
+Interpretation. The gate is learned and decentralized, but it can restrict exploration more strongly
+than a reward penalty. If it collapses early to no-op, the non-idle head is rarely executed and receives
+little learning signal. For this reason, the gate is treated as an important diagnostic rather than the main
+sparse control contribution.
+
+3.6.3    Fixed Sparse-Action Penalty
+Implementation detail. The Sparse16 sweep adds a fixed reward penalty to the final executed action
+of each agent:
+                                 ′
+                               ri,t = ri,t − λf ixed 1[ai,t ̸= 0],
+with
+                                       λf ixed ∈ {0.0, 0.001, 0.003, 0.01}.
+The grid is
+
+              actor ∈ {flat, gated},     λf ixed ∈ {0.0, 0.001, 0.003, 0.01},              seed ∈ {0, 1, 2},
+
+which gives 2 × 4 × 3 = 24 runs. All Sparse16 runs set safe_intervention_penalty = 0.0, so the
+penalty is not rho-weighted.
+
+Interpretation. Sparse16 changes only the training reward. It does not override actions during
+evaluation and it does not hard-mask exploration during training. The policy can still sample non-idle
+actions, but each such action must be useful enough to pay its fixed cost. The key comparison is
+sparse16_flat_p010 versus sparse16_gated_p010, which asks whether the gate adds value once a
+simple sparse objective already exists.
+
+3.6.4    Adaptive Intervention Budget
+Implementation detail. The adaptive intervention budget turns sparse topology control into a local
+constraint. For each agent,
+                              ci (st , ai,t ) = 1[ai,t ̸= 0]wi (st ),
+and the desired constraint is
+                                              Eπi [ci (st , ai,t )] ≤ d.
+The implemented rollout reward removes the constant term that does not affect the PPO action gradient:
+                                            ′
+                                           ri,t = ri,t − λi ci (st , ai,t ).
+
+After each rollout, the local multiplier is updated by
+                                                                                    T
+                                                                              1X
+                      λi ← clip λi + η(Ĉi − d), 0, λmax ,              Ĉi =         ci (st , ai,t ).
+                                                                                T t=1
+
+If the observed cost Ĉi is above the budget d, future interventions become more expensive; if it is
+below the budget, the penalty relaxes. The default settings are intervention_budget_lr = 0.02,
+intervention_budget_init_lambda = 0.0, and intervention_budget_max_lambda = 10.0.
+    Three cost modes are used:
+   • Non-idle cost: wi (st ) = 1, so ci (st , ai,t ) = 1[ai,t ̸= 0]. This is an adaptive version of a plain
+      sparse-action penalty.
+  • Global-safe cost: wglobal (st ) = σ(k(ρsaf e − ρglobal
+                                                    t      )). This penalizes non-idle actions mostly when
+    the whole grid is safe.
+   • Local-safe cost: wilocal (st ) = σ(k(ρsaf e − ρlocal
+                                                      i,t )). This is the decentralized version: safe local
+      states make interventions expensive, while stressed local states make them cheap.
+In the AIB setting, ρsaf e = 0.90 is not a hard action override. It is the center of a smooth sigmoid safety
+weight.
+
+
+
+
+                                                         36
+AIB experiment grid. The first AIB folder, configs/adaptive_intervention_budget_7, contains
+the main local-budget ablations:
+   • aib_00_flat_local_t020: flat actor, local-safe cost, d = 0.20;
+   • aib_01_flat_local_t010: stricter local-safe budget, d = 0.10;
+   • aib_02_flat_local_t035: looser local-safe budget, d = 0.35;
+   • aib_03_gate_hgreedy_sep_local_t020: gated actor, hierarchical-greedy evaluation, separated
+     entropy, local-safe cost, d = 0.20;
+   • aib_04_flat_nonidle_t020: flat actor with adaptive plain non-idle cost, d = 0.20.
+The comparison aib_00_flat_local_t020 versus aib_04_flat_nonidle_t020 isolates the value of local
+rho weighting.
+   The mechanism-ablation folder configs/adaptive_intervention_budget_mechanism_15 contains
+15 additional flat-actor runs. It separates fixed versus adaptive coefficients, plain non-idle versus state-
+dependent costs, global versus local rho weighting, and rho-threshold sensitivity.
+
+
+                    Table 3.9: Sparse-control mechanisms and where they affect the policy.
+   Method                 Training effect                     Evaluation effect          Main risk
+   Baseline               Samples from the flat policy     Greedy argmax by default Standard
+                                                                                       entropy-controlled
+                                                                                       exploration
+   Rho heuristic          No training change               Hard no-op override in safe Evaluation is
+                                                           states                      manually changed
+   Intervention gate      Changes action factorization and Final-action MAP or         Gate collapse can
+                          sampling                         hierarchical greedy         starve non-idle
+                                                                                       exploration
+   Sparse16               Fixed reward penalty on non-idle No action override          Penalty coefficient
+                          actions                                                      must be tuned
+   AIB non-idle           Adaptive reward penalty on       No action override          Multiplier can grow
+                          non-idle actions                                             if target is too strict
+   AIB local-safe         Adaptive state-dependent reward No action override           Depends on the
+                          penalty                                                      local rho
+                                                                                       safety-weight design
+
+
+
+
+                           Table 3.10: Main sparse-control comparisons to report.
+    Question                                              Comparison
+    Does a fixed sparse penalty already work?             Baseline versus sparse16_flat_p010
+    Does the gate help beyond a sparse objective?         sparse16_flat_p010 versus
+                                                          sparse16_gated_p010
+    Fixed versus adaptive coefficient?                    sparse16_flat_p010 or
+                                                          aibm_00_fixed_nonidle_p006 versus
+                                                          aib_04_flat_nonidle_t020
+    Does local-safe weighting matter?                     aib_00_flat_local_t020 versus
+                                                          aib_04_flat_nonidle_t020
+    Does global-safe weighting matter?                    aibm_02_adaptive_global_t020 versus
+                                                          aib_00_flat_local_t020
+    Is ρsaf e = 0.90 special?                             aibm_03 with 0.85, aib_00 with 0.90, and aibm_04
+                                                          with 0.95
+    Is the heuristic only an evaluation trick?            Rho-heuristic runs versus learned sparse/AIB runs
+
+
+
+Full-test checkpoint summaries. The following tables report the average full-test episodic survival
+over the three evaluated seeds. The survival values are computed directly from the JSON files in
+Topology_Task/outputs/full_test_eval. These JSON files also record where the compact action-
+distribution artifacts were written. The action-0 fractions are computed from the corresponding local
+Topology_Task/outputs/full_test_eval_actions/*/action_summary.json files and averaged over
+
+
+                                                         37
+seeds. The all-agent action-0 column is the arithmetic mean of the three per-agent action-0 fractions.
+The do-nothing row is a reference policy that always selects action 0; its survival is computed from
+Topology_Task/outputs/do_nothing_eval/bus14_test_20. Remaining “–” entries indicate that the
+compact action summaries for those full-test jobs are not available locally.
+
+
+                                 Table 3.11: Full-test summary for evaluation-time rho heuristics.
+Run type                                 Avg. episodic survival (%) Avg. action-0 all agents Avg. action-0 agent 0 Avg. action-0 agent 1 Avg. action-0 agent 2
+Do-nothing policy                                            20.25                   1.000                  1.000                 1.000                  1.000
+Baseline flat policy                                         93.67                   0.434                  0.554                 0.385                  0.363
+Global rho heuristic, ρsaf e = 0.90                          98.36                   0.936                  0.933                 0.936                  0.940
+Local rho heuristic, ρsaf e = 0.90                           97.07                   0.968                  0.992                 0.985                  0.928
+
+
+
+
+                                      Table 3.12: Full-test summary for intervention-gated actors.
+Run type                                 Avg. episodic survival (%) Avg. action-0 all agents Avg. action-0 agent 0 Avg. action-0 agent 1 Avg. action-0 agent 2
+Do-nothing policy                                            20.25                   1.000                  1.000                 1.000                  1.000
+Baseline flat policy                                         93.67                   0.434                  0.554                 0.385                  0.363
+Intervention gate, final-action MAP                          89.82                   0.802                  0.826                 0.889                  0.690
+Intervention gate, hierarchical greedy                       93.66                   0.395                  0.066                 0.844                  0.276
+
+
+
+
+                                      Table 3.13: Full-test summary for Sparse16 flat-policy runs.
+Run type                                 Avg. episodic survival (%) Avg. action-0 all agents Avg. action-0 agent 0 Avg. action-0 agent 1 Avg. action-0 agent 2
+Do-nothing policy                                            20.25                   1.000                  1.000                 1.000                  1.000
+Baseline flat policy                                         93.67                   0.434                  0.554                 0.385                  0.363
+Flat Sparse16, λf ixed = 0.000                               98.23                   0.494                  0.524                 0.463                  0.496
+Flat Sparse16, λf ixed = 0.001                               96.75                   0.486                  0.642                 0.401                  0.416
+Flat Sparse16, λf ixed = 0.003                               93.97                   0.575                  0.691                 0.346                  0.688
+Flat Sparse16, λf ixed = 0.010                               97.44                   0.905                  0.907                 0.954                  0.853
+
+
+
+
+Metrics to report. The main performance metric remains episodic survival. It should be paired
+with sparsity and physical-diagnostic metrics: per-agent action-0 fractions, per-agent non-idle rates, the
+distribution of how many agents act simultaneously, intervention-budget multipliers, budget costs and
+violations, the rate of interventions in costly safe states, pre- and post-action max rho, and topology-
+distance changes.
+
+Interpretation. The current roadmap interpretation is that the gate is not the strongest contribution
+by itself. Sparse reward shaping already improves action-0 usage, the adaptive budget makes the sparse
+penalty self-tuning, and the local-safe cost makes the penalty more physically meaningful. In particular,
+sparse16_flat_p010 is a strong fixed-penalty baseline, while the most principled learned sparse-control
+candidate is aib_00_flat_local_t020: it keeps the original decentralized actor, does not rely on an
+evaluation-time override, learns the intervention penalty adaptively, and uses a local state-dependent
+safety weight.
+
+
+3.7          Current Takeaway
+The current reruns indicate that the strongest direction is not a single isolated modification. Stable
+performance comes from a combination of A0-style training choices, reward normalization, careful
+initialization, and architectures that keep the critic and graph encoder simple enough to optimize reliably.
+Optimized critic updates and lighter GINE/MLP-critic variants can improve the final GINE rerun
+performance, but the A0 baseline remains the clearest stable reference point for future ablations. The
+sparse-control roadmap adds a second axis to the thesis: after survival is stabilized, the next question
+is whether the same decentralized agents can achieve high survival with fewer unnecessary topology
+interventions.
+
+
+
+
+                                                                               38
+                                  Table 3.14: Full-test summary for Sparse16 gated-policy runs.
+Run type                              Avg. episodic survival (%) Avg. action-0 all agents Avg. action-0 agent 0 Avg. action-0 agent 1 Avg. action-0 agent 2
+Do-nothing policy                                         20.25                   1.000                  1.000                 1.000                  1.000
+Baseline flat policy                                      93.67                   0.434                  0.554                 0.385                  0.363
+Gated Sparse16, λf ixed = 0.000                           78.51                   0.787                  0.747                 0.949                  0.665
+Gated Sparse16, λf ixed = 0.001                           73.82                   0.862                  0.956                 0.832                  0.799
+Gated Sparse16, λf ixed = 0.003                           94.59                   0.887                  0.934                 0.929                  0.799
+Gated Sparse16, λf ixed = 0.010                           85.69                   0.974                  0.990                 0.984                  0.947
+
+
+
+
+                          Table 3.15: Full-test summary for adaptive intervention budget runs.
+Run type                              Avg. episodic survival (%) Avg. action-0 all agents Avg. action-0 agent 0 Avg. action-0 agent 1 Avg. action-0 agent 2
+Do-nothing policy                                         20.25                   1.000                  1.000                 1.000                  1.000
+Baseline flat policy                                      93.67                   0.434                  0.554                 0.385                  0.363
+Flat local-safe AIB, d = 0.20                             98.31                   0.978                  0.980                 0.989                  0.966
+Flat local-safe AIB, d = 0.10                             98.39                   0.979                  0.992                 0.995                  0.949
+Flat local-safe AIB, d = 0.35                             96.61                   0.934                  0.959                 0.947                  0.896
+Gated local-safe AIB, d = 0.20,                           33.87                   0.999                  1.000                 1.000                  0.998
+hierarchical greedy
+Flat non-idle AIB, d = 0.20                               95.08                   0.986                  0.997                 0.992                  0.970
+
+
+
+
+                        Table 3.16: Full-test summary for the teacher-student distillation runs.
+Run type                              Avg. episodic survival (%) Avg. action-0 all agents Avg. action-0 agent 0 Avg. action-0 agent 1 Avg. action-0 agent 2
+Do-nothing policy                                         20.25                   1.000                  1.000                 1.000                  1.000
+Teacher: MAPPO with local rho                             97.07                   0.968                  0.992                 0.985                  0.928
+heuristic
+Student BC, balanced non-idle 0.50,                       92.14                   0.939                  0.974                 0.925                  0.919
+weight 5, aux 0.50
+Student BC, balanced non-idle 0.20,                       90.76                   0.957                  0.982                 0.948                  0.940
+weight 3, aux 0.25
+
+
+
+
+                                                                            39
+Appendix A
+
+GINE and GAT Graph-Actor
+Architectures
+
+This appendix specifies the complete edge-aware actor used in the graph experiments. GINE and GAT
+receive the same graph tensors and use the same pooling and action head. Their only architectural
+difference is the message-passing operator: GINE inserts an edge embedding into the message content,
+whereas GAT uses an edge embedding to decide how strongly the message is weighted.
+
+
+A.1      Shared input and encoder pipeline
+                                                  (a)
+For agent a, the encoder receives the local graph Gt . Candidate edges with edge_mask= 0 are removed
+                                                                        (a)
+before message passing, so the layer sees only the active directed set Et . The source of u → v sends a
+message and v aggregates it. Node and edge masks do not become learned features.
+   In the screening configuration, each raw node vector xv first passes through
+
+                               hv(0) = LayerNorm(ReLU(Wx xv + bx )) ,                              (A.1)
+
+which produces a 128-dimensional node state. Learned global node-identifier embeddings are disabled.
+The optional external edge pre-encoder is also disabled in the screen. This does not mean that raw edge
+features bypass learning: every GINE or GAT layer still contains its own trainable projection of the edge
+vector to the dimension required by that layer.
+    Two message-passing layers are used. After each layer, the implementation applies ReLU followed by
+LayerNorm:                                                             
+                                 hv(k+1) = LayerNorm ReLU(h    e (k+1) ) .
+                                                                 v                                  (A.2)
+
+The same encoder parameters are shared by all agents. Each agent nevertheless passes its own local
+graph, with its own node set, active edges, and one-hop context, through that shared encoder.
+
+
+A.2      GINE message passing
+For an active edge u → v, layer k projects the complete edge feature vector and adds it to the sender
+state:
+
+                           e(k)
+                           e        (k)       (k)
+                             uv = We euv + be ,                                                    (A.3)
+                                                   
+                           (k)
+                          mu→v  = ReLU hu(k) + e
+                                               e(k)
+                                                 uv ,                                              (A.4)
+                                                                             
+                                                               X
+                          e (k+1) = MLP(k) (1 + ϵ)h(k) +
+                          h                                               (k) 
+                                                                         mu→v   .                  (A.5)
+                            v                       v
+                                                            u:(u,v)∈Et
+
+The implementation uses the PyTorch Geometric default ϵ = 0 without a trainable epsilon parameter.
+Each internal GINE MLP is Linear–ReLU–Linear and outputs 128 features. Equation A.5 shows why
+edge attributes are part of the message content. Two identical node states can send different messages
+
+
+                                                   40
+when one edge is an overloaded physical line and the other is an asset-attachment relation. Likewise,
+reversing a typed heterogeneous edge activates a different relation-one-hot column and can produce a
+different message.
+    GINE uses an unweighted sum over incoming active edges. It does not learn a softmax competition
+between neighbors. The edge embedding changes what is sent; the number of incoming messages and
+their vector sum determine the aggregate.
+
+
+A.3      GAT message passing
+GAT first computes a score for every active incoming edge and attention head. For head r, the
+implementation has the form
+                                                                                    
+                                     ⊤                 ⊤                 ⊤
+                 s(k,r)
+                  uv    = LeakyReLU as,r Ws,r hu(k) + ad,r Wd,r hv(k) + ae,r We,r euv , (A.6)
+                                        (k,r)
+                   (k,r)         exp suv
+                  αuv    =P                  (k,r)
+                                                       ,                                                                (A.7)
+                             w:(w,v)∈Et exp swv
+                              H
+                 e (k+1) = 1
+                             X        X
+                                                 (k,r)
+                 h v                            αuv    Wr hu(k) .                                                       (A.8)
+                           H r=1
+                                   u:(u,v)∈Et
+
+The screen configures H = 4 heads and concat=false, so the four head outputs are averaged and the
+layer still returns 128 features. The edge embedding affects αuv : it changes how much attention the
+receiver assigns to the sender. In the standard GAT operator used here, the edge vector is not added to
+the value vector Wr hu . This is the central difference from GINE.
+    GAT internally adds a self-loop for every node. That computational self-loop is separate from the
+optional explicit relation_self edge in the graph schema. Stage 1 disables explicit self edges, so every
+node has one GAT self-message but no additional schema-level self relation.
+
+
+      Table A.1: Exact architectural difference between the implemented GINE and GAT actors.
+   Component                 GINE                                                GAT
+   Edge use                  Added to the sender state inside                    Enters the attention score for every
+                             every message                                       incoming edge
+   Neighbor aggregation      Unweighted sum                                      Softmax-weighted sum
+   Self information          Explicit (1 + ϵ)hv term                             Internal GAT self-loop
+   Multiple heads            Not used                                            Four heads, averaged rather than
+                                                                                 concatenated
+   Post-layer operation      ReLU, then LayerNorm                                ReLU, then LayerNorm
+   Pooling and action head   Shared implementation                               Shared implementation
+
+
+
+A.4      Pooling and graph output
+After the second message-passing layer, the default screen uses mean pooling:
+                                                       P         (K)
+                                                           v mP
+                                                              v hv
+                                           hG =                              ,                                          (A.9)
+                                                     max(1,         v mv )
+
+where mv is the valid-node mask. This is one mean over all valid node types. It is not a separate mean
+per type. Therefore:
+  • the busbar graph pools all busbars;
+  • the direct heterogeneous graph pools busbars, generators, and loads;
+    • the explicit-line graph also pools transmission-line nodes.
+For a local actor graph, one-hop contextual nodes are included in the mean. The controlled_node_mask
+is stored in the observation but is not used by the ordinary GINE/GAT mean readout. Sum and maximum
+pooling change only Equation A.9; they do not change message passing.
+
+
+
+                                                           41
+   The pooled 128-dimensional vector then passes through the shared graph output projection
+
+                                    za = ReLU(Wo hG + bo ),          za ∈ R128 .                                 (A.10)
+
+When virtual-node readout is selected, the final virtual-node state replaces hG ; the output projection and
+its dimension stay the same.
+
+
+A.5       Agent-specific action head
+The graph screen does not concatenate the flat observation to za . Each agent has its own two-layer MLP
+action head:
+
+                                       qa(1) = ReLU(Wa(1) za + b(1)
+                                                                a ),                                             (A.11)
+                                       qa(2) = ReLU(Wa(2) qa(1) + b(2)
+                                                                   a ),                                          (A.12)
+                                         ℓa = Wa(3) qa(2) + b(3)
+                                                             a ,     ℓa ∈ R|Aa | ,                               (A.13)
+                                       (a)
+                              πa (· | Gt ) = Categorical(logits = ℓa ).                                          (A.14)
+
+Both hidden layers contain 128 units. During training, an action is sampled from this categorical
+distribution. Deterministic evaluation selects arg maxj ℓa,j . Action zero is the local do-nothing action.
+    Only the GNN encoder and graph output projection are shared across agents. The action heads are
+agent-specific because agents can have different local action sets and therefore different output widths
+|Aa |. The Stage-1 critic is a separate MLP over the centralized flat state; it does not reuse the actor
+GINE/GAT embedding. The intervention-gated two-head policy described in Section 3.6.2 is not used in
+the graph screen.
+
+
+A.6       Exact node inputs by representation
+All node types of one representation share one rectangular feature matrix. Columns not listed for a node
+type are zero. Type identity reaches GINE and GAT through the is_* columns; the integer node_type
+tensor is not consumed by these two encoders.
+
+
+             Table A.2: Node types and nonzero input features received by GINE and GAT.
+   Representation       Node type            Populated input features
+   bus                  Busbar               gen_p, gen_theta, load_p, load_theta, time_before_cooldown_sub,
+                                             domain_mask
+   heterogeneous        Busbar               is_busbar, time_before_cooldown_sub, connected, domain_mask
+                        Generator            is_generator, p=gen_p, theta=gen_theta, connected, domain_mask
+                        Load                 is_load, p=load_p, theta=load_theta, connected, domain_mask
+   heterogeneous_line   Busbar               is_busbar, time_before_cooldown_sub, connected, domain_mask
+                        Generator            is_generator, p=gen_p, theta=gen_theta, connected, domain_mask
+                        Load                 is_load, p=load_p, theta=load_theta, connected, domain_mask
+                        Transmission line    is_transmission_line, line_status, rho, timestep_overflow,
+                                             time_before_cooldown_line, optional maintenance times, connected,
+                                             domain_mask
+   Any augmented schema Substation summary   Learned substation-indexed vector; no raw physical feature row
+                        Virtual node         One learned vector shared across graphs; no raw physical feature row
+
+
+
+
+A.7       Exact edge inputs by representation
+The edge vector is the only edge information consumed by GINE and GAT. The integer edge_type tensor
+is retained for other encoders but ignored here. Inactive candidates are filtered out before the vectors in
+Table A.3 reach a convolution.
+
+
+
+
+                                                       42
+Table A.3: Directed edge relations and edge-feature vectors received by GINE and GAT. “Relation”
+denotes one active relation-one-hot column.
+   Representation       Directed relation                       Edge features
+   bus                  Physical busbar ↔ busbar                line_status, rho, timestep_overflow,
+                                                                time_before_cooldown_line, optional maintenance times;
+                                                                no relation one-hot
+                        Optional self or same-substation        Same width; physical values zero and rho= 1; no relation
+                                                                one-hot
+   heterogeneous        Physical busbar ↔ busbar                Complete measured physical-line block plus
+                                                                relation_physical_line
+                        Generator ↔ busbar                      Neutral physical block plus direction-specific generator
+                                                                relation
+                        Load ↔ busbar                           Neutral physical block plus direction-specific load relation
+                        Optional self or same-substation        Neutral physical block plus the corresponding relation
+   heterogeneous_line   Busbar ↔ line node                      Measured rho plus an origin/extremity-and-direction
+                                                                relation
+                        Generator ↔ busbar                      rho= 1 plus direction-specific generator relation
+                        Load ↔ busbar                           rho= 1 plus direction-specific load relation
+                        Optional self or same-substation        rho= 1 plus the corresponding relation
+   Any augmented schema Busbar → summary/virtual, with          Zero edge vector except neutral rho= 1 when present; no
+                        optional reverse                        dedicated relation one-hot in the ordinary GINE/GAT
+                                                                encoder
+
+
+
+    The complete relation names and activation rules are given in Tables 2.6 and 2.9. Those tables
+distinguish, for example, generator-to-busbar from busbar-to-generator and origin from extremity line
+attachments. These distinctions matter directly to both edge-aware models: GINE changes message
+content and GAT changes attention.
+
+
+
+
+                                                           43
+Appendix B
+
+Full-Test Checkpoint Registry
+
+Table B.1 reports the checkpoint step used for each full-test result table. The values are the checkpoint_
+global_step fields stored in the corresponding JSON files under Topology_Task/outputs/full_test_
+eval. The do-nothing policy has no learned checkpoint. For the behavioral cloning students, the stored
+step is the student checkpoint’s optimizer-step count rather than a MAPPO environment step.
+
+
+
+
+                                                   44
+                                                       Table B.1: Checkpoint steps used for the full-test evaluations.
+     Run type                                                                                   Seed 0 checkpoint step   Seed 1 checkpoint step   Seed 2 checkpoint step
+     Do-nothing policy                                                                                               –                       –                        –
+     Baseline flat policy                                                                                   13,600,000              13,040,000               13,760,000
+     Global rho heuristic, ρsaf e = 0.90                                                                    13,920,000              14,320,000               14,800,000
+     Local rho heuristic, ρsaf e = 0.90                                                                     14,160,000              14,400,000               14,160,000
+     Intervention gate, final-action MAP                                                                    12,000,000              12,720,000               13,760,000
+     Intervention gate, hierarchical greedy                                                                  7,120,000              14,720,000               13,760,000
+     Flat Sparse16, λf ixed = 0.000                                                                          9,600,000              12,160,000                7,920,000
+     Flat Sparse16, λf ixed = 0.001                                                                         10,640,000              11,520,000               11,600,000
+     Flat Sparse16, λf ixed = 0.003                                                                         12,000,000              12,960,000               12,480,000
+     Flat Sparse16, λf ixed = 0.010                                                                          8,960,000               5,760,000               12,560,000
+     Gated Sparse16, λf ixed = 0.000                                                                         8,480,000               4,320,000                6,000,000
+     Gated Sparse16, λf ixed = 0.001                                                                         5,760,000               7,600,000                3,280,000
+     Gated Sparse16, λf ixed = 0.003                                                                         8,960,000               7,120,000                7,600,000
+     Gated Sparse16, λf ixed = 0.010                                                                        12,000,000               7,840,000                7,920,000
+     Flat local-safe AIB, d = 0.20                                                                          13,120,000               9,360,000               12,160,000
+     Flat local-safe AIB, d = 0.10                                                                          12,880,000              13,200,000               12,720,000
+     Flat local-safe AIB, d = 0.35                                                                          12,800,000               5,360,000               11,520,000
+45
+
+
+
+
+     Gated local-safe AIB, d = 0.20, hierarchical greedy                                                    14,960,000               5,280,000               16,800,000
+     Flat non-idle AIB, d = 0.20                                                                            12,480,000              14,880,000               11,920,000
+     Teacher: MAPPO with local rho heuristic                                                                14,160,000              14,400,000               14,160,000
+     Student BC, balanced non-idle 0.50, weight 5, aux 0.50                                                     12,375                  14,994                   13,617
+     Student BC, balanced non-idle 0.20, weight 3, aux 0.25                                                     12,375                  14,994                   13,617
+Bibliography
+
+ [1]   B. Donnot, “Grid2op: A testbed platform to model sequential decision making in power systems,”
+       arXiv preprint arXiv:2011.07929, 2020.
+ [2] C. Yu et al., “The surprising effectiveness of ppo in cooperative multi-agent games,” Advances in
+     Neural Information Processing Systems, 2022.
+ [3] J. Manczak et al., Hierarchical reinforcement learning for power network topology control, 2023.
+     arXiv: 2311.02129. [Online]. Available: https://arxiv.org/abs/2311.02129
+ [4] E. van der Sar et al., Hierarchical multi-agent reinforcement learning for power grid topology
+     optimization, 2023. arXiv: 2310.02605. [Online]. Available: https://arxiv.org/abs/2310.02605
+ [5] J. Achiam, D. Held, A. Tamar, and P. Abbeel, “Constrained policy optimization,” International
+     Conference on Machine Learning, 2017. [Online]. Available: https://arxiv.org/abs/1705.10528
+ [6] A. Stooke, J. Achiam, and P. Abbeel, “Responsive safety in reinforcement learning by PID lagrangian
+     methods,” International Conference on Machine Learning, 2020. [Online]. Available: https://
+     arxiv.org/abs/2007.03964
+ [7] N. Carrara, E. Leurent, R. Laroche, T. Urvoy, and O.-A. Maillard, “Budgeted reinforcement learning
+     in continuous state space,” Advances in Neural Information Processing Systems, 2019. [Online].
+     Available: https://arxiv.org/abs/1903.01004
+ [8] L. Lautenbacher et al., Multi-objective reinforcement learning for power grid topology control, 2025.
+     arXiv: 2502.00040. [Online]. Available: https://arxiv.org/abs/2502.00040
+ [9] J. Schulman, F. Wolski, P. Dhariwal, A. Radford, and O. Klimov, “Proximal policy optimization
+     algorithms,” arXiv preprint arXiv:1707.06347, 2017.
+[10] A. Marot et al., “Learning to run a power network challenge for training topology controllers,”
+     Electric Power Systems Research, 2021.
+[11] T. N. Kipf and M. Welling, “Semi-supervised classification with graph convolutional networks,”
+     International Conference on Learning Representations, 2017.
+
+
+
+
+                                                   46
+

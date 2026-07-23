@@ -110,6 +110,32 @@ def validate_args(config_args: dict[str, Any]) -> None:
             "Use mean, sum, max, or virtual_node with ordinary GNN encoders."
         )
 
+    direction_choices = {
+        "gnn_generator_edge_direction": {
+            "bidirectional",
+            "asset_to_busbar",
+            "busbar_to_asset",
+        },
+        "gnn_load_edge_direction": {
+            "bidirectional",
+            "asset_to_busbar",
+            "busbar_to_asset",
+        },
+        "gnn_line_node_edge_direction": {
+            "bidirectional",
+            "line_to_busbar",
+            "busbar_to_line",
+        },
+        "gnn_summary_edge_direction": {"bidirectional", "toward_summary"},
+    }
+    for key, allowed in direction_choices.items():
+        value = str(config_args.get(key, "bidirectional")).lower()
+        if value not in allowed:
+            choices = ", ".join(sorted(allowed))
+            raise SystemExit(
+                f"Invalid config: {key}='{value}'. Use one of: {choices}."
+            )
+
 
 def print_python_summary() -> None:
     print("========== Python environment summary ==========")

@@ -9,6 +9,19 @@ except ModuleNotFoundError:
     pyg_softmax = None
 
 
+SUMMARY_EDGE_DIRECTIONS = {"bidirectional", "toward_summary"}
+
+
+def _validate_summary_edge_direction(value: str) -> str:
+    direction = str(value).strip().lower()
+    if direction not in SUMMARY_EDGE_DIRECTIONS:
+        choices = ", ".join(sorted(SUMMARY_EDGE_DIRECTIONS))
+        raise ValueError(
+            f"Unsupported summary edge direction '{value}'. Use one of: {choices}."
+        )
+    return direction
+
+
 class _VirtualNodeEncoderBase(nn.Module):
     """Shared runtime construction for virtual-node graph readout."""
 
@@ -18,9 +31,13 @@ class _VirtualNodeEncoderBase(nn.Module):
         feature_dim: int,
         use_virtual_node: bool,
         add_substation_nodes: bool,
+        summary_edge_direction: str,
     ) -> None:
         self.use_virtual_node = bool(use_virtual_node)
         self.add_substation_nodes = bool(add_substation_nodes)
+        self.summary_edge_direction = _validate_summary_edge_direction(
+            summary_edge_direction
+        )
         node_ids = np.asarray(graph_spec["node_ids"], dtype=np.int64)
         busbar_mask = (node_ids % self.node_id_stride) < self.n_busbar
         self.register_buffer(
@@ -93,18 +110,22 @@ class _VirtualNodeEncoderBase(nn.Module):
             active_busbar_ids = busbar_ids[node_mask[busbar_ids] > 0]
 
         def append_structural_edges(
-            first_nodes: th.Tensor,
-            second_nodes: th.Tensor,
+            source_nodes: th.Tensor,
+            summary_nodes: th.Tensor,
             relation_type: Optional[int],
         ) -> None:
             nonlocal edge_index, edge_attr, edge_type
-            structural_edges = th.cat(
-                [
-                    th.stack([first_nodes, second_nodes], dim=0),
-                    th.stack([second_nodes, first_nodes], dim=0),
-                ],
-                dim=1,
-            )
+            toward_summary = th.stack([source_nodes, summary_nodes], dim=0)
+            if self.summary_edge_direction == "bidirectional":
+                structural_edges = th.cat(
+                    [
+                        toward_summary,
+                        th.stack([summary_nodes, source_nodes], dim=0),
+                    ],
+                    dim=1,
+                )
+            else:
+                structural_edges = toward_summary
             edge_index = th.cat([edge_index, structural_edges], dim=1)
             structural_edge_attr = th.zeros(
                 (structural_edges.shape[1], self.edge_dim),
@@ -294,6 +315,7 @@ class GraphEncoder(_VirtualNodeEncoderBase):
         node_id_emb_dim: int = 8,
         gcn_edge_weight_feature: str = "none",
         add_substation_nodes: bool = False,
+        summary_edge_direction: str = "bidirectional",
     ) -> None:
         super().__init__()
         if GCNConv is None:
@@ -354,6 +376,7 @@ class GraphEncoder(_VirtualNodeEncoderBase):
             feature_dim=conv_input_dim,
             use_virtual_node=self.readout_aggr == "virtual_node",
             add_substation_nodes=add_substation_nodes,
+            summary_edge_direction=summary_edge_direction,
         )
 
         if edge_pre_encoder and self.uses_edge_attr:
@@ -726,6 +749,7 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
         use_edge_type_embeddings: bool = True,
         relation_bias: bool = True,
         add_substation_nodes: bool = False,
+        summary_edge_direction: str = "bidirectional",
     ) -> None:
         super().__init__()
         if pyg_softmax is None:
@@ -820,6 +844,7 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
             feature_dim=hidden_dim,
             use_virtual_node=self.readout_aggr == "virtual_node",
             add_substation_nodes=add_substation_nodes,
+            summary_edge_direction=summary_edge_direction,
         )
 
         if edge_pre_encoder and self.edge_dim > 0 and use_edge_attr:
@@ -1081,6 +1106,9 @@ def build_graph_encoder(graph_spec: Dict[str, Any], args: Dict[str, Any]) -> Gra
             ),
             relation_bias=getattr(args, "sparse_gt_relation_bias", True),
             add_substation_nodes=getattr(args, "gnn_add_substation_nodes", False),
+            summary_edge_direction=getattr(
+                args, "gnn_summary_edge_direction", "bidirectional"
+            ),
         )
     return GraphEncoder(
         graph_spec=graph_spec,
@@ -1098,6 +1126,9 @@ def build_graph_encoder(graph_spec: Dict[str, Any], args: Dict[str, Any]) -> Gra
         node_id_emb_dim=getattr(args, "gnn_node_id_emb_dim", 8),
         gcn_edge_weight_feature=getattr(args, "gcn_edge_weight_feature", "none"),
         add_substation_nodes=getattr(args, "gnn_add_substation_nodes", False),
+        summary_edge_direction=getattr(
+            args, "gnn_summary_edge_direction", "bidirectional"
+        ),
     )
 
 

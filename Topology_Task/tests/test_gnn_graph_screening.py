@@ -12,8 +12,10 @@ from tools.gnn_graph_screening import (
     ENCODERS,
     GRAPH_TYPES,
     NORMALIZATION_MODES,
+    STAGE1B_FINALISTS,
     create_confirmation,
     create_stage1,
+    create_stage1b,
     create_stage2,
     create_stage3,
     validate_configs,
@@ -26,6 +28,49 @@ def load_args(path: Path):
 
 
 class GraphScreeningConfigTests(unittest.TestCase):
+    def test_stage1b_confirms_three_finalists_with_three_seeds(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp) / "stage1b"
+            configs = create_stage1b(output_dir)
+            self.assertEqual(len(configs), 9)
+            validate_configs([output_dir])
+
+            observed = {
+                (
+                    args["gnn_graph_type"],
+                    args["gnn_physical_scaling"],
+                    args["gnn_running_norm"],
+                )
+                for args in map(load_args, configs)
+            }
+            expected = {
+                (
+                    graph_type,
+                    NORMALIZATION_MODES[norm_label][0],
+                    NORMALIZATION_MODES[norm_label][1],
+                )
+                for graph_type, norm_label in STAGE1B_FINALISTS
+            }
+            self.assertEqual(observed, expected)
+            self.assertEqual(
+                {load_args(path)["seed"] for path in configs}, {0, 1, 2}
+            )
+            for path in configs:
+                with path.open("rb") as file:
+                    config = tomllib.load(file)
+                args = config["args"]
+                self.assertEqual(
+                    config["environment"]["MAX_TIME_LIMIT_MINUTES"], "2880"
+                )
+                self.assertEqual(args["env_id"], "bus14")
+                self.assertEqual(args["gnn_type"], "gine")
+                self.assertEqual(args["critic_encoder"], "mlp")
+                self.assertEqual(args["total_timesteps"], 8_000_000)
+                self.assertEqual(args["time_limit"], 2880)
+                self.assertEqual(args["n_envs"], 72)
+                self.assertEqual(args["n_steps"], 576)
+                self.assertEqual(args["eval_freq"], 82_944)
+
     def test_all_screening_stages_preserve_selected_factors(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -57,6 +102,16 @@ class GraphScreeningConfigTests(unittest.TestCase):
                 self.assertEqual(args["n_envs"], 72)
                 self.assertEqual(args["n_steps"], 576)
                 self.assertEqual(args["eval_freq"], 82_944)
+                self.assertEqual(
+                    args["gnn_generator_edge_direction"], "bidirectional"
+                )
+                self.assertEqual(args["gnn_load_edge_direction"], "bidirectional")
+                self.assertEqual(
+                    args["gnn_line_node_edge_direction"], "bidirectional"
+                )
+                self.assertEqual(
+                    args["gnn_summary_edge_direction"], "bidirectional"
+                )
                 self.assertNotIn("reduced_action_space", args)
                 self.assertEqual(args["total_timesteps"], 8_000_000)
 
@@ -131,6 +186,17 @@ class GraphScreeningConfigTests(unittest.TestCase):
                 "gnn_readout_aggr": "controlled_attention",
             }
         )
+
+    def test_invalid_relation_direction_is_rejected_early(self):
+        with self.assertRaises(SystemExit):
+            validate_args(
+                {
+                    "n_envs": 4,
+                    "n_steps": 8,
+                    "eval_freq": 16,
+                    "gnn_load_edge_direction": "load_to_generator",
+                }
+            )
 
 
 if __name__ == "__main__":

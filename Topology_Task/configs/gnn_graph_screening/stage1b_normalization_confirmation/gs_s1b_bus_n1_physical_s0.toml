@@ -2,7 +2,7 @@
 # Keep non-screened settings identical so the comparisons remain paired.
 
 [run]
-name = "gs_s1_hetero_line_n1_physical_s0"
+name = "gs_s1b_bus_n1_physical_s0"
 run_dir = "outputs/jed-{config_name}-{job_id}"
 seed_from_slurm_array = false
 extra_args = []
@@ -19,19 +19,19 @@ MKL_NUM_THREADS = "1"
 OPENBLAS_NUM_THREADS = "1"
 NUMEXPR_NUM_THREADS = "1"
 VECLIB_MAXIMUM_THREADS = "1"
-MAX_TIME_LIMIT_MINUTES = "1440"
+MAX_TIME_LIMIT_MINUTES = "2880"
 MPLCONFIGDIR = "{run_dir}/matplotlib"
 WANDB_DIR = "{run_dir}/wandb"
 XDG_CACHE_HOME = "{run_dir}/cache"
 
 [args]
 # Paired bus14 screening protocol
-time_limit = 720
+time_limit = 2880
 checkpoint = true
 alg = "MAPPO"
 seed = 0
 verbose = true
-exp_tag = "gs_s1_hetero_line_n1_physical_s0"
+exp_tag = "gs_s1b_bus_n1_physical_s0"
 track = true
 wandb_project = "Grid2Op"
 wandb_entity = "corentin-plumet-epfl"
@@ -78,7 +78,7 @@ gnn_node_id_embeddings = false
 gnn_node_id_emb_dim = 8
 gnn_concat_flat = false
 share_actor_gnn = true
-gnn_graph_type = "heterogeneous_line"
+gnn_graph_type = "bus"
 gnn_include_neighbors = true
 
 # Relation directions (held at the backwards-compatible baseline)

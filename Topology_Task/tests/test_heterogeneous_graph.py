@@ -132,6 +132,27 @@ class HeterogeneousGridGraphBuilderTest(unittest.TestCase):
         )
         self.assertEqual(changed["node_features"][gen_row, node_cols["p"]], 0.0)
 
+    def test_generator_and_load_directions_are_configurable_independently(self):
+        builder = HeterogeneousGridGraphBuilder(
+            MockGridEnv(),
+            {"agent_0": [0]},
+            include_neighbors=True,
+            generator_edge_direction="busbar_to_asset",
+            load_edge_direction="asset_to_busbar",
+        )
+        spec = builder.specs["state"]
+        graph = builder.build(make_obs())["state"]
+
+        self.assertEqual(spec["edge_index"].shape, (2, 12))
+        self.assertEqual(int(graph["edge_mask"].sum()), 4)
+        present_types = set(spec["edge_type"].tolist())
+        self.assertNotIn(builder.EDGE_TYPE_GENERATOR_TO_BUSBAR, present_types)
+        self.assertIn(builder.EDGE_TYPE_BUSBAR_TO_GENERATOR, present_types)
+        self.assertIn(builder.EDGE_TYPE_LOAD_TO_BUSBAR, present_types)
+        self.assertNotIn(builder.EDGE_TYPE_BUSBAR_TO_LOAD, present_types)
+        self.assertEqual(spec["generator_edge_direction"], "busbar_to_asset")
+        self.assertEqual(spec["load_edge_direction"], "asset_to_busbar")
+
     def test_local_graph_contains_assets_from_included_substations(self):
         builder = HeterogeneousGridGraphBuilder(
             MockGridEnv(),
@@ -423,6 +444,32 @@ class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
             changed["node_features"][gen_row, node_cols["connected"]], 0.0
         )
 
+    def test_one_way_relations_can_make_busbars_the_aggregators(self):
+        builder = HeterogeneousLineGraphBuilder(
+            MockGridEnv(),
+            {"agent_0": [0]},
+            include_neighbors=True,
+            generator_edge_direction="asset_to_busbar",
+            load_edge_direction="asset_to_busbar",
+            line_node_edge_direction="line_to_busbar",
+        )
+        spec = builder.specs["state"]
+        graph = builder.build(make_obs())["state"]
+
+        self.assertEqual(spec["edge_index"].shape, (2, 8))
+        self.assertEqual(int(graph["edge_mask"].sum()), 4)
+        present_types = set(spec["edge_type"].tolist())
+        self.assertNotIn(builder.EDGE_TYPE_BUSBAR_TO_GENERATOR, present_types)
+        self.assertNotIn(builder.EDGE_TYPE_BUSBAR_TO_LOAD, present_types)
+        self.assertNotIn(builder.EDGE_TYPE_BUSBAR_TO_LINE_ORIGIN, present_types)
+        self.assertNotIn(
+            builder.EDGE_TYPE_BUSBAR_TO_LINE_EXTREMITY, present_types
+        )
+        self.assertIn(builder.EDGE_TYPE_GENERATOR_TO_BUSBAR, present_types)
+        self.assertIn(builder.EDGE_TYPE_LOAD_TO_BUSBAR, present_types)
+        self.assertIn(builder.EDGE_TYPE_LINE_ORIGIN_TO_BUSBAR, present_types)
+        self.assertIn(builder.EDGE_TYPE_LINE_EXTREMITY_TO_BUSBAR, present_types)
+
     def test_optional_relations_and_encoders(self):
         builder = HeterogeneousLineGraphBuilder(
             MockGridEnv(),
@@ -624,6 +671,65 @@ class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
         )
         rho_idx = spec["edge_feature_names"].index("rho")
         self.assertTrue(bool(th.all(edge_attr[-12:, rho_idx] == 1.0)))
+
+        embedding = encoder(tensor_graph)
+        self.assertEqual(tuple(embedding.shape), (4,))
+        self.assertTrue(bool(th.isfinite(embedding).all()))
+
+    def test_toward_summary_hierarchy_removes_reverse_messages(self):
+        spec = self.builder.specs["state"]
+        graph = self.builder.build(make_obs())["state"]
+        tensor_graph = {
+            key: th.tensor(value)
+            for key, value in graph.items()
+            if key in {"node_features", "edge_features", "node_mask", "edge_mask"}
+        }
+        encoder = GraphEncoder(
+            spec,
+            hidden_dim=8,
+            out_dim=4,
+            n_layers=2,
+            conv_type="gine",
+            readout_aggr="virtual_node",
+            node_pre_encoder=True,
+            add_substation_nodes=True,
+            summary_edge_direction="toward_summary",
+        )
+
+        x, edge_index, edge_attr, batch, node_mask, flat_node_ids = (
+            encoder._to_pyg_batch(tensor_graph)
+        )
+        x = encoder.node_pre_encoder(x)
+        (
+            _,
+            edge_index,
+            edge_attr,
+            _,
+            _,
+            _,
+            _,
+            virtual_indices,
+        ) = encoder._append_hierarchy_nodes(
+            x,
+            edge_index,
+            edge_attr,
+            batch,
+            flat_node_ids,
+            node_mask=node_mask,
+        )
+
+        self.assertEqual(virtual_indices.tolist(), [9])
+        self.assertEqual(edge_index.shape[1], 14)
+        self.assertEqual(
+            {tuple(edge) for edge in edge_index[:, -6:-2].T.tolist()},
+            {(0, 7), (1, 7), (2, 8), (3, 8)},
+        )
+        self.assertEqual(
+            {tuple(edge) for edge in edge_index[:, -2:].T.tolist()},
+            {(7, 9), (8, 9)},
+        )
+        rho_idx = spec["edge_feature_names"].index("rho")
+        self.assertTrue(bool(th.all(edge_attr[-6:, rho_idx] == 1.0)))
 
         embedding = encoder(tensor_graph)
         self.assertEqual(tuple(embedding.shape), (4,))

@@ -81,6 +81,12 @@ share_actor_gnn = true
 gnn_graph_type = "bus"
 gnn_include_neighbors = true
 
+# Relation directions (held at the backwards-compatible baseline)
+gnn_generator_edge_direction = "bidirectional"
+gnn_load_edge_direction = "bidirectional"
+gnn_line_node_edge_direction = "bidirectional"
+gnn_summary_edge_direction = "bidirectional"
+
 # Structural factors (held off in stage 1)
 gnn_add_substation_edges = false
 gnn_add_substation_nodes = false

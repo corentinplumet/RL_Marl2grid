@@ -275,7 +275,8 @@ All GINE runs use \texttt{gnn\_type = gine}, reward normalization,
 split used by the A0 experiments. The reference run is \texttt{best\_00}.
 
 \paragraph{Implementation detail.}
-The full GINE model architecture is described separately in
+The complete GINE/GAT graph-actor pipeline, including edge-conditioned message
+passing, pooling, and the action head, is described in
 Appendix~\ref{app:gine-architecture}. This block separates representational
 changes from optimization changes. The GINE encoder changes how grid
 observations are embedded, while the critic type, flat-feature concatenation,

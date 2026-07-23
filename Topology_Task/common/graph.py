@@ -1,6 +1,28 @@
 from common.imports import *
 
 
+ASSET_EDGE_DIRECTIONS = {
+    "bidirectional",
+    "asset_to_busbar",
+    "busbar_to_asset",
+}
+LINE_NODE_EDGE_DIRECTIONS = {
+    "bidirectional",
+    "line_to_busbar",
+    "busbar_to_line",
+}
+
+
+def _validate_edge_direction(value: str, allowed, option_name: str) -> str:
+    direction = str(value).strip().lower()
+    if direction not in allowed:
+        choices = ", ".join(sorted(allowed))
+        raise ValueError(
+            f"Unsupported {option_name} '{value}'. Use one of: {choices}."
+        )
+    return direction
+
+
 class GridGraphBuilder:
     """Build fixed-shape busbar graph observations from the current Grid2Op state.
 
@@ -422,7 +444,8 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
     the existing rollout and encoder code, while ``node_type`` and ``edge_type``
     retain the heterogeneous schema. Physical-line and asset-attachment edges
     enumerate every possible busbar assignment and use masks to activate the
-    assignment selected by the current Grid2Op ``topo_vect``.
+    assignment selected by the current Grid2Op ``topo_vect``. Generator and
+    load relations may independently be one-way or bidirectional.
     """
 
     NODE_TYPE_BUSBAR = 0
@@ -474,6 +497,8 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
         include_maintenance: bool = False,
         add_self_edges: bool = False,
         add_substation_edges: bool = False,
+        generator_edge_direction: str = "bidirectional",
+        load_edge_direction: str = "bidirectional",
     ) -> None:
         # Initialize the shared Grid2Op metadata and helper methods first. The
         # bus-only specs produced by the parent are immediately replaced below.
@@ -487,6 +512,16 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
         )
         self.n_gen = int(getattr(g2op_env, "n_gen", len(self.gen_to_sub)))
         self.n_load = int(getattr(g2op_env, "n_load", len(self.load_to_sub)))
+        self.generator_edge_direction = _validate_edge_direction(
+            generator_edge_direction,
+            ASSET_EDGE_DIRECTIONS,
+            "generator edge direction",
+        )
+        self.load_edge_direction = _validate_edge_direction(
+            load_edge_direction,
+            ASSET_EDGE_DIRECTIONS,
+            "load edge direction",
+        )
         self.node_features = list(self.HETERO_NODE_FEATURES)
         self.physical_edge_features = list(self.edge_features)
         self.relation_edge_features = [
@@ -656,44 +691,60 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
             gen_entity = self.n_bus_nodes + int(gen_id)
             for bus_id in range(self.n_busbar):
                 bus_entity = self._bus_node_id(sub_id, bus_id)
-                append_edge(
-                    gen_entity,
-                    bus_entity,
-                    self.EDGE_TYPE_GENERATOR_TO_BUSBAR,
-                    asset_kind=self.ASSET_GENERATOR,
-                    asset_id=int(gen_id),
-                    asset_bus=bus_id,
-                )
-                append_edge(
-                    bus_entity,
-                    gen_entity,
-                    self.EDGE_TYPE_BUSBAR_TO_GENERATOR,
-                    asset_kind=self.ASSET_GENERATOR,
-                    asset_id=int(gen_id),
-                    asset_bus=bus_id,
-                )
+                if self.generator_edge_direction in {
+                    "bidirectional",
+                    "asset_to_busbar",
+                }:
+                    append_edge(
+                        gen_entity,
+                        bus_entity,
+                        self.EDGE_TYPE_GENERATOR_TO_BUSBAR,
+                        asset_kind=self.ASSET_GENERATOR,
+                        asset_id=int(gen_id),
+                        asset_bus=bus_id,
+                    )
+                if self.generator_edge_direction in {
+                    "bidirectional",
+                    "busbar_to_asset",
+                }:
+                    append_edge(
+                        bus_entity,
+                        gen_entity,
+                        self.EDGE_TYPE_BUSBAR_TO_GENERATOR,
+                        asset_kind=self.ASSET_GENERATOR,
+                        asset_id=int(gen_id),
+                        asset_bus=bus_id,
+                    )
 
         for load_id in load_ids:
             sub_id = int(self.load_to_sub[load_id])
             load_entity = self.n_bus_nodes + self.n_gen + int(load_id)
             for bus_id in range(self.n_busbar):
                 bus_entity = self._bus_node_id(sub_id, bus_id)
-                append_edge(
-                    load_entity,
-                    bus_entity,
-                    self.EDGE_TYPE_LOAD_TO_BUSBAR,
-                    asset_kind=self.ASSET_LOAD,
-                    asset_id=int(load_id),
-                    asset_bus=bus_id,
-                )
-                append_edge(
-                    bus_entity,
-                    load_entity,
-                    self.EDGE_TYPE_BUSBAR_TO_LOAD,
-                    asset_kind=self.ASSET_LOAD,
-                    asset_id=int(load_id),
-                    asset_bus=bus_id,
-                )
+                if self.load_edge_direction in {
+                    "bidirectional",
+                    "asset_to_busbar",
+                }:
+                    append_edge(
+                        load_entity,
+                        bus_entity,
+                        self.EDGE_TYPE_LOAD_TO_BUSBAR,
+                        asset_kind=self.ASSET_LOAD,
+                        asset_id=int(load_id),
+                        asset_bus=bus_id,
+                    )
+                if self.load_edge_direction in {
+                    "bidirectional",
+                    "busbar_to_asset",
+                }:
+                    append_edge(
+                        bus_entity,
+                        load_entity,
+                        self.EDGE_TYPE_BUSBAR_TO_LOAD,
+                        asset_kind=self.ASSET_LOAD,
+                        asset_id=int(load_id),
+                        asset_bus=bus_id,
+                    )
 
         edge_index = np.asarray(directed_edges, dtype=np.int64).T
         if edge_index.size == 0:
@@ -735,6 +786,8 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
             "n_bus_nodes": self.n_bus_nodes,
             "n_gen": self.n_gen,
             "n_load": self.n_load,
+            "generator_edge_direction": self.generator_edge_direction,
+            "load_edge_direction": self.load_edge_direction,
         }
 
     def _make_obs_cache(self, obs) -> Dict[str, np.ndarray]:
@@ -903,8 +956,9 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
     """Build a typed graph with explicit transmission-line nodes.
 
     Busbars, generators, loads, and physical lines are nodes. Every line node
-    has candidate bidirectional attachment edges to every busbar at its origin
-    and extremity substations. Masks select the two current endpoint busbars.
+    has candidate attachment edges to every busbar at its origin and extremity
+    substations. Their configured message direction may be one-way or
+    bidirectional; masks select the two current endpoint busbars.
     """
 
     NODE_TYPE_BUSBAR = 0
@@ -969,6 +1023,9 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
         include_maintenance: bool = False,
         add_self_edges: bool = False,
         add_substation_edges: bool = False,
+        generator_edge_direction: str = "bidirectional",
+        load_edge_direction: str = "bidirectional",
+        line_node_edge_direction: str = "bidirectional",
     ) -> None:
         super().__init__(
             g2op_env,
@@ -977,6 +1034,13 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
             include_maintenance=include_maintenance,
             add_self_edges=add_self_edges,
             add_substation_edges=add_substation_edges,
+            generator_edge_direction=generator_edge_direction,
+            load_edge_direction=load_edge_direction,
+        )
+        self.line_node_edge_direction = _validate_edge_direction(
+            line_node_edge_direction,
+            LINE_NODE_EDGE_DIRECTIONS,
+            "line-node edge direction",
         )
         self.node_features = list(self.BASE_LINE_NODE_FEATURES)
         if include_maintenance:
@@ -1140,38 +1204,54 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
             for bus_id in range(self.n_busbar):
                 or_bus_entity = self._bus_node_id(or_sub, bus_id)
                 ex_bus_entity = self._bus_node_id(ex_sub, bus_id)
-                append_edge(
-                    or_bus_entity,
-                    line_entity,
-                    self.EDGE_TYPE_BUSBAR_TO_LINE_ORIGIN,
-                    line_id=int(line_id),
-                    line_endpoint=0,
-                    line_bus=bus_id,
-                )
-                append_edge(
-                    line_entity,
-                    or_bus_entity,
-                    self.EDGE_TYPE_LINE_ORIGIN_TO_BUSBAR,
-                    line_id=int(line_id),
-                    line_endpoint=0,
-                    line_bus=bus_id,
-                )
-                append_edge(
-                    ex_bus_entity,
-                    line_entity,
-                    self.EDGE_TYPE_BUSBAR_TO_LINE_EXTREMITY,
-                    line_id=int(line_id),
-                    line_endpoint=1,
-                    line_bus=bus_id,
-                )
-                append_edge(
-                    line_entity,
-                    ex_bus_entity,
-                    self.EDGE_TYPE_LINE_EXTREMITY_TO_BUSBAR,
-                    line_id=int(line_id),
-                    line_endpoint=1,
-                    line_bus=bus_id,
-                )
+                if self.line_node_edge_direction in {
+                    "bidirectional",
+                    "busbar_to_line",
+                }:
+                    append_edge(
+                        or_bus_entity,
+                        line_entity,
+                        self.EDGE_TYPE_BUSBAR_TO_LINE_ORIGIN,
+                        line_id=int(line_id),
+                        line_endpoint=0,
+                        line_bus=bus_id,
+                    )
+                if self.line_node_edge_direction in {
+                    "bidirectional",
+                    "line_to_busbar",
+                }:
+                    append_edge(
+                        line_entity,
+                        or_bus_entity,
+                        self.EDGE_TYPE_LINE_ORIGIN_TO_BUSBAR,
+                        line_id=int(line_id),
+                        line_endpoint=0,
+                        line_bus=bus_id,
+                    )
+                if self.line_node_edge_direction in {
+                    "bidirectional",
+                    "busbar_to_line",
+                }:
+                    append_edge(
+                        ex_bus_entity,
+                        line_entity,
+                        self.EDGE_TYPE_BUSBAR_TO_LINE_EXTREMITY,
+                        line_id=int(line_id),
+                        line_endpoint=1,
+                        line_bus=bus_id,
+                    )
+                if self.line_node_edge_direction in {
+                    "bidirectional",
+                    "line_to_busbar",
+                }:
+                    append_edge(
+                        line_entity,
+                        ex_bus_entity,
+                        self.EDGE_TYPE_LINE_EXTREMITY_TO_BUSBAR,
+                        line_id=int(line_id),
+                        line_endpoint=1,
+                        line_bus=bus_id,
+                    )
 
         if self.add_substation_edges:
             for sub_id in sub_ids:
@@ -1191,44 +1271,60 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
             gen_entity = self.n_bus_nodes + int(gen_id)
             for bus_id in range(self.n_busbar):
                 bus_entity = self._bus_node_id(sub_id, bus_id)
-                append_edge(
-                    gen_entity,
-                    bus_entity,
-                    self.EDGE_TYPE_GENERATOR_TO_BUSBAR,
-                    asset_kind=self.ASSET_GENERATOR,
-                    asset_id=int(gen_id),
-                    asset_bus=bus_id,
-                )
-                append_edge(
-                    bus_entity,
-                    gen_entity,
-                    self.EDGE_TYPE_BUSBAR_TO_GENERATOR,
-                    asset_kind=self.ASSET_GENERATOR,
-                    asset_id=int(gen_id),
-                    asset_bus=bus_id,
-                )
+                if self.generator_edge_direction in {
+                    "bidirectional",
+                    "asset_to_busbar",
+                }:
+                    append_edge(
+                        gen_entity,
+                        bus_entity,
+                        self.EDGE_TYPE_GENERATOR_TO_BUSBAR,
+                        asset_kind=self.ASSET_GENERATOR,
+                        asset_id=int(gen_id),
+                        asset_bus=bus_id,
+                    )
+                if self.generator_edge_direction in {
+                    "bidirectional",
+                    "busbar_to_asset",
+                }:
+                    append_edge(
+                        bus_entity,
+                        gen_entity,
+                        self.EDGE_TYPE_BUSBAR_TO_GENERATOR,
+                        asset_kind=self.ASSET_GENERATOR,
+                        asset_id=int(gen_id),
+                        asset_bus=bus_id,
+                    )
 
         for load_id in load_ids:
             sub_id = int(self.load_to_sub[load_id])
             load_entity = self.n_bus_nodes + self.n_gen + int(load_id)
             for bus_id in range(self.n_busbar):
                 bus_entity = self._bus_node_id(sub_id, bus_id)
-                append_edge(
-                    load_entity,
-                    bus_entity,
-                    self.EDGE_TYPE_LOAD_TO_BUSBAR,
-                    asset_kind=self.ASSET_LOAD,
-                    asset_id=int(load_id),
-                    asset_bus=bus_id,
-                )
-                append_edge(
-                    bus_entity,
-                    load_entity,
-                    self.EDGE_TYPE_BUSBAR_TO_LOAD,
-                    asset_kind=self.ASSET_LOAD,
-                    asset_id=int(load_id),
-                    asset_bus=bus_id,
-                )
+                if self.load_edge_direction in {
+                    "bidirectional",
+                    "asset_to_busbar",
+                }:
+                    append_edge(
+                        load_entity,
+                        bus_entity,
+                        self.EDGE_TYPE_LOAD_TO_BUSBAR,
+                        asset_kind=self.ASSET_LOAD,
+                        asset_id=int(load_id),
+                        asset_bus=bus_id,
+                    )
+                if self.load_edge_direction in {
+                    "bidirectional",
+                    "busbar_to_asset",
+                }:
+                    append_edge(
+                        bus_entity,
+                        load_entity,
+                        self.EDGE_TYPE_BUSBAR_TO_LOAD,
+                        asset_kind=self.ASSET_LOAD,
+                        asset_id=int(load_id),
+                        asset_bus=bus_id,
+                    )
 
         edge_index = np.asarray(directed_edges, dtype=np.int64).T
         if edge_index.size == 0:
@@ -1273,6 +1369,9 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
             "n_gen": self.n_gen,
             "n_load": self.n_load,
             "n_line": self.n_line,
+            "generator_edge_direction": self.generator_edge_direction,
+            "load_edge_direction": self.load_edge_direction,
+            "line_node_edge_direction": self.line_node_edge_direction,
         }
 
     def _build_line_node_for_spec(
@@ -1427,8 +1526,12 @@ def make_grid_graph_builder(
     graph_type = str(graph_type).lower()
     if graph_type == "bus":
         builder_cls = GridGraphBuilder
+        kwargs.pop("generator_edge_direction", None)
+        kwargs.pop("load_edge_direction", None)
+        kwargs.pop("line_node_edge_direction", None)
     elif graph_type in {"heterogeneous", "hetero"}:
         builder_cls = HeterogeneousGridGraphBuilder
+        kwargs.pop("line_node_edge_direction", None)
     elif graph_type in {
         "heterogeneous_line",
         "heterogeneous_line_nodes",

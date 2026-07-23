@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+sbatch job_jed.sh configs/gnn_graph_screening/stage1b_normalization_confirmation/gs_s1b_bus_n0_none_s0.toml
+sbatch job_jed.sh configs/gnn_graph_screening/stage1b_normalization_confirmation/gs_s1b_bus_n0_none_s1.toml
+sbatch job_jed.sh configs/gnn_graph_screening/stage1b_normalization_confirmation/gs_s1b_bus_n0_none_s2.toml
+sbatch job_jed.sh configs/gnn_graph_screening/stage1b_normalization_confirmation/gs_s1b_bus_n1_physical_s0.toml
+sbatch job_jed.sh configs/gnn_graph_screening/stage1b_normalization_confirmation/gs_s1b_bus_n1_physical_s1.toml
+sbatch job_jed.sh configs/gnn_graph_screening/stage1b_normalization_confirmation/gs_s1b_bus_n1_physical_s2.toml
+sbatch job_jed.sh configs/gnn_graph_screening/stage1b_normalization_confirmation/gs_s1b_hetero_n0_none_s0.toml
+sbatch job_jed.sh configs/gnn_graph_screening/stage1b_normalization_confirmation/gs_s1b_hetero_n0_none_s1.toml
+sbatch job_jed.sh configs/gnn_graph_screening/stage1b_normalization_confirmation/gs_s1b_hetero_n0_none_s2.toml
