@@ -30,6 +30,7 @@ STAGE1_DIR = SCREENING_ROOT / "stage1_representation_normalization"
 STAGE1B_DIR = SCREENING_ROOT / "stage1b_normalization_confirmation"
 STAGE1C_DIR = SCREENING_ROOT / "stage1c_provisional_structure"
 STAGE1D_DIR = SCREENING_ROOT / "stage1d_heterogeneous_directions"
+STAGE1E_DIR = SCREENING_ROOT / "stage1e_heterogeneous_structure"
 STAGE2_DIR = SCREENING_ROOT / "stage2_structure"
 STAGE3_DIR = SCREENING_ROOT / "stage3_encoder"
 STAGE4_DIR = SCREENING_ROOT / "stage4_confirmation"
@@ -481,6 +482,64 @@ def create_stage1d(
     return config_paths
 
 
+def create_stage1e(
+    output_dir: Path = STAGE1E_DIR, force: bool = False
+) -> list[Path]:
+    """Create heterogeneous structural runs and one explicit-line scout."""
+
+    config_paths: list[Path] = []
+    for edges, nodes, virtual in STAGE1C_STRUCTURES:
+        suffix = f"e{int(edges)}n{int(nodes)}v{int(virtual)}"
+        name = f"gs_s1e_hetero_n0_none_{suffix}_s0"
+        content = BASE_CONFIG.format(
+            name=name,
+            graph_type="heterogeneous",
+            physical_scaling=_bool(False),
+            running_norm=_bool(False),
+        )
+        content = _apply_values(
+            content,
+            {
+                ("environment", "MAX_TIME_LIMIT_MINUTES"): "2880",
+                ("args", "seed"): 0,
+                ("args", "time_limit"): 2880,
+                ("args", "total_timesteps"): 8_000_000,
+                ("args", "gnn_add_substation_edges"): edges,
+                ("args", "gnn_add_substation_nodes"): nodes,
+                ("args", "gnn_readout_aggr"): "virtual_node" if virtual else "mean",
+                ("args", "sparse_gt_pooling"): "",
+                ("args", "sparse_gt_add_substation_edges"): edges,
+            },
+        )
+        path = output_dir / f"{name}.toml"
+        _write(path, content, force)
+        config_paths.append(path)
+
+    scout_name = "gs_s1e_hetero_line_n0_none_e0n0v0_s0"
+    scout_content = BASE_CONFIG.format(
+        name=scout_name,
+        graph_type="heterogeneous_line",
+        physical_scaling=_bool(False),
+        running_norm=_bool(False),
+    )
+    scout_content = _apply_values(
+        scout_content,
+        {
+            ("environment", "MAX_TIME_LIMIT_MINUTES"): "2880",
+            ("args", "seed"): 0,
+            ("args", "time_limit"): 2880,
+            ("args", "total_timesteps"): 8_000_000,
+        },
+    )
+    scout_path = output_dir / f"{scout_name}.toml"
+    _write(scout_path, scout_content, force)
+    config_paths.append(scout_path)
+
+    _write_launch_script(output_dir, config_paths, force)
+    _write_manifest(output_dir, config_paths, force)
+    return config_paths
+
+
 def _promoted_name(prefix: str, source_args: dict[str, Any], suffix: str) -> str:
     graph_type = str(source_args.get("gnn_graph_type", "bus")).replace(
         "heterogeneous", "hetero"
@@ -633,6 +692,13 @@ def _parser() -> argparse.ArgumentParser:
     heterogeneous_directions.add_argument("--output", type=Path, default=STAGE1D_DIR)
     heterogeneous_directions.add_argument("--force", action="store_true")
 
+    heterogeneous_structure = subparsers.add_parser(
+        "heterogeneous-structure",
+        help="Create seven heterogeneous structures and one explicit-line scout.",
+    )
+    heterogeneous_structure.add_argument("--output", type=Path, default=STAGE1E_DIR)
+    heterogeneous_structure.add_argument("--force", action="store_true")
+
     structure = subparsers.add_parser(
         "promote-structure", help="Create eight stage-2 configs from the stage-1 winner."
     )
@@ -669,6 +735,8 @@ def main() -> int:
         paths = create_stage1c(args.output, args.force)
     elif args.command == "heterogeneous-directions":
         paths = create_stage1d(args.output, args.force)
+    elif args.command == "heterogeneous-structure":
+        paths = create_stage1e(args.output, args.force)
     elif args.command == "promote-structure":
         paths = create_stage2(args.winner, args.output, args.force)
     elif args.command == "promote-encoder":

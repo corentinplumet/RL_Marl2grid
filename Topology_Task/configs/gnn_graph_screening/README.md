@@ -153,6 +153,30 @@ the encoder fixed so a direction effect cannot be mistaken for a GAT-versus-GINE
 effect.  As with Stage 1c, treat the result as provisional until Stage 1b
 confirms the base representation and normalization.
 
+## Stage 1e: heterogeneous structure and explicit-line scout
+
+Stage 1e applies the same seven non-baseline `e/n/v` structural combinations
+from Stage 1c to the direct heterogeneous graph.  Its Stage 1b
+`e0n0v0` run supplies the baseline.  An eighth job trains the unaugmented
+explicit-line representation for the complete 8M-step budget because its first
+screen stopped at approximately 3.3M steps.
+
+All eight jobs use no input preprocessing, GINE, bidirectional relations, seed
+0, and the 2,880-minute limit.  Create, validate, and launch them with:
+
+```bash
+python tools/gnn_graph_screening.py heterogeneous-structure
+python tools/gnn_graph_screening.py validate \
+  configs/gnn_graph_screening/stage1e_heterogeneous_structure
+bash configs/gnn_graph_screening/stage1e_heterogeneous_structure/launch_all.sh
+```
+
+Together, Stages 1c and 1e provide provisional structural screens for the bus
+and direct heterogeneous finalists.  The explicit-line scout determines
+whether that slower representation warrants additional seeds.  Stop adding
+new factors after this stage and use the observed results to choose which
+configurations deserve encoder and multi-seed confirmation.
+
 ## Stage 2: structural factors
 
 Promote the actual stage-1 winner. This creates all eight binary combinations

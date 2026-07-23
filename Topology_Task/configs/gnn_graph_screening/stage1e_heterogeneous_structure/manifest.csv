@@ -1,0 +1,9 @@
+config,seed,graph_type,normalization,physical_scaling,running_normalization,substation_edges,substation_nodes,virtual_node,encoder,generator_direction,load_direction,line_direction,summary_direction,timesteps
+gs_s1e_hetero_n0_none_e0n0v1_s0.toml,0,heterogeneous,n0_none,False,False,False,False,True,gine,bidirectional,bidirectional,bidirectional,bidirectional,8000000
+gs_s1e_hetero_n0_none_e0n1v0_s0.toml,0,heterogeneous,n0_none,False,False,False,True,False,gine,bidirectional,bidirectional,bidirectional,bidirectional,8000000
+gs_s1e_hetero_n0_none_e0n1v1_s0.toml,0,heterogeneous,n0_none,False,False,False,True,True,gine,bidirectional,bidirectional,bidirectional,bidirectional,8000000
+gs_s1e_hetero_n0_none_e1n0v0_s0.toml,0,heterogeneous,n0_none,False,False,True,False,False,gine,bidirectional,bidirectional,bidirectional,bidirectional,8000000
+gs_s1e_hetero_n0_none_e1n0v1_s0.toml,0,heterogeneous,n0_none,False,False,True,False,True,gine,bidirectional,bidirectional,bidirectional,bidirectional,8000000
+gs_s1e_hetero_n0_none_e1n1v0_s0.toml,0,heterogeneous,n0_none,False,False,True,True,False,gine,bidirectional,bidirectional,bidirectional,bidirectional,8000000
+gs_s1e_hetero_n0_none_e1n1v1_s0.toml,0,heterogeneous,n0_none,False,False,True,True,True,gine,bidirectional,bidirectional,bidirectional,bidirectional,8000000
+gs_s1e_hetero_line_n0_none_e0n0v0_s0.toml,0,heterogeneous_line,n0_none,False,False,False,False,False,gine,bidirectional,bidirectional,bidirectional,bidirectional,8000000

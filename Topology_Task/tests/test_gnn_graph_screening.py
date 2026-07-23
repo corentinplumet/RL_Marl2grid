@@ -20,6 +20,7 @@ from tools.gnn_graph_screening import (
     create_stage1b,
     create_stage1c,
     create_stage1d,
+    create_stage1e,
     create_stage2,
     create_stage3,
     validate_configs,
@@ -32,6 +33,52 @@ def load_args(path: Path):
 
 
 class GraphScreeningConfigTests(unittest.TestCase):
+    def test_stage1e_combines_heterogeneous_structures_and_line_scout(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp) / "stage1e"
+            configs = create_stage1e(output_dir)
+            self.assertEqual(len(configs), 8)
+            validate_configs([output_dir])
+
+            heterogeneous_structures = set()
+            line_scouts = []
+            for path in configs:
+                with path.open("rb") as file:
+                    config = tomllib.load(file)
+                args = config["args"]
+                structure = (
+                    args["gnn_add_substation_edges"],
+                    args["gnn_add_substation_nodes"],
+                    args["gnn_readout_aggr"] == "virtual_node",
+                )
+                if args["gnn_graph_type"] == "heterogeneous":
+                    heterogeneous_structures.add(structure)
+                elif args["gnn_graph_type"] == "heterogeneous_line":
+                    line_scouts.append(structure)
+                else:
+                    self.fail(f"Unexpected graph type in {path.name}")
+
+                self.assertEqual(args["gnn_type"], "gine")
+                self.assertEqual(args["critic_encoder"], "mlp")
+                self.assertFalse(args["gnn_physical_scaling"])
+                self.assertFalse(args["gnn_running_norm"])
+                self.assertEqual(
+                    args["gnn_generator_edge_direction"], "bidirectional"
+                )
+                self.assertEqual(args["gnn_load_edge_direction"], "bidirectional")
+                self.assertEqual(
+                    args["gnn_line_node_edge_direction"], "bidirectional"
+                )
+                self.assertEqual(args["seed"], 0)
+                self.assertEqual(args["total_timesteps"], 8_000_000)
+                self.assertEqual(args["time_limit"], 2880)
+                self.assertEqual(
+                    config["environment"]["MAX_TIME_LIMIT_MINUTES"], "2880"
+                )
+
+            self.assertEqual(heterogeneous_structures, set(STAGE1C_STRUCTURES))
+            self.assertEqual(line_scouts, [(False, False, False)])
+
     def test_stage1d_covers_the_eight_nonbaseline_direction_pairs(self):
         with tempfile.TemporaryDirectory() as tmp:
             output_dir = Path(tmp) / "stage1d"
