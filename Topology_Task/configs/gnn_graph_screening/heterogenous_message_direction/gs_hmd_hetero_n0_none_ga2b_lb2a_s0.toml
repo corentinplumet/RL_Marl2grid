@@ -6,7 +6,7 @@
 # Keep non-screened settings identical so the comparisons remain paired.
 
 [run]
-name = "gs_hmd_hetero_n0_none_gb2a_lb2a_s3"
+name = "gs_hmd_hetero_n0_none_ga2b_lb2a_s0"
 run_dir = "outputs/jed-{config_name}-{job_id}"
 seed_from_slurm_array = false
 extra_args = []
@@ -33,9 +33,9 @@ XDG_CACHE_HOME = "{run_dir}/cache"
 time_limit = 2880
 checkpoint = true
 alg = "MAPPO"
-seed = 3
+seed = 0
 verbose = true
-exp_tag = "gs_hmd_hetero_n0_none_gb2a_lb2a_s3"
+exp_tag = "gs_hmd_hetero_n0_none_ga2b_lb2a_s0"
 track = true
 wandb_project = "Grid2Op"
 wandb_entity = "corentin-plumet-epfl"
@@ -86,7 +86,7 @@ gnn_graph_type = "heterogeneous"
 gnn_include_neighbors = true
 
 # Relation directions (held at the backwards-compatible baseline)
-gnn_generator_edge_direction = "busbar_to_asset"
+gnn_generator_edge_direction = "asset_to_busbar"
 gnn_load_edge_direction = "busbar_to_asset"
 gnn_line_node_edge_direction = "bidirectional"
 gnn_summary_edge_direction = "bidirectional"

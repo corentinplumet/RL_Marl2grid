@@ -128,6 +128,7 @@ def build_notebook():
             """
             USE_LOCAL_CACHE_ONLY = True
             SMOOTH_WINDOW = 5
+            HEATMAP_LAST_N_TEST_EVALS = 7
             TARGET_BUDGET_STEPS = 8_000_000
             COMPARISON_BUDGET_STEPS = None
             DEDUPE_EQUIVALENT_SEED_RUNS = True
@@ -196,6 +197,7 @@ def build_notebook():
                     "config": path.name,
                     "run_name": str(run.get("name", path.stem)),
                     "seed": int(args.get("seed", 0)),
+                    "declared_cuda": bool(args.get("cuda", False)),
                     "graph_type": str(args.get("gnn_graph_type", "bus")),
                     "normalization": normalization_label(args),
                     "physical_scaling": bool(
@@ -317,10 +319,63 @@ def build_notebook():
                     runs_df["name"].astype(str).isin(requested_run_name_set)
                 ].copy()
 
+            def parse_optional_bool(value):
+                if pd.isna(value):
+                    return np.nan
+                if isinstance(value, str):
+                    normalized = value.strip().lower()
+                    if normalized in {"true", "1", "yes", "y"}:
+                        return True
+                    if normalized in {"false", "0", "no", "n"}:
+                        return False
+                return bool(value)
+
+
+            # Use the effective W&B run configuration, not only the TOML.
+            # Cluster launch overrides can change cuda after the TOML is read.
+            if "cuda" in runs_df and "name" in runs_df:
+                runtime_backend = runs_df[["name", "cuda"]].copy()
+                runtime_backend["runtime_cuda"] = runtime_backend["cuda"].map(
+                    parse_optional_bool
+                )
+                runtime_backend = (
+                    runtime_backend.dropna(subset=["runtime_cuda"])
+                    .drop_duplicates("name", keep="last")
+                    .rename(columns={"name": "run_name"})[
+                        ["run_name", "runtime_cuda"]
+                    ]
+                )
+                config_catalog = config_catalog.merge(
+                    runtime_backend, on="run_name", how="left"
+                )
+            else:
+                config_catalog["runtime_cuda"] = np.nan
+            config_catalog["runtime_cuda"] = config_catalog[
+                "runtime_cuda"
+            ].where(
+                config_catalog["runtime_cuda"].notna(),
+                config_catalog["declared_cuda"],
+            )
+            config_catalog["runtime_cuda"] = config_catalog[
+                "runtime_cuda"
+            ].astype(bool)
+            config_catalog["compute_backend"] = np.where(
+                config_catalog["runtime_cuda"],
+                "IZAR (GPU, cuda=True)",
+                "JED (CPU, cuda=False)",
+            )
+
             found_run_names = set(history_df.get("run_name", pd.Series(dtype=str)))
             print(
                 f"Loaded histories for {len(found_run_names)} / "
                 f"{len(requested_run_names)} declared runs."
+            )
+            display(
+                config_catalog.groupby(
+                    ["compute_backend", "stage"], observed=True
+                )
+                .agg(runs=("run_name", "nunique"))
+                .reset_index()
             )
             missing_run_names = sorted(requested_run_name_set - found_run_names)
             if missing_run_names:
@@ -456,18 +511,20 @@ def build_notebook():
 
             survival_frames = [
                 survival_frame(run_name)
-                for run_name in analysis_catalog["run_name"].drop_duplicates()
+                for run_name in available_catalog["run_name"].drop_duplicates()
             ]
             survival_frames = [frame for frame in survival_frames if not frame.empty]
             if survival_frames:
-                survival_long = pd.concat(survival_frames, ignore_index=True)
-                survival_long = survival_long.merge(
-                    analysis_catalog[
+                survival_all_long = pd.concat(survival_frames, ignore_index=True)
+                survival_all_long = survival_all_long.merge(
+                    available_catalog[
                         [
                             "run_name",
                             "stage",
                             "stage_rank",
                             "seed",
+                            "runtime_cuda",
+                            "compute_backend",
                             "factor_key",
                             "config_label",
                             "run_label",
@@ -478,7 +535,11 @@ def build_notebook():
                     on="run_name",
                     how="left",
                 )
+                survival_long = survival_all_long[
+                    survival_all_long["run_name"].isin(selected_names)
+                ].copy()
             else:
+                survival_all_long = pd.DataFrame()
                 survival_long = pd.DataFrame()
 
             if survival_long.empty:
@@ -516,10 +577,17 @@ def build_notebook():
 
             endpoint_rows = []
             for run_name, frame in survival_long.groupby("run_name", sort=False):
+                last_test_evaluations = frame.sort_values("step").tail(
+                    HEATMAP_LAST_N_TEST_EVALS
+                )
                 endpoint_rows.append(
                     {
                         "run_name": run_name,
                         "last_eval_step": frame["step"].max(),
+                        "last_7_test_evals": len(last_test_evaluations),
+                        "last_7_test_survival_pct": last_test_evaluations[
+                            "survival_pct"
+                        ].mean(),
                         "latest_5eval_survival_pct": frame[
                             "smoothed_survival_pct"
                         ].iloc[-1],
@@ -730,6 +798,130 @@ def build_notebook():
         ),
         markdown(
             """
+            ### JED versus IZAR aggregation
+
+            The backend is taken from the **effective downloaded W&B run
+            configuration**:
+
+            - `cuda=False` → JED / CPU;
+            - `cuda=True` → IZAR / GPU.
+
+            Thin lines are individual runs. The thick curve is the mean and the
+            band is a 95% confidence interval across the runs available at each
+            step. Hovering reports the number of contributing runs. This section
+            intentionally uses all downloaded declared runs, including repeated
+            logical configurations that are deduplicated elsewhere.
+
+            This is a hardware-group summary, not a controlled hardware
+            benchmark: in this screening, JED and IZAR were used for different
+            stages and graph configurations. A difference can therefore come
+            from the experimental mix rather than the hardware itself.
+            """
+        ),
+        code(
+            """
+            BACKEND_REQUIRE_REACHED_STEP = None
+            # For completed-run-only curves, use:
+            # BACKEND_REQUIRE_REACHED_STEP = 7_900_000
+
+            backend_curve_figure = sc.plot_survival_comparison(
+                survival_all_long,
+                group_by="compute_backend",
+                label_by="compute_backend",
+                smooth=5,
+                uncertainty="ci95",
+                min_members=1,
+                require_reached_step=BACKEND_REQUIRE_REACHED_STEP,
+                show_members=True,
+                colors={
+                    "JED (CPU, cuda=False)": "#1f77b4",
+                    "IZAR (GPU, cuda=True)": "#d62728",
+                },
+                dashes={
+                    "JED (CPU, cuda=False)": "solid",
+                    "IZAR (GPU, cuda=True)": "dash",
+                },
+                budget_step=TARGET_BUDGET_STEPS,
+                title="Test survival aggregated by launch backend",
+                width=1450,
+                height=650,
+            )
+            backend_curve_figure.show()
+
+            backend_last7_rows = []
+            for run_name, frame in survival_all_long.groupby(
+                "run_name", sort=False
+            ):
+                final_window = frame.sort_values("step").tail(
+                    HEATMAP_LAST_N_TEST_EVALS
+                )
+                backend_last7_rows.append(
+                    {
+                        "run_name": run_name,
+                        "last_7_test_evals": len(final_window),
+                        "last_7_test_survival_pct": final_window[
+                            "survival_pct"
+                        ].mean(),
+                    }
+                )
+            backend_endpoints = available_catalog.merge(
+                pd.DataFrame(backend_last7_rows), on="run_name", how="left"
+            )
+            backend_endpoints = backend_endpoints[
+                backend_endpoints["last_7_test_evals"]
+                >= HEATMAP_LAST_N_TEST_EVALS
+            ].dropna(subset=["last_7_test_survival_pct"])
+            backend_summary = (
+                backend_endpoints.groupby(
+                    "compute_backend", observed=True, as_index=False
+                )
+                .agg(
+                    mean_last7_survival_pct=(
+                        "last_7_test_survival_pct",
+                        "mean",
+                    ),
+                    std_last7_survival_pct=(
+                        "last_7_test_survival_pct",
+                        "std",
+                    ),
+                    median_last7_survival_pct=(
+                        "last_7_test_survival_pct",
+                        "median",
+                    ),
+                    runs=("run_name", "nunique"),
+                    stages=("stage", lambda values: ", ".join(sorted(set(values)))),
+                )
+            )
+            display(backend_summary.round(2))
+
+            backend_endpoint_figure = px.box(
+                backend_endpoints,
+                x="compute_backend",
+                y="last_7_test_survival_pct",
+                color="stage",
+                points="all",
+                hover_data=[
+                    "run_name",
+                    "graph_type",
+                    "normalization",
+                    "structure",
+                    "seed",
+                ],
+                labels={
+                    "compute_backend": "Launch backend",
+                    "last_7_test_survival_pct": (
+                        "Mean of final 7 test-survival evaluations (%)"
+                    ),
+                },
+                title="Final test survival by launch backend and stage",
+                height=600,
+            )
+            backend_endpoint_figure.update_yaxes(range=[0, 100])
+            backend_endpoint_figure.show()
+            """
+        ),
+        markdown(
+            """
             ### Minimal copy-and-reuse template
 
             ```python
@@ -776,6 +968,7 @@ def build_notebook():
                 "generator_direction",
                 "load_direction",
                 "last_eval_step_m",
+                "last_7_test_survival_pct",
                 "comparison_survival_pct",
                 "latest_5eval_survival_pct",
                 "best_5eval_survival_pct",
@@ -1146,7 +1339,18 @@ def build_notebook():
             """
             ## Targeted screening heatmaps
 
-            These plots mirror the experimental design:
+            Every heatmap cell now uses the following statistic:
+
+            1. for each run, take its final seven **unsmoothed**
+               `test/charts/episodic_survival` evaluations;
+            2. compute their arithmetic mean in percentage points;
+            3. if a cell contains several runs or seeds, average those per-run
+               means so every run has equal weight.
+
+            Runs with fewer than seven test evaluations are excluded. The exact
+            numeric matrix is displayed before each heatmap.
+
+            The plots mirror the experimental design:
 
             1. representation versus normalization;
             2. structure versus representation;
@@ -1155,10 +1359,18 @@ def build_notebook():
         ),
         code(
             """
+            HEATMAP_VALUE_COLUMN = "last_7_test_survival_pct"
+            heatmap_endpoint_df = endpoint_df[
+                endpoint_df["last_7_test_evals"] >= HEATMAP_LAST_N_TEST_EVALS
+            ].dropna(subset=[HEATMAP_VALUE_COLUMN]).copy()
+
+
             def show_heatmap(table, title, x_label, y_label, zmin=0, zmax=100):
                 if table.empty or table.notna().sum().sum() == 0:
                     print(f"No data available for: {title}")
                     return None
+                print(title)
+                display(table.round(2))
                 figure = px.imshow(
                     table,
                     text_auto=".1f",
@@ -1169,28 +1381,29 @@ def build_notebook():
                     labels={
                         "x": x_label,
                         "y": y_label,
-                        "color": "Survival (%)",
+                        "color": "Mean final-7 test survival (%)",
                     },
-                    title=title,
+                    title=title + " — mean of each run's final 7 test evaluations",
                 )
                 figure.show()
                 return figure
 
 
             base_mask = (
-                (~valid_endpoint_df["substation_edges"])
-                & (~valid_endpoint_df["substation_nodes"])
-                & (valid_endpoint_df["readout"] == "mean")
-                & (valid_endpoint_df["encoder"] == "gine")
-                & (valid_endpoint_df["generator_direction"] == "bidirectional")
-                & (valid_endpoint_df["load_direction"] == "bidirectional")
-                & (valid_endpoint_df["line_direction"] == "bidirectional")
+                (~heatmap_endpoint_df["substation_edges"])
+                & (~heatmap_endpoint_df["substation_nodes"])
+                & (heatmap_endpoint_df["readout"] == "mean")
+                & (heatmap_endpoint_df["encoder"] == "gine")
+                & (
+                    heatmap_endpoint_df["generator_direction"]
+                    == "bidirectional"
+                )
+                & (heatmap_endpoint_df["load_direction"] == "bidirectional")
+                & (heatmap_endpoint_df["line_direction"] == "bidirectional")
             )
             representation_normalization = (
-                valid_endpoint_df[base_mask]
-                .groupby(["graph_type", "normalization"])[
-                    "comparison_survival_pct"
-                ]
+                heatmap_endpoint_df[base_mask]
+                .groupby(["graph_type", "normalization"])[HEATMAP_VALUE_COLUMN]
                 .mean()
                 .unstack("normalization")
             )
@@ -1202,15 +1415,18 @@ def build_notebook():
             )
 
             structure_mask = (
-                valid_endpoint_df["graph_type"].isin(["bus", "heterogeneous"])
-                & (valid_endpoint_df["normalization"] == "n0_none")
-                & (valid_endpoint_df["encoder"] == "gine")
-                & (valid_endpoint_df["generator_direction"] == "bidirectional")
-                & (valid_endpoint_df["load_direction"] == "bidirectional")
+                heatmap_endpoint_df["graph_type"].isin(["bus", "heterogeneous"])
+                & (heatmap_endpoint_df["normalization"] == "n0_none")
+                & (heatmap_endpoint_df["encoder"] == "gine")
+                & (
+                    heatmap_endpoint_df["generator_direction"]
+                    == "bidirectional"
+                )
+                & (heatmap_endpoint_df["load_direction"] == "bidirectional")
             )
             structure_table = (
-                valid_endpoint_df[structure_mask]
-                .groupby(["graph_type", "structure"])["comparison_survival_pct"]
+                heatmap_endpoint_df[structure_mask]
+                .groupby(["graph_type", "structure"])[HEATMAP_VALUE_COLUMN]
                 .mean()
                 .unstack("structure")
             )
@@ -1222,17 +1438,17 @@ def build_notebook():
             )
 
             direction_mask = (
-                (valid_endpoint_df["graph_type"] == "heterogeneous")
-                & (valid_endpoint_df["normalization"] == "n0_none")
-                & (~valid_endpoint_df["substation_edges"])
-                & (~valid_endpoint_df["substation_nodes"])
-                & (valid_endpoint_df["readout"] == "mean")
-                & (valid_endpoint_df["encoder"] == "gine")
+                (heatmap_endpoint_df["graph_type"] == "heterogeneous")
+                & (heatmap_endpoint_df["normalization"] == "n0_none")
+                & (~heatmap_endpoint_df["substation_edges"])
+                & (~heatmap_endpoint_df["substation_nodes"])
+                & (heatmap_endpoint_df["readout"] == "mean")
+                & (heatmap_endpoint_df["encoder"] == "gine")
             )
             direction_table = (
-                valid_endpoint_df[direction_mask]
+                heatmap_endpoint_df[direction_mask]
                 .groupby(["generator_direction", "load_direction"])[
-                    "comparison_survival_pct"
+                    HEATMAP_VALUE_COLUMN
                 ]
                 .mean()
                 .unstack("load_direction")
@@ -1283,7 +1499,8 @@ def build_notebook():
             ## Optional CSV export
 
             Set `EXPORT_TABLES = True` to save the coverage, endpoint ranking,
-            marginal summaries, matched effects, and logical ranking under
+            marginal summaries, matched effects, backend summary, heatmap
+            matrices, and logical ranking under
             `Topology_Task/outputs/gnn_graph_screening_summary`.
             """
         ),
@@ -1301,6 +1518,18 @@ def build_notebook():
                 )
                 logical_ranking.to_csv(
                     export_dir / "logical_configuration_ranking.csv", index=False
+                )
+                backend_summary.to_csv(
+                    export_dir / "backend_last7_summary.csv", index=False
+                )
+                representation_normalization.to_csv(
+                    export_dir / "heatmap_representation_normalization_last7.csv"
+                )
+                structure_table.to_csv(
+                    export_dir / "heatmap_structure_representation_last7.csv"
+                )
+                direction_table.to_csv(
+                    export_dir / "heatmap_generator_load_direction_last7.csv"
                 )
                 if not paired_effect_summary.empty:
                     paired_effect_summary.to_csv(

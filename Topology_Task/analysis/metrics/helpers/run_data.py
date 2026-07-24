@@ -106,6 +106,9 @@ def _row_from_run_dir(run_dir: Path, group_dir: Path) -> Optional[dict[str, Any]
         "gnn_type": config.get("gnn_type") or meta.get("gnn_type"),
         "gnn_include_neighbors": config.get("gnn_include_neighbors") or meta.get("gnn_include_neighbors"),
         "deterministic_eval": config.get("deterministic_eval") or meta.get("deterministic_eval"),
+        # Preserve False: ``config.get("cuda") or ...`` would incorrectly turn
+        # an explicit CPU run into a missing value.
+        "cuda": config.get("cuda") if "cuda" in config else meta.get("cuda"),
         "n_envs": config.get("n_envs") or meta.get("n_envs"),
         "n_steps": config.get("n_steps") or meta.get("n_steps"),
         "seed": config.get("seed") or meta.get("seed"),

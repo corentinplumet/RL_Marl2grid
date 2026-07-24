@@ -601,6 +601,7 @@ def cached_runs_from_full_history():
             "critic_encoder": meta.get("critic_encoder"),
             "gnn_type": meta.get("gnn_type"),
             "deterministic_eval": meta.get("deterministic_eval"),
+            "cuda": meta.get("cuda"),
             "n_envs": meta.get("n_envs"),
             "n_steps": meta.get("n_steps"),
             "entropy_coef": meta.get("entropy_coef"),
