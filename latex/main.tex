@@ -48,6 +48,7 @@
 \pagenumbering{arabic}
 \input{chapters/00_plan}
 \input{chapters/04_methods}
+\input{chapters/05_experiments}
 \input{chapters/05_results_rerun_survival}
 
 \appendix
@@ -308,10 +309,10 @@ Table~\ref{tab:gine-gat-edge-inventory} reach a convolution.
      & Load $\leftrightarrow$ busbar & Neutral physical block plus direction-specific load relation \\
      & Optional self or same-substation & Neutral physical block plus the corresponding relation \\
     \midrule
-    \texttt{heterogeneous\_line} & Busbar $\leftrightarrow$ line node & Measured \texttt{rho} plus an origin/extremity-and-direction relation \\
-     & Generator $\leftrightarrow$ busbar & \texttt{rho}$=1$ plus direction-specific generator relation \\
-     & Load $\leftrightarrow$ busbar & \texttt{rho}$=1$ plus direction-specific load relation \\
-     & Optional self or same-substation & \texttt{rho}$=1$ plus the corresponding relation \\
+    \texttt{heterogeneous\_line} & Busbar $\leftrightarrow$ line node & One origin/extremity-and-direction relation; no line-state attributes \\
+     & Generator $\leftrightarrow$ busbar & One direction-specific generator relation \\
+     & Load $\leftrightarrow$ busbar & One direction-specific load relation \\
+     & Optional self or same-substation & One corresponding relation \\
     \midrule
     Any augmented schema & Busbar $\rightarrow$ summary/virtual, with optional reverse & Zero edge vector except neutral \texttt{rho}$=1$ when present; no dedicated relation one-hot in the ordinary GINE/GAT encoder \\
     \bottomrule

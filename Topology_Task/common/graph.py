@@ -1047,9 +1047,9 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
             insert_at = self.node_features.index("time_before_cooldown_sub")
             self.node_features[insert_at:insert_at] = self.MAINTENANCE_EDGE_FEATURES
 
-        # Rho is retained as an optional GCN message weight. All other line
-        # state is carried by the explicit transmission-line node.
-        self.physical_edge_features = ["rho"]
+        # All physical line state, including rho, is carried by the explicit
+        # transmission-line node. Attachment edges encode only their relation.
+        self.physical_edge_features = []
         self.relation_edge_features = [
             f"relation_{name}" for name in self.EDGE_TYPE_NAMES
         ]
@@ -1489,7 +1489,6 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
                 (cache["line_status"][line_ids] > 0)
                 & (endpoint_bus == spec["edge_line_bus_ids"][line_edges])
             )
-            edge_features[line_edges, 0] = cache["line_features"][line_ids, 0]
 
         generator_edges = spec["edge_asset_kind"] == self.ASSET_GENERATOR
         if np.any(generator_edges):
@@ -1507,8 +1506,6 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
                 == spec["edge_asset_bus_ids"][load_edges]
             )
 
-        # Non-line relations receive a neutral GCN message weight.
-        edge_features[~line_edges, 0] = 1.0
         edge_features[~active] = 0.0
         return (
             np.nan_to_num(edge_features, nan=0.0, posinf=0.0, neginf=0.0),

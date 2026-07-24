@@ -1,0 +1,257 @@
+\chapter{Experiments}
+\label{ch:experiments}
+
+This chapter defines the current staged graph-screening campaign. A run denotes
+one training configuration with one random seed. The campaign contains 44
+configured runs across Stages 1, 1b, 1c, 1d, and 1e. This chapter records what
+is varied and what is held fixed; measured outcomes are reported separately in
+Chapter~\ref{ch:experimental-results}.
+
+\section{Common Training Protocol}
+\label{sec:screening-common-protocol}
+
+Unless a stage states otherwise, every run uses the paired configuration in
+Table~\ref{tab:screening-common-settings}. The purpose of this common protocol
+is to isolate changes to the graph input or graph structure.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Settings shared by the current graph-screening runs.}
+  \label{tab:screening-common-settings}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{L{0.25\textwidth}L{0.65\textwidth}}
+    \toprule
+    Component & Fixed setting \\
+    \midrule
+    Environment & \texttt{bus14}, difficulty 0, topology actions, 80/20 train/test chronic split with split seed 0 \\
+    Actor & One GINE encoder shared by all agents; two message-passing layers; 128 hidden and output features; LayerNorm; two 128-unit action-head layers \\
+    Critic & Centralized MLP with three 256-unit hidden layers \\
+    Training budget & \(8{,}000{,}000\) environment steps, 72 parallel environments, 576 rollout steps \\
+    MAPPO update & 10 epochs, 16 minibatches, actor and critic learning rates \(10^{-4}\) with linear annealing, \(\gamma=0.9\), \(\lambda=0.95\) \\
+    Evaluation & Deterministic evaluation every 82,944 environment steps; 10 episodes on each evaluated split \\
+    Graph defaults & Bidirectional relations, mean readout, no same-substation edges, no substation-summary nodes, no virtual-node readout \\
+    Other input settings & No global node-identifier embeddings and no concatenated flat observation in the actor \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The graph preprocessing labels used below are
+\begin{equation}
+  \begin{aligned}
+    \texttt{n0\_none} &: \text{no graph-feature preprocessing},\\
+    \texttt{n1\_physical} &: \text{deterministic physical scaling only},\\
+    \texttt{n2\_running} &: \text{running standardization only},\\
+    \texttt{n3\_both} &: \text{physical scaling followed by running standardization}.
+  \end{aligned}
+  \label{eq:screening-normalization-labels}
+\end{equation}
+These graph-specific settings are distinct from the environment observation
+normalization and reward normalization, which remain enabled in every run.
+
+\section{Current Run Inventory}
+\label{sec:screening-run-inventory}
+
+Table~\ref{tab:screening-stage-overview} gives the complete count. The
+subsections below define the configuration set of each stage.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Current staged graph-screening campaign.}
+  \label{tab:screening-stage-overview}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{L{0.11\textwidth}L{0.30\textwidth}L{0.40\textwidth}L{0.09\textwidth}}
+    \toprule
+    Stage & Fixed base & Varied factor & Runs \\
+    \midrule
+    1 & Seed 0, unaugmented GINE & Three graph schemas crossed with four preprocessing modes & 12 \\
+    1b & Three selected Stage 1 configurations & Seeds 0, 1, and 2 & 9 \\
+    1c & Bus graph, \texttt{n0\_none}, seed 0 & Seven non-baseline combinations of \(e,n,v\) & 7 \\
+    1d & Direct heterogeneous graph, \texttt{n0\_none}, seed 0 & Eight non-baseline generator/load direction pairs & 8 \\
+    1e & \texttt{n0\_none}, seed 0 & Seven direct-heterogeneous structures and one explicit-line run & 8 \\
+    \midrule
+    Total & & & 44 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Stage 1: representation and preprocessing}
+\label{subsec:screening-stage1}
+
+Stage 1 crosses three graph schemas with four preprocessing modes. Every cell
+in Table~\ref{tab:stage1-matrix} is one seed-0 run, with identifier
+\texttt{gs\_s1\_<graph>\_<preprocessing>\_s0}. The complete matrix therefore
+contains 12 runs.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Stage 1 representation-by-preprocessing matrix. ``Run'' denotes one
+  configured seed-0 training run.}
+  \label{tab:stage1-matrix}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{L{0.28\textwidth}L{0.14\textwidth}L{0.16\textwidth}L{0.15\textwidth}L{0.14\textwidth}}
+    \toprule
+    Graph code & \texttt{n0\_none} & \texttt{n1\_physical} & \texttt{n2\_running} & \texttt{n3\_both} \\
+    \midrule
+    \texttt{bus} & Run & Run & Run & Run \\
+    \texttt{hetero} & Run & Run & Run & Run \\
+    \texttt{hetero\_line} & Run & Run & Run & Run \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Stage 1 uses a 720-minute training limit; some runs therefore stop before the
+nominal 8M-step budget.
+\\
+\\
+The locally recorded Stage 1 explicit-line artifacts were produced before
+\texttt{rho} was removed from the line-attachment edge vector. They must be
+regenerated before comparison with runs using the revised relation-only
+explicit-line edges.
+
+\subsection{Stage 1b: normalization confirmation}
+\label{subsec:screening-stage1b}
+
+Stage 1b trains three selected Stage 1 configurations from seeds 0, 1, and 2.
+Every cell in Table~\ref{tab:stage1b-matrix} is one run, with identifier
+\texttt{gs\_s1b\_<graph>\_<preprocessing>\_s<seed>}. The \(3\times3\) matrix
+contains nine runs.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Stage 1b finalist-by-seed matrix.}
+  \label{tab:stage1b-matrix}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{L{0.43\textwidth}L{0.14\textwidth}L{0.14\textwidth}L{0.14\textwidth}}
+    \toprule
+    Graph and preprocessing & Seed 0 & Seed 1 & Seed 2 \\
+    \midrule
+    \texttt{bus + n0\_none} & Run & Run & Run \\
+    \texttt{bus + n1\_physical} & Run & Run & Run \\
+    \texttt{hetero + n0\_none} & Run & Run & Run \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The time limit is 2,880 minutes so the comparison can reach the common
+8M-step endpoint.
+
+\subsection{Stage 1c: bus-graph structural factors}
+\label{subsec:screening-stage1c}
+
+Stage 1c uses the unscaled bus graph with seed 0 and tests three binary factors:
+\(e\) adds direct same-substation busbar edges, \(n\) adds substation-summary
+nodes, and \(v\) replaces mean pooling with virtual-node readout. The Stage 1b
+\texttt{e0n0v0} run supplies the unaugmented baseline. Table~\ref{tab:stage1c-matrix}
+lists the remaining seven combinations. Each row is one run, with identifier
+\texttt{gs\_s1c\_bus\_n0\_none\_<suffix>\_s0}.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Stage 1c structural matrix; \(000\) is the Stage 1b baseline.}
+  \label{tab:stage1c-matrix}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{L{0.12\textwidth}L{0.12\textwidth}L{0.12\textwidth}L{0.24\textwidth}L{0.20\textwidth}}
+    \toprule
+    \(e\) & \(n\) & \(v\) & Run suffix & Source \\
+    \midrule
+    0 & 0 & 0 & \texttt{e0n0v0} & Stage 1b baseline \\
+    \midrule
+    0 & 0 & 1 & \texttt{e0n0v1} & Stage 1c run \\
+    0 & 1 & 0 & \texttt{e0n1v0} & Stage 1c run \\
+    0 & 1 & 1 & \texttt{e0n1v1} & Stage 1c run \\
+    1 & 0 & 0 & \texttt{e1n0v0} & Stage 1c run \\
+    1 & 0 & 1 & \texttt{e1n0v1} & Stage 1c run \\
+    1 & 1 & 0 & \texttt{e1n1v0} & Stage 1c run \\
+    1 & 1 & 1 & \texttt{e1n1v1} & Stage 1c run \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Stage 1d: heterogeneous attachment directions}
+\label{subsec:screening-stage1d}
+
+Stage 1d uses the direct heterogeneous graph without graph-feature
+preprocessing, hierarchy augmentation, or virtual-node readout. The direction
+codes are \texttt{bi} for bidirectional, \texttt{a2b} for asset-to-busbar, and
+\texttt{b2a} for busbar-to-asset.
+\\
+\\
+Table~\ref{tab:stage1d-matrix} is the complete generator-by-load direction
+matrix. The Stage 1b \texttt{bi}/\texttt{bi} run supplies the baseline; every
+other cell is one Stage 1d run. Its identifier is
+\texttt{gs\_s1d\_hetero\_n0\_none\_g<row>\_l<column>\_s0}.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Stage 1d generator-by-load direction matrix.}
+  \label{tab:stage1d-matrix}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{L{0.28\textwidth}L{0.19\textwidth}L{0.19\textwidth}L{0.19\textwidth}}
+    \toprule
+    Generator \(\backslash\) load & \texttt{bi} & \texttt{a2b} & \texttt{b2a} \\
+    \midrule
+    \texttt{bi} & Stage 1b baseline & Stage 1d run & Stage 1d run \\
+    \texttt{a2b} & Stage 1d run & Stage 1d run & Stage 1d run \\
+    \texttt{b2a} & Stage 1d run & Stage 1d run & Stage 1d run \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Stage 1e: heterogeneous structures and explicit-line run}
+\label{subsec:screening-stage1e}
+
+Stage 1e contains the eight seed-0 rows in Table~\ref{tab:stage1e-matrix}. Seven
+rows apply the non-baseline structural combinations to the direct
+heterogeneous graph. The eighth row is the unaugmented explicit-line run.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Stage 1e design matrix. Every row is one configured run.}
+  \label{tab:stage1e-matrix}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{L{0.27\textwidth}L{0.08\textwidth}L{0.08\textwidth}L{0.08\textwidth}L{0.30\textwidth}}
+    \toprule
+    Graph code & \(e\) & \(n\) & \(v\) & Run suffix \\
+    \midrule
+    \texttt{hetero} & 0 & 0 & 1 & \texttt{e0n0v1} \\
+    \texttt{hetero} & 0 & 1 & 0 & \texttt{e0n1v0} \\
+    \texttt{hetero} & 0 & 1 & 1 & \texttt{e0n1v1} \\
+    \texttt{hetero} & 1 & 0 & 0 & \texttt{e1n0v0} \\
+    \texttt{hetero} & 1 & 0 & 1 & \texttt{e1n0v1} \\
+    \texttt{hetero} & 1 & 1 & 0 & \texttt{e1n1v0} \\
+    \texttt{hetero} & 1 & 1 & 1 & \texttt{e1n1v1} \\
+    \midrule
+    \texttt{hetero\_line} & 0 & 0 & 0 & \texttt{e0n0v0} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The direct-heterogeneous identifier is
+\texttt{gs\_s1e\_hetero\_n0\_none\_<suffix>\_s0}; the explicit-line identifier
+is \texttt{gs\_s1e\_hetero\_line\_n0\_none\_e0n0v0\_s0}. All eight runs use
+\texttt{n0\_none}, bidirectional relations, and a 2,880-minute limit. The
+explicit-line run uses the revised relation-only edge vector: all physical line
+values, including \texttt{rho}, are stored only on the transmission-line node.
+
+\section{Campaign Size}
+\label{sec:screening-campaign-size}
+
+The current configuration set therefore contains
+\begin{equation}
+  12_{\mathrm{Stage\,1}}
+  +9_{\mathrm{Stage\,1b}}
+  +7_{\mathrm{Stage\,1c}}
+  +8_{\mathrm{Stage\,1d}}
+  +8_{\mathrm{Stage\,1e}}
+  =44
+  \label{eq:screening-total-runs}
+\end{equation}
+training runs. This count describes configured run--seed combinations; it does
+not imply that all 44 runs have completed.

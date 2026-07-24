@@ -354,7 +354,8 @@ class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
         self.assertEqual(len(spec["node_ids"]), 7)
         self.assertEqual(spec["edge_index"].shape, (2, 16))
         self.assertEqual(spec["node_dim"], 13)
-        self.assertEqual(spec["edge_dim"], 11)
+        self.assertEqual(spec["edge_dim"], 10)
+        self.assertNotIn("rho", spec["edge_feature_names"])
         np.testing.assert_array_equal(
             np.bincount(spec["node_type"], minlength=4), [4, 1, 1, 1]
         )
@@ -401,6 +402,7 @@ class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
             self.assertEqual(
                 graph["edge_features"][row, relation_offset + edge_type], 1.0
             )
+            self.assertEqual(float(graph["edge_features"][row].sum()), 1.0)
         self.assertTrue(
             np.all(graph["edge_features"][graph["edge_mask"] == 0] == 0.0)
         )
@@ -552,9 +554,7 @@ class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
                     node_id_embeddings=True,
                     node_id_emb_dim=2,
                     add_substation_nodes=True,
-                    gcn_edge_weight_feature=(
-                        "rho" if conv_type == "gcn" else "none"
-                    ),
+                    gcn_edge_weight_feature="none",
                 )
                 self.assertEqual(int(encoder.virtual_busbar_mask.sum()), 4)
                 embedding = encoder(tensor_graph)
@@ -669,8 +669,7 @@ class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
             virtual_edges,
             {(7, 9), (8, 9), (9, 7), (9, 8)},
         )
-        rho_idx = spec["edge_feature_names"].index("rho")
-        self.assertTrue(bool(th.all(edge_attr[-12:, rho_idx] == 1.0)))
+        self.assertTrue(bool(th.all(edge_attr[-12:] == 0.0)))
 
         embedding = encoder(tensor_graph)
         self.assertEqual(tuple(embedding.shape), (4,))
@@ -728,8 +727,7 @@ class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
             {tuple(edge) for edge in edge_index[:, -2:].T.tolist()},
             {(7, 9), (8, 9)},
         )
-        rho_idx = spec["edge_feature_names"].index("rho")
-        self.assertTrue(bool(th.all(edge_attr[-6:, rho_idx] == 1.0)))
+        self.assertTrue(bool(th.all(edge_attr[-6:] == 0.0)))
 
         embedding = encoder(tensor_graph)
         self.assertEqual(tuple(embedding.shape), (4,))

@@ -582,7 +582,7 @@ with a transmission-line node between its endpoint busbars. Its node set is
   \label{fig:heterogeneous-line-node-graph}
 \end{figure}
 
-\subsection{Node allocation and features}
+\subsection{Shared node features}
 \label{subsec:heterogeneous-line-nodes}
 
 For $S$ included substations, $B$ busbars per substation, $N_g$ generators,
@@ -591,32 +591,81 @@ $N_d$ loads, and $L$ included transmission lines, the graph contains
   |\mathcal{V}| = SB + N_g + N_d + L
   \label{eq:heterogeneous-line-node-count}
 \end{equation}
-nodes. All types share one feature matrix. Table~\ref{tab:heterogeneous-line-node-features}
-lists the populated columns; unlisted columns are zero.
+nodes. A generator or load node remains allocated when it is disconnected, and
+a transmission-line node remains allocated when the line is offline.
+\\
+\\
+Every node type uses the same ordered feature vector:
+\begin{equation}
+  \begin{split}
+  \mathbf{x}_v = [\,&
+  \texttt{is\_busbar},\
+  \texttt{is\_generator},\
+  \texttt{is\_load},\
+  \texttt{is\_transmission\_line},\\
+  &\texttt{p},\
+  \texttt{theta},\
+  \texttt{line\_status},\
+  \texttt{rho},\
+  \texttt{timestep\_overflow},\\
+  &\texttt{time\_before\_cooldown\_line},\\
+  &(\texttt{time\_next\_maintenance},\
+  \texttt{duration\_next\_maintenance})_{\mathrm{optional}},\\
+  &\texttt{time\_before\_cooldown\_sub},\
+  \texttt{connected},\
+  \texttt{domain\_mask}
+  \,]^{\mathsf T},\\
+  &\mathbf{x}_v \in
+  \begin{cases}
+    \mathbb{R}^{13}, & \text{without maintenance columns},\\
+    \mathbb{R}^{15}, & \text{with maintenance columns}.
+  \end{cases}
+  \end{split}
+  \label{eq:heterogeneous-line-common-node-vector}
+\end{equation}
+The width and column order are identical for busbar, generator, load, and
+transmission-line nodes. Table~\ref{tab:heterogeneous-line-node-features}
+specifies every entry; \(0\) denotes an explicitly zero-filled column, not an
+omitted feature. For generators and loads, power and angle are set to zero when
+the asset is disconnected.
 
 \begin{table}[H]
   \centering
   \scriptsize
-  \caption{Node features by type in the explicit-line heterogeneous graph.}
+  \caption{Values placed in the common node-feature vector of the
+  explicit-line heterogeneous graph. The two maintenance rows are included
+  only when maintenance observations are enabled.}
   \label{tab:heterogeneous-line-node-features}
   \setlength{\tabcolsep}{3pt}
-  \begin{tabular}{L{0.14\textwidth}L{0.48\textwidth}L{0.28\textwidth}}
+  \begin{tabular}{L{0.30\textwidth}L{0.10\textwidth}L{0.14\textwidth}L{0.14\textwidth}L{0.20\textwidth}}
     \toprule
-    Node & Populated features & Meaning and zero rules \\
+    Shared feature column & Busbar & Generator & Load & Transmission line \\
     \midrule
-    Busbar & \texttt{is\_busbar}$=1$; \texttt{time\_before\_cooldown\_sub}; \texttt{connected}$=1$; \texttt{domain\_mask} & Asset and line-state columns are zero. \\
-    Generator & \texttt{is\_generator}$=1$; \texttt{p}=\texttt{gen\_p}; \texttt{theta}=\texttt{gen\_theta}; \texttt{connected}; \texttt{domain\_mask} & Dynamic asset values are zero when disconnected. \\
-    Load & \texttt{is\_load}$=1$; \texttt{p}=\texttt{load\_p}; \texttt{theta}=\texttt{load\_theta}; \texttt{connected}; \texttt{domain\_mask} & Dynamic asset values are zero when disconnected. \\
-    Transmission line & \texttt{is\_transmission\_line}$=1$; \texttt{line\_status}; \texttt{rho}; \texttt{timestep\_overflow}; \texttt{time\_before\_cooldown\_line}; optional \texttt{time\_next\_maintenance} and \texttt{duration\_next\_maintenance}; \texttt{connected}; \texttt{domain\_mask} & \texttt{p}, \texttt{theta}, and substation cooldown are zero. \\
+    \texttt{is\_busbar} & $1$ & $0$ & $0$ & $0$ \\
+    \texttt{is\_generator} & $0$ & $1$ & $0$ & $0$ \\
+    \texttt{is\_load} & $0$ & $0$ & $1$ & $0$ \\
+    \texttt{is\_transmission\_line} & $0$ & $0$ & $0$ & $1$ \\
+    \texttt{p} & $0$ & \texttt{gen\_p} if connected; $0$ otherwise & \texttt{load\_p} if connected; $0$ otherwise & $0$ \\
+    \texttt{theta} & $0$ & \texttt{gen\_theta} if connected; $0$ otherwise & \texttt{load\_theta} if connected; $0$ otherwise & $0$ \\
+    \texttt{line\_status} & $0$ & $0$ & $0$ & Observed line value \\
+    \texttt{rho} & $0$ & $0$ & $0$ & Observed $\rho_\ell$ \\
+    \texttt{timestep\_overflow} & $0$ & $0$ & $0$ & Observed line value \\
+    \texttt{time\_before\_cooldown\_line} & $0$ & $0$ & $0$ & Observed line value \\
+    \texttt{time\_next\_maintenance} & $0$ & $0$ & $0$ & Observed line value \\
+    \texttt{duration\_next\_maintenance} & $0$ & $0$ & $0$ & Observed line value \\
+    \texttt{time\_before\_cooldown\_sub} & Substation value & $0$ & $0$ & $0$ \\
+    \texttt{connected} & $1$ & $1$ connected; $0$ disconnected & $1$ connected; $0$ disconnected & $1$ online; $0$ offline \\
+    \texttt{domain\_mask} & $1$ controlled; $0$ contextual & $1$ controlled; $0$ contextual & $1$ controlled; $0$ contextual & $1$ if either endpoint is controlled; $0$ otherwise \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-A disconnected line remains allocated. Its \texttt{line\_status} and
-\texttt{connected} are zero, its busbar attachments are masked, and cooldown or
-maintenance values remain visible.
+A disconnected line therefore keeps its node row. Its \texttt{line\_status}
+and \texttt{connected} entries are zero, its busbar attachments are masked, and
+the remaining observed line-state entries, including cooldown and maintenance,
+remain in the line-node vector.
 
-\subsection{Endpoint-specific typed relations}
+\subsection{Shared edge features and endpoint relations}
 \label{subsec:heterogeneous-line-relations}
 
 Let $o(\ell)$ and $e(\ell)$ denote the origin and extremity substations of line
@@ -632,32 +681,57 @@ The line direction is \texttt{bidirectional}, \texttt{line\_to\_busbar}, or
 \texttt{busbar\_to\_line}. An online line has four active attachments in the
 bidirectional case and two in a one-way case. The mask selects the current
 origin and extremity busbars.
-
-Here every edge feature is $[\texttt{rho}\mid\text{relation one-hot}]$.
-Line attachments carry the measured $\rho_{\ell}$; structural and asset edges
-use the neutral value one. Table~\ref{tab:heterogeneous-line-edge-features}
-lists all ten relations.
+\\
+\\
+Every candidate directed edge uses the same ordered ten-dimensional feature
+vector:
+\begin{equation}
+  \begin{split}
+  \mathbf{e}_{uv} = [\,&
+  \texttt{relation\_self},\
+  \texttt{relation\_same\_substation\_busbar},\\
+  &\texttt{relation\_busbar\_to\_line\_origin},\
+  \texttt{relation\_line\_origin\_to\_busbar},\\
+  &\texttt{relation\_busbar\_to\_line\_extremity},\
+  \texttt{relation\_line\_extremity\_to\_busbar},\\
+  &\texttt{relation\_generator\_to\_busbar},\
+  \texttt{relation\_busbar\_to\_generator},\\
+  &\texttt{relation\_load\_to\_busbar},\
+  \texttt{relation\_busbar\_to\_load}
+  \,]^{\mathsf T}\in\mathbb{R}^{10}.
+  \end{split}
+  \label{eq:heterogeneous-line-common-edge-vector}
+\end{equation}
+These edges contain no continuous line-state attributes because the
+transmission-line node already contains \texttt{rho}, status, overflow,
+cooldown, and maintenance. For an active edge, exactly one relation column is
+one and the other nine are zero. An inactive candidate has all ten entries set
+to zero and is removed by \texttt{edge\_mask}$=0$ before message passing.
+Table~\ref{tab:heterogeneous-line-edge-features} gives the active rule and the
+nonzero entries for every relation.
 
 \begin{table}[H]
   \centering
   \scriptsize
-  \caption{Edge relations and features in the explicit-line heterogeneous graph.}
+  \caption{Nonzero entries in the common 10-column edge-feature vector of the
+  explicit-line heterogeneous graph. All relation columns not named in a row
+  are zero.}
   \label{tab:heterogeneous-line-edge-features}
   \setlength{\tabcolsep}{3pt}
-  \begin{tabular}{L{0.26\textwidth}L{0.30\textwidth}L{0.34\textwidth}}
+  \begin{tabular}{L{0.20\textwidth}L{0.31\textwidth}L{0.38\textwidth}}
     \toprule
-    Directed relation & Active rule & Edge features \\
+    Directed relation & Active rule & Relation column set to $1$ \\
     \midrule
-    $v\rightarrow v$ (self) & Optional; always active when enabled & $[1\mid\texttt{relation\_self}=1]$ \\
-    $i(s,b)\rightarrow i(s,b')$, $b\neq b'$ & Optional; every ordered same-substation pair & $[1\mid\texttt{relation\_same\_substation\_busbar}=1]$ \\
-    $i_o\rightarrow\ell$ & Online line, current origin busbar, direction enabled & $[\rho_{\ell}\mid\texttt{relation\_busbar\_to\_line\_origin}=1]$ \\
-    $\ell\rightarrow i_o$ & Same mask; reverse direction enabled & $[\rho_{\ell}\mid\texttt{relation\_line\_origin\_to\_busbar}=1]$ \\
-    $i_e\rightarrow\ell$ & Online line, current extremity busbar, direction enabled & $[\rho_{\ell}\mid\texttt{relation\_busbar\_to\_line\_extremity}=1]$ \\
-    $\ell\rightarrow i_e$ & Same mask; reverse direction enabled & $[\rho_{\ell}\mid\texttt{relation\_line\_extremity\_to\_busbar}=1]$ \\
-    $g\rightarrow i(s(g),b)$ & Generator attached to $b$; direction enabled & $[1\mid\texttt{relation\_generator\_to\_busbar}=1]$ \\
-    $i(s(g),b)\rightarrow g$ & Same mask; reverse direction enabled & $[1\mid\texttt{relation\_busbar\_to\_generator}=1]$ \\
-    $d\rightarrow i(s(d),b)$ & Load attached to $b$; direction enabled & $[1\mid\texttt{relation\_load\_to\_busbar}=1]$ \\
-    $i(s(d),b)\rightarrow d$ & Same mask; reverse direction enabled & $[1\mid\texttt{relation\_busbar\_to\_load}=1]$ \\
+    $v\rightarrow v$ (self) & Optional; always active when enabled & \texttt{relation\_self} \\
+    $i(s,b)\rightarrow i(s,b')$, $b\neq b'$ & Optional; every ordered same-substation pair & \texttt{relation\_same\_substation\_busbar} \\
+    $i_o\rightarrow\ell$ & Online line, current origin busbar, direction enabled & \texttt{relation\_busbar\_to\_line\_origin} \\
+    $\ell\rightarrow i_o$ & Same mask; reverse direction enabled & \texttt{relation\_line\_origin\_to\_busbar} \\
+    $i_e\rightarrow\ell$ & Online line, current extremity busbar, direction enabled & \texttt{relation\_busbar\_to\_line\_extremity} \\
+    $\ell\rightarrow i_e$ & Same mask; reverse direction enabled & \texttt{relation\_line\_extremity\_to\_busbar} \\
+    $g\rightarrow i(s(g),b)$ & Generator attached to $b$; direction enabled & \texttt{relation\_generator\_to\_busbar} \\
+    $i(s(g),b)\rightarrow g$ & Same mask; reverse direction enabled & \texttt{relation\_busbar\_to\_generator} \\
+    $d\rightarrow i(s(d),b)$ & Load attached to $b$; direction enabled & \texttt{relation\_load\_to\_busbar} \\
+    $i(s(d),b)\rightarrow d$ & Same mask; reverse direction enabled & \texttt{relation\_busbar\_to\_load} \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -666,10 +740,9 @@ Origin, extremity, and direction have separate relation types. Generator and
 load attachments follow Equation~\ref{eq:generator-busbar-candidates}; self and
 same-substation relations remain optional.
 
-For this schema, GINE and GAT do not receive cooldown, overflow, maintenance,
-or status values on the attachment edges. Those quantities belong to the
-transmission-line node. An endpoint edge contains only the measured
-\texttt{rho} and one endpoint-and-direction relation indicator.
+For this schema, GINE and GAT receive no line-state value on the attachment
+edges. Every endpoint edge contains only one endpoint-and-direction relation
+indicator; the complete line state is carried by the transmission-line node.
 
 \subsection{Message-passing path through a line node}
 \label{subsec:heterogeneous-line-message-path}

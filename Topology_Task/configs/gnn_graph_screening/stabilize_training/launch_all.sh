@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+sbatch job_jed.sh configs/gnn_graph_screening/stabilize_training/gs_stab_bus_n0_none_kl010_s1.toml
+sbatch job_jed.sh configs/gnn_graph_screening/stabilize_training/gs_stab_bus_n0_none_kl010_s2.toml
+sbatch job_jed.sh configs/gnn_graph_screening/stabilize_training/gs_stab_bus_n0_none_kl010_s3.toml
+sbatch job_jed.sh configs/gnn_graph_screening/stabilize_training/gs_stab_bus_n0_none_kl015_s1.toml
+sbatch job_jed.sh configs/gnn_graph_screening/stabilize_training/gs_stab_bus_n0_none_kl015_s2.toml
+sbatch job_jed.sh configs/gnn_graph_screening/stabilize_training/gs_stab_bus_n0_none_kl015_s3.toml
