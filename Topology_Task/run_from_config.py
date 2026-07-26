@@ -127,9 +127,17 @@ def validate_args(config_args: dict[str, Any]) -> None:
             "busbar_to_line",
         },
         "gnn_summary_edge_direction": {"bidirectional", "toward_summary"},
+        "gnn_virtual_edge_direction": {
+            "inherit",
+            "bidirectional",
+            "toward_virtual",
+        },
     }
     for key, allowed in direction_choices.items():
-        value = str(config_args.get(key, "bidirectional")).lower()
+        default = (
+            "inherit" if key == "gnn_virtual_edge_direction" else "bidirectional"
+        )
+        value = str(config_args.get(key, default)).lower()
         if value not in allowed:
             choices = ", ".join(sorted(allowed))
             raise SystemExit(

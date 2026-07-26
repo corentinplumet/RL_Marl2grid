@@ -729,6 +729,70 @@ class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
         )
         self.assertTrue(bool(th.all(edge_attr[-6:] == 0.0)))
 
+    def test_only_virtual_node_edges_can_be_one_way(self):
+        spec = self.builder.specs["state"]
+        graph = self.builder.build(make_obs())["state"]
+        tensor_graph = {
+            key: th.tensor(value)
+            for key, value in graph.items()
+            if key in {"node_features", "edge_features", "node_mask", "edge_mask"}
+        }
+        encoder = GraphEncoder(
+            spec,
+            hidden_dim=8,
+            out_dim=4,
+            n_layers=2,
+            conv_type="gine",
+            readout_aggr="virtual_node",
+            node_pre_encoder=True,
+            add_substation_nodes=True,
+            summary_edge_direction="bidirectional",
+            virtual_edge_direction="toward_virtual",
+        )
+
+        x, edge_index, edge_attr, batch, node_mask, flat_node_ids = (
+            encoder._to_pyg_batch(tensor_graph)
+        )
+        x = encoder.node_pre_encoder(x)
+        (
+            _,
+            edge_index,
+            edge_attr,
+            _,
+            _,
+            _,
+            _,
+            virtual_indices,
+        ) = encoder._append_hierarchy_nodes(
+            x,
+            edge_index,
+            edge_attr,
+            batch,
+            flat_node_ids,
+            node_mask=node_mask,
+        )
+
+        self.assertEqual(virtual_indices.tolist(), [9])
+        self.assertEqual(edge_index.shape[1], 18)
+        self.assertEqual(
+            {tuple(edge) for edge in edge_index[:, -10:-2].T.tolist()},
+            {
+                (0, 7),
+                (1, 7),
+                (7, 0),
+                (7, 1),
+                (2, 8),
+                (3, 8),
+                (8, 2),
+                (8, 3),
+            },
+        )
+        self.assertEqual(
+            {tuple(edge) for edge in edge_index[:, -2:].T.tolist()},
+            {(7, 9), (8, 9)},
+        )
+        self.assertTrue(bool(th.all(edge_attr[-10:] == 0.0)))
+
         embedding = encoder(tensor_graph)
         self.assertEqual(tuple(embedding.shape), (4,))
         self.assertTrue(bool(th.isfinite(embedding).all()))

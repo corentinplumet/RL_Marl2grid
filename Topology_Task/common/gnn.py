@@ -10,6 +10,7 @@ except ModuleNotFoundError:
 
 
 SUMMARY_EDGE_DIRECTIONS = {"bidirectional", "toward_summary"}
+VIRTUAL_EDGE_DIRECTIONS = {"inherit", "bidirectional", "toward_virtual"}
 
 
 def _validate_summary_edge_direction(value: str) -> str:
@@ -18,6 +19,22 @@ def _validate_summary_edge_direction(value: str) -> str:
         choices = ", ".join(sorted(SUMMARY_EDGE_DIRECTIONS))
         raise ValueError(
             f"Unsupported summary edge direction '{value}'. Use one of: {choices}."
+        )
+    return direction
+
+
+def _resolve_virtual_edge_direction(value: str, summary_direction: str) -> str:
+    direction = str(value).strip().lower()
+    if direction not in VIRTUAL_EDGE_DIRECTIONS:
+        choices = ", ".join(sorted(VIRTUAL_EDGE_DIRECTIONS))
+        raise ValueError(
+            f"Unsupported virtual edge direction '{value}'. Use one of: {choices}."
+        )
+    if direction == "inherit":
+        return (
+            "bidirectional"
+            if summary_direction == "bidirectional"
+            else "toward_virtual"
         )
     return direction
 
@@ -32,11 +49,16 @@ class _VirtualNodeEncoderBase(nn.Module):
         use_virtual_node: bool,
         add_substation_nodes: bool,
         summary_edge_direction: str,
+        virtual_edge_direction: str,
     ) -> None:
         self.use_virtual_node = bool(use_virtual_node)
         self.add_substation_nodes = bool(add_substation_nodes)
         self.summary_edge_direction = _validate_summary_edge_direction(
             summary_edge_direction
+        )
+        self.virtual_edge_direction = _resolve_virtual_edge_direction(
+            virtual_edge_direction,
+            self.summary_edge_direction,
         )
         node_ids = np.asarray(graph_spec["node_ids"], dtype=np.int64)
         busbar_mask = (node_ids % self.node_id_stride) < self.n_busbar
@@ -113,10 +135,11 @@ class _VirtualNodeEncoderBase(nn.Module):
             source_nodes: th.Tensor,
             summary_nodes: th.Tensor,
             relation_type: Optional[int],
+            direction: str,
         ) -> None:
             nonlocal edge_index, edge_attr, edge_type
             toward_summary = th.stack([source_nodes, summary_nodes], dim=0)
-            if self.summary_edge_direction == "bidirectional":
+            if direction == "bidirectional":
                 structural_edges = th.cat(
                     [
                         toward_summary,
@@ -199,6 +222,7 @@ class _VirtualNodeEncoderBase(nn.Module):
                 active_busbar_ids,
                 substation_for_busbar,
                 substation_edge_type,
+                self.summary_edge_direction,
             )
 
             if node_mask is not None:
@@ -254,6 +278,7 @@ class _VirtualNodeEncoderBase(nn.Module):
                 summary_nodes,
                 virtual_for_edge,
                 virtual_edge_type,
+                self.virtual_edge_direction,
             )
 
             virtual_x = self.virtual_node_embedding.to(dtype=x.dtype).expand(
@@ -316,6 +341,7 @@ class GraphEncoder(_VirtualNodeEncoderBase):
         gcn_edge_weight_feature: str = "none",
         add_substation_nodes: bool = False,
         summary_edge_direction: str = "bidirectional",
+        virtual_edge_direction: str = "inherit",
     ) -> None:
         super().__init__()
         if GCNConv is None:
@@ -377,6 +403,7 @@ class GraphEncoder(_VirtualNodeEncoderBase):
             use_virtual_node=self.readout_aggr == "virtual_node",
             add_substation_nodes=add_substation_nodes,
             summary_edge_direction=summary_edge_direction,
+            virtual_edge_direction=virtual_edge_direction,
         )
 
         if edge_pre_encoder and self.uses_edge_attr:
@@ -750,6 +777,7 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
         relation_bias: bool = True,
         add_substation_nodes: bool = False,
         summary_edge_direction: str = "bidirectional",
+        virtual_edge_direction: str = "inherit",
     ) -> None:
         super().__init__()
         if pyg_softmax is None:
@@ -845,6 +873,7 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
             use_virtual_node=self.readout_aggr == "virtual_node",
             add_substation_nodes=add_substation_nodes,
             summary_edge_direction=summary_edge_direction,
+            virtual_edge_direction=virtual_edge_direction,
         )
 
         if edge_pre_encoder and self.edge_dim > 0 and use_edge_attr:
@@ -1109,6 +1138,9 @@ def build_graph_encoder(graph_spec: Dict[str, Any], args: Dict[str, Any]) -> Gra
             summary_edge_direction=getattr(
                 args, "gnn_summary_edge_direction", "bidirectional"
             ),
+            virtual_edge_direction=getattr(
+                args, "gnn_virtual_edge_direction", "inherit"
+            ),
         )
     return GraphEncoder(
         graph_spec=graph_spec,
@@ -1128,6 +1160,9 @@ def build_graph_encoder(graph_spec: Dict[str, Any], args: Dict[str, Any]) -> Gra
         add_substation_nodes=getattr(args, "gnn_add_substation_nodes", False),
         summary_edge_direction=getattr(
             args, "gnn_summary_edge_direction", "bidirectional"
+        ),
+        virtual_edge_direction=getattr(
+            args, "gnn_virtual_edge_direction", "inherit"
         ),
     )
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Create and promote the staged graph-architecture screening configs.
 
-The first stage is a fixed 3 x 4 representation/normalization screen. Later
-stages must inherit the actual winner of the preceding stage, so this tool
-materializes those configs only after a winner has been selected.
+The first stage screens representation and normalization. Stage 2 is a fixed
+bus-graph structural factorial, while later promotion stages inherit the
+selected configuration from the preceding experiment.
 """
 
 from __future__ import annotations
@@ -52,6 +52,7 @@ STAGE1C_STRUCTURES = tuple(
     for structure in itertools.product((False, True), repeat=3)
     if structure != (False, False, False)
 )
+STAGE2_STRUCTURES = tuple(itertools.product((False, True), repeat=3))
 ASSET_EDGE_DIRECTIONS = (
     "bidirectional",
     "asset_to_busbar",
@@ -158,6 +159,7 @@ gnn_generator_edge_direction = "bidirectional"
 gnn_load_edge_direction = "bidirectional"
 gnn_line_node_edge_direction = "bidirectional"
 gnn_summary_edge_direction = "bidirectional"
+gnn_virtual_edge_direction = "inherit"
 
 # Structural factors (held off in stage 1)
 gnn_add_substation_edges = false
@@ -177,7 +179,7 @@ gnn_running_norm = {running_norm}
 gnn_power_scale_mw = 0.0
 gnn_norm_clip = 10.0
 
-# Approximately half of the 15M-step bus14 reference budget
+# Training budget (overridden by later stages when required)
 total_timesteps = 8000000
 n_steps = 576
 eval_freq = 82944
@@ -334,6 +336,9 @@ def _manifest_row(path: Path) -> dict[str, Any]:
         ),
         "summary_direction": args.get(
             "gnn_summary_edge_direction", "bidirectional"
+        ),
+        "virtual_direction": args.get(
+            "gnn_virtual_edge_direction", "inherit"
         ),
         "timesteps": args.get("total_timesteps"),
     }
@@ -550,32 +555,42 @@ def _promoted_name(prefix: str, source_args: dict[str, Any], suffix: str) -> str
 
 
 def create_stage2(
-    winner: Path, output_dir: Path = STAGE2_DIR, force: bool = False
+    output_dir: Path = STAGE2_DIR, force: bool = False
 ) -> list[Path]:
-    source = winner.read_text(encoding="utf-8")
-    source_args = _read_config(winner)["args"]
-    if str(source_args.get("gnn_type", "")).lower() != "gine":
-        raise ValueError("Stage 2 must inherit a stage-1 GINE winner.")
+    """Create the full three-seed bus structural factorial."""
 
     config_paths: list[Path] = []
-    for edges, nodes, virtual in itertools.product((False, True), repeat=3):
+    for edges, nodes, virtual in STAGE2_STRUCTURES:
         suffix = f"e{int(edges)}n{int(nodes)}v{int(virtual)}"
-        name = _promoted_name("gs_s2", source_args, suffix)
-        content = _apply_values(
-            source,
-            {
-                ("run", "name"): name,
-                ("args", "exp_tag"): name,
-                ("args", "gnn_add_substation_edges"): edges,
-                ("args", "gnn_add_substation_nodes"): nodes,
-                ("args", "gnn_readout_aggr"): "virtual_node" if virtual else "mean",
-                ("args", "sparse_gt_pooling"): "",
-                ("args", "sparse_gt_add_substation_edges"): edges,
-            },
-        )
-        path = output_dir / f"{name}.toml"
-        _write(path, content, force)
-        config_paths.append(path)
+        for seed in (0, 1, 2):
+            name = f"gs_s2_bus_n0_none_{suffix}_s{seed}"
+            content = BASE_CONFIG.format(
+                name=name,
+                graph_type="bus",
+                physical_scaling=_bool(False),
+                running_norm=_bool(False),
+            )
+            content = _apply_values(
+                content,
+                {
+                    ("environment", "MAX_TIME_LIMIT_MINUTES"): "5760",
+                    ("args", "seed"): seed,
+                    ("args", "time_limit"): 5760,
+                    ("args", "total_timesteps"): 15_000_000,
+                    ("args", "gnn_add_substation_edges"): edges,
+                    ("args", "gnn_add_substation_nodes"): nodes,
+                    ("args", "gnn_readout_aggr"): (
+                        "virtual_node" if virtual else "mean"
+                    ),
+                    ("args", "gnn_summary_edge_direction"): "bidirectional",
+                    ("args", "gnn_virtual_edge_direction"): "toward_virtual",
+                    ("args", "sparse_gt_pooling"): "",
+                    ("args", "sparse_gt_add_substation_edges"): edges,
+                },
+            )
+            path = output_dir / f"{name}.toml"
+            _write(path, content, force)
+            config_paths.append(path)
     _write_launch_script(output_dir, config_paths, force)
     _write_manifest(output_dir, config_paths, force)
     return config_paths
@@ -700,9 +715,9 @@ def _parser() -> argparse.ArgumentParser:
     heterogeneous_structure.add_argument("--force", action="store_true")
 
     structure = subparsers.add_parser(
-        "promote-structure", help="Create eight stage-2 configs from the stage-1 winner."
+        "bus-structure",
+        help="Create the 24-config, three-seed Stage 2 bus structural factorial.",
     )
-    structure.add_argument("winner", type=Path)
     structure.add_argument("--output", type=Path, default=STAGE2_DIR)
     structure.add_argument("--force", action="store_true")
 
@@ -737,8 +752,8 @@ def main() -> int:
         paths = create_stage1d(args.output, args.force)
     elif args.command == "heterogeneous-structure":
         paths = create_stage1e(args.output, args.force)
-    elif args.command == "promote-structure":
-        paths = create_stage2(args.winner, args.output, args.force)
+    elif args.command == "bus-structure":
+        paths = create_stage2(args.output, args.force)
     elif args.command == "promote-encoder":
         paths = create_stage3(args.winner, args.output, args.force)
     elif args.command == "confirm":

@@ -31,14 +31,17 @@ passing. The four controls are:
 - `gnn_line_node_edge_direction`: `bidirectional`, `line_to_busbar`, or
   `busbar_to_line` for the explicit-line representation;
 - `gnn_summary_edge_direction`: `bidirectional` or `toward_summary` for
-  busbar-to-substation and substation-to-virtual-node hierarchy links.
+  busbar/substation links;
+- `gnn_virtual_edge_direction`: `inherit`, `bidirectional`, or
+  `toward_virtual` for the graph-level virtual-node links.
 
 Direct physical transmission relations and same-substation busbar relations
 remain bidirectional. A useful follow-up to the main screen is to take its
 winning heterogeneous configuration and compare the bidirectional baseline
-with `asset_to_busbar`, `line_to_busbar`, and `toward_summary`, which makes the
-busbar/hierarchy backbone aggregate equipment state without sending its context
-back to terminal equipment nodes.
+with `asset_to_busbar`, `line_to_busbar`, `toward_summary`, and
+`toward_virtual`. These controls allow the busbar/hierarchy backbone to
+aggregate equipment state without sending higher-level context back to the
+lower-level nodes.
 
 The MLP critic is deliberately kept fixed during screening. The critic is used
 only for centralized training, while the graph representation being screened
@@ -101,8 +104,9 @@ bash configs/gnn_graph_screening/stage1b_normalization_confirmation/launch_all.s
 Rank configurations at the common 8M-step endpoint using the mean and standard
 deviation across seeds.  The periodic evaluation remains at ten episodes to
 control training cost; evaluate the selected checkpoints afterward on at least
-30 episodes or the complete held-out chronic split.  Promote the confirmed
-winner, rather than the original single-seed run, into Stage 2.
+30 episodes or the complete held-out chronic split. Keep this as the
+representation/normalization comparison; Stage 2 separately tests structural
+augmentation on fresh bus-graph runs.
 
 ## Stage 1c: provisional structural screen
 
@@ -122,11 +126,10 @@ python tools/gnn_graph_screening.py validate \
 bash configs/gnn_graph_screening/stage1c_provisional_structure/launch_all.sh
 ```
 
-This is an early use of otherwise idle compute, not a replacement for Stage 2.
-If Stage 1b confirms `bus + n0_none`, its baseline and these seven runs form the
-complete structural factorial.  If another Stage 1b configuration wins, rerun
-the promising structural choices with that confirmed representation and
-normalization before drawing a final structural conclusion.
+This is an early single-seed pilot, not the final structural comparison.
+Stage 2 repeats all eight combinations—including a new unaugmented
+baseline—with three seeds, 15M steps, and a longer training limit before any
+structural conclusion is drawn.
 
 ## Stage 1d: heterogeneous asset-edge directions
 
@@ -177,21 +180,25 @@ whether that slower representation warrants additional seeds.  Stop adding
 new factors after this stage and use the observed results to choose which
 configurations deserve encoder and multi-seed confirmation.
 
-## Stage 2: structural factors
+## Stage 2: bus structural factors
 
-Promote the actual stage-1 winner. This creates all eight binary combinations
-of same-substation edges (`e`), substation summary nodes (`n`), and virtual-node
-readout (`v`) while preserving the winning representation and normalization:
+Stage 2 first tests graph augmentation on the bus representation, without
+assuming that an earlier unaugmented run can serve as its baseline. It creates
+all eight binary combinations of same-substation edges (`e`), substation
+summary nodes (`n`), and virtual-node readout (`v`), each as fresh runs with
+seeds 0, 1, and 2. All 24 runs use no input preprocessing, 15M steps, and a
+5,760-minute (four-day) limit. The `e` and `n` links are bidirectional, while
+the `v` links carry messages only toward the virtual node:
 
 ```bash
-python tools/gnn_graph_screening.py promote-structure \
-  configs/gnn_graph_screening/stage1_representation_normalization/WINNER.toml
+python tools/gnn_graph_screening.py bus-structure
 bash configs/gnn_graph_screening/stage2_structure/launch_all.sh
 ```
 
-The generated filename contains `e0/1`, `n0/1`, and `v0/1`. Substation summary
-nodes currently use learned substation-indexed initial embeddings, so report
-their in-grid performance separately from the transfer/generalization claim.
+The generated filename contains `e0/1`, `n0/1`, `v0/1`, and `s0/1/2`.
+Substation summary nodes currently use learned substation-indexed initial
+embeddings, so report their in-grid performance separately from the
+transfer/generalization claim.
 
 ## Stage 3: encoder comparison
 

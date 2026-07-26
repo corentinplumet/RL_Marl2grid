@@ -15,6 +15,7 @@ from tools.gnn_graph_screening import (
     STAGE1D_DIRECTIONS,
     STAGE1B_FINALISTS,
     STAGE1C_STRUCTURES,
+    STAGE2_STRUCTURES,
     create_confirmation,
     create_stage1,
     create_stage1b,
@@ -33,6 +34,51 @@ def load_args(path: Path):
 
 
 class GraphScreeningConfigTests(unittest.TestCase):
+    def test_stage2_covers_all_bus_structures_with_three_fresh_seeds(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp) / "stage2"
+            configs = create_stage2(output_dir)
+            self.assertEqual(len(configs), 24)
+            validate_configs([output_dir])
+
+            seeds_by_structure = {
+                structure: set() for structure in STAGE2_STRUCTURES
+            }
+            for path in configs:
+                with path.open("rb") as file:
+                    config = tomllib.load(file)
+                args = config["args"]
+                structure = (
+                    args["gnn_add_substation_edges"],
+                    args["gnn_add_substation_nodes"],
+                    args["gnn_readout_aggr"] == "virtual_node",
+                )
+                seeds_by_structure[structure].add(args["seed"])
+
+                self.assertEqual(args["gnn_graph_type"], "bus")
+                self.assertEqual(args["gnn_type"], "gine")
+                self.assertEqual(args["critic_encoder"], "mlp")
+                self.assertFalse(args["gnn_physical_scaling"])
+                self.assertFalse(args["gnn_running_norm"])
+                self.assertEqual(
+                    args["sparse_gt_add_substation_edges"], structure[0]
+                )
+                self.assertEqual(
+                    args["gnn_summary_edge_direction"], "bidirectional"
+                )
+                self.assertEqual(
+                    args["gnn_virtual_edge_direction"], "toward_virtual"
+                )
+                self.assertEqual(args["total_timesteps"], 15_000_000)
+                self.assertEqual(args["time_limit"], 5760)
+                self.assertEqual(
+                    config["environment"]["MAX_TIME_LIMIT_MINUTES"], "5760"
+                )
+
+            self.assertEqual(set(seeds_by_structure), set(STAGE2_STRUCTURES))
+            for seeds in seeds_by_structure.values():
+                self.assertEqual(seeds, {0, 1, 2})
+
     def test_stage1e_combines_heterogeneous_structures_and_line_scout(self):
         with tempfile.TemporaryDirectory() as tmp:
             output_dir = Path(tmp) / "stage1e"
@@ -237,13 +283,8 @@ class GraphScreeningConfigTests(unittest.TestCase):
                 self.assertNotIn("reduced_action_space", args)
                 self.assertEqual(args["total_timesteps"], 8_000_000)
 
-            stage1_winner = next(
-                path
-                for path in stage1
-                if path.stem == "gs_s1_hetero_line_n3_both_s0"
-            )
-            stage2 = create_stage2(stage1_winner, root / "stage2")
-            self.assertEqual(len(stage2), 8)
+            stage2 = create_stage2(root / "stage2")
+            self.assertEqual(len(stage2), 24)
             validate_configs([root / "stage2"])
             observed_structures = {
                 (
@@ -264,7 +305,7 @@ class GraphScreeningConfigTests(unittest.TestCase):
             )
 
             stage2_winner = next(
-                path for path in stage2 if "e1n0v1" in path.stem
+                path for path in stage2 if "e1n0v1_s0" in path.stem
             )
             stage3 = create_stage3(stage2_winner, root / "stage3")
             self.assertEqual(len(stage3), 5)
@@ -274,9 +315,9 @@ class GraphScreeningConfigTests(unittest.TestCase):
             )
             for path in stage3:
                 args = load_args(path)
-                self.assertEqual(args["gnn_graph_type"], "heterogeneous_line")
-                self.assertTrue(args["gnn_physical_scaling"])
-                self.assertTrue(args["gnn_running_norm"])
+                self.assertEqual(args["gnn_graph_type"], "bus")
+                self.assertFalse(args["gnn_physical_scaling"])
+                self.assertFalse(args["gnn_running_norm"])
                 self.assertTrue(args["gnn_add_substation_edges"])
                 self.assertFalse(args["gnn_add_substation_nodes"])
                 self.assertEqual(args["gnn_readout_aggr"], "virtual_node")

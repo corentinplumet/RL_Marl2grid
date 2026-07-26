@@ -518,9 +518,22 @@ def get_alg_args() -> Namespace:
         default="bidirectional",
         choices=["bidirectional", "toward_summary"],
         help=(
-            "Direction of encoder-added hierarchy edges. bidirectional exchanges "
-            "messages in both directions; toward_summary keeps only busbar-to-"
-            "substation and substation-to-virtual-node messages."
+            "Direction of busbar/substation hierarchy edges. bidirectional "
+            "exchanges messages in both directions; toward_summary keeps only "
+            "busbar-to-substation messages. Virtual-node edges use "
+            "--gnn-virtual-edge-direction."
+        ),
+    )
+    parser.add_argument(
+        "--gnn-virtual-edge-direction",
+        type=str,
+        default="inherit",
+        choices=["inherit", "bidirectional", "toward_virtual"],
+        help=(
+            "Direction of edges entering the graph-level virtual node. "
+            "toward_virtual keeps only busbar-to-virtual or "
+            "substation-to-virtual messages. inherit preserves the historical "
+            "--gnn-summary-edge-direction behavior."
         ),
     )
     parser.add_argument(
