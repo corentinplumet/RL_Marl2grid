@@ -192,10 +192,14 @@ the `v` links carry messages only toward the virtual node:
 
 ```bash
 python tools/gnn_graph_screening.py bus-structure
-bash configs/gnn_graph_screening/stage2_structure/launch_all.sh
+bash configs/gnn_graph_screening/stage2_structure/launch_jed.sh   # on JED
+bash configs/gnn_graph_screening/stage2_structure/launch_izar.sh  # on Izar
 ```
 
 The generated filename contains `e0/1`, `n0/1`, `v0/1`, and `s0/1/2`.
+The reproducible constrained-random split assigns 12 runs to each cluster,
+balances every seed and structural factor across clusters, and records the
+assignment in the manifest.
 Substation summary nodes currently use learned substation-indexed initial
 embeddings, so report their in-grid performance separately from the
 transfer/generalization claim.

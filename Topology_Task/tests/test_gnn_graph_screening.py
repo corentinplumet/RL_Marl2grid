@@ -1,5 +1,7 @@
+import csv
 import tempfile
 import unittest
+from collections import Counter
 from pathlib import Path
 
 try:
@@ -78,6 +80,69 @@ class GraphScreeningConfigTests(unittest.TestCase):
             self.assertEqual(set(seeds_by_structure), set(STAGE2_STRUCTURES))
             for seeds in seeds_by_structure.values():
                 self.assertEqual(seeds, {0, 1, 2})
+
+            assignments = {}
+            for cluster in ("jed", "izar"):
+                launch_path = output_dir / f"launch_{cluster}.sh"
+                commands = [
+                    line
+                    for line in launch_path.read_text(encoding="utf-8").splitlines()
+                    if line.startswith("sbatch ")
+                ]
+                self.assertEqual(len(commands), 12)
+                expected_wrapper = f"job_{cluster}.sh"
+                cluster_configs = []
+                for command in commands:
+                    _, wrapper, config_path = command.split()
+                    self.assertEqual(wrapper, expected_wrapper)
+                    config_name = Path(config_path).name
+                    self.assertNotIn(config_name, assignments)
+                    assignments[config_name] = cluster
+                    cluster_configs.append(output_dir / config_name)
+
+                cluster_args = [load_args(path) for path in cluster_configs]
+                self.assertEqual(
+                    Counter(args["seed"] for args in cluster_args),
+                    {0: 4, 1: 4, 2: 4},
+                )
+                for factor in (
+                    "gnn_add_substation_edges",
+                    "gnn_add_substation_nodes",
+                ):
+                    self.assertEqual(
+                        sum(bool(args[factor]) for args in cluster_args),
+                        6,
+                    )
+                self.assertEqual(
+                    sum(
+                        args["gnn_readout_aggr"] == "virtual_node"
+                        for args in cluster_args
+                    ),
+                    6,
+                )
+
+                structure_counts = Counter(
+                    (
+                        args["gnn_add_substation_edges"],
+                        args["gnn_add_substation_nodes"],
+                        args["gnn_readout_aggr"] == "virtual_node",
+                    )
+                    for args in cluster_args
+                )
+                self.assertEqual(set(structure_counts), set(STAGE2_STRUCTURES))
+                self.assertTrue(
+                    all(count in {1, 2} for count in structure_counts.values())
+                )
+
+            self.assertEqual(set(assignments), {path.name for path in configs})
+            with (output_dir / "manifest.csv").open(
+                encoding="utf-8", newline=""
+            ) as file:
+                manifest_rows = list(csv.DictReader(file))
+            self.assertEqual(
+                {row["config"]: row["cluster"] for row in manifest_rows},
+                assignments,
+            )
 
     def test_stage1e_combines_heterogeneous_structures_and_line_scout(self):
         with tempfile.TemporaryDirectory() as tmp:

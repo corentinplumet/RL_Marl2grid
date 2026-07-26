@@ -19,6 +19,16 @@ Each run has 15,000,000 training steps and a 5,760-minute (four-day) limit in
 both `[args].time_limit` and
 `[environment].MAX_TIME_LIMIT_MINUTES`.
 
+The runs are assigned by a reproducible constrained randomization
+(`split_seed=20260726`) to JED and Izar. Each cluster receives:
+
+- 12 runs;
+- four runs for each training seed;
+- six enabled and six disabled cases for each of `e`, `n`, and `v`;
+- one or two seeds from every structural configuration.
+
+The `cluster` column in `manifest.csv` records the assignment.
+
 Regenerate and validate from `Topology_Task`:
 
 ```bash
@@ -27,8 +37,12 @@ python tools/gnn_graph_screening.py validate \
   configs/gnn_graph_screening/stage2_structure
 ```
 
-Launch all 24 jobs from the repository root:
+Launch each half from the repository root on its assigned cluster:
 
 ```bash
-bash Topology_Task/configs/gnn_graph_screening/stage2_structure/launch_all.sh
+# On JED
+bash Topology_Task/configs/gnn_graph_screening/stage2_structure/launch_jed.sh
+
+# On Izar
+bash Topology_Task/configs/gnn_graph_screening/stage2_structure/launch_izar.sh
 ```

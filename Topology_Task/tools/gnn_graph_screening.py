@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import csv
 import itertools
+import random
 import re
 import sys
 from pathlib import Path
@@ -53,6 +54,7 @@ STAGE1C_STRUCTURES = tuple(
     if structure != (False, False, False)
 )
 STAGE2_STRUCTURES = tuple(itertools.product((False, True), repeat=3))
+STAGE2_CLUSTER_SPLIT_SEED = 20260726
 ASSET_EDGE_DIRECTIONS = (
     "bidirectional",
     "asset_to_busbar",
@@ -294,15 +296,21 @@ def _relative_config_path(path: Path) -> str:
         return str(path.resolve())
 
 
-def _write_launch_script(output_dir: Path, config_paths: Iterable[Path], force: bool) -> None:
+def _write_launch_script(
+    output_dir: Path,
+    config_paths: Iterable[Path],
+    force: bool,
+    filename: str = "launch_all.sh",
+    job_script: str = "job_jed.sh",
+) -> None:
     commands = [
         "#!/usr/bin/env bash",
         "set -euo pipefail",
         "",
-        *(f"sbatch job_jed.sh {_relative_config_path(path)}" for path in config_paths),
+        *(f"sbatch {job_script} {_relative_config_path(path)}" for path in config_paths),
         "",
     ]
-    _write(output_dir / "launch_all.sh", "\n".join(commands), force)
+    _write(output_dir / filename, "\n".join(commands), force)
 
 
 def _normalization_label(args: dict[str, Any]) -> str:
@@ -344,8 +352,18 @@ def _manifest_row(path: Path) -> dict[str, Any]:
     }
 
 
-def _write_manifest(output_dir: Path, config_paths: list[Path], force: bool) -> None:
-    rows = [_manifest_row(path) for path in config_paths]
+def _write_manifest(
+    output_dir: Path,
+    config_paths: list[Path],
+    force: bool,
+    cluster_by_config: dict[Path, str] | None = None,
+) -> None:
+    rows = []
+    for path in config_paths:
+        row = _manifest_row(path)
+        if cluster_by_config is not None:
+            row["cluster"] = cluster_by_config[path]
+        rows.append(row)
     fieldnames = list(rows[0]) if rows else []
     lines: list[str] = []
     if fieldnames:
@@ -357,6 +375,102 @@ def _write_manifest(output_dir: Path, config_paths: list[Path], force: bool) -> 
         writer.writerows(rows)
         lines.append(buffer.getvalue())
     _write(output_dir / "manifest.csv", "".join(lines), force)
+
+
+def _stage2_cluster_split(
+    config_paths: list[Path],
+) -> tuple[list[Path], list[Path]]:
+    """Randomize Stage 2 while balancing factors, seeds, and replications."""
+
+    path_by_design: dict[tuple[tuple[bool, bool, bool], int], Path] = {}
+    for path in config_paths:
+        args = _read_config(path)["args"]
+        structure = (
+            bool(args["gnn_add_substation_edges"]),
+            bool(args["gnn_add_substation_nodes"]),
+            args["gnn_readout_aggr"] == "virtual_node",
+        )
+        path_by_design[(structure, int(args["seed"]))] = path
+
+    rng = random.Random(STAGE2_CLUSTER_SPLIT_SEED)
+    complementary_pairs = []
+    for structure in STAGE2_STRUCTURES:
+        complement = tuple(not value for value in structure)
+        if structure < complement:
+            for seed in (0, 1, 2):
+                complementary_pairs.append(
+                    (
+                        path_by_design[(structure, seed)],
+                        path_by_design[(complement, seed)],
+                        structure,
+                        complement,
+                    )
+                )
+
+    for _ in range(10_000):
+        jed_paths: list[Path] = []
+        izar_paths: list[Path] = []
+        jed_count_by_structure = {structure: 0 for structure in STAGE2_STRUCTURES}
+        for first, second, first_structure, second_structure in complementary_pairs:
+            if rng.getrandbits(1):
+                jed_path, izar_path = first, second
+                jed_structure = first_structure
+            else:
+                jed_path, izar_path = second, first
+                jed_structure = second_structure
+            jed_paths.append(jed_path)
+            izar_paths.append(izar_path)
+            jed_count_by_structure[jed_structure] += 1
+
+        structures_replicated = all(
+            count in {1, 2} for count in jed_count_by_structure.values()
+        )
+        factors_balanced = all(
+            sum(
+                count
+                for structure, count in jed_count_by_structure.items()
+                if structure[factor_index]
+            )
+            == 6
+            for factor_index in range(3)
+        )
+        if structures_replicated and factors_balanced:
+            rng.shuffle(jed_paths)
+            rng.shuffle(izar_paths)
+            return jed_paths, izar_paths
+
+    raise RuntimeError("Could not construct a balanced Stage 2 cluster split.")
+
+
+def _write_stage2_launchers(
+    output_dir: Path,
+    jed_paths: list[Path],
+    izar_paths: list[Path],
+    force: bool,
+) -> None:
+    _write_launch_script(
+        output_dir,
+        jed_paths,
+        force,
+        filename="launch_jed.sh",
+        job_script="job_jed.sh",
+    )
+    _write_launch_script(
+        output_dir,
+        izar_paths,
+        force,
+        filename="launch_izar.sh",
+        job_script="job_izar.sh",
+    )
+    notice = [
+        "#!/usr/bin/env bash",
+        "set -euo pipefail",
+        "",
+        'echo "Run launch_jed.sh on JED and launch_izar.sh on Izar." >&2',
+        "exit 1",
+        "",
+    ]
+    _write(output_dir / "launch_all.sh", "\n".join(notice), force)
 
 
 def create_stage1(output_dir: Path = STAGE1_DIR, force: bool = False) -> list[Path]:
@@ -591,8 +705,13 @@ def create_stage2(
             path = output_dir / f"{name}.toml"
             _write(path, content, force)
             config_paths.append(path)
-    _write_launch_script(output_dir, config_paths, force)
-    _write_manifest(output_dir, config_paths, force)
+    jed_paths, izar_paths = _stage2_cluster_split(config_paths)
+    _write_stage2_launchers(output_dir, jed_paths, izar_paths, force)
+    cluster_by_config = {
+        **{path: "jed" for path in jed_paths},
+        **{path: "izar" for path in izar_paths},
+    }
+    _write_manifest(output_dir, config_paths, force, cluster_by_config)
     return config_paths
 
 
