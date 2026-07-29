@@ -40,6 +40,7 @@ class Logger:
 
         self.wb_mode = args.wandb_mode
 
+        init_timeout = float(os.environ.get("WANDB_INIT_TIMEOUT", "300"))
         wb_path = wb.init(
             name=run_name,
             id=run_name,
@@ -47,7 +48,10 @@ class Logger:
             mode=self.wb_mode,
             project=args.wandb_project,
             entity=args.wandb_entity,
-            settings=wb.Settings(_disable_stats=True),
+            settings=wb.Settings(
+                _disable_stats=True,
+                init_timeout=init_timeout,
+            ),
             resume=True if args.resume_run_name else None
             #sync_tensorboard=True,
         )
