@@ -9,7 +9,13 @@ from common.action_trace import (
     decode_action_ids_safely,
     tensor_scalar_to_float,
 )
-from common.checkpoint import CheckpointSaver
+from common.checkpoint import (
+    EXACT_BOUNDARY_PHASE,
+    CheckpointSaver,
+    capture_rng_state,
+    exact_resume_state,
+    restore_rng_state,
+)
 from common.explainability import (
     EXPLAIN_LINE_KEYS,
     EXPLAIN_SCALAR_KEYS,
@@ -435,18 +441,38 @@ def _evaluate_preserving_training_rng(
     evaluator: Evaluator, global_step: int, actors: Dict
 ) -> float:
     """Run eval without letting stochastic eval sampling change training RNG state."""
-    python_state = rnd.getstate()
-    numpy_state = np.random.get_state()
-    torch_state = th.get_rng_state()
-    cuda_states = th.cuda.get_rng_state_all() if th.cuda.is_available() else None
+    rng_state = capture_rng_state()
     try:
         return evaluator.evaluate(global_step, actors)
     finally:
-        rnd.setstate(python_state)
-        np.random.set_state(numpy_state)
-        th.set_rng_state(torch_state)
-        if cuda_states is not None:
-            th.cuda.set_rng_state_all(cuda_states)
+        restore_rng_state(rng_state)
+
+
+def _checkpoint_cpu_copy(obj: Any) -> Any:
+    """Copy nested rollout state without retaining accelerator storage."""
+    if isinstance(obj, th.Tensor):
+        return obj.detach().cpu().clone()
+    if isinstance(obj, dict):
+        return {key: _checkpoint_cpu_copy(value) for key, value in obj.items()}
+    if isinstance(obj, list):
+        return [_checkpoint_cpu_copy(value) for value in obj]
+    if isinstance(obj, tuple):
+        return tuple(_checkpoint_cpu_copy(value) for value in obj)
+    if isinstance(obj, np.ndarray):
+        return obj.copy()
+    return obj
+
+
+def _checkpoint_to_device(obj: Any, device: th.device) -> Any:
+    if isinstance(obj, th.Tensor):
+        return obj.to(device)
+    if isinstance(obj, dict):
+        return {key: _checkpoint_to_device(value, device) for key, value in obj.items()}
+    if isinstance(obj, list):
+        return [_checkpoint_to_device(value, device) for value in obj]
+    if isinstance(obj, tuple):
+        return tuple(_checkpoint_to_device(value, device) for value in obj)
+    return obj
 
 
 class MAPPO:
@@ -496,10 +522,20 @@ class MAPPO:
         batch_size = int(args.n_envs * args.n_steps)
         minibatch_size = int(batch_size // args.n_minibatches)
         n_rollouts = args.total_timesteps // batch_size
-        if ckpt.resumed:
+        loaded_exact_state = (
+            exact_resume_state(ckpt.loaded_run) if ckpt.resumed else None
+        )
+        if loaded_exact_state is not None:
+            init_rollout = int(loaded_exact_state["next_rollout"])
+        elif ckpt.resumed:
             init_rollout = int(ckpt.loaded_run["last_rollout"])
             if getattr(args, "resume_start_next_rollout", False):
                 init_rollout += 1
+            print(
+                "Warning: this is a legacy or mid-rollout checkpoint. Model and "
+                "optimizer state will be restored, but the environment trajectory, "
+                "RNG streams, and reward-normalizer state cannot be continued exactly."
+            )
         else:
             init_rollout = 1
 
@@ -551,13 +587,25 @@ class MAPPO:
             getattr(args, "norm_obs", False)
             or getattr(args, "gnn_running_norm", False)
         )
-        if ckpt.resumed and normalization_enabled:
+        if ckpt.resumed and normalization_enabled and loaded_exact_state is None:
             saved_obs_stats = loaded_training_state.get("obs_stats", {})
             if saved_obs_stats:
                 envs.set_obs_stats(saved_obs_stats)
 
-        next_obs, _ = envs.reset()
-        next_obs = cast_np_to_tensors(next_obs, device)
+        if loaded_exact_state is not None:
+            saved_global_step = int(loaded_exact_state["global_step"])
+            if saved_global_step != int(ckpt.loaded_run["global_step"]):
+                raise ValueError(
+                    "Checkpoint boundary global_step does not match the model record: "
+                    f"{saved_global_step} != {ckpt.loaded_run['global_step']}."
+                )
+            envs.set_checkpoint_state(loaded_exact_state["environment_states"])
+            next_obs = _checkpoint_to_device(
+                loaded_exact_state["next_obs"], device
+            )
+        else:
+            next_obs, _ = envs.reset()
+            next_obs = cast_np_to_tensors(next_obs, device)
         joint_obs_template = get_joint_obs(
             next_obs, args.critic_encoder, args.decentralized
         )
@@ -625,7 +673,11 @@ class MAPPO:
             if split_chronics and getattr(args, "eval_train_chronics", False)
             else None
         )
-        best_checkpoint_score = -np.inf
+        best_checkpoint_score = (
+            float(loaded_exact_state.get("best_checkpoint_score", -np.inf))
+            if loaded_exact_state is not None
+            else -np.inf
+        )
 
         global_step = 0 if not ckpt.resumed else ckpt.loaded_run["global_step"]
         start_time = start_time
@@ -639,6 +691,14 @@ class MAPPO:
             if getattr(args, "norm_reward", False)
             else None
         )
+        if reward_normalizer is not None and loaded_exact_state is not None:
+            saved_normalizers = loaded_exact_state.get("reward_normalizers")
+            if not isinstance(saved_normalizers, dict):
+                raise ValueError(
+                    "Exact checkpoint is missing reward-normalizer state."
+                )
+            for agent in agent_ids:
+                reward_normalizer[agent].load_state_dict(saved_normalizers[agent])
         sparse_penalty_enabled = _sparse_intervention_penalty_enabled(args)
         safe_penalty_enabled = (
             float(getattr(args, "safe_intervention_penalty", 0.0)) > 0.0
@@ -697,8 +757,73 @@ class MAPPO:
                 state["obs_stats"] = envs.get_obs_stats()
             return state
 
+        if loaded_exact_state is not None:
+            evaluator._eval_window_index = int(
+                loaded_exact_state.get("eval_window_index", 0)
+            )
+            if train_evaluator is not None:
+                train_evaluator._eval_window_index = int(
+                    loaded_exact_state.get("train_eval_window_index", 0)
+                )
+
+        at_exact_boundary = False
+        saved_boundary_this_process = False
+
+        def _save_exact_boundary(completed_rollout: int) -> None:
+            """Save a checkpoint that resumes at the next rollout exactly."""
+            boundary_rng = capture_rng_state()
+            try:
+                resume_state = {
+                    "global_step": int(global_step),
+                    "next_rollout": int(completed_rollout) + 1,
+                    "rng_state": boundary_rng,
+                    "environment_states": envs.get_checkpoint_state(),
+                    "next_obs": _checkpoint_cpu_copy(next_obs),
+                    "reward_normalizers": (
+                        {
+                            agent: reward_normalizer[agent].state_dict()
+                            for agent in agent_ids
+                        }
+                        if reward_normalizer is not None
+                        else None
+                    ),
+                    "best_checkpoint_score": float(best_checkpoint_score),
+                    "eval_window_index": int(evaluator._eval_window_index),
+                    "train_eval_window_index": (
+                        int(train_evaluator._eval_window_index)
+                        if train_evaluator is not None
+                        else None
+                    ),
+                }
+                ckpt.set_record(
+                    args,
+                    actors,
+                    critic,
+                    global_step,
+                    actor_optim,
+                    critic_optim,
+                    "" if not logger else logger.wb_path,
+                    completed_rollout,
+                    training_state=_current_training_state(),
+                    resume_state=resume_state,
+                    checkpoint_phase=EXACT_BOUNDARY_PHASE,
+                )
+                ckpt.save()
+            finally:
+                # Checkpointing itself must not advance the training RNG streams.
+                restore_rng_state(boundary_rng)
+
+        if loaded_exact_state is not None:
+            # Model/env/evaluator construction consumes randomness. The next draw
+            # must instead be the one immediately following the saved boundary.
+            restore_rng_state(loaded_exact_state["rng_state"])
+
+        sps_start_step = int(global_step)
+        sps_start_time = time()
+        iteration = init_rollout - 1
         try:
             for iteration in range(init_rollout, n_rollouts + 1):
+                at_exact_boundary = False
                 # Annealing the rate if instructed to do so
                 if args.anneal_lr:
                     frac = _lr_schedule_fraction(
@@ -909,10 +1034,13 @@ class MAPPO:
                                     iteration,
                                     mark_final=False,
                                     training_state=_current_training_state(),
+                                    checkpoint_phase="mid_rollout_evaluation",
                                 )
                                 ckpt.save_as("best_test_" + ckpt.checkpoint_base_name)
                         if args.verbose:
-                            print(f"SPS={int(global_step / (time() - start_time))}")
+                            session_steps = int(global_step) - sps_start_step
+                            session_elapsed = max(time() - sps_start_time, 1e-9)
+                            print(f"SPS={int(session_steps / session_elapsed)}")
 
                 # Bootstrap value if not done
                 with th.no_grad():
@@ -943,23 +1071,6 @@ class MAPPO:
                                 * lastgaelam
                             )
                         returns[agent] = advantages[agent] + values
-
-                # --- HOURLY CHECKPOINT (wall clock) ---
-                if time() - last_ckpt_time >= 3600:
-                    ckpt.set_record(
-                        args,
-                        actors,
-                        critic,
-                        global_step,
-                        actor_optim,
-                        critic_optim,
-                        "" if not logger else logger.wb_path,
-                        iteration,
-                        training_state=_current_training_state(),
-                    )
-                    ckpt.save()  # overwrites the previous checkpoint
-                    last_ckpt_time = time()
-                # --------------------------------------
 
                 intervention_budget_stats = {}
                 if adaptive_budget_enabled:
@@ -1531,25 +1642,31 @@ class MAPPO:
 
                     logger.log_train_metrics(global_step, metrics_to_log)
 
+                # The environment, optimizers, schedules, and normalizers now all
+                # represent the same unambiguous post-update boundary.
+                at_exact_boundary = True
+                if args.checkpoint and (
+                    not saved_boundary_this_process
+                    or time() - last_ckpt_time >= 3600
+                ):
+                    _save_exact_boundary(iteration)
+                    saved_boundary_this_process = True
+                    last_ckpt_time = time()
+
                 # If we reach the node's time limit, we just exit the training loop, save metrics and ckpt
                 if (time() - start_time) / 60 >= args.time_limit:
                     break
 
         finally:
             if args.checkpoint:
-                # Save the checkpoint and logger data
-                ckpt.set_record(
-                    args,
-                    actors,
-                    critic,
-                    global_step,
-                    actor_optim,
-                    critic_optim,
-                    "" if not logger else logger.wb_path,
-                    iteration,
-                    training_state=_current_training_state(),
-                )
-                ckpt.save()
+                if at_exact_boundary:
+                    _save_exact_boundary(iteration)
+                else:
+                    print(
+                        "Training stopped inside a rollout/update. The last exact "
+                        "post-update checkpoint was kept; no ambiguous checkpoint "
+                        "was written over it."
+                    )
             if logger:
                 logger.close()
             envs.close()

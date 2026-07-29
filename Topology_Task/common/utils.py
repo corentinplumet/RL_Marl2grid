@@ -319,6 +319,18 @@ class RunningMeanStd:
         self.var = M2 / new_count
         self.count = new_count
 
+    def state_dict(self) -> Dict[str, float]:
+        return {
+            "mean": float(self.mean),
+            "var": float(self.var),
+            "count": float(self.count),
+        }
+
+    def load_state_dict(self, state: Dict[str, Any]) -> None:
+        self.mean = float(state["mean"])
+        self.var = float(state["var"])
+        self.count = float(state["count"])
+
 
 class ReturnNormalizer:
     """Reward normalization by running std of discounted returns.
@@ -345,3 +357,27 @@ class ReturnNormalizer:
         normed = reward / np.sqrt(self.ret_rms.var + self.eps)
         self.returns[done] = 0.0
         return normed.astype(np.float32)
+
+    def state_dict(self) -> Dict[str, Any]:
+        return {
+            "gamma": self.gamma,
+            "eps": self.eps,
+            "ret_rms": self.ret_rms.state_dict(),
+            "returns": self.returns.copy(),
+        }
+
+    def load_state_dict(self, state: Dict[str, Any]) -> None:
+        if not np.isclose(float(state["gamma"]), self.gamma):
+            raise ValueError(
+                "Reward-normalizer gamma differs from the checkpoint: "
+                f"{self.gamma} != {state['gamma']}."
+            )
+        self.eps = float(state["eps"])
+        self.ret_rms.load_state_dict(state["ret_rms"])
+        restored_returns = np.asarray(state["returns"], dtype=np.float64)
+        if restored_returns.shape != self.returns.shape:
+            raise ValueError(
+                "Reward-normalizer environment count differs from the checkpoint: "
+                f"{self.returns.shape} != {restored_returns.shape}."
+            )
+        self.returns[...] = restored_returns

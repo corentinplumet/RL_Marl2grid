@@ -1,16 +1,113 @@
 \chapter{Methods}
 \label{ch:methods}
 
-\section{Homogeneous Graph Representation}
+
+This chapter describes the graph inputs and graph-actor variants used in the
+experiments. The presentation separates four design choices: feature scaling,
+the base graph representation, substation-level augmentations, and graph
+pooling.
+
+\section{Scaling and Normalization}
+\label{subsec:graph-feature-normalization}
+
+Two independent transformations can be applied to the continuous node and edge
+features of every graph schema: deterministic physical scaling followed by
+optional running standardization. Let $x_{i,f,t}$ be feature $f$ of node or edge
+$i$ at time $t$. The complete pipeline is
+\begin{align}
+  x^{\mathrm{scale}}_{i,f,t}
+  &=
+  \begin{cases}
+    x_{i,f,t}/s_f, & \text{if physical scaling is enabled},\\
+    x_{i,f,t}, & \text{otherwise},
+  \end{cases}
+  \label{eq:graph-physical-scaling}\\
+  \widehat{x}_{i,f,t}
+  &=
+  \begin{cases}
+    \operatorname{clip}\!\left(
+      \dfrac{x^{\mathrm{scale}}_{i,f,t}-\mu_{f,t}}
+            {\sqrt{\sigma_{f,t}^{2}+\epsilon}},
+      -c,c
+    \right), & \text{if running normalization is enabled},\\
+    x^{\mathrm{scale}}_{i,f,t}, & \text{otherwise}.
+  \end{cases}
+  \label{eq:graph-feature-normalization}
+\end{align}
+Here $s_f$ is a fixed physical reference and $\mu_{f,t}$ and
+$\sigma_{f,t}^{2}$ are running moments estimated during training. When both
+transformations are enabled, the moments describe $x/s_f$. Clipping applies
+only to running standardization; $c=10$ by default and a non-positive value
+disables clipping.
+
+\subsection{Deterministic physical scaling}
+
+Physical scaling divides each quantity by a constant with the same unit and
+therefore preserves physical zero. Table~\ref{tab:graph-physical-scales} gives
+the exact constants. The power base may be specified explicitly; otherwise the
+largest installed generator rating is used,
+with a 100~MW fallback when the environment does not expose generator ratings.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Deterministic physical scales used for continuous graph features.}
+  \label{tab:graph-physical-scales}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{L{0.34\textwidth}L{0.25\textwidth}L{0.31\textwidth}}
+    \toprule
+    Features & Scale $s_f$ & Source \\
+    \midrule
+    \texttt{gen\_p}, \texttt{load\_p}, \texttt{p}
+      & Power base in MW & Configured value or maximum generator rating. \\
+    \texttt{gen\_theta}, \texttt{load\_theta}, \texttt{theta}
+      & $180$ degrees & Fixed angular scale. \\
+    \texttt{time\_before\_cooldown\_sub}
+      & Maximum substation cooldown & Grid2Op environment parameter. \\
+    \texttt{time\_before\_cooldown\_line}
+      & Maximum line cooldown & Grid2Op environment parameter. \\
+    \texttt{timestep\_overflow}
+      & Allowed overflow duration & Grid2Op environment parameter. \\
+    Maintenance time and duration
+      & Episode horizon & Grid2Op chronic horizon. \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Running standardization}
+
+Running moments are estimated with Welford's online algorithm. One normalizer
+is shared across agents and updated from the full state graph once per
+environment step. Heterogeneous graphs maintain separate node statistics for
+each node type. Edge statistics include only active physical-line relations;
+inactive candidates and structural, asset-attachment, same-substation, and
+virtual relations do not contribute.
+\\
+\\
+The loading ratio \texttt{rho} is already dimensionless and is neither rescaled
+nor standardized. Preserving it is also necessary when GCN uses \texttt{rho}
+directly as a non-negative message weight. Binary connection states, node and
+edge masks, domain masks, type indicators, and relation one-hot attributes are
+also left unchanged. Only the continuous channels listed in
+Table~\ref{tab:graph-physical-scales} enter the running statistics.
+The running moments are frozen during evaluation.
+
+
+\section{Graph Representations}
 \label{sec:graph-representation}
 
-The homogeneous representation maps a Grid2Op observation to an undirected
-graph whose nodes correspond to busbars and whose edges describe
-possible transmission-line connections. Grid2Op exposes the instantaneous
-electrical state and topology through a structured observation
-\cite{donnot2020grid2op}. The graph construction keeps the set of candidate
-nodes and edges fixed throughout an episode while using a dynamic edge mask to
-express the topology that is electrically active at time step~$t$.
+The graph observation can use one of three base representations. The
+\texttt{bus} representation aggregates equipment values onto busbar nodes. The
+\texttt{heterogeneous} representation disaggregates generators and loads into
+explicit asset nodes while keeping physical lines as busbar-to-busbar edges. The
+\texttt{heterogeneous\_line} representation further disaggregates transmission
+lines into explicit line nodes.
+
+Grid2Op exposes the instantaneous electrical state and topology through a
+structured observation~\cite{donnot2020grid2op}. For each representation,
+the graph construction keeps the set of candidate nodes and edges fixed
+throughout an episode while using a dynamic edge mask to express the topology
+that is electrically active at time step~$t$.
 
 For agent~$a$, the graph observation can be written as
 \begin{equation}
@@ -27,9 +124,14 @@ the physical equipment layout, which does not change during an episode, from
 the busbar assignment and line status, which can change after every topology
 action.
 
-Figure~\ref{fig:busbar-graph-representation} illustrates this baseline schema:
-busbars are the only nodes, while active transmission lines form the graph
-backbone.
+The following subsections define the three schemas.
+
+\subsection{Busbar Representation}
+\label{subsec:busbar-representation}
+
+The \texttt{bus} schema is the compact busbar representation. Busbars are the
+only nodes, active transmission lines form the graph backbone, and generator and
+load quantities are aggregated into their currently assigned busbars.
 
 \begin{figure}[htbp]
   \centering
@@ -40,7 +142,7 @@ backbone.
   \label{fig:busbar-graph-representation}
 \end{figure}
 
-\subsection{Busbar nodes}
+\subsubsection{Busbar nodes}
 \label{subsec:graph-busbar-nodes}
 
 Let $S$ denote the number of substations and let $B$ denote the maximum number
@@ -89,7 +191,8 @@ the identities and counts of individual generators and loads. Consequently,
 two collections of assets with identical aggregated values have the same node
 representation.
 
-\subsection{Candidate line edges and dynamic topology}
+
+\subsubsection{Candidate line edges and dynamic topology}
 \label{subsec:graph-candidate-edges}
 
 Consider a physical line~$\ell$ whose origin and extremity belong to
@@ -153,180 +256,8 @@ relations are distinguished only by their endpoints and neutral physical
 attributes. Inactive candidate edges are removed before either encoder is
 called; their zero feature rows never generate messages.
 
-\subsection{Physical scaling and running normalization}
-\label{subsec:graph-feature-normalization}
 
-Two independent transformations can be applied to the continuous node and edge
-features of every graph schema: deterministic physical scaling followed by
-optional running standardization. Let $x_{i,f,t}$ be feature $f$ of node or edge
-$i$ at time $t$. The complete pipeline is
-\begin{align}
-  x^{\mathrm{scale}}_{i,f,t}
-  &=
-  \begin{cases}
-    x_{i,f,t}/s_f, & \text{if physical scaling is enabled},\\
-    x_{i,f,t}, & \text{otherwise},
-  \end{cases}
-  \label{eq:graph-physical-scaling}\\
-  \widehat{x}_{i,f,t}
-  &=
-  \begin{cases}
-    \operatorname{clip}\!\left(
-      \dfrac{x^{\mathrm{scale}}_{i,f,t}-\mu_{f,t}}
-            {\sqrt{\sigma_{f,t}^{2}+\epsilon}},
-      -c,c
-    \right), & \text{if running normalization is enabled},\\
-    x^{\mathrm{scale}}_{i,f,t}, & \text{otherwise}.
-  \end{cases}
-  \label{eq:graph-feature-normalization}
-\end{align}
-Here $s_f$ is a fixed physical reference and $\mu_{f,t}$ and
-$\sigma_{f,t}^{2}$ are running moments estimated during training. When both
-transformations are enabled, the moments describe $x/s_f$. Clipping applies
-only to running standardization; $c=10$ by default and a non-positive value
-disables clipping.
-
-\subsubsection{Deterministic physical scaling}
-
-Physical scaling divides each quantity by a constant with the same unit and
-therefore preserves physical zero. Table~\ref{tab:graph-physical-scales} gives
-the exact constants. The power base may be specified explicitly; otherwise the
-largest installed generator rating is used,
-with a 100~MW fallback when the environment does not expose generator ratings.
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Deterministic physical scales used for continuous graph features.}
-  \label{tab:graph-physical-scales}
-  \setlength{\tabcolsep}{5pt}
-  \begin{tabular}{L{0.34\textwidth}L{0.25\textwidth}L{0.31\textwidth}}
-    \toprule
-    Features & Scale $s_f$ & Source \\
-    \midrule
-    \texttt{gen\_p}, \texttt{load\_p}, \texttt{p}
-      & Power base in MW & Configured value or maximum generator rating. \\
-    \texttt{gen\_theta}, \texttt{load\_theta}, \texttt{theta}
-      & $180$ degrees & Fixed angular scale. \\
-    \texttt{time\_before\_cooldown\_sub}
-      & Maximum substation cooldown & Grid2Op environment parameter. \\
-    \texttt{time\_before\_cooldown\_line}
-      & Maximum line cooldown & Grid2Op environment parameter. \\
-    \texttt{timestep\_overflow}
-      & Allowed overflow duration & Grid2Op environment parameter. \\
-    Maintenance time and duration
-      & Episode horizon & Grid2Op chronic horizon. \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\subsubsection{Running standardization}
-
-Running moments are estimated with Welford's online algorithm. One normalizer
-is shared across agents and updated from the full state graph once per
-environment step. Heterogeneous graphs maintain separate node statistics for
-each node type. Edge statistics include only active physical-line relations;
-inactive candidates and structural, asset-attachment, same-substation, and
-virtual relations do not contribute.
-\\
-\\
-The loading ratio \texttt{rho} is already dimensionless and is neither rescaled
-nor standardized. Preserving it is also necessary when GCN uses \texttt{rho}
-directly as a non-negative message weight. Binary connection states, node and
-edge masks, domain masks, type indicators, and relation one-hot attributes are
-also left unchanged. Only the continuous channels listed in
-Table~\ref{tab:graph-physical-scales} enter the running statistics.
-The running moments are frozen during evaluation.
-
-\subsection{Additional relation edges}
-\label{subsec:graph-relation-edges}
-
-In addition to physical-line relations, the graph may include a self-edge
-$v\rightarrow v$ for every node and a directed same-substation edge
-$i(s,b)\rightarrow i(s,b')$ for every $b\neq b'$. These relations remain active
-throughout the episode and use zero physical-line features except for the
-neutral value \texttt{rho}$=1$. Same-substation edges permit message passing
-between alternative busbars but do not represent an electrical connection.
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.94\linewidth]{figures/graph_same_substation_edge.png}
-  \caption{Direct same-substation busbar relation. The highlighted orange edge
-  allows two busbars belonging to the same substation to exchange messages; it
-  is a computational relation and not a physical transmission line.}
-  \label{fig:same-substation-busbar-edge}
-\end{figure}
-
-For a full graph containing $S$ substations and $L$ physical lines, the number
-of candidate directed edges is
-\begin{equation}
-  |\mathcal{E}_{\mathrm{cand}}| = 2B^2L
-  \label{eq:standard-graph-size}
-\end{equation}
-for the standard representation, and
-\begin{equation}
-  |\mathcal{E}_{\mathrm{cand}}| =
-  2B^2L + SB + SB(B-1)
-  \label{eq:sparse-transformer-graph-size}
-\end{equation}
-when self and same-substation relations are both enabled.
-
-\subsection{Local actor graphs and the global state graph}
-\label{subsec:graph-local-global}
-
-Each agent controls a set of substations $\mathcal{C}_a$. Under decentralized
-observability, its local graph can be constructed in two ways. Without neighbor
-context, the node set contains only substations in $\mathcal{C}_a$, and the line
-set contains only lines whose two endpoints lie inside this region. With
-one-hop context enabled, the graph additionally contains every line touching
-$\mathcal{C}_a$ and the substations at the opposite endpoints of those lines.
-The \texttt{domain\_mask} node feature and a separate controlled-node mask
-distinguish the controlled region from contextual neighbors. This second mask
-also permits graph readout to pool only the nodes on which the agent can act.
-
-The full-grid state graph is available to the centralized critic during
-training, while each actor receives only its local graph. This follows the
-centralized-training, decentralized-execution structure of MAPPO
-\cite{yu2022mappo}.
-
-\subsection{Graph encoder}
-\label{subsec:graph-representation-encoder-boundary}
-
-GINE and GAT receive every column of the edge-feature vector. The homogeneous
-graph provides only physical-line columns; the heterogeneous graphs append the
-relation one-hot columns defined in
-Tables~\ref{tab:heterogeneous-edge-features}
-and~\ref{tab:heterogeneous-line-edge-features}. Node types are encoded by the
-explicit \texttt{is\_*} node features.
-
-GINE and GAT use the same high-level actor pipeline:
-\begin{equation}
-  \begin{aligned}
-    (\mathbf{X},\mathbf{E},\mathbf{m})
-    &\longrightarrow \text{active-edge filtering}
-     \longrightarrow \text{node projection}
-     \longrightarrow \mathbf{H}^{(0)}, \\
-    \mathbf{H}^{(0)}
-    &\longrightarrow K\text{ message-passing layers}
-     \longrightarrow \text{graph readout}
-     \longrightarrow \text{action logits}.
-  \end{aligned}
-  \label{eq:graph-actor-pipeline}
-\end{equation}
-They differ only in the message-passing block. GINE inserts the projected edge
-vector into the content of every message. GAT uses the projected edge vector
-to compute the attention weight assigned to that message. Pooling, the graph
-output projection, and the action head are otherwise identical. The exact
-equations and architectural dimensions are given in
-Appendix~\ref{app:gine-architecture}.
-
-The busbar schema aggregates generator and load states and omits reactive power,
-voltage magnitudes, and directional endpoint flows. Empty busbars remain in the
-node set. The preprocessing in
-Section~\ref{subsec:graph-feature-normalization} changes feature values but not
-the graph schema.
-
-\section{Heterogeneous Graph Representation}
+\subsection{Disaggregated Representation}
 \label{sec:heterogeneous-graph-representation}
 
 The \texttt{heterogeneous} schema keeps busbars as the backbone and adds one node
@@ -351,7 +282,7 @@ therefore preserved individually.
   \label{fig:heterogeneous-equipment-graph}
 \end{figure}
 
-\subsection{End-to-end architecture}
+\subsubsection{End-to-end architecture}
 \label{subsec:heterogeneous-architecture}
 
 With bidirectional asset and line relations, information follows the path
@@ -370,7 +301,7 @@ therefore reaches its local busbar after one layer and the adjacent remote
 busbar after two. With one-way asset relations, the reverse flow is absent.
 Mean readout includes all nodes in the local graph, including one-hop context.
 
-\subsection{Typed nodes and features}
+\subsubsection{Typed nodes and features}
 \label{subsec:heterogeneous-nodes}
 
 For a graph with $S$ included substations, $B$ busbars per substation, $N_g$
@@ -432,7 +363,7 @@ the column is still present for that node type but is explicitly zero-filled.
   \end{tabular}
 \end{table}
 
-\subsection{Typed relations}
+\subsubsection{Typed relations}
 \label{subsec:heterogeneous-relations}
 
 Every candidate directed edge is represented by the same ordered feature
@@ -549,7 +480,7 @@ where $L$ is the number of included physical lines. Enabling both optional
 relations adds $|\mathcal{V}|$ self-edges and $SB(B-1)$ directed
 same-substation busbar edges.
 
-\subsection{Local heterogeneous graphs}
+\subsubsection{Local disaggregated graphs}
 \label{subsec:local-heterogeneous-graphs}
 
 A local actor graph contains controlled substations plus optional one-hop
@@ -559,7 +490,8 @@ contains the full grid. Relative to the busbar graph, this schema adds
 $N_g+N_d$ nodes and between $B(N_g+N_d)$ and $2B(N_g+N_d)$ asset candidates,
 but preserves individual asset states.
 
-\section{Heterogeneous Graph with Transmission-Line Nodes}
+
+\subsection{Disaggregated Representation with Line Nodes}
 \label{sec:heterogeneous-line-graph}
 
 The \texttt{heterogeneous\_line} schema replaces each direct physical-line edge
@@ -582,7 +514,7 @@ with a transmission-line node between its endpoint busbars. Its node set is
   \label{fig:heterogeneous-line-node-graph}
 \end{figure}
 
-\subsection{Shared node features}
+\subsubsection{Shared node features}
 \label{subsec:heterogeneous-line-nodes}
 
 For $S$ included substations, $B$ busbars per substation, $N_g$ generators,
@@ -665,7 +597,7 @@ and \texttt{connected} entries are zero, its busbar attachments are masked, and
 the remaining observed line-state entries, including cooldown and maintenance,
 remain in the line-node vector.
 
-\subsection{Shared edge features and endpoint relations}
+\subsubsection{Shared edge features and endpoint relations}
 \label{subsec:heterogeneous-line-relations}
 
 Let $o(\ell)$ and $e(\ell)$ denote the origin and extremity substations of line
@@ -744,7 +676,7 @@ For this schema, GINE and GAT receive no line-state value on the attachment
 edges. Every endpoint edge contains only one endpoint-and-direction relation
 indicator; the complete line state is carried by the transmission-line node.
 
-\subsection{Message-passing path through a line node}
+\subsubsection{Message-passing path through a line node}
 \label{subsec:heterogeneous-line-message-path}
 
 The direct-line graph connects endpoint busbars in one hop. The explicit-line
@@ -788,7 +720,7 @@ $2B^2L$ direct busbar-to-busbar candidate set in
 Equation~\ref{eq:heterogeneous-edge-count}. For $B>2$, explicit line nodes make
 this term grow linearly rather than quadratically with the number of busbars.
 
-\subsection{Local heterogeneous-line graphs}
+\subsubsection{Local disaggregated-line graphs}
 \label{subsec:local-heterogeneous-line-graphs}
 
 Local graphs use the same controlled-domain and one-hop rules. A line is marked
@@ -796,7 +728,7 @@ controlled when either endpoint is controlled. The state graph contains the
 full grid. Relative to \texttt{heterogeneous}, this schema adds $L$ nodes and
 one message-passing hop between adjacent busbars.
 
-\subsection{Architectural comparison of the two heterogeneous schemas}
+\subsubsection{Architectural comparison of the two disaggregated schemas}
 \label{subsec:heterogeneous-architecture-comparison}
 
 Table~\ref{tab:heterogeneous-architecture-comparison} summarizes the structural
@@ -805,7 +737,7 @@ differences between the two heterogeneous schemas.
 \begin{table}[H]
   \centering
   \small
-  \caption{Architectural comparison of the heterogeneous graph schemas.}
+  \caption{Architectural comparison of the disaggregated graph schemas.}
   \label{tab:heterogeneous-architecture-comparison}
   \setlength{\tabcolsep}{4pt}
   \begin{tabular}{L{0.20\textwidth}L{0.34\textwidth}L{0.34\textwidth}}
@@ -823,7 +755,106 @@ differences between the two heterogeneous schemas.
   \end{tabular}
 \end{table}
 
-\section{Substation Summary Nodes}
+
+\subsection{Local actor graphs and the global state graph}
+\label{subsec:graph-local-global}
+
+Each agent controls a set of substations $\mathcal{C}_a$. Under decentralized
+observability, its local graph can be constructed in two ways. Without neighbor
+context, the node set contains only substations in $\mathcal{C}_a$, and the line
+set contains only lines whose two endpoints lie inside this region. With
+one-hop context enabled, the graph additionally contains every line touching
+$\mathcal{C}_a$ and the substations at the opposite endpoints of those lines.
+The \texttt{domain\_mask} node feature and a separate controlled-node mask
+distinguish the controlled region from contextual neighbors. This second mask
+also permits graph readout to pool only the nodes on which the agent can act.
+
+The full-grid state graph is available to the centralized critic during
+training, while each actor receives only its local graph. This follows the
+centralized-training, decentralized-execution structure of MAPPO
+\cite{yu2022mappo}.
+
+
+\subsection{Graph encoder}
+\label{subsec:graph-representation-encoder-boundary}
+
+GINE and GAT receive every column of the edge-feature vector. The homogeneous
+graph provides only physical-line columns; the heterogeneous graphs append the
+relation one-hot columns defined in
+Tables~\ref{tab:heterogeneous-edge-features}
+and~\ref{tab:heterogeneous-line-edge-features}. Node types are encoded by the
+explicit \texttt{is\_*} node features.
+
+GINE and GAT use the same high-level actor pipeline:
+\begin{equation}
+  \begin{aligned}
+    (\mathbf{X},\mathbf{E},\mathbf{m})
+    &\longrightarrow \text{active-edge filtering}
+     \longrightarrow \text{node projection}
+     \longrightarrow \mathbf{H}^{(0)}, \\
+    \mathbf{H}^{(0)}
+    &\longrightarrow K\text{ message-passing layers}
+     \longrightarrow \text{graph readout}
+     \longrightarrow \text{action logits}.
+  \end{aligned}
+  \label{eq:graph-actor-pipeline}
+\end{equation}
+They differ only in the message-passing block. GINE inserts the projected edge
+vector into the content of every message. GAT uses the projected edge vector
+to compute the attention weight assigned to that message. Pooling, the graph
+output projection, and the action head are otherwise identical. The exact
+equations and architectural dimensions are given in
+Appendix~\ref{app:gine-architecture}.
+
+The busbar schema aggregates generator and load states and omits reactive power,
+voltage magnitudes, and directional endpoint flows. Empty busbars remain in the
+node set. The preprocessing in
+Section~\ref{subsec:graph-feature-normalization} changes feature values but not
+the graph schema.
+
+
+\section{Substation Representation: Direct Edges and Summary Nodes}
+\label{sec:substation-representation}
+
+Two optional factors change how information is exchanged inside a substation.
+The factor $e$ adds direct same-substation busbar edges. The factor $n$ adds one
+learned substation-summary node per included substation.
+
+\subsection{Direct same-substation edges (e)}
+\label{subsec:graph-relation-edges}
+
+In addition to physical-line relations, the graph may include a self-edge
+$v\rightarrow v$ for every node and a directed same-substation edge
+$i(s,b)\rightarrow i(s,b')$ for every $b\neq b'$. These relations remain active
+throughout the episode and use zero physical-line features except for the
+neutral value \texttt{rho}$=1$. Same-substation edges permit message passing
+between alternative busbars but do not represent an electrical connection.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.94\linewidth]{figures/graph_same_substation_edge.png}
+  \caption{Direct same-substation busbar relation. The highlighted orange edge
+  allows two busbars belonging to the same substation to exchange messages; it
+  is a computational relation and not a physical transmission line.}
+  \label{fig:same-substation-busbar-edge}
+\end{figure}
+
+For a full graph containing $S$ substations and $L$ physical lines, the number
+of candidate directed edges is
+\begin{equation}
+  |\mathcal{E}_{\mathrm{cand}}| = 2B^2L
+  \label{eq:standard-graph-size}
+\end{equation}
+for the standard representation, and
+\begin{equation}
+  |\mathcal{E}_{\mathrm{cand}}| =
+  2B^2L + SB + SB(B-1)
+  \label{eq:sparse-transformer-graph-size}
+\end{equation}
+when self and same-substation relations are both enabled.
+
+
+\subsection{Substation summary nodes (n)}
 \label{sec:substation-summary-nodes}
 
 An optional hierarchical augmentation introduces one learned node $u_s$ for
@@ -871,14 +902,41 @@ Section~\ref{subsec:graph-relation-edges}: it introduces a learned hub $u_s$
 instead of directly connecting pairs of busbars. It can be combined with the
 virtual-node readout.
 
-\section{Virtual-Node Graph Readout}
+
+\section{Pooling and Graph Readout}
+\label{sec:graph-pooling}
+
+The final graph embedding is obtained either by pooling node embeddings directly
+or by reading out a learned virtual node. The output projection and action head
+are the same in both cases.
+
+\subsection{Mean pooling}
+\label{subsec:graph-mean-pooling}
+
+Mean pooling averages the final node embeddings over the valid nodes in the
+local graph:
+\begin{equation}
+  \overline{\mathbf{h}}_G =
+  \frac{\sum_v m_v\mathbf{h}^{(K)}_v}
+       {\max(1,\sum_v m_v)},
+  \label{eq:methods-mean-pooling}
+\end{equation}
+where $m_v$ is the valid-node mask. This is one mean over all valid node types,
+not one mean per type. Thus the busbar graph pools busbar nodes, the
+disaggregated graph pools busbars, generators, and loads, and the
+disaggregated-line graph additionally pools transmission-line nodes. One-hop
+contextual nodes are included in the ordinary mean readout. Sum, maximum, or
+attention pooling can replace the aggregation in
+Equation~\ref{eq:methods-mean-pooling} without changing message passing.
+
+\subsection{Virtual-node graph readout}
 \label{sec:virtual-node-readout}
 
 A virtual-node readout replaces terminal mean, sum, maximum, or attention
 pooling with one learned graph-summary node. It can be combined with any of the
 three graph schemas.
 
-\subsection{Augmented graph}
+\subsubsection{Augmented graph}
 \label{subsec:virtual-node-augmented-graph}
 
 Let $v_{\star}$ denote the virtual node. Define the summary set
@@ -912,7 +970,7 @@ transmission-line nodes.
   \label{fig:virtual-node-readout}
 \end{figure}
 
-\subsection{Learned summary instead of terminal pooling}
+\subsubsection{Learned summary instead of terminal pooling}
 \label{subsec:virtual-node-summary}
 
 The initial virtual representation $\mathbf{h}_{\star}^{(0)}$ is learned. A
@@ -944,7 +1002,7 @@ rather than from
 $\operatorname{Pool}(\{\mathbf{h}_{i}^{(K)}\}_{i\in\mathcal{V}})$. The output
 dimension is unchanged.
 
-\subsection{Relation attributes and encoder compatibility}
+\subsubsection{Relation attributes and encoder compatibility}
 \label{subsec:virtual-node-compatibility}
 
 Virtual connections are structural: their continuous edge attributes are zero,
@@ -962,6 +1020,7 @@ $2N_{\mathrm{bus}}$ directed edges. With the hierarchy enabled, the
 virtual-node stage instead adds either $S$ or $2S$ edges on top of
 the substation augmentation. After one layer the virtual node has aggregated
 its immediate busbar or substation neighbors.
+
 
 \section{Graph Actor and Critic Configuration}
 \label{sec:graph-model-configuration}

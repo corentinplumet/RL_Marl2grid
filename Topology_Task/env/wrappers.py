@@ -121,6 +121,52 @@ class AsyncMultiAgentVecEnv:
         for remote in self.remotes:
             remote.recv()
 
+    def get_checkpoint_state(self) -> List[Dict[str, Any]]:
+        """Snapshot every live worker environment and its process RNGs."""
+        if self.waiting:
+            raise RuntimeError(
+                "Cannot checkpoint while an asynchronous environment step is pending."
+            )
+        for remote in self.remotes:
+            remote.send(("get_checkpoint_state", None))
+        results = [remote.recv() for remote in self.remotes]
+        errors = [
+            result.get("error", "unknown worker error")
+            for result in results
+            if not result.get("ok", False)
+        ]
+        if errors:
+            raise RuntimeError(
+                "Could not serialize the live environment state required for an "
+                "exact continuation:\n- " + "\n- ".join(errors)
+            )
+        return [result["state"] for result in results]
+
+    def set_checkpoint_state(self, states: List[Dict[str, Any]]) -> None:
+        """Replace every live worker with a previously captured state."""
+        if self.waiting:
+            raise RuntimeError(
+                "Cannot restore while an asynchronous environment step is pending."
+            )
+        if len(states) != self.num_envs:
+            raise ValueError(
+                "Checkpoint environment count does not match this run: "
+                f"{len(states)} != {self.num_envs}."
+            )
+        for remote, state in zip(self.remotes, states):
+            remote.send(("set_checkpoint_state", state))
+        results = [remote.recv() for remote in self.remotes]
+        errors = [
+            result.get("error", "unknown worker error")
+            for result in results
+            if not result.get("ok", False)
+        ]
+        if errors:
+            raise RuntimeError(
+                "Could not restore the exact environment state:\n- "
+                + "\n- ".join(errors)
+            )
+
     def get_current_max_rho(self) -> np.ndarray:
         """Collect each worker's pre-action max rho."""
         if self.waiting:
@@ -258,6 +304,51 @@ class AsyncMultiAgentVecEnv:
                 elif cmd == "set_obs_stats":
                     env.set_obs_stats(data)
                     remote.send(None)
+                elif cmd == "get_checkpoint_state":
+                    try:
+                        import cloudpickle
+
+                        python_rng = rnd.getstate()
+                        numpy_rng = np.random.get_state()
+                        torch_rng = th.get_rng_state().cpu().numpy().copy()
+                        state = {
+                            "env": cloudpickle.dumps(env),
+                            "python_rng": python_rng,
+                            "numpy_rng": numpy_rng,
+                            "torch_rng": torch_rng,
+                        }
+                        rnd.setstate(python_rng)
+                        np.random.set_state(numpy_rng)
+                        th.set_rng_state(th.from_numpy(torch_rng.copy()))
+                        remote.send({"ok": True, "state": state})
+                    except Exception as exc:
+                        remote.send(
+                            {
+                                "ok": False,
+                                "error": f"{type(exc).__name__}: {exc}",
+                            }
+                        )
+                elif cmd == "set_checkpoint_state":
+                    try:
+                        import cloudpickle
+
+                        restored_env = cloudpickle.loads(data["env"])
+                        old_env = env
+                        env = restored_env
+                        old_env.close()
+                        rnd.setstate(data["python_rng"])
+                        np.random.set_state(data["numpy_rng"])
+                        th.set_rng_state(
+                            th.from_numpy(np.asarray(data["torch_rng"]).copy())
+                        )
+                        remote.send({"ok": True})
+                    except Exception as exc:
+                        remote.send(
+                            {
+                                "ok": False,
+                                "error": f"{type(exc).__name__}: {exc}",
+                            }
+                        )
                 elif cmd == "get_current_max_rho":
                     remote.send(env.get_current_max_rho())
                 elif cmd == "get_current_agent_max_rho":
