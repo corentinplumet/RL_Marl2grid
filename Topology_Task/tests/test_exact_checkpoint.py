@@ -17,7 +17,7 @@ from env.wrappers import AsyncMultiAgentVecEnv
 
 
 class DeterministicCheckpointEnv:
-    """Small pickleable env used to verify live worker restoration."""
+    """Small deterministic env that deliberately cannot be pickled."""
 
     def __init__(self):
         self.observation_space = gym.spaces.Dict(
@@ -27,28 +27,33 @@ class DeterministicCheckpointEnv:
                 )
             }
         )
-        self.action_space = gym.spaces.Dict(
-            {"agent_0": gym.spaces.Discrete(4)}
-        )
+        self.action_space = gym.spaces.Dict({"agent_0": gym.spaces.Discrete(4)})
         self.graph_specs = None
         self.token_specs = None
         self.value = 0
+        self.episode_steps = 0
+        self.obs_bias = 0.0
         self.local_rng = np.random.default_rng(0)
+        self.unpickleable = (item for item in range(1))
 
     def _observation(self):
         return {
             "agent_0": np.asarray(
-                [self.value, self.local_rng.random()], dtype=np.float32
+                [self.value + self.obs_bias, self.local_rng.random()],
+                dtype=np.float32,
             )
         }
 
     def reset(self, seed=None):
         self.value = 0
-        self.local_rng = np.random.default_rng(seed)
+        self.episode_steps = 0
+        if seed is not None:
+            self.local_rng = np.random.default_rng(seed)
         return self._observation(), {}
 
     def step(self, action):
         # Exercise both an RNG stored on the env and the worker-global NumPy RNG.
+        self.episode_steps += 1
         self.value += (
             int(action["agent_0"])
             + int(self.local_rng.integers(0, 5))
@@ -58,8 +63,14 @@ class DeterministicCheckpointEnv:
         )
         observation = self._observation()
         reward = {"agent_0": float(self.value)}
-        done = {"agent_0": False}
+        done = {"agent_0": self.episode_steps == 2}
         return observation, reward, done, done.copy(), {}
+
+    def get_obs_stats(self):
+        return {"bias": self.obs_bias}
+
+    def set_obs_stats(self, stats):
+        self.obs_bias = float(stats["bias"])
 
     def close(self):
         pass
@@ -150,9 +161,14 @@ class ExactCheckpointTests(unittest.TestCase):
             [make_checkpoint_env, make_checkpoint_env], context="spawn"
         )
         try:
+            envs.set_obs_stats({"bias": 17.0})
             envs.reset(seed=101)
             envs.step({"agent_0": th.tensor([1, 2])})
             state = envs.get_checkpoint_state()
+            self.assertTrue(
+                all(worker["mode"] == "action_replay_v1" for worker in state)
+            )
+            self.assertTrue(all("env" not in worker for worker in state))
 
             expected_first = envs.step({"agent_0": th.tensor([3, 0])})
             expected_second = envs.step({"agent_0": th.tensor([2, 1])})
@@ -170,6 +186,13 @@ class ExactCheckpointTests(unittest.TestCase):
                         np.testing.assert_array_equal(
                             expected_part[key], actual_part[key]
                         )
+
+            state[0]["expected_observation"]["agent_0"][0] += 1.0
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "Action replay did not reconstruct the saved observation exactly",
+            ):
+                envs.set_checkpoint_state(state)
         finally:
             envs.close()
 

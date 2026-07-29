@@ -1,9 +1,175 @@
 import multiprocessing as mp
 from collections import deque
+import copy
 import time
 
-from common.imports import * 
+from common.imports import *
 from common.utils import split_action_tensor_dict
+
+
+_ACTION_REPLAY_CHECKPOINT = "action_replay_v1"
+_PICKLED_ENV_CHECKPOINT = "pickled_env_v1"
+
+
+def _capture_worker_rng_state() -> Dict[str, Any]:
+    """Capture the RNG streams owned by one environment worker."""
+    return {
+        "python": rnd.getstate(),
+        "numpy": np.random.get_state(),
+        "torch": th.get_rng_state().cpu().numpy().copy(),
+    }
+
+
+def _restore_worker_rng_state(state: Dict[str, Any]) -> None:
+    """Restore the RNG streams owned by one environment worker."""
+    rnd.setstate(state["python"])
+    np.random.set_state(state["numpy"])
+    th.set_rng_state(th.from_numpy(np.asarray(state["torch"]).copy()))
+
+
+def _checkpoint_action_component(value: Any) -> np.ndarray:
+    if isinstance(value, th.Tensor):
+        value = value.detach().cpu().numpy()
+    array = np.asarray(value)
+    if np.issubdtype(array.dtype, np.integer):
+        if array.size:
+            int32 = np.iinfo(np.int32)
+            minimum = int(array.min())
+            maximum = int(array.max())
+            if minimum < int32.min or maximum > int32.max:
+                raise ValueError(
+                    "An integer action cannot be represented as int32: "
+                    f"[{minimum}, {maximum}]."
+                )
+        array = array.astype(np.int32, copy=False)
+    return array.copy(order="C")
+
+
+def _new_action_log() -> Dict[str, Any]:
+    return {"count": 0, "components": {}}
+
+
+def _append_checkpoint_action(
+    action_log: Dict[str, Any], action: Dict[str, Any]
+) -> None:
+    """Append one multi-agent action using compact, fixed-width byte buffers."""
+    components = {
+        key: _checkpoint_action_component(value) for key, value in action.items()
+    }
+    expected_keys = set(action_log["components"])
+    actual_keys = set(components)
+    if action_log["count"] and actual_keys != expected_keys:
+        raise ValueError(
+            "Action keys changed during an exact-checkpoint replay log: "
+            f"{sorted(actual_keys)} != {sorted(expected_keys)}."
+        )
+
+    for key, component in components.items():
+        if key not in action_log["components"]:
+            action_log["components"][key] = {
+                "shape": tuple(component.shape),
+                "dtype": component.dtype.str,
+                "data": bytearray(),
+            }
+        target = action_log["components"][key]
+        if tuple(component.shape) != tuple(target["shape"]):
+            raise ValueError(
+                f"Action shape for {key} changed from {target['shape']} "
+                f"to {component.shape}."
+            )
+        if component.dtype.str != target["dtype"]:
+            component = component.astype(np.dtype(target["dtype"]), copy=False)
+        target["data"].extend(component.tobytes(order="C"))
+    action_log["count"] += 1
+
+
+def _pack_action_log(action_log: Dict[str, Any]) -> Dict[str, Any]:
+    """Make the mutable worker log safe and efficient to send through a pipe."""
+    return {
+        "count": int(action_log["count"]),
+        "components": {
+            key: {
+                "shape": tuple(component["shape"]),
+                "dtype": component["dtype"],
+                "data": bytes(component["data"]),
+            }
+            for key, component in action_log["components"].items()
+        },
+    }
+
+
+def _unpack_action_log(packed: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "count": int(packed["count"]),
+        "components": {
+            key: {
+                "shape": tuple(component["shape"]),
+                "dtype": component["dtype"],
+                "data": bytearray(component["data"]),
+            }
+            for key, component in packed["components"].items()
+        },
+    }
+
+
+def _iter_checkpoint_actions(packed: Dict[str, Any]):
+    count = int(packed["count"])
+    arrays = {}
+    for key, component in packed["components"].items():
+        shape = tuple(component["shape"])
+        dtype = np.dtype(component["dtype"])
+        expected_values = count * int(np.prod(shape, dtype=np.int64))
+        if not shape:
+            expected_values = count
+        values = np.frombuffer(component["data"], dtype=dtype)
+        if values.size != expected_values:
+            raise ValueError(
+                f"Corrupt action replay data for {key}: got {values.size} values, "
+                f"expected {expected_values}."
+            )
+        arrays[key] = values.reshape((count,) + shape)
+
+    for index in range(count):
+        action = {}
+        for key, values in arrays.items():
+            value = values[index]
+            action[key] = value.item() if value.ndim == 0 else value.copy()
+        yield action
+
+
+def _checkpoint_values_equal(actual: Any, expected: Any) -> bool:
+    """Compare nested observations without tolerating trajectory drift."""
+    if isinstance(actual, dict) or isinstance(expected, dict):
+        if not isinstance(actual, dict) or not isinstance(expected, dict):
+            return False
+        if actual.keys() != expected.keys():
+            return False
+        return all(
+            _checkpoint_values_equal(actual[key], expected[key]) for key in actual
+        )
+    if isinstance(actual, (list, tuple)) or isinstance(expected, (list, tuple)):
+        if not isinstance(actual, (list, tuple)) or not isinstance(
+            expected, (list, tuple)
+        ):
+            return False
+        return len(actual) == len(expected) and all(
+            _checkpoint_values_equal(a, b) for a, b in zip(actual, expected)
+        )
+    if isinstance(actual, th.Tensor):
+        actual = actual.detach().cpu().numpy()
+    if isinstance(expected, th.Tensor):
+        expected = expected.detach().cpu().numpy()
+    try:
+        return bool(
+            np.array_equal(
+                np.asarray(actual),
+                np.asarray(expected),
+                equal_nan=True,
+            )
+        )
+    except (TypeError, ValueError):
+        return actual == expected
+
 
 class AsyncMultiAgentVecEnv:
     def __init__(self, env_fns: List[Callable], context: str = "spawn"):
@@ -122,7 +288,7 @@ class AsyncMultiAgentVecEnv:
             remote.recv()
 
     def get_checkpoint_state(self) -> List[Dict[str, Any]]:
-        """Snapshot every live worker environment and its process RNGs."""
+        """Snapshot every worker at a reproducible environment boundary."""
         if self.waiting:
             raise RuntimeError(
                 "Cannot checkpoint while an asynchronous environment step is pending."
@@ -137,13 +303,13 @@ class AsyncMultiAgentVecEnv:
         ]
         if errors:
             raise RuntimeError(
-                "Could not serialize the live environment state required for an "
-                "exact continuation:\n- " + "\n- ".join(errors)
+                "Could not capture the live environment state required for an exact "
+                "continuation:\n- " + "\n- ".join(errors)
             )
         return [result["state"] for result in results]
 
     def set_checkpoint_state(self, states: List[Dict[str, Any]]) -> None:
-        """Replace every live worker with a previously captured state."""
+        """Reconstruct every live worker from a previously captured state."""
         if self.waiting:
             raise RuntimeError(
                 "Cannot restore while an asynchronous environment step is pending."
@@ -272,20 +438,40 @@ class AsyncMultiAgentVecEnv:
     @staticmethod
     def _worker(remote, parent_remote, env_fn_wrapper):
         parent_remote.close()
+        constructor_rng_state = _capture_worker_rng_state()
         env = env_fn_wrapper.fn()
+        replay_reset_rng_state = None
+        replay_reset_kwargs = None
+        replay_initial_obs_stats = None
+        replay_action_log = None
+        last_observation = None
         try:
             while True:
                 cmd, data = remote.recv()
                 if cmd == "reset":
+                    reset_rng_state = _capture_worker_rng_state()
+                    initial_obs_stats = (
+                        copy.deepcopy(env.get_obs_stats())
+                        if hasattr(env, "get_obs_stats")
+                        else None
+                    )
                     obs, info = env.reset(**data)
+                    replay_reset_rng_state = reset_rng_state
+                    replay_reset_kwargs = copy.deepcopy(data)
+                    replay_initial_obs_stats = initial_obs_stats
+                    replay_action_log = _new_action_log()
+                    last_observation = obs
                     remote.send((obs, info))
                 elif cmd == "step":
+                    if replay_action_log is not None:
+                        _append_checkpoint_action(replay_action_log, data)
                     observation, reward, terminated, truncated, info = env.step(data)
-                    if terminated['agent_0'] or truncated['agent_0']:
+                    if terminated["agent_0"] or truncated["agent_0"]:
                         old_observation, old_info = observation, info
                         observation, info = env.reset()
                         info["final_observation"] = old_observation
                         info["final_info"] = old_info
+                    last_observation = observation
                     remote.send((observation, reward, terminated, truncated, info))
                 elif cmd == "close":
                     remote.close()
@@ -306,20 +492,31 @@ class AsyncMultiAgentVecEnv:
                     remote.send(None)
                 elif cmd == "get_checkpoint_state":
                     try:
-                        import cloudpickle
+                        worker_rng_state = _capture_worker_rng_state()
+                        if replay_action_log is not None:
+                            state = {
+                                "mode": _ACTION_REPLAY_CHECKPOINT,
+                                "constructor_rng_state": constructor_rng_state,
+                                "reset_rng_state": replay_reset_rng_state,
+                                "reset_kwargs": replay_reset_kwargs,
+                                "initial_obs_stats": replay_initial_obs_stats,
+                                "actions": _pack_action_log(replay_action_log),
+                                "expected_observation": copy.deepcopy(last_observation),
+                                "worker_rng_state": worker_rng_state,
+                            }
+                        else:
+                            # Compatibility for exact checkpoints written before
+                            # action replay was introduced. New checkpoints always
+                            # use replay after the first explicit reset.
+                            import cloudpickle
 
-                        python_rng = rnd.getstate()
-                        numpy_rng = np.random.get_state()
-                        torch_rng = th.get_rng_state().cpu().numpy().copy()
-                        state = {
-                            "env": cloudpickle.dumps(env),
-                            "python_rng": python_rng,
-                            "numpy_rng": numpy_rng,
-                            "torch_rng": torch_rng,
-                        }
-                        rnd.setstate(python_rng)
-                        np.random.set_state(numpy_rng)
-                        th.set_rng_state(th.from_numpy(torch_rng.copy()))
+                            state = {
+                                "mode": _PICKLED_ENV_CHECKPOINT,
+                                "env": cloudpickle.dumps(env),
+                                "python_rng": worker_rng_state["python"],
+                                "numpy_rng": worker_rng_state["numpy"],
+                                "torch_rng": worker_rng_state["torch"],
+                            }
                         remote.send({"ok": True, "state": state})
                     except Exception as exc:
                         remote.send(
@@ -330,17 +527,77 @@ class AsyncMultiAgentVecEnv:
                         )
                 elif cmd == "set_checkpoint_state":
                     try:
-                        import cloudpickle
+                        mode = data.get("mode", _PICKLED_ENV_CHECKPOINT)
+                        if mode == _ACTION_REPLAY_CHECKPOINT:
+                            restored_constructor_rng = data["constructor_rng_state"]
+                            _restore_worker_rng_state(restored_constructor_rng)
+                            restored_env = env_fn_wrapper.fn()
+                            try:
+                                initial_obs_stats = data.get("initial_obs_stats")
+                                if initial_obs_stats is not None and hasattr(
+                                    restored_env, "set_obs_stats"
+                                ):
+                                    restored_env.set_obs_stats(initial_obs_stats)
+                                _restore_worker_rng_state(data["reset_rng_state"])
+                                observation, _ = restored_env.reset(
+                                    **data["reset_kwargs"]
+                                )
+                                for action in _iter_checkpoint_actions(data["actions"]):
+                                    (
+                                        observation,
+                                        _,
+                                        terminated,
+                                        truncated,
+                                        _,
+                                    ) = restored_env.step(action)
+                                    if terminated["agent_0"] or truncated["agent_0"]:
+                                        observation, _ = restored_env.reset()
 
-                        restored_env = cloudpickle.loads(data["env"])
-                        old_env = env
-                        env = restored_env
-                        old_env.close()
-                        rnd.setstate(data["python_rng"])
-                        np.random.set_state(data["numpy_rng"])
-                        th.set_rng_state(
-                            th.from_numpy(np.asarray(data["torch_rng"]).copy())
-                        )
+                                if not _checkpoint_values_equal(
+                                    observation,
+                                    data["expected_observation"],
+                                ):
+                                    raise RuntimeError(
+                                        "Action replay did not reconstruct the "
+                                        "saved observation exactly."
+                                    )
+                            except Exception:
+                                restored_env.close()
+                                raise
+
+                            old_env = env
+                            env = restored_env
+                            old_env.close()
+                            constructor_rng_state = restored_constructor_rng
+                            replay_reset_rng_state = data["reset_rng_state"]
+                            replay_reset_kwargs = copy.deepcopy(data["reset_kwargs"])
+                            replay_initial_obs_stats = copy.deepcopy(
+                                data.get("initial_obs_stats")
+                            )
+                            replay_action_log = _unpack_action_log(data["actions"])
+                            last_observation = copy.deepcopy(observation)
+                            _restore_worker_rng_state(data["worker_rng_state"])
+                        elif mode == _PICKLED_ENV_CHECKPOINT:
+                            import cloudpickle
+
+                            restored_env = cloudpickle.loads(data["env"])
+                            old_env = env
+                            env = restored_env
+                            old_env.close()
+                            rnd.setstate(data["python_rng"])
+                            np.random.set_state(data["numpy_rng"])
+                            th.set_rng_state(
+                                th.from_numpy(np.asarray(data["torch_rng"]).copy())
+                            )
+                            replay_reset_rng_state = None
+                            replay_reset_kwargs = None
+                            replay_initial_obs_stats = None
+                            replay_action_log = None
+                            last_observation = None
+                        else:
+                            raise ValueError(
+                                f"Unknown environment checkpoint mode: {mode!r}."
+                            )
                         remote.send({"ok": True})
                     except Exception as exc:
                         remote.send(
