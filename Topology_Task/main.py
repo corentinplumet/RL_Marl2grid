@@ -79,6 +79,7 @@ def main(args: Namespace) -> None:
     cli_resume_wandb_run_name = args.resume_wandb_run_name
     cli_resume_start_next_rollout = args.resume_start_next_rollout
     cli_resume_delete_checkpoint_after_load = args.resume_delete_checkpoint_after_load
+    cli_wandb_mode = args.wandb_mode
 
     if cli_resume_run_name:
         run_name = cli_resume_wandb_run_name or _strip_checkpoint_save_prefixes(
@@ -106,6 +107,7 @@ def main(args: Namespace) -> None:
         args.resume_time_limit = cli_resume_time_limit
         args.resume_wandb_run_name = cli_resume_wandb_run_name
         args.resume_delete_checkpoint_after_load = cli_resume_delete_checkpoint_after_load
+        args.wandb_mode = cli_wandb_mode
         args.resume_start_next_rollout = (
             _is_completed_final_checkpoint(cli_resume_run_name)
             if cli_resume_start_next_rollout is None

@@ -6,6 +6,14 @@ import shutil
 
 from .imports import *
 
+
+def _env_flag(name: str, default: bool) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() not in {"0", "false", "no", "off"}
+
+
 class Logger:
     """Logger class for managing and logging metrics to WandB.
 
@@ -38,23 +46,51 @@ class Logger:
             }
         }
 
-        self.wb_mode = args.wandb_mode
+        self.wb_mode = str(args.wandb_mode).strip().lower()
 
-        init_timeout = float(os.environ.get("WANDB_INIT_TIMEOUT", "300"))
-        wb_path = wb.init(
-            name=run_name,
-            id=run_name,
-            config=vars(args),
-            mode=self.wb_mode,
-            project=args.wandb_project,
-            entity=args.wandb_entity,
-            settings=wb.Settings(
-                _disable_stats=True,
-                init_timeout=init_timeout,
-            ),
-            resume=True if args.resume_run_name else None
-            #sync_tensorboard=True,
-        )
+        init_timeout = float(os.environ.get("WANDB_INIT_TIMEOUT", "120"))
+
+        def _init_wandb(mode: str):
+            return wb.init(
+                name=run_name,
+                id=run_name,
+                config=vars(args),
+                mode=mode,
+                project=args.wandb_project,
+                entity=args.wandb_entity,
+                settings=wb.Settings(
+                    _disable_stats=True,
+                    init_timeout=init_timeout,
+                ),
+                resume=(
+                    True
+                    if mode == "online" and args.resume_run_name
+                    else None
+                ),
+                # sync_tensorboard=True,
+            )
+
+        try:
+            wb_path = _init_wandb(self.wb_mode)
+        except wb.errors.CommError as exc:
+            allow_fallback = _env_flag("WANDB_OFFLINE_FALLBACK", True)
+            if self.wb_mode != "online" or not allow_fallback:
+                raise
+            print(
+                "W&B online initialization failed; continuing in offline mode. "
+                f"The local run will be retained for later sync. Error: {exc}",
+                flush=True,
+            )
+            try:
+                wb.teardown()
+            except Exception as teardown_exc:
+                print(
+                    "W&B cleanup after the online timeout reported an error; "
+                    f"attempting offline initialization anyway: {teardown_exc}",
+                    flush=True,
+                )
+            self.wb_mode = "offline"
+            wb_path = _init_wandb(self.wb_mode)
         self.wb_path = os.path.split(wb_path.dir)[0]
 
     def _get_eval_buffers(self, prefix: Optional[str] = None) -> Dict[str, Deque]:
@@ -127,9 +163,31 @@ class Logger:
         if self.wb_path is None:
             return
         wb.finish()
-        if self.wb_mode == 'offline':
-            subprocess.run(['wandb', 'sync', '--append', self.wb_path]) 
-            shutil.rmtree(self.wb_path)   # Remove wandb run folder
+        if self.wb_mode == "offline":
+            sync_timeout = float(os.environ.get("WANDB_SYNC_TIMEOUT", "300"))
+            try:
+                result = subprocess.run(
+                    ["wandb", "sync", "--append", self.wb_path],
+                    check=False,
+                    timeout=sync_timeout,
+                )
+            except (OSError, subprocess.TimeoutExpired) as exc:
+                print(
+                    "Automatic W&B sync failed; offline data was retained at "
+                    f"{self.wb_path}. Sync it later with: "
+                    f"wandb sync --append {self.wb_path}\nError: {exc}",
+                    flush=True,
+                )
+                return
+            if result.returncode == 0:
+                shutil.rmtree(self.wb_path)
+            else:
+                print(
+                    "Automatic W&B sync failed; offline data was retained at "
+                    f"{self.wb_path}. Sync it later with: "
+                    f"wandb sync --append {self.wb_path}",
+                    flush=True,
+                )
 
 class ConstrainedLogger(Logger):
     """Logger class for managing and logging metrics to WandB.

@@ -225,7 +225,8 @@ def main() -> int:
     for key, value in config.get("environment", {}).items():
         os.environ[key] = format_value(value, context)
     os.environ.setdefault("WANDB__SERVICE_WAIT", "300")
-    os.environ.setdefault("WANDB_INIT_TIMEOUT", "300")
+    os.environ.setdefault("WANDB_INIT_TIMEOUT", "120")
+    os.environ.setdefault("WANDB_OFFLINE_FALLBACK", "true")
 
     for key in ["MPLCONFIGDIR", "WANDB_DIR", "XDG_CACHE_HOME"]:
         if key in os.environ:
@@ -247,7 +248,7 @@ def main() -> int:
             *command,
         ]
 
-    print("========== JED config run ==========")
+    print("========== Cluster config run ==========")
     print(f"Config: {config_path}")
     print(f"Run name: {run.get('name', config_path.stem)}")
     print(f"Run dir: {run_dir}")
