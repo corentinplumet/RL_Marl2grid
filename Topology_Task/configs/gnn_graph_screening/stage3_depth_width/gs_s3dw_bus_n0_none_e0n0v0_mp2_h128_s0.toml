@@ -1,0 +1,150 @@
+# Generated graph-architecture screening configuration.
+# Keep non-screened settings identical so the comparisons remain paired.
+
+[run]
+name = "gs_s3dw_bus_n0_none_e0n0v0_mp2_h128_s0"
+run_dir = "outputs/jed-{config_name}-{job_id}"
+seed_from_slurm_array = false
+extra_args = []
+
+[launcher]
+use_srun = true
+cpu_bind = "cores"
+print_python_summary = true
+
+[environment]
+PYTHONUNBUFFERED = "1"
+OMP_NUM_THREADS = "1"
+MKL_NUM_THREADS = "1"
+OPENBLAS_NUM_THREADS = "1"
+NUMEXPR_NUM_THREADS = "1"
+VECLIB_MAXIMUM_THREADS = "1"
+MAX_TIME_LIMIT_MINUTES = "5760"
+MPLCONFIGDIR = "{run_dir}/matplotlib"
+WANDB_DIR = "{run_dir}/wandb"
+XDG_CACHE_HOME = "{run_dir}/cache"
+
+[args]
+# Paired bus14 screening protocol
+time_limit = 5760
+checkpoint = true
+alg = "MAPPO"
+seed = 0
+verbose = true
+exp_tag = "gs_s3dw_bus_n0_none_e0n0v0_mp2_h128_s0"
+track = true
+wandb_project = "Grid2Op"
+wandb_entity = "corentin-plumet-epfl"
+wandb_mode = "online"
+th_deterministic = false
+cuda = false
+n_threads = 4
+
+# bus14 environment and fixed MLP critic
+env_id = "bus14"
+n_envs = 72
+action_type = "topology"
+difficulty = 0
+decentralized = true
+n1_reward = false
+env_config_path = "scenario.json"
+norm_obs = true
+use_heuristic = false
+heuristic_type = "idle"
+line_margin_reward_weight = 0.0
+topology_reward_weight = 0.0
+optimize_mem = true
+constraints_type = 0
+split_chronics = true
+test_chronics_pct = 0.2
+chronic_split_seed = 0
+
+# Shared, grid-size-independent actor encoder
+actor_encoder = "gnn"
+critic_encoder = "mlp"
+gnn_type = "gine"
+gnn_hidden_dim = 128
+gnn_out_dim = 128
+gnn_layers = 2
+gnn_heads = 4
+gnn_readout_aggr = "mean"
+sparse_gt_pooling = ""
+graphsage_aggr = "mean"
+gcn_edge_weight_feature = "none"
+gnn_layer_norm = true
+gnn_node_pre_encoder = true
+gnn_edge_pre_encoder = false
+gnn_node_id_embeddings = false
+gnn_node_id_emb_dim = 8
+gnn_concat_flat = false
+share_actor_gnn = true
+gnn_graph_type = "bus"
+gnn_include_neighbors = true
+
+# Relation directions (held at the backwards-compatible baseline)
+gnn_generator_edge_direction = "bidirectional"
+gnn_load_edge_direction = "bidirectional"
+gnn_line_node_edge_direction = "bidirectional"
+gnn_summary_edge_direction = "bidirectional"
+gnn_virtual_edge_direction = "toward_virtual"
+
+# Structural factors (held off in stage 1)
+gnn_add_substation_edges = false
+gnn_add_substation_nodes = false
+sparse_gt_add_self_edges = true
+sparse_gt_add_substation_edges = false
+sparse_gt_use_edge_attr = true
+sparse_gt_use_edge_type_embeddings = true
+sparse_gt_relation_bias = true
+sparse_gt_dropout = 0.0
+sparse_gt_attention_dropout = 0.0
+sparse_gt_ffn_multiplier = 4
+
+# Input preprocessing factors
+gnn_physical_scaling = false
+gnn_running_norm = false
+gnn_power_scale_mw = 0.0
+gnn_norm_clip = 10.0
+
+# Training budget (overridden by later stages when required)
+total_timesteps = 15000000
+n_steps = 576
+eval_freq = 82944
+actor_layers = [128, 128]
+critic_layers = [256, 256, 256]
+actor_act_fn = "relu"
+critic_act_fn = "relu"
+actor_lr = 0.0001
+critic_lr = 0.0001
+anneal_lr = true
+gamma = 0.9
+gae_lambda = 0.95
+update_epochs = 10
+n_minibatches = 16
+max_grad_norm = 1.0
+target_kl = 0.02
+norm_adv = true
+clip_coef = 0.2
+clip_vfloss = true
+entropy_coef = 0.01
+entropy_coef_final = 0.01
+vf_coef = 0.5
+optimize_critic_updates = true
+init_do_nothing_prob = 0.0
+norm_reward = true
+action0_logit_bonus_init = 0.0
+action0_logit_bonus_final = 0.0
+action0_logit_bonus_fraction = 1.0
+deterministic_eval = true
+eval_episodes = 10
+eval_all_split_chronics = false
+eval_train_chronics = true
+
+# No intervention mechanism is mixed into the representation screen
+intervention_gate = false
+intervention_gate_eval_mode = "final_action_map"
+intervention_penalty = 0.0
+safe_intervention_penalty = 0.0
+safe_intervention_rho_threshold = 0.90
+eval_action_heuristic = "none"
+eval_action_rho_threshold = 0.90

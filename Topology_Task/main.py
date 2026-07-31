@@ -77,6 +77,7 @@ def main(args: Namespace) -> None:
     cli_resume_total_timesteps = args.resume_total_timesteps
     cli_resume_time_limit = args.resume_time_limit
     cli_resume_wandb_run_name = args.resume_wandb_run_name
+    cli_resume_wandb_run_id = args.resume_wandb_run_id
     cli_resume_start_next_rollout = args.resume_start_next_rollout
     cli_resume_delete_checkpoint_after_load = args.resume_delete_checkpoint_after_load
     cli_wandb_mode = args.wandb_mode
@@ -106,6 +107,7 @@ def main(args: Namespace) -> None:
         args.resume_total_timesteps = cli_resume_total_timesteps
         args.resume_time_limit = cli_resume_time_limit
         args.resume_wandb_run_name = cli_resume_wandb_run_name
+        args.resume_wandb_run_id = cli_resume_wandb_run_id
         args.resume_delete_checkpoint_after_load = cli_resume_delete_checkpoint_after_load
         args.wandb_mode = cli_wandb_mode
         args.resume_start_next_rollout = (
@@ -170,6 +172,15 @@ if __name__ == "__main__":
         help=(
             "Optional WandB id/name to continue. By default final_ and best_test_ "
             "checkpoint prefixes are stripped from --resume-run-name."
+        ),
+    )
+    parser.add_argument(
+        "--resume-wandb-run-id",
+        type=str,
+        default="",
+        help=(
+            "Optional immutable W&B run ID to append to when resuming. If "
+            "omitted, resumed metrics stay in a retained offline archive."
         ),
     )
     parser.add_argument(

@@ -117,6 +117,7 @@ def build_command(
     target_timesteps: int,
     time_limit: float,
     wandb_run_name: str,
+    wandb_run_id: str,
 ) -> list[str]:
     command = [
         "sbatch",
@@ -131,6 +132,8 @@ def build_command(
         command.extend(["--resume-time-limit", str(time_limit)])
     if wandb_run_name:
         command.extend(["--resume-wandb-run-name", wandb_run_name])
+    if wandb_run_id:
+        command.extend(["--resume-wandb-run-id", wandb_run_id])
     return command
 
 
@@ -172,6 +175,11 @@ def main() -> int:
         "--wandb-run-name",
         default="",
         help="Optional explicit WandB run id/name if the checkpoint file was renamed.",
+    )
+    parser.add_argument(
+        "--wandb-run-id",
+        default="",
+        help="Optional immutable W&B run ID to append resumed metrics to.",
     )
     parser.add_argument(
         "--include-complete",
@@ -229,6 +237,7 @@ def main() -> int:
         ns.target_timesteps,
         ns.time_limit,
         ns.wandb_run_name,
+        ns.wandb_run_id,
     )
     printable = " ".join(shlex.quote(part) for part in command)
 

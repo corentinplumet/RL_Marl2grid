@@ -16,6 +16,7 @@ def _logger_args():
         wandb_project="Grid2Op",
         wandb_entity="test",
         resume_run_name="checkpoint",
+        resume_wandb_run_id="original-id",
     )
 
 
@@ -66,17 +67,89 @@ class LoggerTests(unittest.TestCase):
             logger = Logger.__new__(Logger)
             logger.wb_mode = "offline"
             logger.wb_path = str(offline_dir)
+            logger.run_name = "fallback-test"
+            logger.wb_project = "Grid2Op"
+            logger.wb_entity = "test"
+            logger.is_resume = True
+            logger.wb_target_id = "original-id"
 
             with (
                 patch("common.logger.wb.finish"),
                 patch(
                     "common.logger.subprocess.run",
-                    return_value=Mock(returncode=1),
+                    return_value=Mock(returncode=1, stdout=""),
                 ),
             ):
                 logger.close()
 
             self.assertTrue(offline_dir.exists())
+
+    def test_successful_offline_sync_also_keeps_local_run(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            offline_dir = Path(tmp_dir) / "offline-run"
+            offline_dir.mkdir()
+            logger = Logger.__new__(Logger)
+            logger.wb_mode = "offline"
+            logger.wb_path = str(offline_dir)
+            logger.run_name = "fallback-test"
+            logger.wb_project = "Grid2Op"
+            logger.wb_entity = "test"
+            logger.is_resume = True
+            logger.wb_target_id = "original-id"
+
+            with (
+                patch("common.logger.wb.finish"),
+                patch(
+                    "common.logger.subprocess.run",
+                    return_value=Mock(returncode=0, stdout="Syncing ... done.\n"),
+                ) as sync,
+            ):
+                logger.close()
+
+            self.assertTrue(offline_dir.exists())
+            command = sync.call_args.args[0]
+            self.assertIn("--no-mark-synced", command)
+            self.assertEqual(command[command.index("--id") + 1], "original-id")
+
+    def test_semantic_sync_error_keeps_local_run(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            offline_dir = Path(tmp_dir) / "offline-run"
+            offline_dir.mkdir()
+            logger = Logger.__new__(Logger)
+            logger.wb_mode = "offline"
+            logger.wb_path = str(offline_dir)
+            logger.run_name = "fallback-test"
+            logger.wb_project = "Grid2Op"
+            logger.wb_entity = "test"
+            logger.is_resume = True
+            logger.wb_target_id = "deleted-id"
+
+            with (
+                patch("common.logger.wb.finish"),
+                patch(
+                    "common.logger.subprocess.run",
+                    return_value=Mock(
+                        returncode=0,
+                        stdout=(
+                            "wandb: ERROR run was previously created and deleted\n"
+                        ),
+                    ),
+                ),
+            ):
+                logger.close()
+
+            self.assertTrue(offline_dir.exists())
+
+    def test_online_resume_without_internal_id_uses_offline_mode(self):
+        args = _logger_args()
+        args.resume_wandb_run_id = ""
+        offline_run = Mock(dir="/tmp/offline-run/files")
+
+        with patch("common.logger.wb.init", return_value=offline_run) as init:
+            logger = Logger("visible-name", args)
+
+        self.assertEqual(logger.wb_mode, "offline")
+        self.assertEqual(init.call_args.kwargs["mode"], "offline")
 
 
 if __name__ == "__main__":

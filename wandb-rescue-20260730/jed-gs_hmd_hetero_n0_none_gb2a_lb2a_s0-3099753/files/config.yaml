@@ -1,0 +1,769 @@
+wandb_version: 1
+
+_wandb:
+  desc: null
+  value:
+    python_version: 3.12.2
+    cli_version: 0.25.0
+    framework: torch
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    start_time: 1785407350
+    t:
+      1:
+      - 1
+      - 30
+      - 77
+      2:
+      - 1
+      - 30
+      - 77
+      3:
+      - 2
+      - 4
+      - 13
+      - 14
+      - 16
+      - 42
+      - 61
+      4: 3.12.2
+      5: 0.25.0
+      13: linux-x86_64
+    e:
+      5f8ow4g70c5hqy5gbhfwbhmrqiauhebf:
+        os: Linux-5.14.0-70.30.1.el9_0.x86_64-x86_64-with-glibc2.34
+        python: CPython 3.12.2
+        started_at: '2026-07-30T10:29:10.106033Z'
+        args:
+        - --time-limit
+        - '2880'
+        - --checkpoint
+        - 'true'
+        - --alg
+        - MAPPO
+        - --seed
+        - '0'
+        - --verbose
+        - 'true'
+        - --exp-tag
+        - gs_hmd_hetero_n0_none_gb2a_lb2a_s0
+        - --track
+        - 'true'
+        - --wandb-project
+        - Grid2Op
+        - --wandb-entity
+        - corentin-plumet-epfl
+        - --wandb-mode
+        - offline
+        - --th-deterministic
+        - 'false'
+        - --cuda
+        - 'true'
+        - --n-threads
+        - '4'
+        - --env-id
+        - bus14
+        - --n-envs
+        - '72'
+        - --action-type
+        - topology
+        - --difficulty
+        - '0'
+        - --decentralized
+        - 'true'
+        - --n1-reward
+        - 'false'
+        - --env-config-path
+        - scenario.json
+        - --norm-obs
+        - 'true'
+        - --use-heuristic
+        - 'false'
+        - --heuristic-type
+        - idle
+        - --line-margin-reward-weight
+        - '0.0'
+        - --topology-reward-weight
+        - '0.0'
+        - --optimize-mem
+        - 'true'
+        - --constraints-type
+        - '0'
+        - --split-chronics
+        - 'true'
+        - --test-chronics-pct
+        - '0.2'
+        - --chronic-split-seed
+        - '0'
+        - --actor-encoder
+        - gnn
+        - --critic-encoder
+        - mlp
+        - --gnn-type
+        - gine
+        - --gnn-hidden-dim
+        - '128'
+        - --gnn-out-dim
+        - '128'
+        - --gnn-layers
+        - '2'
+        - --gnn-heads
+        - '4'
+        - --gnn-readout-aggr
+        - mean
+        - --graphsage-aggr
+        - mean
+        - --gcn-edge-weight-feature
+        - none
+        - --gnn-layer-norm
+        - 'true'
+        - --gnn-node-pre-encoder
+        - 'true'
+        - --gnn-edge-pre-encoder
+        - 'false'
+        - --gnn-node-id-embeddings
+        - 'false'
+        - --gnn-node-id-emb-dim
+        - '8'
+        - --gnn-concat-flat
+        - 'false'
+        - --share-actor-gnn
+        - 'true'
+        - --gnn-graph-type
+        - heterogeneous
+        - --gnn-include-neighbors
+        - 'true'
+        - --gnn-generator-edge-direction
+        - busbar_to_asset
+        - --gnn-load-edge-direction
+        - busbar_to_asset
+        - --gnn-line-node-edge-direction
+        - bidirectional
+        - --gnn-summary-edge-direction
+        - bidirectional
+        - --gnn-add-substation-edges
+        - 'false'
+        - --gnn-add-substation-nodes
+        - 'false'
+        - --sparse-gt-add-self-edges
+        - 'true'
+        - --sparse-gt-add-substation-edges
+        - 'false'
+        - --sparse-gt-use-edge-attr
+        - 'true'
+        - --sparse-gt-use-edge-type-embeddings
+        - 'true'
+        - --sparse-gt-relation-bias
+        - 'true'
+        - --sparse-gt-dropout
+        - '0.0'
+        - --sparse-gt-attention-dropout
+        - '0.0'
+        - --sparse-gt-ffn-multiplier
+        - '4'
+        - --gnn-physical-scaling
+        - 'false'
+        - --gnn-running-norm
+        - 'false'
+        - --gnn-power-scale-mw
+        - '0.0'
+        - --gnn-norm-clip
+        - '10.0'
+        - --total-timesteps
+        - '15000000'
+        - --n-steps
+        - '576'
+        - --eval-freq
+        - '82944'
+        - --actor-layers
+        - '128'
+        - '128'
+        - --critic-layers
+        - '256'
+        - '256'
+        - '256'
+        - --actor-act-fn
+        - relu
+        - --critic-act-fn
+        - relu
+        - --actor-lr
+        - '0.0001'
+        - --critic-lr
+        - '0.0001'
+        - --anneal-lr
+        - 'true'
+        - --gamma
+        - '0.9'
+        - --gae-lambda
+        - '0.95'
+        - --update-epochs
+        - '10'
+        - --n-minibatches
+        - '16'
+        - --max-grad-norm
+        - '1.0'
+        - --target-kl
+        - '0.02'
+        - --norm-adv
+        - 'true'
+        - --clip-coef
+        - '0.2'
+        - --clip-vfloss
+        - 'true'
+        - --entropy-coef
+        - '0.01'
+        - --entropy-coef-final
+        - '0.01'
+        - --vf-coef
+        - '0.5'
+        - --optimize-critic-updates
+        - 'true'
+        - --init-do-nothing-prob
+        - '0.0'
+        - --norm-reward
+        - 'true'
+        - --action0-logit-bonus-init
+        - '0.0'
+        - --action0-logit-bonus-final
+        - '0.0'
+        - --action0-logit-bonus-fraction
+        - '1.0'
+        - --deterministic-eval
+        - 'true'
+        - --eval-episodes
+        - '10'
+        - --eval-all-split-chronics
+        - 'false'
+        - --eval-train-chronics
+        - 'true'
+        - --intervention-gate
+        - 'false'
+        - --intervention-gate-eval-mode
+        - final_action_map
+        - --intervention-penalty
+        - '0.0'
+        - --safe-intervention-penalty
+        - '0.0'
+        - --safe-intervention-rho-threshold
+        - '0.9'
+        - --eval-action-heuristic
+        - none
+        - --eval-action-rho-threshold
+        - '0.9'
+        - --resume-run-name
+        - gs_hmd_hetero_n0_none_gb2a_lb2a_s0
+        - --resume-total-timesteps
+        - '14971392'
+        - --resume-time-limit
+        - '2880'
+        - --resume-start-next-rollout
+        - 'true'
+        - --resume-delete-checkpoint-after-load
+        - 'false'
+        program: /home/plumet/RL_Marl2grid/Topology_Task/main.py
+        code_path: Topology_Task/main.py
+        code_path_local: main.py
+        git:
+          remote_url: https://github.com/corentinplumet/RL_Marl2grid.git
+          commit: ae43585f2b5b250864a9db29dfe3732d4367672f
+        root: /home/plumet/RL_Marl2grid/outputs/jed-gs_hmd_hetero_n0_none_gb2a_lb2a_s0-3099753/wandb
+        host: i51
+        executable: /home/plumet/miniforge3/envs/marl2grid/bin/python
+        writer_id: 5f8ow4g70c5hqy5gbhfwbhmrqiauhebf
+    visualize:
+      train/non_idle_agents_distribution:
+        panel_type: Vega2
+        panel_config:
+          panelDefId: wandb/bar/v0
+          fieldSettings:
+            label: non_idle_agents
+            value: fraction
+          stringSettings:
+            title: Non-idle agents per environment step
+          transform:
+            name: tableWithLeafColNames
+          userQuery:
+            queryFields:
+            - name: runSets
+              args:
+              - name: runSets
+                value: ${runSets}
+              fields:
+              - name: id
+                fields: []
+              - name: name
+                fields: []
+              - name: _defaultColorIndex
+                fields: []
+              - name: summaryTable
+                args:
+                - name: tableKey
+                  value: train/non_idle_agents_distribution_table
+                fields: []
+time_limit:
+  desc: null
+  value: 2880.0
+checkpoint:
+  desc: null
+  value: true
+resume_run_name:
+  desc: null
+  value: gs_hmd_hetero_n0_none_gb2a_lb2a_s0
+resume_total_timesteps:
+  desc: null
+  value: 14971392
+resume_time_limit:
+  desc: null
+  value: 2880.0
+resume_wandb_run_name:
+  desc: null
+  value: ''
+resume_start_next_rollout:
+  desc: null
+  value: true
+resume_delete_checkpoint_after_load:
+  desc: null
+  value: false
+alg:
+  desc: null
+  value: MAPPO
+seed:
+  desc: null
+  value: 0
+verbose:
+  desc: null
+  value: true
+exp_tag:
+  desc: null
+  value: gs_hmd_hetero_n0_none_gb2a_lb2a_s0
+track:
+  desc: null
+  value: true
+wandb_project:
+  desc: null
+  value: Grid2Op
+wandb_entity:
+  desc: null
+  value: corentin-plumet-epfl
+wandb_mode:
+  desc: null
+  value: offline
+th_deterministic:
+  desc: null
+  value: false
+cuda:
+  desc: null
+  value: true
+n_threads:
+  desc: null
+  value: 4
+env_id:
+  desc: null
+  value: bus14
+n_envs:
+  desc: null
+  value: 72
+action_type:
+  desc: null
+  value: topology
+reduced_action_space:
+  desc: null
+  value: ''
+difficulty:
+  desc: null
+  value: 0
+decentralized:
+  desc: null
+  value: true
+n1_reward:
+  desc: null
+  value: false
+env_config_path:
+  desc: null
+  value: scenario.json
+obs_attrs:
+  desc: null
+  value: null
+norm_obs:
+  desc: null
+  value: true
+use_heuristic:
+  desc: null
+  value: false
+heuristic_type:
+  desc: null
+  value: idle
+line_margin_reward_weight:
+  desc: null
+  value: 0.0
+topology_reward_weight:
+  desc: null
+  value: 0.0
+optimize_mem:
+  desc: null
+  value: true
+constraints_type:
+  desc: null
+  value: 0
+split_chronics:
+  desc: null
+  value: true
+test_chronics_pct:
+  desc: null
+  value: 0.2
+chronic_split_seed:
+  desc: null
+  value: 0
+chronic_shard_count:
+  desc: null
+  value: 1
+chronic_shard_index:
+  desc: null
+  value: 0
+actor_encoder:
+  desc: null
+  value: gnn
+critic_encoder:
+  desc: null
+  value: mlp
+gnn_include_neighbors:
+  desc: null
+  value: true
+total_timesteps:
+  desc: null
+  value: 14971392
+n_steps:
+  desc: null
+  value: 576
+eval_freq:
+  desc: null
+  value: 82944
+actor_layers:
+  desc: null
+  value:
+  - 128
+  - 128
+critic_layers:
+  desc: null
+  value:
+  - 256
+  - 256
+  - 256
+actor_act_fn:
+  desc: null
+  value: relu
+critic_act_fn:
+  desc: null
+  value: relu
+actor_lr:
+  desc: null
+  value: 0.0001
+critic_lr:
+  desc: null
+  value: 0.0001
+anneal_lr:
+  desc: null
+  value: true
+lr_anneal_timesteps:
+  desc: null
+  value: null
+lr_final_frac:
+  desc: null
+  value: 0.0
+gamma:
+  desc: null
+  value: 0.9
+gae_lambda:
+  desc: null
+  value: 0.95
+update_epochs:
+  desc: null
+  value: 10
+n_minibatches:
+  desc: null
+  value: 16
+max_grad_norm:
+  desc: null
+  value: 1.0
+target_kl:
+  desc: null
+  value: 0.02
+norm_adv:
+  desc: null
+  value: true
+clip_coef:
+  desc: null
+  value: 0.2
+clip_vfloss:
+  desc: null
+  value: true
+entropy_coef:
+  desc: null
+  value: 0.01
+entropy_coef_final:
+  desc: null
+  value: 0.01
+vf_coef:
+  desc: null
+  value: 0.5
+optimize_critic_updates:
+  desc: null
+  value: true
+init_do_nothing_prob:
+  desc: null
+  value: 0.0
+intervention_gate:
+  desc: null
+  value: false
+intervention_gate_eval_mode:
+  desc: null
+  value: final_action_map
+intervention_gate_entropy_mode:
+  desc: null
+  value: coupled
+intervention_gate_entropy_mult:
+  desc: null
+  value: 1.0
+intervention_nonidle_entropy_mult:
+  desc: null
+  value: 1.0
+intervention_penalty:
+  desc: null
+  value: 0.0
+safe_intervention_penalty:
+  desc: null
+  value: 0.0
+safe_intervention_rho_threshold:
+  desc: null
+  value: 0.9
+adaptive_intervention_budget:
+  desc: null
+  value: false
+intervention_budget_target:
+  desc: null
+  value: 0.25
+intervention_budget_lr:
+  desc: null
+  value: 0.01
+intervention_budget_init_lambda:
+  desc: null
+  value: 0.0
+intervention_budget_max_lambda:
+  desc: null
+  value: 10.0
+intervention_budget_warmup_steps:
+  desc: null
+  value: 0
+intervention_budget_cost_mode:
+  desc: null
+  value: local_safe
+intervention_budget_rho_threshold:
+  desc: null
+  value: 0.9
+intervention_budget_rho_sharpness:
+  desc: null
+  value: 25.0
+norm_reward:
+  desc: null
+  value: true
+action0_logit_bonus_init:
+  desc: null
+  value: 0.0
+action0_logit_bonus_final:
+  desc: null
+  value: 0.0
+action0_logit_bonus_fraction:
+  desc: null
+  value: 1.0
+deterministic_eval:
+  desc: null
+  value: true
+eval_action_heuristic:
+  desc: null
+  value: none
+eval_action_rho_threshold:
+  desc: null
+  value: 0.9
+eval_episodes:
+  desc: null
+  value: 10
+eval_all_split_chronics:
+  desc: null
+  value: false
+eval_train_chronics:
+  desc: null
+  value: true
+trace_rollout_actions:
+  desc: null
+  value: false
+trace_rollout_env_idx:
+  desc: null
+  value: 0
+trace_rollout_max_steps:
+  desc: null
+  value: 512
+trace_rollout_every:
+  desc: null
+  value: 10
+trace_rollout_decode_actions:
+  desc: null
+  value: true
+gnn_type:
+  desc: null
+  value: gine
+gnn_hidden_dim:
+  desc: null
+  value: 128
+gnn_out_dim:
+  desc: null
+  value: 128
+gnn_layers:
+  desc: null
+  value: 2
+gnn_heads:
+  desc: null
+  value: 4
+gnn_readout_aggr:
+  desc: null
+  value: mean
+sparse_gt_pooling:
+  desc: null
+  value: ''
+gnn_add_substation_nodes:
+  desc: null
+  value: false
+gnn_summary_edge_direction:
+  desc: null
+  value: bidirectional
+gnn_add_substation_edges:
+  desc: null
+  value: false
+sparse_gt_add_self_edges:
+  desc: null
+  value: true
+sparse_gt_add_substation_edges:
+  desc: null
+  value: false
+sparse_gt_use_edge_attr:
+  desc: null
+  value: true
+sparse_gt_use_edge_type_embeddings:
+  desc: null
+  value: true
+sparse_gt_relation_bias:
+  desc: null
+  value: true
+sparse_gt_dropout:
+  desc: null
+  value: 0.0
+sparse_gt_attention_dropout:
+  desc: null
+  value: 0.0
+sparse_gt_ffn_multiplier:
+  desc: null
+  value: 4
+graphsage_aggr:
+  desc: null
+  value: mean
+gcn_edge_weight_feature:
+  desc: null
+  value: none
+gnn_layer_norm:
+  desc: null
+  value: true
+gnn_physical_scaling:
+  desc: null
+  value: false
+gnn_running_norm:
+  desc: null
+  value: false
+gnn_power_scale_mw:
+  desc: null
+  value: 0.0
+gnn_norm_clip:
+  desc: null
+  value: 10.0
+gnn_node_pre_encoder:
+  desc: null
+  value: true
+gnn_edge_pre_encoder:
+  desc: null
+  value: false
+gnn_node_id_embeddings:
+  desc: null
+  value: false
+gnn_node_id_emb_dim:
+  desc: null
+  value: 8
+gnn_concat_flat:
+  desc: null
+  value: false
+share_actor_gnn:
+  desc: null
+  value: true
+gnn_graph_type:
+  desc: null
+  value: heterogeneous
+gnn_generator_edge_direction:
+  desc: null
+  value: busbar_to_asset
+gnn_load_edge_direction:
+  desc: null
+  value: busbar_to_asset
+gnn_line_node_edge_direction:
+  desc: null
+  value: bidirectional
+tokenizer_type:
+  desc: null
+  value: group
+tokenizer_include_neighbors:
+  desc: null
+  value: true
+tokenizer_include_maintenance:
+  desc: null
+  value: true
+tokenizer_max_feature_dim:
+  desc: null
+  value: 128
+tokenizer_include_busbar_tokens:
+  desc: null
+  value: false
+transformer_d_model:
+  desc: null
+  value: 128
+transformer_n_heads:
+  desc: null
+  value: 4
+transformer_layers:
+  desc: null
+  value: 3
+transformer_ff_dim:
+  desc: null
+  value: 512
+transformer_dropout:
+  desc: null
+  value: 0.05
+transformer_activation:
+  desc: null
+  value: gelu
+transformer_pool:
+  desc: null
+  value: cls
+transformer_concat_flat:
+  desc: null
+  value: false
+transformer_use_entity_id_embeddings:
+  desc: null
+  value: true
+transformer_use_substation_embeddings:
+  desc: null
+  value: true
+transformer_use_bus_embeddings:
+  desc: null
+  value: true
+transformer_use_agent_embeddings:
+  desc: null
+  value: true
+transformer_layer_norm_eps:
+  desc: null
+  value: 1.0e-05

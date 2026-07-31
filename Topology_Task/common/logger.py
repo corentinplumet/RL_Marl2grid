@@ -2,8 +2,6 @@ import os
 import subprocess
 from collections import deque
 
-import shutil
-
 from .imports import *
 
 
@@ -46,18 +44,38 @@ class Logger:
             }
         }
 
+        self.run_name = run_name
+        self.wb_project = args.wandb_project
+        self.wb_entity = args.wandb_entity
+        self.is_resume = bool(getattr(args, "resume_run_name", ""))
         self.wb_mode = str(args.wandb_mode).strip().lower()
+        self.wb_target_id = self._explicit_resume_run_id(args)
+
+        # An online resume must use W&B's immutable internal run ID, which can
+        # differ from the visible run name. Do not perform an automatic network
+        # lookup here: W&B connectivity is exactly what can be unavailable on
+        # a compute node. Without an explicit ID, retain an offline archive.
+        if self.wb_mode == "online" and self.is_resume and not self.wb_target_id:
+            print(
+                "No immutable W&B run ID was supplied for this resume; "
+                "continuing in offline mode to avoid targeting the wrong run. "
+                "Pass --resume-wandb-run-id (or WANDB_RESUME_RUN_ID) to enable "
+                "a safe automatic append.",
+                flush=True,
+            )
+            self.wb_mode = "offline"
 
         init_timeout = float(os.environ.get("WANDB_INIT_TIMEOUT", "120"))
 
         def _init_wandb(mode: str):
+            run_id = self.wb_target_id or run_name
             return wb.init(
                 name=run_name,
-                id=run_name,
+                id=run_id,
                 config=vars(args),
                 mode=mode,
-                project=args.wandb_project,
-                entity=args.wandb_entity,
+                project=self.wb_project,
+                entity=self.wb_entity,
                 settings=wb.Settings(
                     _disable_stats=True,
                     init_timeout=init_timeout,
@@ -92,6 +110,13 @@ class Logger:
             self.wb_mode = "offline"
             wb_path = _init_wandb(self.wb_mode)
         self.wb_path = os.path.split(wb_path.dir)[0]
+
+    @staticmethod
+    def _explicit_resume_run_id(args: Dict[str, Any]) -> str:
+        return str(
+            getattr(args, "resume_wandb_run_id", "")
+            or os.environ.get("WANDB_RESUME_RUN_ID", "")
+        ).strip()
 
     def _get_eval_buffers(self, prefix: Optional[str] = None) -> Dict[str, Deque]:
         if prefix not in self._eval_buffers:
@@ -164,28 +189,73 @@ class Logger:
             return
         wb.finish()
         if self.wb_mode == "offline":
+            if not self.wb_target_id and not self.is_resume:
+                self.wb_target_id = self.run_name
+            if not self.wb_target_id:
+                print(
+                    "Automatic W&B sync was skipped because the immutable "
+                    "target run ID was not supplied. Offline data was retained "
+                    f"at {self.wb_path}. Re-run with --resume-wandb-run-id or "
+                    "sync this archive later with `wandb sync --append --id "
+                    "<original-run-id> <archive>`.",
+                    flush=True,
+                )
+                return
+
             sync_timeout = float(os.environ.get("WANDB_SYNC_TIMEOUT", "300"))
+            command = [
+                "wandb",
+                "sync",
+                "--append",
+                "--no-mark-synced",
+                "--entity",
+                self.wb_entity,
+                "--project",
+                self.wb_project,
+                "--id",
+                self.wb_target_id,
+                self.wb_path,
+            ]
             try:
                 result = subprocess.run(
-                    ["wandb", "sync", "--append", self.wb_path],
+                    command,
                     check=False,
                     timeout=sync_timeout,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
                 )
             except (OSError, subprocess.TimeoutExpired) as exc:
                 print(
                     "Automatic W&B sync failed; offline data was retained at "
                     f"{self.wb_path}. Sync it later with: "
-                    f"wandb sync --append {self.wb_path}\nError: {exc}",
+                    f"{' '.join(command)}\nError: {exc}",
                     flush=True,
                 )
                 return
-            if result.returncode == 0:
-                shutil.rmtree(self.wb_path)
-            else:
+
+            output = result.stdout or ""
+            if output:
+                print(output, end="" if output.endswith("\n") else "\n", flush=True)
+            semantic_error = any(
+                marker in output.lower()
+                for marker in (
+                    "wandb: error",
+                    "error while calling w&b api",
+                    "previously created and deleted",
+                )
+            )
+            if result.returncode != 0 or semantic_error:
                 print(
                     "Automatic W&B sync failed; offline data was retained at "
                     f"{self.wb_path}. Sync it later with: "
-                    f"wandb sync --append {self.wb_path}",
+                    f"{' '.join(command)}",
+                    flush=True,
+                )
+            else:
+                print(
+                    "Automatic W&B sync completed. The offline archive was "
+                    f"retained for verification at {self.wb_path}.",
                     flush=True,
                 )
 
