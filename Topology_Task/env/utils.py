@@ -20,6 +20,7 @@ from lightsim2grid import LightSimBackend
 from ray.rllib.env.multi_agent_env import MultiAgentEnv as MAEnv
 
 from common.imports import *
+from common.action_metadata import build_action_graph_metadata
 from common.explainability import EXPLAIN_INFO_KEY
 from common.graph import make_grid_graph_builder
 from common.graph_normalization import GraphFeatureProcessor
@@ -1093,6 +1094,25 @@ class MAEnvWrapper(MAEnv):
                     ),
                     flush=True,
                 )
+
+            actor_action_head = str(
+                getattr(args, "actor_action_head", "mlp")
+            ).lower()
+            if actor_action_head == "candidate_pool":
+                if getattr(args, "actor_encoder", "mlp") != "gnn":
+                    raise ValueError(
+                        "actor_action_head=candidate_pool requires "
+                        "actor_encoder=gnn."
+                    )
+                if getattr(args, "gnn_graph_type", "bus") != "heterogeneous_line":
+                    raise ValueError(
+                        "actor_action_head=candidate_pool requires "
+                        "gnn_graph_type=heterogeneous_line."
+                    )
+                # Only worker 0 exports spaces to AsyncMultiAgentVecEnv. Eval
+                # environments and direct wrappers also use the default idx=0.
+                if idx == 0:
+                    self._attach_action_graph_metadata()
         else:
             raise NotImplementedError("Make the implementation in this case")
 
@@ -1115,6 +1135,37 @@ class MAEnvWrapper(MAEnv):
             )
 
         self.use_heuristic = args.use_heuristic
+
+    def _attach_action_graph_metadata(self) -> None:
+        """Decode each exposed action once and map it to agent graph rows."""
+        for agent_id in self.g2op_ma_env.agents:
+            reduced_mapping = self._reduced_action_id_mapping.get(agent_id)
+            if reduced_mapping:
+                original_action_ids = list(reduced_mapping)
+            else:
+                original_action_ids = list(
+                    range(int(self._conv_action_space[agent_id].n))
+                )
+
+            global_actions = []
+            for original_action_id in original_action_ids:
+                local_action = self._conv_action_space[agent_id].from_gym(
+                    int(original_action_id)
+                )
+                global_actions.append(
+                    self.g2op_ma_env._local_action_to_global(local_action)
+                )
+
+            self.graph_specs[agent_id]["action_graph_metadata"] = (
+                build_action_graph_metadata(
+                    self.graph_specs[agent_id],
+                    global_actions,
+                    line_or_to_subid=self.g2op_env.line_or_to_subid,
+                    line_ex_to_subid=self.g2op_env.line_ex_to_subid,
+                    original_action_ids=original_action_ids,
+                    strict=True,
+                )
+            )
 
     @property
     def _risk_overflow(self) -> bool:

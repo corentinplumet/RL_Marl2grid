@@ -181,6 +181,7 @@ def _summarize(args: argparse.Namespace, actors: dict[str, Actor], critic: Criti
         "env_id": args.env_id,
         "alg": args.alg,
         "actor_encoder": args.actor_encoder,
+        "actor_action_head": getattr(args, "actor_action_head", "mlp"),
         "critic_encoder": args.critic_encoder,
         "intervention_gate": bool(getattr(args, "intervention_gate", False)),
         "share_actor_gnn": bool(getattr(args, "share_actor_gnn", False)),
@@ -206,6 +207,7 @@ def _print_human(summary: dict[str, Any], config_path: Path) -> None:
     print(
         "Model: "
         f"{summary['alg']} | actor={summary['actor_encoder']} | "
+        f"action_head={summary['actor_action_head']} | "
         f"critic={summary['critic_encoder']} | "
         f"intervention_gate={summary['intervention_gate']} | "
         f"share_actor_gnn={summary['share_actor_gnn']}"

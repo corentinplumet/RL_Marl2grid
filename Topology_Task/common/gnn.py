@@ -353,6 +353,7 @@ class GraphEncoder(_VirtualNodeEncoderBase):
             raise ValueError("A GNN encoder needs at least one layer.")
 
         self.conv_type = conv_type.lower()
+        self.node_out_dim = int(hidden_dim)
         self.uses_edge_attr = self.conv_type in {"gat", "gine"}
         self.readout_aggr = readout_aggr.lower()
         if self.readout_aggr not in {"mean", "sum", "max", "virtual_node"}:
@@ -444,12 +445,28 @@ class GraphEncoder(_VirtualNodeEncoderBase):
         edge_index: Optional[th.Tensor] = None,
         node_ids: Optional[th.Tensor] = None,
     ) -> th.Tensor:
+        embedding, _ = self.forward_with_nodes(
+            graph_obs,
+            edge_index=edge_index,
+            node_ids=node_ids,
+        )
+        return embedding
+
+    def forward_with_nodes(
+        self,
+        graph_obs: Dict[str, th.Tensor],
+        edge_index: Optional[th.Tensor] = None,
+        node_ids: Optional[th.Tensor] = None,
+    ) -> Tuple[th.Tensor, th.Tensor]:
+        """Return the graph readout and physical post-message-passing nodes."""
         unbatched = graph_obs["node_features"].dim() == 2
+        n_nodes = int(graph_obs["node_features"].shape[-2])
         x, edge_index, edge_attr, batch, node_mask, flat_node_ids = self._to_pyg_batch(
             graph_obs, edge_index=edge_index, node_ids=node_ids
         )
         x = self._append_node_id_embeddings(x, flat_node_ids)
         x = self.node_pre_encoder(x)
+        n_physical_nodes = int(x.shape[0])
         (
             x,
             edge_index,
@@ -482,13 +499,20 @@ class GraphEncoder(_VirtualNodeEncoderBase):
                 x = conv(x, edge_index)
             x = norm(F.relu(x))
 
+        batch_size = max(1, n_physical_nodes // n_nodes)
+        node_embeddings = x[:n_physical_nodes].reshape(
+            batch_size, n_nodes, self.node_out_dim
+        )
+
         pooled = (
             x[virtual_indices]
             if virtual_indices is not None
             else self._pool_nodes(x, batch, node_mask)
         )
         embedding = self.readout(pooled)
-        return embedding.squeeze(0) if unbatched else embedding
+        if unbatched:
+            return embedding.squeeze(0), node_embeddings.squeeze(0)
+        return embedding, node_embeddings
 
     def _pool_nodes(
         self,
@@ -788,6 +812,7 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
             raise ValueError("Sparse graph transformer needs at least one layer.")
 
         self.readout_aggr = str(readout_aggr).lower()
+        self.node_out_dim = int(hidden_dim)
         if self.readout_aggr not in {
             "mean",
             "sum",
@@ -918,7 +943,22 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
         edge_index: Optional[th.Tensor] = None,
         node_ids: Optional[th.Tensor] = None,
     ) -> th.Tensor:
+        embedding, _ = self.forward_with_nodes(
+            graph_obs,
+            edge_index=edge_index,
+            node_ids=node_ids,
+        )
+        return embedding
+
+    def forward_with_nodes(
+        self,
+        graph_obs: Dict[str, th.Tensor],
+        edge_index: Optional[th.Tensor] = None,
+        node_ids: Optional[th.Tensor] = None,
+    ) -> Tuple[th.Tensor, th.Tensor]:
+        """Return the graph readout and physical post-message-passing nodes."""
         unbatched = graph_obs["node_features"].dim() == 2
+        n_nodes = int(graph_obs["node_features"].shape[-2])
         (
             x,
             edge_index,
@@ -932,6 +972,7 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
 
         x = self._append_node_id_embeddings(x, flat_node_ids)
         x = self.node_pre_encoder(x)
+        n_physical_nodes = int(x.shape[0])
         (
             x,
             edge_index,
@@ -958,13 +999,20 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
         for layer in self.layers:
             x = layer(x, edge_index, edge_attr, edge_type)
 
+        batch_size = max(1, n_physical_nodes // n_nodes)
+        node_embeddings = x[:n_physical_nodes].reshape(
+            batch_size, n_nodes, self.node_out_dim
+        )
+
         pooled = (
             x[virtual_indices]
             if virtual_indices is not None
             else self._pool_nodes(x, batch, node_mask, controlled_node_mask)
         )
         embedding = self.readout(pooled)
-        return embedding.squeeze(0) if unbatched else embedding
+        if unbatched:
+            return embedding.squeeze(0), node_embeddings.squeeze(0)
+        return embedding, node_embeddings
 
     def _to_pyg_batch(
         self,
@@ -1190,6 +1238,7 @@ class GraphAndFlatEncoder(nn.Module):
         )
         self.graph_encoder = graph_encoder or build_graph_encoder(graph_spec, args)
         self.out_dim = args.gnn_out_dim + (flat_dim if use_flat else 0)
+        self.node_out_dim = int(self.graph_encoder.node_out_dim)
 
     def forward(self, obs: Dict[str, th.Tensor], graph_key: str = "graph") -> th.Tensor:
         graph_embedding = self.graph_encoder(
@@ -1197,6 +1246,29 @@ class GraphAndFlatEncoder(nn.Module):
             edge_index=self.edge_index,
             node_ids=self.node_ids,
         )
+        return self._append_flat(obs, graph_key, graph_embedding)
+
+    def forward_with_nodes(
+        self,
+        obs: Dict[str, th.Tensor],
+        graph_key: str = "graph",
+    ) -> Tuple[th.Tensor, th.Tensor]:
+        graph_embedding, node_embeddings = self.graph_encoder.forward_with_nodes(
+            obs[graph_key],
+            edge_index=self.edge_index,
+            node_ids=self.node_ids,
+        )
+        return (
+            self._append_flat(obs, graph_key, graph_embedding),
+            node_embeddings,
+        )
+
+    def _append_flat(
+        self,
+        obs: Dict[str, th.Tensor],
+        graph_key: str,
+        graph_embedding: th.Tensor,
+    ) -> th.Tensor:
         if not self.use_flat:
             return graph_embedding
 

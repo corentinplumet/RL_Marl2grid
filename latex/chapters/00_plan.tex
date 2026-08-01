@@ -116,6 +116,8 @@ evaluated on.
   \item Baseline MLP agents and the A0 family of reruns.
   \item Graph-encoder agents: bus graph construction, GINE/GAT/GCN variants,
   node and edge pre-encoders, graph readout, and flat-feature concatenation.
+  \item Action heads: the action-index MLP head and the candidate-action head
+  that scores each action from the explicit-line graph nodes it touches.
   \item Critic variants: GNN critic versus MLP critic, legacy versus optimized
   critic updates.
   \item Initialization and exploration choices: entropy coefficient, entropy
@@ -136,6 +138,9 @@ learn.
   \item Main baseline performance: training stability and test survival.
   \item GNN architecture ablations: concat-flat, actor sharing, GINE versus GAT
   or weighted GCN, light versus full encoders, and critic design.
+  \item Action-head ablation: candidate-action scoring versus the action-index
+  head on the explicit-line graph, on \texttt{bus14} first and then on the
+  reduced WCCI action space.
   \item A0 rerun ablations: optimized critic updates, smaller MLP, reward
   normalization, and do-nothing initialization bias.
   \item Sparse-control ablations: fixed penalty, global-safe weighting,

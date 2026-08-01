@@ -1,6 +1,7 @@
 from torch.distributions import Categorical, Normal
 
 from common.imports import *
+from common.action_metadata import ActionGraphMetadata
 from common.gnn import GraphAndFlatEncoder, GraphEncoder
 from common.token_transformer import TokenAndFlatEncoder
 from common.utils import Linear, get_flat_obs, th_act_fns
@@ -22,6 +23,160 @@ def build_mlp_head(
     return nn.Sequential(*layers)
 
 
+class CandidateActionScorer(nn.Module):
+    """Score every discrete action from global and touched-node context."""
+
+    def __init__(
+        self,
+        graph_dim: int,
+        node_dim: int,
+        hidden_layers: List[int],
+        act_fn_name: str,
+        metadata: ActionGraphMetadata,
+        pool_mode: str = "typed_mean",
+        use_action_features: bool = True,
+        use_do_nothing_head: bool = True,
+    ) -> None:
+        super().__init__()
+        metadata.validate()
+        self.n_actions = metadata.n_actions
+        self.node_dim = int(node_dim)
+        self.pool_mode = str(pool_mode).lower()
+        if self.pool_mode not in {"mean", "typed_mean"}:
+            raise ValueError(
+                "candidate_action_pool must be 'mean' or 'typed_mean', got "
+                f"{pool_mode!r}."
+            )
+        self.use_action_features = bool(use_action_features)
+        self.use_do_nothing_head = bool(use_do_nothing_head)
+
+        for name in (
+            "action_features",
+            "busbar_indices",
+            "busbar_mask",
+            "line_indices",
+            "line_mask",
+            "load_indices",
+            "load_mask",
+            "generator_indices",
+            "generator_mask",
+            "is_do_nothing",
+            "original_action_ids",
+        ):
+            self.register_buffer(name, getattr(metadata, name).clone())
+
+        local_dim = self.node_dim * (4 if self.pool_mode == "typed_mean" else 1)
+        scorer_input_dim = int(graph_dim) + local_dim
+        if self.use_action_features:
+            scorer_input_dim += metadata.action_feature_dim
+        self.scorer = build_mlp_head(
+            scorer_input_dim,
+            hidden_layers,
+            1,
+            act_fn_name,
+        )
+        self.do_nothing_actor = (
+            build_mlp_head(
+                int(graph_dim),
+                hidden_layers,
+                1,
+                act_fn_name,
+            )
+            if self.use_do_nothing_head
+            else None
+        )
+        self.do_nothing_logit_bias = nn.Parameter(th.zeros(()))
+
+    @staticmethod
+    def _masked_mean(
+        node_embeddings: th.Tensor,
+        indices: th.Tensor,
+        mask: th.Tensor,
+    ) -> th.Tensor:
+        safe_indices = indices.clamp_min(0)
+        gathered = node_embeddings[:, safe_indices, :]
+        weights = mask.to(dtype=node_embeddings.dtype).unsqueeze(0).unsqueeze(-1)
+        summed = (gathered * weights).sum(dim=2)
+        denominator = weights.sum(dim=2).clamp_min(1.0)
+        return summed / denominator
+
+    def _local_context(self, node_embeddings: th.Tensor) -> th.Tensor:
+        typed_metadata = (
+            (self.busbar_indices, self.busbar_mask),
+            (self.line_indices, self.line_mask),
+            (self.load_indices, self.load_mask),
+            (self.generator_indices, self.generator_mask),
+        )
+        if self.pool_mode == "typed_mean":
+            return th.cat(
+                [
+                    self._masked_mean(node_embeddings, indices, mask)
+                    for indices, mask in typed_metadata
+                ],
+                dim=-1,
+            )
+
+        all_indices = th.cat([indices for indices, _ in typed_metadata], dim=1)
+        all_masks = th.cat([mask for _, mask in typed_metadata], dim=1)
+        return self._masked_mean(node_embeddings, all_indices, all_masks)
+
+    def forward(
+        self,
+        graph_embedding: th.Tensor,
+        node_embeddings: th.Tensor,
+    ) -> th.Tensor:
+        unbatched = graph_embedding.dim() == 1
+        if unbatched:
+            graph_embedding = graph_embedding.unsqueeze(0)
+        if node_embeddings.dim() == 2:
+            node_embeddings = node_embeddings.unsqueeze(0)
+        if graph_embedding.shape[0] != node_embeddings.shape[0]:
+            raise ValueError(
+                "Graph and node embeddings must have the same batch size."
+            )
+
+        local_context = self._local_context(node_embeddings)
+        batch_size = int(graph_embedding.shape[0])
+        global_context = graph_embedding.unsqueeze(1).expand(
+            batch_size, self.n_actions, -1
+        )
+        scorer_inputs = [global_context, local_context]
+        if self.use_action_features:
+            scorer_inputs.append(
+                self.action_features.unsqueeze(0).expand(batch_size, -1, -1)
+            )
+        logits = self.scorer(th.cat(scorer_inputs, dim=-1)).squeeze(-1)
+
+        if self.do_nothing_actor is not None:
+            do_nothing_logit = self.do_nothing_actor(graph_embedding).squeeze(-1)
+            logits = th.where(
+                self.is_do_nothing.unsqueeze(0),
+                do_nothing_logit.unsqueeze(-1),
+                logits,
+            )
+        logits = logits + (
+            self.is_do_nothing.to(dtype=logits.dtype).unsqueeze(0)
+            * self.do_nothing_logit_bias
+        )
+        return logits.squeeze(0) if unbatched else logits
+
+    def init_do_nothing_prior(self, init_p0: float) -> None:
+        prior_logit = float(
+            np.log(init_p0 * (self.n_actions - 1) / (1.0 - init_p0))
+        )
+        with th.no_grad():
+            shared_output = self.scorer[-1]
+            shared_output.weight.zero_()
+            shared_output.bias.zero_()
+            self.do_nothing_logit_bias.zero_()
+            if self.do_nothing_actor is None:
+                self.do_nothing_logit_bias.fill_(prior_logit)
+            else:
+                do_nothing_output = self.do_nothing_actor[-1]
+                do_nothing_output.weight.zero_()
+                do_nothing_output.bias.fill_(prior_logit)
+
+
 class Actor(nn.Module):
     def __init__(
         self,
@@ -35,6 +190,14 @@ class Actor(nn.Module):
 
         agent_id = f"agent_{id}"
         self.encoder_type = getattr(args, "actor_encoder", "mlp")
+        self.actor_action_head = str(
+            getattr(args, "actor_action_head", "mlp")
+        ).lower()
+        if self.actor_action_head not in {"mlp", "candidate_pool"}:
+            raise ValueError(
+                "actor_action_head must be 'mlp' or 'candidate_pool', got "
+                f"{self.actor_action_head!r}."
+            )
         self.intervention_gate = bool(getattr(args, "intervention_gate", False))
         self.intervention_gate_eval_mode = str(
             getattr(args, "intervention_gate_eval_mode", "final_action_map")
@@ -104,7 +267,49 @@ class Actor(nn.Module):
         else:
             n_actions = int(envs.action_space[agent_id].n)
             self.n_actions = n_actions
-            if self.intervention_gate:
+            if self.actor_action_head == "candidate_pool":
+                if self.encoder_type != "gnn":
+                    raise ValueError(
+                        "actor_action_head=candidate_pool requires "
+                        "actor_encoder=gnn."
+                    )
+                if self.intervention_gate:
+                    raise ValueError(
+                        "actor_action_head=candidate_pool does not yet support "
+                        "intervention_gate=true."
+                    )
+                graph_spec = envs.graph_specs[agent_id]
+                metadata = graph_spec.get("action_graph_metadata")
+                if not isinstance(metadata, ActionGraphMetadata):
+                    raise ValueError(
+                        "Candidate-action metadata is missing from the agent "
+                        "graph spec. Recreate the environment with "
+                        "actor_action_head=candidate_pool."
+                    )
+                if metadata.n_actions != n_actions:
+                    raise ValueError(
+                        f"Candidate metadata has {metadata.n_actions} actions, "
+                        f"but {agent_id} exposes {n_actions}."
+                    )
+                self.actor = CandidateActionScorer(
+                    graph_dim=actor_input_dim,
+                    node_dim=self.encoder.node_out_dim,
+                    hidden_layers=actor_layers,
+                    act_fn_name=args.actor_act_fn,
+                    metadata=metadata,
+                    pool_mode=getattr(
+                        args, "candidate_action_pool", "typed_mean"
+                    ),
+                    use_action_features=getattr(
+                        args, "candidate_action_use_features", True
+                    ),
+                    use_do_nothing_head=getattr(
+                        args, "candidate_action_do_nothing_head", True
+                    ),
+                )
+                self.get_action = self.get_discrete_action
+                self.get_eval_action = self.get_eval_discrete_action
+            elif self.intervention_gate:
                 if n_actions <= 1:
                     raise ValueError(
                         "intervention_gate=True requires at least one non-idle action."
@@ -138,6 +343,9 @@ class Actor(nn.Module):
                 self._init_do_nothing_prior(init_p0)
 
     def _init_do_nothing_prior(self, init_p0: float) -> None:
+        if self.actor_action_head == "candidate_pool":
+            self.actor.init_do_nothing_prior(init_p0)
+            return
         if self.intervention_gate:
             gate_layer = self.gate_actor[-1]
             nonidle_layer = self.nonidle_actor[-1]
@@ -166,6 +374,14 @@ class Actor(nn.Module):
             return self.encoder(x)
         return get_flat_obs(x)
 
+    def _actor_logits(self, x: th.Tensor) -> th.Tensor:
+        if self.actor_action_head == "candidate_pool":
+            graph_embedding, node_embeddings = self.encoder.forward_with_nodes(
+                x, graph_key="graph"
+            )
+            return self.actor(graph_embedding, node_embeddings)
+        return self.actor(self._encode(x))
+
     def get_discrete_action(
         self,
         x: th.Tensor,
@@ -182,7 +398,7 @@ class Actor(nn.Module):
         Returns:
             A tuple containing tensors for the sampled discrete actions, the log probability of the sampled actions, and the entropy of the action distribution.
         """
-        logits = self.actor(self._encode(x))
+        logits = self._actor_logits(x)
         if action0_bonus != 0.0:
             logits = logits.clone()
             logits[..., 0] = logits[..., 0] + action0_bonus
@@ -206,7 +422,7 @@ class Actor(nn.Module):
         """
         if not deterministic:
             return self.get_discrete_action(x)[0]
-        logits = self.actor(self._encode(x))
+        logits = self._actor_logits(x)
         return th.argmax(logits, dim=-1)
 
     def _gated_distributions(

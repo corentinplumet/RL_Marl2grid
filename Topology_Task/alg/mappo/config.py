@@ -53,6 +53,41 @@ def get_alg_args() -> Namespace:
         help="Actor network size",
     )
     parser.add_argument(
+        "--actor-action-head",
+        type=str,
+        default="mlp",
+        choices=["mlp", "candidate_pool"],
+        help=(
+            "Actor logit head. candidate_pool scores actions from the "
+            "heterogeneous-line graph nodes they affect."
+        ),
+    )
+    parser.add_argument(
+        "--candidate-action-pool",
+        type=str,
+        default="typed_mean",
+        choices=["mean", "typed_mean"],
+        help=(
+            "Pooling used by candidate_pool over the physical nodes touched "
+            "by each action."
+        ),
+    )
+    parser.add_argument(
+        "--candidate-action-use-features",
+        type=str2bool,
+        default=True,
+        help="Append static physical action features to each candidate score.",
+    )
+    parser.add_argument(
+        "--candidate-action-do-nothing-head",
+        type=str2bool,
+        default=True,
+        help=(
+            "Score action 0 with a dedicated head over global graph context "
+            "when candidate_pool is enabled."
+        ),
+    )
+    parser.add_argument(
         "--critic-layers",
         nargs="+",
         type=int,

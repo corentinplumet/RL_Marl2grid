@@ -1330,6 +1330,35 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
         if edge_index.size == 0:
             edge_index = np.zeros((2, 0), dtype=np.int64)
 
+        busbar_id_to_node_row = np.full(
+            self.n_bus_nodes, -1, dtype=np.int64
+        )
+        line_id_to_node_row = np.full(self.n_line, -1, dtype=np.int64)
+        gen_id_to_node_row = np.full(self.n_gen, -1, dtype=np.int64)
+        load_id_to_node_row = np.full(self.n_load, -1, dtype=np.int64)
+
+        n_bus_rows = len(bus_entity_ids)
+        n_gen_rows = len(gen_ids)
+        n_load_rows = len(load_ids)
+        busbar_id_to_node_row[bus_entity_ids] = np.arange(
+            n_bus_rows, dtype=np.int64
+        )
+        gen_id_to_node_row[gen_ids] = n_bus_rows + np.arange(
+            n_gen_rows, dtype=np.int64
+        )
+        load_id_to_node_row[load_ids] = (
+            n_bus_rows + n_gen_rows + np.arange(n_load_rows, dtype=np.int64)
+        )
+        line_id_to_node_row[line_ids] = (
+            n_bus_rows
+            + n_gen_rows
+            + n_load_rows
+            + np.arange(len(line_ids), dtype=np.int64)
+        )
+        substation_busbar_node_rows = busbar_id_to_node_row.reshape(
+            self.n_sub, self.n_busbar
+        )
+
         return {
             "graph_type": "heterogeneous_line",
             "node_ids": node_ids.astype(np.int64, copy=False),
@@ -1343,6 +1372,11 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
             "line_ids": line_ids,
             "gen_ids": gen_ids,
             "load_ids": load_ids,
+            "busbar_id_to_node_row": busbar_id_to_node_row,
+            "line_id_to_node_row": line_id_to_node_row,
+            "gen_id_to_node_row": gen_id_to_node_row,
+            "load_id_to_node_row": load_id_to_node_row,
+            "substation_busbar_node_rows": substation_busbar_node_rows,
             "controlled_nodes": controlled_nodes,
             "controlled_node_mask": controlled_node_mask,
             "edge_index": edge_index,

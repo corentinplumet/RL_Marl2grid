@@ -249,6 +249,12 @@ sets and therefore different output widths $|\mathcal{A}_a|$. The critic is a
 separate MLP over the centralized flat state and does not reuse the actor
 GINE/GAT embedding.
 
+Equation~\ref{eq:gnn-action-head} is the default head. The optional
+candidate-action head of Section~\ref{sec:candidate-action-scoring} keeps this
+pipeline up to $\mathbf{z}_a$ and additionally consumes the
+post-message-passing node states $\mathbf{h}^{(K)}_v$, which are the same
+states that Equation~\ref{eq:gnn-mean-pooling} averages.
+
 \section{Exact node inputs by representation}
 \label{sec:gnn-node-input-inventory}
 

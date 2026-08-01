@@ -1022,6 +1022,306 @@ the substation augmentation. After one layer the virtual node has aggregated
 its immediate busbar or substation neighbors.
 
 
+\section{Candidate-Action Scoring from the Explicit-Line Graph}
+\label{sec:candidate-action-scoring}
+
+The default action head maps the graph embedding to one output column per
+discrete action. That column is tied to an action index and not to the physical
+objects the action modifies. This section describes an alternative head that
+scores every candidate action from the graph nodes it touches. It is available
+only for the explicit-line schema of
+Section~\ref{sec:heterogeneous-line-graph} and is selected with
+\texttt{actor\_action\_head=candidate\_pool}; the default remains the
+action-index MLP head of Appendix~\ref{sec:gnn-action-head}. The PPO objective,
+the categorical policy, sampling, deterministic evaluation, and checkpointing
+are unchanged.
+
+\subsection{Action-index head versus candidate scoring}
+\label{subsec:candidate-motivation}
+
+With the default head, agent $a$ produces its logit vector in one step from the
+readout $\mathbf{z}_a$ of Equation~\ref{eq:gnn-output-projection}:
+\begin{equation}
+  \boldsymbol{\ell}_a = \operatorname{MLP}_a(\mathbf{z}_a),
+  \qquad \boldsymbol{\ell}_a\in\mathbb{R}^{|\mathcal{A}_a|}.
+  \label{eq:action-index-head}
+\end{equation}
+The last layer of $\operatorname{MLP}_a$ has one row per action index, so the
+mapping from a grid state to a topology change must be learned separately for
+every index, and the head grows with $|\mathcal{A}_a|$.
+
+Candidate scoring replaces Equation~\ref{eq:action-index-head} by one shared
+scalar-valued network applied to every action:
+\begin{equation}
+  \ell_{a,j} =
+  \operatorname{score}
+  \left(
+    \underbrace{\mathbf{z}_a}_{\text{global context}},\
+    \underbrace{\mathbf{c}_j}_{\text{touched-node context}},\
+    \underbrace{\boldsymbol{\phi}_j}_{\text{static action features}}
+  \right),
+  \qquad j\in\{0,\ldots,|\mathcal{A}_a|-1\}.
+  \label{eq:candidate-scoring-head}
+\end{equation}
+The scoring parameters are shared by all actions, so the head size no longer
+depends on $|\mathcal{A}_a|$, and the ranking of two actions is driven by the
+difference between their touched-node contexts rather than by two independent
+output rows. This makes the explicit line nodes directly usable: an action next
+to a loaded line is scored from that line's own embedding.
+
+\subsection{Candidate-action metadata}
+\label{subsec:candidate-action-metadata}
+
+The mapping from actions to node rows is static and is built once, when the
+environment and its graph specification are created, rather than at every
+rollout step. The explicit-line builder exports the row maps
+\texttt{busbar\_id\_to\_node\_row}, \texttt{line\_id\_to\_node\_row},
+\texttt{gen\_id\_to\_node\_row}, \texttt{load\_id\_to\_node\_row}, and
+\texttt{substation\_busbar\_node\_rows}, which give the node index of each
+physical object in the local graph of the agent and $-1$ for objects absent
+from that graph.
+
+Each exposed action $j$ of agent $a$ is converted to its global Grid2Op action
+and decoded once. Bus-assignment and bus-change sections give the modified
+substations and, for each modified position of the topology vector, the object
+type and identifier: line endpoint, generator, or load. Line-status sections
+give the connected or disconnected lines; for those, both endpoint substations
+are added to the touched set, because a status change alters the local
+connectivity at both ends. This yields, for action $j$, the physical sets
+\begin{equation}
+  \mathcal{S}(j),\quad
+  \mathcal{L}(j),\quad
+  \mathcal{G}(j),\quad
+  \mathcal{D}(j)
+  \label{eq:candidate-physical-sets}
+\end{equation}
+of touched substations, lines, generators, and loads. They are converted to the
+node-index sets
+\begin{equation}
+  \begin{aligned}
+    \mathcal{N}_{\mathrm{bus}}(j)
+      &= \left\{
+        i(s,b)\;\middle|\;s\in\mathcal{S}(j),\ b\in\{0,\ldots,B-1\}
+      \right\}, \\
+    \mathcal{N}_{\mathrm{line}}(j)
+      &= \left\{\text{node row of }\ell\;\middle|\;\ell\in\mathcal{L}(j)\right\},
+  \end{aligned}
+  \label{eq:candidate-node-sets}
+\end{equation}
+and analogously $\mathcal{N}_{\mathrm{gen}}(j)$ and
+$\mathcal{N}_{\mathrm{load}}(j)$. A touched substation therefore contributes
+all of its busbar nodes, not only the busbar currently used. The sets are stored
+as padded index matrices of shape
+$|\mathcal{A}_a|\times m_t$ with a boolean mask, where $m_t$ is the largest
+number of touched objects of type $t$ over the action space; padded entries hold
+index $-1$ and mask $0$.
+
+The builder is strict. It rejects an action space whenever a touched line,
+generator, load, or substation is missing from the agent graph, whenever an
+index falls outside $[0,|\mathcal{V}|)$, whenever the exposed action $0$ touches
+any object, or whenever a non-idle action touches no graph-represented object.
+Because a topology action at a controlled substation moves line endpoints whose
+line nodes may sit at the boundary of the local graph, the head requires
+\texttt{gnn\_include\_neighbors=true}. Reduced action spaces are supported: the
+metadata keeps the original action identifiers alongside the exposed ones, so
+the decoded physical context always refers to the action actually executed.
+
+Each action also carries a static feature vector
+$\boldsymbol{\phi}_j\in\mathbb{R}^{12}$, listed in
+Table~\ref{tab:candidate-action-features}. The five indicator entries are binary;
+the seven count entries are divided by their largest value over the action
+space of that agent, so all entries lie in $[0,1]$ and are independent of the
+grid size.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Static action-feature vector $\boldsymbol{\phi}_j$ appended to each
+  candidate score. Count entries are divided by the per-agent column maximum.}
+  \label{tab:candidate-action-features}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{L{0.20\textwidth}L{0.34\textwidth}L{0.36\textwidth}}
+    \toprule
+    Group & Entries & Meaning \\
+    \midrule
+    Indicators & \texttt{is\_do\_nothing}, \texttt{has\_busbar\_context}, \texttt{has\_line}, \texttt{has\_load}, \texttt{has\_generator} & Whether the action is the idle action and which object types it touches \\
+    Scaled counts & \texttt{n\_substations}, \texttt{n\_topology\_changes}, \texttt{n\_line\_status\_changes}, \texttt{n\_line\_endpoint\_changes}, \texttt{n\_generator\_changes}, \texttt{n\_load\_changes}, \texttt{n\_other\_changes} & Size of the action: how many substations and how many objects of each type it modifies \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Node embeddings from the encoder}
+\label{subsec:candidate-node-output}
+
+Candidate pooling needs the node states before readout. The encoders therefore
+expose
+\begin{equation}
+  (\mathbf{z}_a,\mathbf{H})
+  = \operatorname{encoder}_{\mathrm{nodes}}(\mathcal{G}^{(a)}_t),
+  \qquad
+  \mathbf{H}\in\mathbb{R}^{|\mathcal{V}|\times d_h},
+  \label{eq:forward-with-nodes}
+\end{equation}
+where row $v$ of $\mathbf{H}$ is the post-message-passing state
+$\mathbf{h}^{(K)}_v$ of Equation~\ref{eq:methods-mean-pooling} and $d_h$ is the
+hidden width, which is not the readout width of $\mathbf{z}_a$. The ordinary
+forward pass is a projection of Equation~\ref{eq:forward-with-nodes} onto its
+first output, so existing configurations produce identical embeddings. The
+GINE, GAT, GCN, and GraphSAGE encoders and the sparse graph transformer all
+provide it, and the flat-concatenation wrapper forwards it unchanged.
+
+Only the $|\mathcal{V}|$ physical rows of Equation~\ref{eq:heterogeneous-line-node-set}
+are returned. Substation-summary nodes and the virtual node, when enabled, are
+appended after those rows and are excluded from candidate pooling; they still
+influence the physical rows through message passing and still determine
+$\mathbf{z}_a$ under virtual-node readout.
+
+\subsection{Typed candidate pooling}
+\label{subsec:candidate-pooling}
+
+For each action $j$ and each object type
+$t\in\{\mathrm{bus},\mathrm{line},\mathrm{load},\mathrm{gen}\}$, the masked mean
+over the touched rows is
+\begin{equation}
+  \mathbf{c}^{(t)}_j =
+  \frac{1}{\max\left(1,|\mathcal{N}_t(j)|\right)}
+  \sum_{v\in\mathcal{N}_t(j)}\mathbf{h}^{(K)}_v.
+  \label{eq:candidate-typed-mean}
+\end{equation}
+The clamped denominator makes an empty type produce the zero vector rather than
+a division by zero, which is what happens for every type of the idle action. The
+two implemented pooling modes are
+\begin{equation}
+  \begin{aligned}
+    \texttt{typed\_mean}:\quad
+    \mathbf{c}_j &=
+    \left[
+      \mathbf{c}^{(\mathrm{bus})}_j;
+      \mathbf{c}^{(\mathrm{line})}_j;
+      \mathbf{c}^{(\mathrm{load})}_j;
+      \mathbf{c}^{(\mathrm{gen})}_j
+    \right]\in\mathbb{R}^{4d_h}, \\
+    \texttt{mean}:\quad
+    \mathbf{c}_j &=
+    \frac{1}{\max\left(1,|\mathcal{N}(j)|\right)}
+    \sum_{v\in\mathcal{N}(j)}\mathbf{h}^{(K)}_v\in\mathbb{R}^{d_h},
+    \qquad
+    \mathcal{N}(j)=\bigcup_t\mathcal{N}_t(j).
+  \end{aligned}
+  \label{eq:candidate-pool-modes}
+\end{equation}
+The typed mode keeps the roles separated, so the scorer can distinguish a
+stressed line node from the load attached to the same substation; the untyped
+mode is the smaller control. Attention pooling, in which the action queries its
+own touched nodes, is not implemented and is left for after the typed-mean
+baseline has been measured.
+
+\subsection{Shared scorer and idle action}
+\label{subsec:candidate-scorer}
+
+All non-idle actions are scored by one network with a single output unit and
+the same hidden widths as the MLP head:
+\begin{equation}
+  \ell_{a,j} =
+  \operatorname{MLP}_{\mathrm{score}}
+  \left(
+    \left[\mathbf{z}_a;\mathbf{c}_j;\boldsymbol{\phi}_j\right]
+  \right),
+  \qquad j\geq 1.
+  \label{eq:candidate-shared-scorer}
+\end{equation}
+The action-feature block is omitted when
+\texttt{candidate\_action\_use\_features=false}. Because the idle action touches
+no object, its pooled context is identically zero and would otherwise be scored
+by a network trained on non-zero contexts. It therefore receives a dedicated
+head over the global context only:
+\begin{equation}
+  \ell_{a,0} =
+  \operatorname{MLP}_{\varnothing}(\mathbf{z}_a) + b_{\varnothing},
+  \label{eq:candidate-do-nothing-head}
+\end{equation}
+with $b_{\varnothing}$ a learned scalar applied to action $0$ alone. This makes
+the idle logit an explicit judgment of whether the local grid state is safe
+enough not to intervene. With
+\texttt{candidate\_action\_do\_nothing\_head=false}, action $0$ instead passes
+through Equation~\ref{eq:candidate-shared-scorer} with $\mathbf{c}_0=\mathbf{0}$
+and keeps the bias $b_{\varnothing}$.
+
+The initial idle prior is preserved. Setting \texttt{init\_do\_nothing\_prob}
+$=p_0$ zeroes the output layer of $\operatorname{MLP}_{\mathrm{score}}$ and of
+$\operatorname{MLP}_{\varnothing}$ and sets the remaining idle bias to
+\begin{equation}
+  \log\frac{p_0\left(|\mathcal{A}_a|-1\right)}{1-p_0},
+  \label{eq:candidate-do-nothing-prior}
+\end{equation}
+so the initial policy assigns probability exactly $p_0$ to action $0$ and
+spreads the rest uniformly. The evaluation-time and training-time logit bonus on
+action $0$ is added after Equations~\ref{eq:candidate-shared-scorer}
+and~\ref{eq:candidate-do-nothing-head} and is therefore unaffected.
+
+\subsection{Configuration, cost, and current limits}
+\label{subsec:candidate-configuration}
+
+Table~\ref{tab:candidate-action-flags} lists the flags. Construction fails
+unless the run also sets \path{actor_encoder=gnn},
+\path{gnn_graph_type=heterogeneous_line}, and
+\path{gnn_include_neighbors=true}, which are the settings that make node
+embeddings and complete action metadata available. Setting
+\texttt{intervention\_gate=true} is rejected as well: its two-level
+factorization would have to be combined with candidate pooling as a separate
+step. The metadata is attached to the agent graph specifications when the
+environment is built, so all workers and evaluation environments reuse the same
+static mapping.
+
+\begin{table}[H]
+  \centering
+  \scriptsize
+  \caption{Configuration flags of the candidate-action head. Defaults reproduce
+  the existing action-index head.}
+  \label{tab:candidate-action-flags}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{L{0.33\textwidth}L{0.22\textwidth}L{0.37\textwidth}}
+    \toprule
+    Flag & Values (default) & Effect \\
+    \midrule
+    \texttt{actor\_action\_head} & \texttt{mlp}, \texttt{candidate\_pool} (\texttt{mlp}) & Selects Equation~\ref{eq:action-index-head} or Equation~\ref{eq:candidate-scoring-head} \\
+    \texttt{candidate\_action\_pool} & \texttt{mean}, \texttt{typed\_mean} (\texttt{typed\_mean}) & Pooling of Equation~\ref{eq:candidate-pool-modes} \\
+    \texttt{candidate\_action\_use\_features} & boolean (\texttt{true}) & Appends $\boldsymbol{\phi}_j$ to each candidate score \\
+    \texttt{candidate\_action\_do\_nothing\_head} & boolean (\texttt{true}) & Dedicated idle head of Equation~\ref{eq:candidate-do-nothing-head} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The candidate context is materialized as a tensor of shape
+$\left[\text{batch},|\mathcal{A}_a|,d_c\right]$ with
+$d_c=\dim\mathbf{z}_a+4d_h+\dim\boldsymbol{\phi}_j$ under typed pooling, so
+memory grows with the action-space size. This is the reason to start on
+\texttt{bus14} and on reduced action spaces before the full WCCI action space.
+
+Two properties matter for a fair comparison. First, the head no longer scales
+with $|\mathcal{A}_a|$, so a candidate-pool actor and an action-index actor with
+the same graph settings do not have the same parameter count; the comparison
+holds the encoder, PPO settings, reward, normalization, chronic split, and
+evaluation protocol fixed and reports both counts. Second, the idle logit is
+produced by a different mechanism than the other logits, so the action-$0$
+frequency has to be compared against the action-index baseline rather than
+assumed comparable. The controlled comparison is one explicit-line
+configuration run twice, once with \texttt{actor\_action\_head=mlp} and once
+with \texttt{actor\_action\_head=candidate\_pool}.
+
+Correctness of the static mapping is checked by unit tests covering the exported
+row maps, the decoded touched objects of bus-change and line-status actions,
+the strict rejection of a local graph without neighbor context, finite logits
+and non-zero node-embedding gradients under both pooling modes, the exact idle
+prior of Equation~\ref{eq:candidate-do-nothing-prior}, equality between the
+ordinary readout and the first output of Equation~\ref{eq:forward-with-nodes},
+and an actor-level sampling, evaluation, and checkpoint-reload pass.
+
+Auxiliary heads over the same node embeddings, such as predicting which lines
+are about to overload, are a possible later addition; they are not part of the
+current head.
+
+
 \section{Graph Actor and Critic Configuration}
 \label{sec:graph-model-configuration}
 
@@ -1030,7 +1330,9 @@ is applied after the input node projection and after each message-passing layer.
 The graph readout produces a 128-dimensional embedding, followed by an
 agent-specific action head with two 128-unit hidden layers. The graph encoder
 and output projection are shared across agents; the action heads are separate
-because their action-set sizes may differ. The flat observation is not
+because their action-set sizes may differ. This is the default
+\texttt{actor\_action\_head=mlp} setting; the candidate-scoring alternative of
+Section~\ref{sec:candidate-action-scoring} replaces only this head. The flat observation is not
 concatenated to the graph embedding, and learned global node-identifier
 embeddings are disabled. Local actors include one-hop neighboring context.
 \\
