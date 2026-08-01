@@ -473,6 +473,12 @@ class CandidateActionScorerTest(unittest.TestCase):
                 )
             )
 
+        training_output = all_nodes._local_context(
+            graph_embedding,
+            node_embeddings,
+        )
+        self.assertIsNone(training_output.weights)
+
     def test_all_node_attention_requires_an_action_specific_query(self):
         with self.assertRaisesRegex(ValueError, "action-specific query"):
             self.all_node_scorer(query_mode="global_only")

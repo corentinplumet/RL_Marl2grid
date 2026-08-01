@@ -355,25 +355,32 @@ class CandidateActionAttentionPool(nn.Module):
         node_type: str,
         queries: th.Tensor,
         node_embeddings: th.Tensor,
-    ) -> Tuple[th.Tensor, th.Tensor]:
+        *,
+        return_weights: bool,
+    ) -> Tuple[th.Tensor, Optional[th.Tensor]]:
         type_indices = getattr(self, f"{node_type}_all_indices")
         affected_mask = getattr(self, f"{node_type}_affected_mask")
         eligible_mask = getattr(self, f"{node_type}_eligible_mask")
         batch_size = int(node_embeddings.shape[0])
         width = int(type_indices.numel())
         if width == 0:
+            empty_weights = (
+                node_embeddings.new_zeros(
+                    batch_size,
+                    self.n_actions,
+                    self.heads,
+                    0,
+                )
+                if return_weights
+                else None
+            )
             return (
                 node_embeddings.new_zeros(
                     batch_size,
                     self.n_actions,
                     self.node_dim,
                 ),
-                node_embeddings.new_zeros(
-                    batch_size,
-                    self.n_actions,
-                    self.heads,
-                    0,
-                ),
+                empty_weights,
             )
 
         typed_nodes = node_embeddings.index_select(1, type_indices)
@@ -386,7 +393,7 @@ class CandidateActionAttentionPool(nn.Module):
         keys = keys.permute(0, 2, 1, 3)
         values = self.value_projection(typed_nodes)
         context_chunks = []
-        weight_chunks = []
+        weight_chunks = [] if return_weights else None
         for start in range(0, self.n_actions, self.action_chunk_size):
             end = min(start + self.action_chunk_size, self.n_actions)
             query_chunk = queries[:, start:end]
@@ -413,9 +420,14 @@ class CandidateActionAttentionPool(nn.Module):
             )
             head_context = th.einsum("bahw,bwd->bahd", weights, values)
             context_chunks.append(head_context.mean(dim=2))
-            weight_chunks.append(weights)
+            if return_weights:
+                weight_chunks.append(weights)
 
-        return th.cat(context_chunks, dim=1), th.cat(weight_chunks, dim=1)
+        all_contexts = th.cat(context_chunks, dim=1)
+        all_weights = (
+            th.cat(weight_chunks, dim=1) if return_weights else None
+        )
+        return all_contexts, all_weights
 
     def forward(
         self,
@@ -448,6 +460,7 @@ class CandidateActionAttentionPool(nn.Module):
                     node_type,
                     queries,
                     node_embeddings,
+                    return_weights=return_weights,
                 )
                 type_indices = getattr(self, f"{node_type}_all_indices")
                 diagnostic_indices = type_indices.unsqueeze(0).expand(
