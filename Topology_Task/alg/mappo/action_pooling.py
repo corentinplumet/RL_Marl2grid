@@ -1,3 +1,4 @@
+import math
 from dataclasses import dataclass
 from typing import Dict, Optional, Sequence, Tuple
 
@@ -16,6 +17,7 @@ class CandidateAttentionOutput:
     weights: Optional[Dict[str, th.Tensor]] = None
     node_indices: Optional[Dict[str, th.Tensor]] = None
     eligible_masks: Optional[Dict[str, th.Tensor]] = None
+    affected_masks: Optional[Dict[str, th.Tensor]] = None
 
 
 class CandidateActionMeanPool(nn.Module):
@@ -70,7 +72,7 @@ class CandidateActionMeanPool(nn.Module):
 
 
 class CandidateActionAttentionPool(nn.Module):
-    """Learn action-specific typed pooling over hardcoded affected nodes."""
+    """Learn action-specific typed contexts from heterogeneous graph nodes."""
 
     def __init__(
         self,
@@ -85,6 +87,11 @@ class CandidateActionAttentionPool(nn.Module):
         temperature: float = 1.0,
         query_mode: str = "global_action_features",
         normalizer: str = "softmax",
+        prior_bias: float = 2.0,
+        action_chunk_size: int = 64,
+        node_types: Optional[th.Tensor] = None,
+        node_type_ids: Optional[Dict[str, int]] = None,
+        typed_metadata: Optional[TypedActionMetadata] = None,
     ) -> None:
         super().__init__()
         self.graph_dim = int(graph_dim)
@@ -97,16 +104,22 @@ class CandidateActionAttentionPool(nn.Module):
         self.temperature = float(temperature)
         self.query_mode = str(query_mode).lower()
         self.normalizer = str(normalizer).lower()
+        self.prior_bias = float(prior_bias)
+        self.action_chunk_size = int(action_chunk_size)
 
-        if self.scope != "affected":
+        if self.scope not in {"affected", "soft_prior"}:
             raise ValueError(
                 "candidate_action_attention_scope currently supports only "
-                f"'affected', got {scope!r}."
+                f"'affected' or 'soft_prior', got {scope!r}."
             )
         if self.heads < 1:
-            raise ValueError("candidate_action_attention_heads must be at least 1.")
+            raise ValueError(
+                "candidate_action_attention_heads must be at least 1."
+            )
         if self.attention_dim < 1:
-            raise ValueError("candidate_action_attention_dim must be non-negative.")
+            raise ValueError(
+                "candidate_action_attention_dim must be non-negative."
+            )
         if self.temperature <= 0.0:
             raise ValueError(
                 "candidate_action_attention_temperature must be greater than 0."
@@ -125,6 +138,12 @@ class CandidateActionAttentionPool(nn.Module):
             raise ValueError(
                 "candidate_action_attention_normalizer currently supports only "
                 f"'softmax', got {normalizer!r}."
+            )
+        if not math.isfinite(self.prior_bias):
+            raise ValueError("candidate_action_attention_prior_bias must be finite.")
+        if self.action_chunk_size < 1:
+            raise ValueError(
+                "candidate_action_attention_chunk_size must be at least 1."
             )
 
         projected_query_dim = self.heads * self.attention_dim
@@ -163,7 +182,78 @@ class CandidateActionAttentionPool(nn.Module):
         self.score_vector = nn.Parameter(
             th.empty(self.heads, self.attention_dim)
         )
+        if self.scope == "soft_prior":
+            if (
+                node_types is None
+                or node_type_ids is None
+                or typed_metadata is None
+            ):
+                raise ValueError(
+                    "soft_prior attention requires node types, node type IDs, "
+                    "and typed action metadata."
+                )
+            self._register_dense_metadata(
+                node_types,
+                node_type_ids,
+                typed_metadata,
+            )
         self._reset_parameters()
+
+    def _register_dense_metadata(
+        self,
+        node_types: th.Tensor,
+        node_type_ids: Dict[str, int],
+        typed_metadata: TypedActionMetadata,
+    ) -> None:
+        node_types = th.as_tensor(node_types, dtype=th.long).clone()
+        if node_types.dim() != 1:
+            raise ValueError("candidate attention node_types must be 1D.")
+        self.register_buffer("node_types", node_types)
+        n_nodes = int(node_types.numel())
+
+        for node_type, indices, mask in typed_metadata:
+            if node_type not in node_type_ids:
+                raise ValueError(
+                    f"Missing graph node type ID for candidate type {node_type!r}."
+                )
+            type_indices = th.nonzero(
+                node_types == int(node_type_ids[node_type]),
+                as_tuple=False,
+            ).flatten()
+            row_to_type_position = th.full((n_nodes,), -1, dtype=th.long)
+            if type_indices.numel():
+                row_to_type_position[type_indices] = th.arange(
+                    type_indices.numel(),
+                    dtype=th.long,
+                )
+
+            safe_indices = indices.clamp_min(0).to(dtype=th.long)
+            local_positions = row_to_type_position[safe_indices]
+            active_mask = mask.bool()
+            if bool(th.any(local_positions[active_mask] < 0)):
+                raise ValueError(
+                    f"Affected {node_type} rows do not match graph node types."
+                )
+
+            affected_mask = th.zeros(
+                self.n_actions,
+                int(type_indices.numel()),
+                dtype=th.bool,
+            )
+            if bool(active_mask.any()):
+                action_rows = th.arange(self.n_actions).unsqueeze(1).expand_as(
+                    safe_indices
+                )
+                affected_mask[
+                    action_rows[active_mask],
+                    local_positions[active_mask],
+                ] = True
+
+            eligible_mask = th.ones_like(affected_mask)
+            eligible_mask[0] = False
+            self.register_buffer(f"{node_type}_all_indices", type_indices)
+            self.register_buffer(f"{node_type}_affected_mask", affected_mask)
+            self.register_buffer(f"{node_type}_eligible_mask", eligible_mask)
 
     def _reset_parameters(self) -> None:
         nn.init.normal_(self.score_vector, mean=0.0, std=1e-3)
@@ -254,6 +344,72 @@ class CandidateActionAttentionPool(nn.Module):
         context = head_context.mean(dim=2)
         return context, weights
 
+    def _attend_to_dense_type(
+        self,
+        node_type: str,
+        queries: th.Tensor,
+        node_embeddings: th.Tensor,
+    ) -> Tuple[th.Tensor, th.Tensor]:
+        type_indices = getattr(self, f"{node_type}_all_indices")
+        affected_mask = getattr(self, f"{node_type}_affected_mask")
+        eligible_mask = getattr(self, f"{node_type}_eligible_mask")
+        batch_size = int(node_embeddings.shape[0])
+        width = int(type_indices.numel())
+        if width == 0:
+            return (
+                node_embeddings.new_zeros(
+                    batch_size,
+                    self.n_actions,
+                    self.node_dim,
+                ),
+                node_embeddings.new_zeros(
+                    batch_size,
+                    self.n_actions,
+                    self.heads,
+                    0,
+                ),
+            )
+
+        typed_nodes = node_embeddings.index_select(1, type_indices)
+        keys = self.key_projection(typed_nodes).reshape(
+            batch_size,
+            width,
+            self.heads,
+            self.attention_dim,
+        )
+        keys = keys.permute(0, 2, 1, 3)
+        values = self.value_projection(typed_nodes)
+        context_chunks = []
+        weight_chunks = []
+        for start in range(0, self.n_actions, self.action_chunk_size):
+            end = min(start + self.action_chunk_size, self.n_actions)
+            query_chunk = queries[:, start:end]
+            additive_features = th.tanh(
+                query_chunk.unsqueeze(3) + keys.unsqueeze(1)
+            )
+            scores = th.einsum(
+                "bahwd,hd->bahw",
+                additive_features,
+                self.score_vector,
+            )
+            scores = scores / self.temperature
+            scores = scores + (
+                self.prior_bias
+                * affected_mask[start:end]
+                .to(dtype=scores.dtype)
+                .unsqueeze(0)
+                .unsqueeze(2)
+            )
+            weights = self._masked_softmax(
+                scores,
+                eligible_mask[start:end],
+            )
+            head_context = th.einsum("bahw,bwd->bahd", weights, values)
+            context_chunks.append(head_context.mean(dim=2))
+            weight_chunks.append(weights)
+
+        return th.cat(context_chunks, dim=1), th.cat(weight_chunks, dim=1)
+
     def forward(
         self,
         graph_embedding: th.Tensor,
@@ -268,22 +424,48 @@ class CandidateActionAttentionPool(nn.Module):
         weights_by_type = {} if return_weights else None
         indices_by_type = {} if return_weights else None
         masks_by_type = {} if return_weights else None
+        affected_by_type = {} if return_weights else None
         for node_type, indices, mask in typed_metadata:
-            context, weights = self._attend_to_gathered_nodes(
-                queries,
-                node_embeddings,
-                indices,
-                mask,
-            )
+            if self.scope == "affected":
+                context, weights = self._attend_to_gathered_nodes(
+                    queries,
+                    node_embeddings,
+                    indices,
+                    mask,
+                )
+                diagnostic_indices = indices
+                eligible_mask = mask.bool()
+                affected_mask = mask.bool()
+            else:
+                context, weights = self._attend_to_dense_type(
+                    node_type,
+                    queries,
+                    node_embeddings,
+                )
+                type_indices = getattr(self, f"{node_type}_all_indices")
+                diagnostic_indices = type_indices.unsqueeze(0).expand(
+                    self.n_actions,
+                    -1,
+                )
+                eligible_mask = getattr(
+                    self,
+                    f"{node_type}_eligible_mask",
+                )
+                affected_mask = getattr(
+                    self,
+                    f"{node_type}_affected_mask",
+                )
             contexts.append(context)
             if return_weights:
                 weights_by_type[node_type] = weights
-                indices_by_type[node_type] = indices
-                masks_by_type[node_type] = mask.bool()
+                indices_by_type[node_type] = diagnostic_indices
+                masks_by_type[node_type] = eligible_mask
+                affected_by_type[node_type] = affected_mask
 
         return CandidateAttentionOutput(
             context=th.cat(contexts, dim=-1),
             weights=weights_by_type,
             node_indices=indices_by_type,
             eligible_masks=masks_by_type,
+            affected_masks=affected_by_type,
         )

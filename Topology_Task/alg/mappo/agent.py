@@ -49,6 +49,10 @@ class CandidateActionScorer(nn.Module):
         attention_temperature: float = 1.0,
         attention_query: str = "global_action_features",
         attention_normalizer: str = "softmax",
+        attention_prior_bias: float = 2.0,
+        attention_chunk_size: int = 64,
+        node_types: Optional[th.Tensor] = None,
+        node_type_ids: Optional[Dict[str, int]] = None,
     ) -> None:
         super().__init__()
         metadata.validate()
@@ -90,6 +94,11 @@ class CandidateActionScorer(nn.Module):
                 temperature=attention_temperature,
                 query_mode=attention_query,
                 normalizer=attention_normalizer,
+                prior_bias=attention_prior_bias,
+                action_chunk_size=attention_chunk_size,
+                node_types=node_types,
+                node_type_ids=node_type_ids,
+                typed_metadata=self._typed_metadata(),
             )
         else:
             self.pool = CandidateActionMeanPool(self.pool_mode)
@@ -332,6 +341,20 @@ class Actor(nn.Module):
                         f"Candidate metadata has {metadata.n_actions} actions, "
                         f"but {agent_id} exposes {n_actions}."
                     )
+                graph_node_type_ids = dict(graph_spec.get("node_type_names", {}))
+                candidate_node_type_ids = {
+                    "busbar": graph_node_type_ids.get("busbar"),
+                    "line": graph_node_type_ids.get("transmission_line"),
+                    "load": graph_node_type_ids.get("load"),
+                    "generator": graph_node_type_ids.get("generator"),
+                }
+                if any(
+                    value is None for value in candidate_node_type_ids.values()
+                ):
+                    raise ValueError(
+                        "Candidate-action attention requires busbar, line, load, "
+                        "and generator node type IDs in the graph spec."
+                    )
                 self.actor = CandidateActionScorer(
                     graph_dim=actor_input_dim,
                     node_dim=self.encoder.node_out_dim,
@@ -367,6 +390,14 @@ class Actor(nn.Module):
                     attention_normalizer=getattr(
                         args, "candidate_action_attention_normalizer", "softmax"
                     ),
+                    attention_prior_bias=getattr(
+                        args, "candidate_action_attention_prior_bias", 2.0
+                    ),
+                    attention_chunk_size=getattr(
+                        args, "candidate_action_attention_chunk_size", 64
+                    ),
+                    node_types=graph_spec.get("node_type"),
+                    node_type_ids=candidate_node_type_ids,
                 )
                 self.get_action = self.get_discrete_action
                 self.get_eval_action = self.get_eval_discrete_action
@@ -471,6 +502,7 @@ class Actor(nn.Module):
             "weights": output.weights,
             "node_indices": output.node_indices,
             "eligible_masks": output.eligible_masks,
+            "affected_masks": output.affected_masks,
         }
         if action_ids is None:
             return result
@@ -498,6 +530,10 @@ class Actor(nn.Module):
         result["eligible_masks"] = {
             name: mask.index_select(0, selected.to(mask.device))
             for name, mask in output.eligible_masks.items()
+        }
+        result["affected_masks"] = {
+            name: mask.index_select(0, selected.to(mask.device))
+            for name, mask in output.affected_masks.items()
         }
         return result
 

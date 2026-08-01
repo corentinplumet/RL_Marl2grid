@@ -170,7 +170,15 @@ class CandidateActionScorerTest(unittest.TestCase):
             {"agent_0": [0, 1]},
             include_neighbors=True,
         )
-        self.metadata = make_metadata(builder.specs["agent_0"])
+        self.spec = builder.specs["agent_0"]
+        self.metadata = make_metadata(self.spec)
+        graph_type_ids = self.spec["node_type_names"]
+        self.node_type_ids = {
+            "busbar": graph_type_ids["busbar"],
+            "line": graph_type_ids["transmission_line"],
+            "load": graph_type_ids["load"],
+            "generator": graph_type_ids["generator"],
+        }
 
     @staticmethod
     def masked_mean(node_embeddings, indices, mask):
@@ -312,6 +320,118 @@ class CandidateActionScorerTest(unittest.TestCase):
             )
         )
 
+    def soft_prior_scorer(self, prior_bias=2.0, chunk_size=64):
+        return CandidateActionScorer(
+            graph_dim=5,
+            node_dim=7,
+            hidden_layers=[9],
+            act_fn_name="relu",
+            metadata=self.metadata,
+            pool_mode="typed_attention",
+            attention_scope="soft_prior",
+            attention_prior_bias=prior_bias,
+            attention_chunk_size=chunk_size,
+            node_types=self.spec["node_type"],
+            node_type_ids=self.node_type_ids,
+        )
+
+    def test_soft_prior_attends_to_all_typed_nodes_except_for_action_zero(self):
+        scorer = self.soft_prior_scorer()
+        graph_embedding = th.randn(2, 5, requires_grad=True)
+        node_embeddings = th.randn(2, 7, 7, requires_grad=True)
+        logits, attention = scorer(
+            graph_embedding,
+            node_embeddings,
+            return_attention=True,
+        )
+
+        self.assertEqual(tuple(logits.shape), (2, 5))
+        for node_type, weights in attention.weights.items():
+            eligible = attention.eligible_masks[node_type]
+            affected = attention.affected_masks[node_type]
+            indices = attention.node_indices[node_type]
+            self.assertEqual(tuple(eligible.shape), tuple(affected.shape))
+            self.assertEqual(tuple(indices.shape), tuple(eligible.shape))
+            self.assertTrue(
+                th.equal(weights[:, 0], th.zeros_like(weights[:, 0]))
+            )
+            if weights.shape[-1]:
+                expected = th.ones_like(weights[:, 1:].sum(dim=-1))
+                self.assertTrue(
+                    th.allclose(weights[:, 1:].sum(dim=-1), expected, atol=1e-6)
+                )
+        logits.sum().backward()
+        self.assertGreater(float(node_embeddings.grad.abs().sum()), 0.0)
+
+    def test_larger_soft_prior_bias_increases_hardcoded_attention_mass(self):
+        unbiased = self.soft_prior_scorer(prior_bias=0.0)
+        with th.no_grad():
+            unbiased.pool.score_vector.zero_()
+        biased = self.soft_prior_scorer(prior_bias=4.0)
+        biased.load_state_dict(unbiased.state_dict())
+        graph_embedding = th.randn(2, 5)
+        node_embeddings = th.randn(2, 7, 7)
+        _, unbiased_attention = unbiased(
+            graph_embedding,
+            node_embeddings,
+            return_attention=True,
+        )
+        _, biased_attention = biased(
+            graph_embedding,
+            node_embeddings,
+            return_attention=True,
+        )
+
+        unbiased_mass = []
+        biased_mass = []
+        for node_type, affected in unbiased_attention.affected_masks.items():
+            valid_actions = affected.any(dim=-1)
+            if not bool(valid_actions.any()):
+                continue
+            expanded_affected = affected.unsqueeze(0).unsqueeze(2)
+            unbiased_type_mass = (
+                unbiased_attention.weights[node_type]
+                * expanded_affected.to(unbiased_attention.weights[node_type])
+            ).sum(dim=-1)
+            biased_type_mass = (
+                biased_attention.weights[node_type]
+                * expanded_affected.to(biased_attention.weights[node_type])
+            ).sum(dim=-1)
+            unbiased_mass.append(unbiased_type_mass[:, valid_actions])
+            biased_mass.append(biased_type_mass[:, valid_actions])
+
+        unbiased_mass = th.cat(unbiased_mass, dim=1)
+        biased_mass = th.cat(biased_mass, dim=1)
+        self.assertTrue(bool(th.all(biased_mass >= unbiased_mass)))
+        self.assertGreater(float(biased_mass.mean()), float(unbiased_mass.mean()))
+
+    def test_soft_prior_action_chunking_preserves_outputs(self):
+        chunked = self.soft_prior_scorer(chunk_size=1)
+        unchunked = self.soft_prior_scorer(chunk_size=64)
+        unchunked.load_state_dict(chunked.state_dict())
+        graph_embedding = th.randn(2, 5)
+        node_embeddings = th.randn(2, 7, 7)
+        chunked_logits, chunked_attention = chunked(
+            graph_embedding,
+            node_embeddings,
+            return_attention=True,
+        )
+        unchunked_logits, unchunked_attention = unchunked(
+            graph_embedding,
+            node_embeddings,
+            return_attention=True,
+        )
+
+        self.assertTrue(th.allclose(chunked_logits, unchunked_logits, atol=1e-7))
+        for node_type in chunked_attention.weights:
+            self.assertTrue(
+                th.allclose(
+                    chunked_attention.weights[node_type],
+                    unchunked_attention.weights[node_type],
+                    atol=1e-7,
+                )
+            )
+
     def test_do_nothing_prior_has_the_requested_initial_probability(self):
         scorer = CandidateActionScorer(
             graph_dim=5,
@@ -402,6 +522,8 @@ class CandidateActorIntegrationTest(unittest.TestCase):
             candidate_action_attention_temperature=1.0,
             candidate_action_attention_query="global_action_features",
             candidate_action_attention_normalizer="softmax",
+            candidate_action_attention_prior_bias=2.0,
+            candidate_action_attention_chunk_size=64,
             gnn_concat_flat=False,
             gnn_type="gine",
             gnn_hidden_dim=8,

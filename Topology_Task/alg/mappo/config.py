@@ -76,7 +76,7 @@ def get_alg_args() -> Namespace:
         "--candidate-action-attention-scope",
         type=str,
         default="affected",
-        choices=["affected"],
+        choices=["affected", "soft_prior"],
         help="Nodes eligible for learned candidate-action attention.",
     )
     parser.add_argument(
@@ -110,6 +110,21 @@ def get_alg_args() -> Namespace:
         default="softmax",
         choices=["softmax"],
         help="Normalization applied across eligible graph nodes.",
+    )
+    parser.add_argument(
+        "--candidate-action-attention-prior-bias",
+        type=float,
+        default=2.0,
+        help=(
+            "Additive attention-score bonus for hardcoded affected nodes "
+            "when scope=soft_prior."
+        ),
+    )
+    parser.add_argument(
+        "--candidate-action-attention-chunk-size",
+        type=int,
+        default=64,
+        help="Number of candidate actions scored per dense-attention chunk.",
     )
     parser.add_argument(
         "--candidate-action-use-features",

@@ -8,7 +8,7 @@ Implementation progress:
 [done] candidate_action_pool = "mean"
 [done] candidate_action_pool = "typed_mean"
 [done] typed_attention + affected scope
-[next] typed_attention + soft_prior scope
+[done] typed_attention + soft_prior scope
 [next] typed_attention + all scope
 ```
 
