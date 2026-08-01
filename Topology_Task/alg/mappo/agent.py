@@ -1,5 +1,12 @@
+from typing import Sequence
+
 from torch.distributions import Categorical, Normal
 
+from alg.mappo.action_pooling import (
+    CandidateActionAttentionPool,
+    CandidateActionMeanPool,
+    CandidateAttentionOutput,
+)
 from common.imports import *
 from common.action_metadata import ActionGraphMetadata
 from common.gnn import GraphAndFlatEncoder, GraphEncoder
@@ -36,16 +43,22 @@ class CandidateActionScorer(nn.Module):
         pool_mode: str = "typed_mean",
         use_action_features: bool = True,
         use_do_nothing_head: bool = True,
+        attention_scope: str = "affected",
+        attention_heads: int = 1,
+        attention_dim: int = 0,
+        attention_temperature: float = 1.0,
+        attention_query: str = "global_action_features",
+        attention_normalizer: str = "softmax",
     ) -> None:
         super().__init__()
         metadata.validate()
         self.n_actions = metadata.n_actions
         self.node_dim = int(node_dim)
         self.pool_mode = str(pool_mode).lower()
-        if self.pool_mode not in {"mean", "typed_mean"}:
+        if self.pool_mode not in {"mean", "typed_mean", "typed_attention"}:
             raise ValueError(
-                "candidate_action_pool must be 'mean' or 'typed_mean', got "
-                f"{pool_mode!r}."
+                "candidate_action_pool must be 'mean', 'typed_mean', or "
+                f"'typed_attention', got {pool_mode!r}."
             )
         self.use_action_features = bool(use_action_features)
         self.use_do_nothing_head = bool(use_do_nothing_head)
@@ -65,7 +78,25 @@ class CandidateActionScorer(nn.Module):
         ):
             self.register_buffer(name, getattr(metadata, name).clone())
 
-        local_dim = self.node_dim * (4 if self.pool_mode == "typed_mean" else 1)
+        if self.pool_mode == "typed_attention":
+            self.pool = CandidateActionAttentionPool(
+                graph_dim=int(graph_dim),
+                node_dim=self.node_dim,
+                n_actions=self.n_actions,
+                action_feature_dim=metadata.action_feature_dim,
+                scope=attention_scope,
+                heads=attention_heads,
+                attention_dim=attention_dim,
+                temperature=attention_temperature,
+                query_mode=attention_query,
+                normalizer=attention_normalizer,
+            )
+        else:
+            self.pool = CandidateActionMeanPool(self.pool_mode)
+
+        local_dim = self.node_dim * (
+            4 if self.pool_mode in {"typed_mean", "typed_attention"} else 1
+        )
         scorer_input_dim = int(graph_dim) + local_dim
         if self.use_action_features:
             scorer_input_dim += metadata.action_feature_dim
@@ -87,44 +118,39 @@ class CandidateActionScorer(nn.Module):
         )
         self.do_nothing_logit_bias = nn.Parameter(th.zeros(()))
 
-    @staticmethod
-    def _masked_mean(
-        node_embeddings: th.Tensor,
-        indices: th.Tensor,
-        mask: th.Tensor,
-    ) -> th.Tensor:
-        safe_indices = indices.clamp_min(0)
-        gathered = node_embeddings[:, safe_indices, :]
-        weights = mask.to(dtype=node_embeddings.dtype).unsqueeze(0).unsqueeze(-1)
-        summed = (gathered * weights).sum(dim=2)
-        denominator = weights.sum(dim=2).clamp_min(1.0)
-        return summed / denominator
-
-    def _local_context(self, node_embeddings: th.Tensor) -> th.Tensor:
-        typed_metadata = (
-            (self.busbar_indices, self.busbar_mask),
-            (self.line_indices, self.line_mask),
-            (self.load_indices, self.load_mask),
-            (self.generator_indices, self.generator_mask),
+    def _typed_metadata(self):
+        return (
+            ("busbar", self.busbar_indices, self.busbar_mask),
+            ("line", self.line_indices, self.line_mask),
+            ("load", self.load_indices, self.load_mask),
+            ("generator", self.generator_indices, self.generator_mask),
         )
-        if self.pool_mode == "typed_mean":
-            return th.cat(
-                [
-                    self._masked_mean(node_embeddings, indices, mask)
-                    for indices, mask in typed_metadata
-                ],
-                dim=-1,
-            )
 
-        all_indices = th.cat([indices for indices, _ in typed_metadata], dim=1)
-        all_masks = th.cat([mask for _, mask in typed_metadata], dim=1)
-        return self._masked_mean(node_embeddings, all_indices, all_masks)
+    def _local_context(
+        self,
+        graph_embedding: th.Tensor,
+        node_embeddings: th.Tensor,
+        *,
+        return_attention: bool = False,
+    ) -> CandidateAttentionOutput:
+        typed_metadata = self._typed_metadata()
+        if self.pool_mode == "typed_attention":
+            return self.pool(
+                graph_embedding,
+                node_embeddings,
+                self.action_features,
+                typed_metadata,
+                return_weights=return_attention,
+            )
+        return self.pool(node_embeddings, typed_metadata)
 
     def forward(
         self,
         graph_embedding: th.Tensor,
         node_embeddings: th.Tensor,
-    ) -> th.Tensor:
+        *,
+        return_attention: bool = False,
+    ):
         unbatched = graph_embedding.dim() == 1
         if unbatched:
             graph_embedding = graph_embedding.unsqueeze(0)
@@ -135,7 +161,12 @@ class CandidateActionScorer(nn.Module):
                 "Graph and node embeddings must have the same batch size."
             )
 
-        local_context = self._local_context(node_embeddings)
+        attention_output = self._local_context(
+            graph_embedding,
+            node_embeddings,
+            return_attention=return_attention,
+        )
+        local_context = attention_output.context
         batch_size = int(graph_embedding.shape[0])
         global_context = graph_embedding.unsqueeze(1).expand(
             batch_size, self.n_actions, -1
@@ -158,7 +189,17 @@ class CandidateActionScorer(nn.Module):
             self.is_do_nothing.to(dtype=logits.dtype).unsqueeze(0)
             * self.do_nothing_logit_bias
         )
-        return logits.squeeze(0) if unbatched else logits
+        if unbatched:
+            logits = logits.squeeze(0)
+            attention_output.context = attention_output.context.squeeze(0)
+            if attention_output.weights is not None:
+                attention_output.weights = {
+                    name: weights.squeeze(0)
+                    for name, weights in attention_output.weights.items()
+                }
+        if return_attention:
+            return logits, attention_output
+        return logits
 
     def init_do_nothing_prior(self, init_p0: float) -> None:
         prior_logit = float(
@@ -306,6 +347,26 @@ class Actor(nn.Module):
                     use_do_nothing_head=getattr(
                         args, "candidate_action_do_nothing_head", True
                     ),
+                    attention_scope=getattr(
+                        args, "candidate_action_attention_scope", "affected"
+                    ),
+                    attention_heads=getattr(
+                        args, "candidate_action_attention_heads", 1
+                    ),
+                    attention_dim=getattr(
+                        args, "candidate_action_attention_dim", 0
+                    ),
+                    attention_temperature=getattr(
+                        args, "candidate_action_attention_temperature", 1.0
+                    ),
+                    attention_query=getattr(
+                        args,
+                        "candidate_action_attention_query",
+                        "global_action_features",
+                    ),
+                    attention_normalizer=getattr(
+                        args, "candidate_action_attention_normalizer", "softmax"
+                    ),
                 )
                 self.get_action = self.get_discrete_action
                 self.get_eval_action = self.get_eval_discrete_action
@@ -381,6 +442,64 @@ class Actor(nn.Module):
             )
             return self.actor(graph_embedding, node_embeddings)
         return self.actor(self._encode(x))
+
+    def get_candidate_attention(
+        self,
+        x: th.Tensor,
+        action_ids: Optional[Sequence[int]] = None,
+    ) -> Dict[str, Any]:
+        """Return candidate logits and action-specific node attention maps."""
+        if self.actor_action_head != "candidate_pool":
+            raise ValueError(
+                "Candidate attention is available only for candidate_pool actors."
+            )
+        if self.actor.pool_mode != "typed_attention":
+            raise ValueError(
+                "Candidate attention requires candidate_action_pool=typed_attention."
+            )
+        graph_embedding, node_embeddings = self.encoder.forward_with_nodes(
+            x,
+            graph_key="graph",
+        )
+        logits, output = self.actor(
+            graph_embedding,
+            node_embeddings,
+            return_attention=True,
+        )
+        result = {
+            "logits": logits,
+            "weights": output.weights,
+            "node_indices": output.node_indices,
+            "eligible_masks": output.eligible_masks,
+        }
+        if action_ids is None:
+            return result
+
+        selected = th.as_tensor(action_ids, dtype=th.long, device=logits.device)
+        if selected.dim() != 1:
+            raise ValueError("action_ids must be a one-dimensional sequence.")
+        if selected.numel() and bool(
+            th.any((selected < 0) | (selected >= self.n_actions))
+        ):
+            raise ValueError(
+                f"action_ids must lie in [0, {self.n_actions - 1}]."
+            )
+        action_dim = 0 if logits.dim() == 1 else 1
+        result["logits"] = logits.index_select(action_dim, selected)
+        weight_action_dim = 0 if logits.dim() == 1 else 1
+        result["weights"] = {
+            name: weights.index_select(weight_action_dim, selected)
+            for name, weights in output.weights.items()
+        }
+        result["node_indices"] = {
+            name: indices.index_select(0, selected.to(indices.device))
+            for name, indices in output.node_indices.items()
+        }
+        result["eligible_masks"] = {
+            name: mask.index_select(0, selected.to(mask.device))
+            for name, mask in output.eligible_masks.items()
+        }
+        return result
 
     def get_discrete_action(
         self,

@@ -66,11 +66,50 @@ def get_alg_args() -> Namespace:
         "--candidate-action-pool",
         type=str,
         default="typed_mean",
-        choices=["mean", "typed_mean"],
+        choices=["mean", "typed_mean", "typed_attention"],
         help=(
             "Pooling used by candidate_pool over the physical nodes touched "
             "by each action."
         ),
+    )
+    parser.add_argument(
+        "--candidate-action-attention-scope",
+        type=str,
+        default="affected",
+        choices=["affected"],
+        help="Nodes eligible for learned candidate-action attention.",
+    )
+    parser.add_argument(
+        "--candidate-action-attention-heads",
+        type=int,
+        default=1,
+        help="Number of candidate-action attention heads.",
+    )
+    parser.add_argument(
+        "--candidate-action-attention-dim",
+        type=int,
+        default=0,
+        help="Per-head attention size. Zero uses the GNN node dimension.",
+    )
+    parser.add_argument(
+        "--candidate-action-attention-temperature",
+        type=float,
+        default=1.0,
+        help="Positive softmax temperature for candidate-action attention.",
+    )
+    parser.add_argument(
+        "--candidate-action-attention-query",
+        type=str,
+        default="global_action_features",
+        choices=["global_action_features", "learned_action", "global_only"],
+        help="Information used to construct each candidate-action query.",
+    )
+    parser.add_argument(
+        "--candidate-action-attention-normalizer",
+        type=str,
+        default="softmax",
+        choices=["softmax"],
+        help="Normalization applied across eligible graph nodes.",
     )
     parser.add_argument(
         "--candidate-action-use-features",

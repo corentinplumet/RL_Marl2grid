@@ -172,8 +172,16 @@ class CandidateActionScorerTest(unittest.TestCase):
         )
         self.metadata = make_metadata(builder.specs["agent_0"])
 
-    def test_typed_and_untyped_pooling_produce_finite_logits_and_gradients(self):
-        for pool_mode in ("mean", "typed_mean"):
+    @staticmethod
+    def masked_mean(node_embeddings, indices, mask):
+        gathered = node_embeddings[:, indices.clamp_min(0), :]
+        weights = mask.to(node_embeddings).unsqueeze(0).unsqueeze(-1)
+        return (gathered * weights).sum(dim=2) / weights.sum(
+            dim=2
+        ).clamp_min(1.0)
+
+    def test_pooling_modes_produce_finite_logits_and_gradients(self):
+        for pool_mode in ("mean", "typed_mean", "typed_attention"):
             with self.subTest(pool_mode=pool_mode):
                 scorer = CandidateActionScorer(
                     graph_dim=5,
@@ -192,6 +200,117 @@ class CandidateActionScorerTest(unittest.TestCase):
                 logits.sum().backward()
                 self.assertIsNotNone(node_embeddings.grad)
                 self.assertGreater(float(node_embeddings.grad.abs().sum()), 0.0)
+
+    def test_existing_mean_modes_match_the_original_pooling_equations(self):
+        node_embeddings = th.randn(2, 7, 7)
+        typed_metadata = (
+            (self.metadata.busbar_indices, self.metadata.busbar_mask),
+            (self.metadata.line_indices, self.metadata.line_mask),
+            (self.metadata.load_indices, self.metadata.load_mask),
+            (self.metadata.generator_indices, self.metadata.generator_mask),
+        )
+        expected_typed = th.cat(
+            [
+                self.masked_mean(node_embeddings, indices, mask)
+                for indices, mask in typed_metadata
+            ],
+            dim=-1,
+        )
+        expected_mean = self.masked_mean(
+            node_embeddings,
+            th.cat([indices for indices, _ in typed_metadata], dim=1),
+            th.cat([mask for _, mask in typed_metadata], dim=1),
+        )
+
+        for mode, expected in (
+            ("mean", expected_mean),
+            ("typed_mean", expected_typed),
+        ):
+            scorer = CandidateActionScorer(
+                graph_dim=5,
+                node_dim=7,
+                hidden_layers=[],
+                act_fn_name="relu",
+                metadata=self.metadata,
+                pool_mode=mode,
+            )
+            output = scorer._local_context(th.randn(2, 5), node_embeddings)
+            self.assertTrue(th.equal(output.context, expected))
+            self.assertFalse(
+                any(key.startswith("pool.") for key in scorer.state_dict())
+            )
+
+    def test_affected_attention_respects_masks_and_empty_types(self):
+        scorer = CandidateActionScorer(
+            graph_dim=5,
+            node_dim=7,
+            hidden_layers=[],
+            act_fn_name="relu",
+            metadata=self.metadata,
+            pool_mode="typed_attention",
+            attention_heads=2,
+        )
+        graph_embedding = th.randn(3, 5, requires_grad=True)
+        node_embeddings = th.randn(3, 7, 7, requires_grad=True)
+        logits, attention = scorer(
+            graph_embedding,
+            node_embeddings,
+            return_attention=True,
+        )
+
+        self.assertEqual(tuple(logits.shape), (3, 5))
+        self.assertEqual(tuple(attention.context.shape), (3, 5, 28))
+        for node_type, weights in attention.weights.items():
+            mask = attention.eligible_masks[node_type]
+            self.assertEqual(tuple(weights.shape[:3]), (3, 5, 2))
+            outside = ~mask.unsqueeze(0).unsqueeze(2).expand_as(weights)
+            outside_weights = weights.masked_select(outside)
+            self.assertTrue(
+                th.equal(outside_weights, th.zeros_like(outside_weights))
+            )
+            expected_sum = mask.any(dim=-1).to(weights).view(1, 5, 1)
+            expected_sum = expected_sum.expand(3, 5, 2)
+            self.assertTrue(
+                th.allclose(weights.sum(dim=-1), expected_sum, atol=1e-6)
+            )
+
+        self.assertTrue(
+            th.equal(
+                attention.context[:, 0],
+                th.zeros_like(attention.context[:, 0]),
+            )
+        )
+        logits.sum().backward()
+        for name in (
+            "pool.query_projection.weight",
+            "pool.key_projection.weight",
+            "pool.value_projection.weight",
+            "pool.score_vector",
+        ):
+            parameter = dict(scorer.named_parameters())[name]
+            self.assertIsNotNone(parameter.grad, name)
+            self.assertGreater(float(parameter.grad.abs().sum()), 0.0, name)
+
+    def test_affected_attention_checkpoint_round_trip_is_exact(self):
+        kwargs = dict(
+            graph_dim=5,
+            node_dim=7,
+            hidden_layers=[9],
+            act_fn_name="relu",
+            metadata=self.metadata,
+            pool_mode="typed_attention",
+        )
+        scorer = CandidateActionScorer(**kwargs)
+        restored = CandidateActionScorer(**kwargs)
+        restored.load_state_dict(scorer.state_dict())
+        graph_embedding = th.randn(2, 5)
+        node_embeddings = th.randn(2, 7, 7)
+        self.assertTrue(
+            th.equal(
+                scorer(graph_embedding, node_embeddings),
+                restored(graph_embedding, node_embeddings),
+            )
+        )
 
     def test_do_nothing_prior_has_the_requested_initial_probability(self):
         scorer = CandidateActionScorer(
@@ -274,9 +393,15 @@ class CandidateActorIntegrationTest(unittest.TestCase):
             actor_act_fn="relu",
             intervention_gate=False,
             init_do_nothing_prob=0.0,
-            candidate_action_pool="typed_mean",
+            candidate_action_pool="typed_attention",
             candidate_action_use_features=True,
             candidate_action_do_nothing_head=True,
+            candidate_action_attention_scope="affected",
+            candidate_action_attention_heads=1,
+            candidate_action_attention_dim=0,
+            candidate_action_attention_temperature=1.0,
+            candidate_action_attention_query="global_action_features",
+            candidate_action_attention_normalizer="softmax",
             gnn_concat_flat=False,
             gnn_type="gine",
             gnn_hidden_dim=8,
@@ -315,6 +440,13 @@ class CandidateActorIntegrationTest(unittest.TestCase):
         self.assertEqual(tuple(entropy.shape), (2,))
         self.assertEqual(tuple(eval_action.shape), (2,))
         self.assertTrue(bool(th.isfinite(log_prob).all()))
+
+        diagnostics = actor.get_candidate_attention(observation, action_ids=[1, 4])
+        self.assertEqual(tuple(diagnostics["logits"].shape), (2, 2))
+        self.assertEqual(
+            tuple(diagnostics["weights"]["line"].shape[:2]),
+            (2, 2),
+        )
 
         restored_actor = Actor(0, env, args, continuous_actions=False)
         restored_actor.load_state_dict(actor.state_dict())
