@@ -9,7 +9,7 @@ Implementation progress:
 [done] candidate_action_pool = "typed_mean"
 [done] typed_attention + affected scope
 [done] typed_attention + soft_prior scope
-[next] typed_attention + all scope
+[done] typed_attention + all scope
 ```
 
 The later sparse-normalization and candidate-action-node experiments remain

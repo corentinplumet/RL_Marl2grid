@@ -107,10 +107,10 @@ class CandidateActionAttentionPool(nn.Module):
         self.prior_bias = float(prior_bias)
         self.action_chunk_size = int(action_chunk_size)
 
-        if self.scope not in {"affected", "soft_prior"}:
+        if self.scope not in {"affected", "soft_prior", "all"}:
             raise ValueError(
                 "candidate_action_attention_scope currently supports only "
-                f"'affected' or 'soft_prior', got {scope!r}."
+                f"'affected', 'soft_prior', or 'all', got {scope!r}."
             )
         if self.heads < 1:
             raise ValueError(
@@ -133,6 +133,12 @@ class CandidateActionAttentionPool(nn.Module):
                 "candidate_action_attention_query must be "
                 "'global_action_features', 'learned_action', or 'global_only', "
                 f"got {query_mode!r}."
+            )
+        if self.scope == "all" and self.query_mode == "global_only":
+            raise ValueError(
+                "candidate_action_attention_scope=all requires an "
+                "action-specific query. Use global_action_features or "
+                "learned_action instead of global_only."
             )
         if self.normalizer != "softmax":
             raise ValueError(
@@ -182,15 +188,15 @@ class CandidateActionAttentionPool(nn.Module):
         self.score_vector = nn.Parameter(
             th.empty(self.heads, self.attention_dim)
         )
-        if self.scope == "soft_prior":
+        if self.scope in {"soft_prior", "all"}:
             if (
                 node_types is None
                 or node_type_ids is None
                 or typed_metadata is None
             ):
                 raise ValueError(
-                    "soft_prior attention requires node types, node type IDs, "
-                    "and typed action metadata."
+                    "Dense candidate attention requires node types, node type "
+                    "IDs, and typed action metadata."
                 )
             self._register_dense_metadata(
                 node_types,
@@ -393,13 +399,14 @@ class CandidateActionAttentionPool(nn.Module):
                 self.score_vector,
             )
             scores = scores / self.temperature
-            scores = scores + (
-                self.prior_bias
-                * affected_mask[start:end]
-                .to(dtype=scores.dtype)
-                .unsqueeze(0)
-                .unsqueeze(2)
-            )
+            if self.scope == "soft_prior":
+                scores = scores + (
+                    self.prior_bias
+                    * affected_mask[start:end]
+                    .to(dtype=scores.dtype)
+                    .unsqueeze(0)
+                    .unsqueeze(2)
+                )
             weights = self._masked_softmax(
                 scores,
                 eligible_mask[start:end],

@@ -432,6 +432,56 @@ class CandidateActionScorerTest(unittest.TestCase):
                 )
             )
 
+    def all_node_scorer(self, query_mode="global_action_features"):
+        return CandidateActionScorer(
+            graph_dim=5,
+            node_dim=7,
+            hidden_layers=[9],
+            act_fn_name="relu",
+            metadata=self.metadata,
+            pool_mode="typed_attention",
+            attention_scope="all",
+            attention_query=query_mode,
+            node_types=self.spec["node_type"],
+            node_type_ids=self.node_type_ids,
+        )
+
+    def test_all_node_attention_matches_zero_bias_soft_prior(self):
+        soft_prior = self.soft_prior_scorer(prior_bias=0.0)
+        all_nodes = self.all_node_scorer()
+        all_nodes.load_state_dict(soft_prior.state_dict())
+        graph_embedding = th.randn(2, 5)
+        node_embeddings = th.randn(2, 7, 7)
+        soft_logits, soft_attention = soft_prior(
+            graph_embedding,
+            node_embeddings,
+            return_attention=True,
+        )
+        all_logits, all_attention = all_nodes(
+            graph_embedding,
+            node_embeddings,
+            return_attention=True,
+        )
+
+        self.assertTrue(th.allclose(soft_logits, all_logits, atol=1e-7))
+        for node_type in soft_attention.weights:
+            self.assertTrue(
+                th.allclose(
+                    soft_attention.weights[node_type],
+                    all_attention.weights[node_type],
+                    atol=1e-7,
+                )
+            )
+
+    def test_all_node_attention_requires_an_action_specific_query(self):
+        with self.assertRaisesRegex(ValueError, "action-specific query"):
+            self.all_node_scorer(query_mode="global_only")
+
+        learned_action = self.all_node_scorer(query_mode="learned_action")
+        logits = learned_action(th.randn(2, 5), th.randn(2, 7, 7))
+        self.assertEqual(tuple(logits.shape), (2, 5))
+        self.assertTrue(bool(th.isfinite(logits).all()))
+
     def test_do_nothing_prior_has_the_requested_initial_probability(self):
         scorer = CandidateActionScorer(
             graph_dim=5,
@@ -516,7 +566,7 @@ class CandidateActorIntegrationTest(unittest.TestCase):
             candidate_action_pool="typed_attention",
             candidate_action_use_features=True,
             candidate_action_do_nothing_head=True,
-            candidate_action_attention_scope="affected",
+            candidate_action_attention_scope="all",
             candidate_action_attention_heads=1,
             candidate_action_attention_dim=0,
             candidate_action_attention_temperature=1.0,

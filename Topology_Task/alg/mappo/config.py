@@ -76,7 +76,7 @@ def get_alg_args() -> Namespace:
         "--candidate-action-attention-scope",
         type=str,
         default="affected",
-        choices=["affected", "soft_prior"],
+        choices=["affected", "soft_prior", "all"],
         help="Nodes eligible for learned candidate-action attention.",
     )
     parser.add_argument(
