@@ -1,257 +1,666 @@
-\chapter{Experiments}
+\chapter{Graph-Design Screening}
 \label{ch:experiments}
 
-This chapter defines the current staged graph-screening campaign. A run denotes
-one training configuration with one random seed. The campaign contains 44
-configured runs across Stages 1, 1b, 1c, 1d, and 1e. This chapter records what
-is varied and what is held fixed; measured outcomes are reported separately in
-Chapter~\ref{ch:experimental-results}.
+This chapter reports the graph-design screens. All are balanced full factorials
+on \texttt{bus14} with three seeds per cell, and all ask the same kind of
+question: does a specific choice in the actor of Chapter~\ref{ch:methods}
+change how well a decentralized MAPPO policy survives on held-out chronics?
 
-\section{Common Training Protocol}
+\begin{itemize}
+  \item \textbf{Screen A} varies the depth and width of the actor encoder,
+  which applies to every graph schema: a $3\times4$ grid, 36 runs.
+  \emph{Training at the time of writing.}
+  \item \textbf{Screen B} varies the message-passing operator and the readout,
+  GINE against GAT and mean against maximum pooling: a $2\times2$ factorial,
+  9 new runs plus one reused cell. \emph{Training at the time of writing.}
+  \item \textbf{Screen C} varies the three structural augmentations of the
+  busbar graph -- same-substation edges, substation-summary nodes, and
+  virtual-node readout (Sections~\ref{sec:substation-representation}
+  and~\ref{sec:virtual-node-readout}): a $2^3$ factorial, 24 runs.
+  \emph{Complete.}
+  \item \textbf{Screen D} varies the direction of the generator and load
+  attachment relations in the disaggregated graph
+  (Section~\ref{sec:heterogeneous-graph-representation}): a $3\times3$
+  factorial, 27 runs. \emph{Complete.}
+\end{itemize}
+
+\noindent Screens A, B, and C all run on the busbar graph and share one reference
+configuration, so they can be read as a sequence; only Screen D changes the
+schema. The two completed screens account for 51 finished training runs.
+
+\section{How This Chapter Is Organized}
+\label{sec:screening-how-to-read}
+
+Each screen is presented as one block containing its design and its outcome
+together:
+
+\begin{enumerate}
+  \item \textbf{Question.} Which design choice is uncertain?
+  \item \textbf{Design.} Which factors are varied, at which levels, and what is
+  held fixed.
+  \item \textbf{Coverage.} How far the runs actually got, before any endpoint
+  number is read.
+  \item \textbf{Result.} The measured tables.
+  \item \textbf{Reading.} What follows, and what does not.
+\end{enumerate}
+
+\section{Shared Protocol}
 \label{sec:screening-common-protocol}
 
-Unless a stage states otherwise, every run uses the paired configuration in
-Table~\ref{tab:screening-common-settings}. The purpose of this common protocol
-is to isolate changes to the graph input or graph structure.
+Every screen uses the configuration in
+Table~\ref{tab:screening-common-settings}. Every setting not named as a
+screened factor is identical across all runs, so each screen is a paired
+comparison against its own baseline cell.
 
 \begin{table}[H]
   \centering
   \small
-  \caption{Settings shared by the current graph-screening runs.}
+  \caption{Settings shared by all screens. Only the graph type and the screened
+  factors differ between them.}
   \label{tab:screening-common-settings}
   \setlength{\tabcolsep}{4pt}
-  \begin{tabular}{L{0.25\textwidth}L{0.65\textwidth}}
+  \begin{tabular}{L{0.24\textwidth}L{0.68\textwidth}}
     \toprule
     Component & Fixed setting \\
     \midrule
-    Environment & \texttt{bus14}, difficulty 0, topology actions, 80/20 train/test chronic split with split seed 0 \\
-    Actor & One GINE encoder shared by all agents; two message-passing layers; 128 hidden and output features; LayerNorm; two 128-unit action-head layers \\
+    Environment & \texttt{bus14}, difficulty 0, topology actions, decentralized agents, normalized observations and rewards, 80/20 train/test chronic split with split seed 0 \\
+    Actor & One GNN encoder shared by all agents; LayerNorm; node pre-encoder; two 128-unit action-head layers; one-hop neighbor context \\
     Critic & Centralized MLP with three 256-unit hidden layers \\
-    Training budget & \(8{,}000{,}000\) environment steps, 72 parallel environments, 576 rollout steps \\
-    MAPPO update & 10 epochs, 16 minibatches, actor and critic learning rates \(10^{-4}\) with linear annealing, \(\gamma=0.9\), \(\lambda=0.95\) \\
-    Evaluation & Deterministic evaluation every 82,944 environment steps; 10 episodes on each evaluated split \\
-    Graph defaults & Bidirectional relations, mean readout, no same-substation edges, no substation-summary nodes, no virtual-node readout \\
-    Other input settings & No global node-identifier embeddings and no concatenated flat observation in the actor \\
+    Graph preprocessing & None: neither deterministic physical scaling nor running standardization \\
+    Training budget & \(15{,}000{,}000\) environment steps, 72 parallel environments, 576 rollout steps \\
+    MAPPO update & 10 epochs, 16 minibatches, actor and critic learning rates \(10^{-4}\) with linear annealing, \(\gamma=0.9\), \(\lambda=0.95\), clip \(0.2\), target KL \(0.02\), entropy coefficient \(0.01\) \\
+    Exploration & No initial do-nothing prior and no action-0 logit bonus \\
+    Sparse control & Disabled: no intervention gate, no intervention penalty, no evaluation-time rho heuristic \\
+    Evaluation & Deterministic evaluation every 82{,}944 environment steps, 10 episodes on each split \\
+    Seeds & 0, 1, 2 in every cell \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-The graph preprocessing labels used below are
-\begin{equation}
-  \begin{aligned}
-    \texttt{n0\_none} &: \text{no graph-feature preprocessing},\\
-    \texttt{n1\_physical} &: \text{deterministic physical scaling only},\\
-    \texttt{n2\_running} &: \text{running standardization only},\\
-    \texttt{n3\_both} &: \text{physical scaling followed by running standardization}.
-  \end{aligned}
-  \label{eq:screening-normalization-labels}
-\end{equation}
-These graph-specific settings are distinct from the environment observation
-normalization and reward normalization, which remain enabled in every run.
+{\color{blue}\subsection{Reference configuration}
+\label{subsec:screening-reference-config}
 
-\section{Current Run Inventory}
-\label{sec:screening-run-inventory}
+Screens A, B, and C are all derived, seed by seed, from one reference
+configuration: the unaugmented busbar graph with a GINE encoder, two
+message-passing layers, 128 hidden and output features, and mean readout. It
+appears in the repository as
+\texttt{gs\_s2\_bus\_n0\_none\_e0n0v0} and is the \texttt{e0n0v0} cell of
+Screen C, where its measured survival is reported
+(Section~\ref{sec:screen-bus-structure}). Each of the three screens changes one
+group of settings relative to it and leaves everything else untouched, so the
+reference cell is the common origin of the whole busbar-graph part of this
+chapter. Screen D uses the disaggregated schema and has its own baseline cell.}
 
-Table~\ref{tab:screening-stage-overview} gives the complete count. The
-subsections below define the configuration set of each stage.
+\subsection{Endpoint statistics}
+\label{subsec:screening-endpoint-statistics}
 
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Current staged graph-screening campaign.}
-  \label{tab:screening-stage-overview}
-  \setlength{\tabcolsep}{4pt}
-  \begin{tabular}{L{0.11\textwidth}L{0.30\textwidth}L{0.40\textwidth}L{0.09\textwidth}}
-    \toprule
-    Stage & Fixed base & Varied factor & Runs \\
-    \midrule
-    1 & Seed 0, unaugmented GINE & Three graph schemas crossed with four preprocessing modes & 12 \\
-    1b & Three selected Stage 1 configurations & Seeds 0, 1, and 2 & 9 \\
-    1c & Bus graph, \texttt{n0\_none}, seed 0 & Seven non-baseline combinations of \(e,n,v\) & 7 \\
-    1d & Direct heterogeneous graph, \texttt{n0\_none}, seed 0 & Eight non-baseline generator/load direction pairs & 8 \\
-    1e & \texttt{n0\_none}, seed 0 & Seven direct-heterogeneous structures and one explicit-line run & 8 \\
-    \midrule
-    Total & & & 44 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+Survival is the percentage of an episode's maximum length that the agent keeps
+the grid alive, reported on the test split. Each run saves the checkpoint with the highest test survival seen during training. That checkpoint is then re-evaluated deterministically over all 201 held-out test chronics.
 
-\subsection{Stage 1: representation and preprocessing}
-\label{subsec:screening-stage1}
+\subsection{Compute}
+\label{subsec:screening-budget-alignment}
 
-Stage 1 crosses three graph schemas with four preprocessing modes. Every cell
-in Table~\ref{tab:stage1-matrix} is one seed-0 run, with identifier
-\texttt{gs\_s1\_<graph>\_<preprocessing>\_s0}. The complete matrix therefore
-contains 12 runs.
+The runs were executed on two clusters, JED (CPU) and IZAR (GPU); seeds of the same
+cell are spread across both, so the compute backend is not confounded with any
+screened factor.
 
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Stage 1 representation-by-preprocessing matrix. ``Run'' denotes one
-  configured seed-0 training run.}
-  \label{tab:stage1-matrix}
-  \setlength{\tabcolsep}{4pt}
-  \begin{tabular}{L{0.28\textwidth}L{0.14\textwidth}L{0.16\textwidth}L{0.15\textwidth}L{0.14\textwidth}}
-    \toprule
-    Graph code & \texttt{n0\_none} & \texttt{n1\_physical} & \texttt{n2\_running} & \texttt{n3\_both} \\
-    \midrule
-    \texttt{bus} & Run & Run & Run & Run \\
-    \texttt{hetero} & Run & Run & Run & Run \\
-    \texttt{hetero\_line} & Run & Run & Run & Run \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+\section{Screen A: Encoder Depth and Width}
+\label{sec:screen-depth-width}
 
-Stage 1 uses a 720-minute training limit; some runs therefore stop before the
-nominal 8M-step budget.
+\emph{Runs in progress. The design below is final; the coverage, result, and
+reading subsections are placeholders to be filled from the completed runs.}
+
+\subsection*{Question}
+
+{\color{blue} The reference configuration uses two message-passing layers and 128 hidden features. Those values were fixed by convention rather than measured. Depth and width control different things: with $K$ layers a node embedding can only see
+$K$ hops away, and a local actor graph with one-hop context has a small diameter, so a third layer may add nothing that the readout can use; width sets the capacity of each node embedding and of the graph vector that the action head consumes. Is the default $(2,128)$ actor justified, is one hop enough, and is there a width below which the policy degrades?} 
 \\
 \\
-The locally recorded Stage 1 explicit-line artifacts were produced before
-\texttt{rho} was removed from the line-attachment edge vector. They must be
-regenerated before comparison with runs using the revised relation-only
-explicit-line edges.
+-> We need to fix the hyperparameter for the message passing depth and the encoder width. This is the most general question in the chapter: depth and width apply to every schema, so the answer conditions how the later screens should be read.
 
-\subsection{Stage 1b: normalization confirmation}
-\label{subsec:screening-stage1b}
+\subsection*{Design}
 
-Stage 1b trains three selected Stage 1 configurations from seeds 0, 1, and 2.
-Every cell in Table~\ref{tab:stage1b-matrix} is one run, with identifier
-\texttt{gs\_s1b\_<graph>\_<preprocessing>\_s<seed>}. The \(3\times3\) matrix
-contains nine runs.
+A complete $3\times4$ grid with three seeds per cell, 36 runs.
+Table~\ref{tab:depth-width-design} lists the screened parameters and their
+levels. The graph output dimension is matched to the hidden dimension, so a
+cell varies one width rather than two. Every other setting is inherited from
+the reference configuration of
+Section~\ref{subsec:screening-reference-config}, seed by seed.
 
 \begin{table}[H]
   \centering
   \small
-  \caption{Stage 1b finalist-by-seed matrix.}
-  \label{tab:stage1b-matrix}
-  \setlength{\tabcolsep}{4pt}
-  \begin{tabular}{L{0.43\textwidth}L{0.14\textwidth}L{0.14\textwidth}L{0.14\textwidth}}
-    \toprule
-    Graph and preprocessing & Seed 0 & Seed 1 & Seed 2 \\
-    \midrule
-    \texttt{bus + n0\_none} & Run & Run & Run \\
-    \texttt{bus + n1\_physical} & Run & Run & Run \\
-    \texttt{hetero + n0\_none} & Run & Run & Run \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-The time limit is 2,880 minutes so the comparison can reach the common
-8M-step endpoint.
-
-\subsection{Stage 1c: bus-graph structural factors}
-\label{subsec:screening-stage1c}
-
-Stage 1c uses the unscaled bus graph with seed 0 and tests three binary factors:
-\(e\) adds direct same-substation busbar edges, \(n\) adds substation-summary
-nodes, and \(v\) replaces mean pooling with virtual-node readout. The Stage 1b
-\texttt{e0n0v0} run supplies the unaugmented baseline. Table~\ref{tab:stage1c-matrix}
-lists the remaining seven combinations. Each row is one run, with identifier
-\texttt{gs\_s1c\_bus\_n0\_none\_<suffix>\_s0}.
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Stage 1c structural matrix; \(000\) is the Stage 1b baseline.}
-  \label{tab:stage1c-matrix}
+  \caption{Screen A. Screened parameters and the values tested. All other
+  settings are held at Table~\ref{tab:screening-common-settings}.}
+  \label{tab:depth-width-design}
   \setlength{\tabcolsep}{5pt}
-  \begin{tabular}{L{0.12\textwidth}L{0.12\textwidth}L{0.12\textwidth}L{0.24\textwidth}L{0.20\textwidth}}
+  \begin{tabular}{L{0.30\textwidth}L{0.24\textwidth}L{0.30\textwidth}}
     \toprule
-    \(e\) & \(n\) & \(v\) & Run suffix & Source \\
+    Parameter & Setting & Values tested \\
     \midrule
-    0 & 0 & 0 & \texttt{e0n0v0} & Stage 1b baseline \\
-    \midrule
-    0 & 0 & 1 & \texttt{e0n0v1} & Stage 1c run \\
-    0 & 1 & 0 & \texttt{e0n1v0} & Stage 1c run \\
-    0 & 1 & 1 & \texttt{e0n1v1} & Stage 1c run \\
-    1 & 0 & 0 & \texttt{e1n0v0} & Stage 1c run \\
-    1 & 0 & 1 & \texttt{e1n0v1} & Stage 1c run \\
-    1 & 1 & 0 & \texttt{e1n1v0} & Stage 1c run \\
-    1 & 1 & 1 & \texttt{e1n1v1} & Stage 1c run \\
+    Message-passing layers $K$ & \texttt{gnn\_layers} & 1, 2, 3 \\
+    Encoder width $d_h$ & \texttt{gnn\_hidden\_dim} & 16, 32, 64, 128 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-\subsection{Stage 1d: heterogeneous attachment directions}
-\label{subsec:screening-stage1d}
+\subsection*{Coverage}
 
-Stage 1d uses the direct heterogeneous graph without graph-feature
-preprocessing, hierarchy augmentation, or virtual-node readout. The direction
-codes are \texttt{bi} for bidirectional, \texttt{a2b} for asset-to-busbar, and
-\texttt{b2a} for busbar-to-asset.
-\\
-\\
-Table~\ref{tab:stage1d-matrix} is the complete generator-by-load direction
-matrix. The Stage 1b \texttt{bi}/\texttt{bi} run supplies the baseline; every
-other cell is one Stage 1d run. Its identifier is
-\texttt{gs\_s1d\_hetero\_n0\_none\_g<row>\_l<column>\_s0}.
+\pending{completed steps per run, common budget, and whether any cell lost a
+seed. Small-width runs are cheaper per step, so the walltime limit is expected
+to bind unevenly across the width axis --- if it does, report the common budget
+per width column rather than one budget for the whole grid.}
+
+\subsection*{Result}
 
 \begin{table}[H]
   \centering
   \small
-  \caption{Stage 1d generator-by-load direction matrix.}
-  \label{tab:stage1d-matrix}
-  \setlength{\tabcolsep}{4pt}
-  \begin{tabular}{L{0.28\textwidth}L{0.19\textwidth}L{0.19\textwidth}L{0.19\textwidth}}
+  \caption{Screen A. Test survival by message-passing depth and encoder width,
+  averaged over three seeds, with the seed-to-seed standard deviation in
+  parentheses. \pending{fill from the completed runs; state which endpoint
+  statistic of Section~\ref{subsec:screening-endpoint-statistics} is used.}}
+  \label{tab:depth-width-grid}
+  \setlength{\tabcolsep}{6pt}
+  \begin{tabular}{lcccc}
     \toprule
-    Generator \(\backslash\) load & \texttt{bi} & \texttt{a2b} & \texttt{b2a} \\
+    & \multicolumn{4}{c}{Encoder width $d_h$} \\
+    \cmidrule(lr){2-5}
+    Layers $K$ & 16 & 32 & 64 & 128 \\
     \midrule
-    \texttt{bi} & Stage 1b baseline & Stage 1d run & Stage 1d run \\
-    \texttt{a2b} & Stage 1d run & Stage 1d run & Stage 1d run \\
-    \texttt{b2a} & Stage 1d run & Stage 1d run & Stage 1d run \\
+    1 & -- & -- & -- & -- \\
+    2 & -- & -- & -- & -- \\
+    3 & -- & -- & -- & -- \\
     \bottomrule
   \end{tabular}
 \end{table}
-
-\subsection{Stage 1e: heterogeneous structures and explicit-line run}
-\label{subsec:screening-stage1e}
-
-Stage 1e contains the eight seed-0 rows in Table~\ref{tab:stage1e-matrix}. Seven
-rows apply the non-baseline structural combinations to the direct
-heterogeneous graph. The eighth row is the unaugmented explicit-line run.
 
 \begin{table}[H]
   \centering
   \small
-  \caption{Stage 1e design matrix. Every row is one configured run.}
-  \label{tab:stage1e-matrix}
-  \setlength{\tabcolsep}{4pt}
-  \begin{tabular}{L{0.27\textwidth}L{0.08\textwidth}L{0.08\textwidth}L{0.08\textwidth}L{0.30\textwidth}}
+  \caption{Screen A. Replication check: the $(2,128)$ cell against the
+  \texttt{e0n0v0} result of Screen C, which is the same configuration launched
+  separately. \pending{fill; a gap here is run-to-run noise, not an effect.}}
+  \label{tab:depth-width-replication}
+  \setlength{\tabcolsep}{6pt}
+  \begin{tabular}{lrrr}
     \toprule
-    Graph code & \(e\) & \(n\) & \(v\) & Run suffix \\
+    Launch & Mean (\%) & Std (pp) & Seeds \\
     \midrule
-    \texttt{hetero} & 0 & 0 & 1 & \texttt{e0n0v1} \\
-    \texttt{hetero} & 0 & 1 & 0 & \texttt{e0n1v0} \\
-    \texttt{hetero} & 0 & 1 & 1 & \texttt{e0n1v1} \\
-    \texttt{hetero} & 1 & 0 & 0 & \texttt{e1n0v0} \\
-    \texttt{hetero} & 1 & 0 & 1 & \texttt{e1n0v1} \\
-    \texttt{hetero} & 1 & 1 & 0 & \texttt{e1n1v0} \\
-    \texttt{hetero} & 1 & 1 & 1 & \texttt{e1n1v1} \\
+    Screen C \texttt{e0n0v0} & 94.26 & 4.45 & 3 \\
+    Screen A $(K,d_h)=(2,128)$ & -- & -- & 3 \\
     \midrule
-    \texttt{hetero\_line} & 0 & 0 & 0 & \texttt{e0n0v0} \\
+    Difference & -- & & \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-The direct-heterogeneous identifier is
-\texttt{gs\_s1e\_hetero\_n0\_none\_<suffix>\_s0}; the explicit-line identifier
-is \texttt{gs\_s1e\_hetero\_line\_n0\_none\_e0n0v0\_s0}. All eight runs use
-\texttt{n0\_none}, bidirectional relations, and a 2,880-minute limit. The
-explicit-line run uses the revised relation-only edge vector: all physical line
-values, including \texttt{rho}, are stored only on the transmission-line node.
+\begin{figure}[H]
+  \centering
+  \pendingplot{Aggregated test episodic-survival curves, one panel per depth
+  $K$, four width curves inside each panel, one standard deviation band across
+  the three seeds.}
+  \caption{Screen A. Survival curves by depth and width.
+  \pending{replace the box with the exported figure.}}
+  \label{fig:depth-width-curves}
+\end{figure}
 
-\section{Campaign Size}
-\label{sec:screening-campaign-size}
+\begin{figure}[H]
+  \centering
+  \pendingplot[0.18\textheight]{Depth $\times$ width heatmap of the endpoint
+  statistic, and the same heatmap expressed as a difference from the $(2,128)$
+  cell.}
+  \caption{Screen A. Depth-by-width heatmap.
+  \pending{replace the box with the exported figure.}}
+  \label{fig:depth-width-heatmap}
+\end{figure}
 
-The current configuration set therefore contains
-\begin{equation}
-  12_{\mathrm{Stage\,1}}
-  +9_{\mathrm{Stage\,1b}}
-  +7_{\mathrm{Stage\,1c}}
-  +8_{\mathrm{Stage\,1d}}
-  +8_{\mathrm{Stage\,1e}}
-  =44
-  \label{eq:screening-total-runs}
-\end{equation}
-training runs. This count describes configured run--seed combinations; it does
-not imply that all 44 runs have completed.
+\begin{figure}[H]
+  \centering
+  \pendingplot[0.18\textheight]{Actor parameter count against survival, one
+  marker per cell, so a cell that matches the reference at a fraction of the
+  parameters is visible directly.}
+  \caption{Screen A. Cost against survival.
+  \pending{replace the box with the exported figure.}}
+  \label{fig:depth-width-cost}
+\end{figure}
+
+\subsection*{Reading}
+
+\pending{answer four questions explicitly.} First, whether the $K=1$ row
+matches $K=2$: if it does, one hop of message passing is sufficient on a local
+\texttt{bus14} graph and the second layer is paying for nothing. Second, whether
+$K=3$ recovers, matches, or degrades relative to $K=2$, which bears directly on
+the Screen C finding that the hierarchy augmentations fail with only two layers
+(Section~\ref{sec:screen-bus-structure}). Third, whether there is a width
+threshold: a monotone width effect and a cliff between two adjacent widths lead
+to different conclusions about what the graph vector has to carry. Fourth,
+whether the replication check in Table~\ref{tab:depth-width-replication} is
+small relative to the differences claimed in Screens C and D; if it is not, the
+margins in those screens need re-reading with the wider error bar.
+
+\section{Screen B: Encoder Operator and Readout}
+\label{sec:screen-encoder-pooling}
+
+\emph{Runs in progress. The design below is final; the coverage, result, and
+reading subsections are placeholders to be filled from the completed runs.}
+
+\subsection*{Question}
+
+Two independent choices have been held fixed at their defaults. The
+message-passing operator can be GINE, which adds the projected edge vector to
+the sender state inside every message, or GAT, which uses the edge vector to
+weight how strongly each incoming message counts
+(Appendix~\ref{app:gine-architecture}). The readout can be the mean over valid
+nodes or a per-channel maximum
+(Section~\ref{subsec:graph-mean-pooling}). The two interact in principle: a
+softmax-weighted aggregation followed by a maximum readout selects twice, while
+mean pooling after an unweighted sum preserves how many nodes are in a given
+state. Which combination suits the busbar graph?
+
+The busbar schema is the relevant setting for a second reason. Its edge vector
+carries only the physical line block and no relation one-hot
+(Table~\ref{tab:gine-gat-edge-inventory}), so GAT's attention here is computed
+from line state --- loading, status, cooldown --- rather than from relation
+identity. If attention helps anywhere, a graph whose edges differ only by
+physical measurement is where it should show.
+
+\subsection*{Design}
+
+A $2\times2$ factorial over encoder $\in\{\text{GINE},\text{GAT}\}$ and readout
+$\in\{\text{mean},\text{max}\}$ with three seeds per cell. Only three cells are
+newly launched --- 9 runs in
+\path{configs/gnn_graph_screening/stage3_encoder_pooling} --- because the
+GINE/mean cell is the reference configuration of
+Section~\ref{subsec:screening-reference-config} and is reused rather than
+repeated. GAT uses four heads averaged rather than concatenated, so all four
+cells return the same 128 features. Every other setting is inherited from the
+reference configuration seed by seed.
+
+Reusing a cell has a cost that must be carried into the reading: the GINE/mean
+numbers come from a different launch than the other three, so any difference
+against them contains whatever run-to-run drift exists between launches. That
+drift is exactly what Screen A's replication check measures
+(Table~\ref{tab:depth-width-replication}), so the two screens should be read
+together.
+
+\subsection*{Coverage}
+
+\pending{completed steps per run and the common budget. GAT is more expensive
+per step than GINE at equal width, so the two encoder rows may not reach the
+same step count under a shared walltime limit; if they do not, compare at the
+common budget and say so rather than at each run's own endpoint.}
+
+\subsection*{Result}
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Screen B. Test survival by encoder and readout, averaged over three
+  seeds, with the seed-to-seed standard deviation in parentheses. The GINE/mean
+  cell is inherited from the reference configuration. \pending{fill the three
+  new cells using the same endpoint statistic as the inherited cell.}}
+  \label{tab:encoder-pooling-grid}
+  \setlength{\tabcolsep}{6pt}
+  \begin{tabular}{lcc}
+    \toprule
+    & \multicolumn{2}{c}{Readout} \\
+    \cmidrule(lr){2-3}
+    Encoder & Mean & Max \\
+    \midrule
+    GINE & 94.26 (4.45)\textsuperscript{\dag} & -- \\
+    GAT & -- & -- \\
+    \bottomrule
+  \end{tabular}
+  \\[0.4em]
+  {\small \textsuperscript{\dag}Reference configuration, final-window
+  statistic; not a new run.}
+\end{table}
+
+\begin{figure}[H]
+  \centering
+  \pendingplot{Aggregated test episodic-survival curves for the four
+  encoder/readout combinations, one standard deviation band across the three
+  seeds, with the inherited GINE/mean cell drawn in grey.}
+  \caption{Screen B. Survival curves by encoder and readout.
+  \pending{replace the box with the exported figure.}}
+  \label{fig:encoder-pooling-curves}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \pendingplot[0.18\textheight]{Two panels: readout compared within each
+  encoder, and encoder compared within each readout. If the same readout wins
+  in both encoder panels, the two factors are acting independently.}
+  \caption{Screen B. Factors compared within each other.
+  \pending{replace the box with the exported figure.}}
+  \label{fig:encoder-pooling-facets}
+\end{figure}
+
+\subsection*{Reading}
+
+\pending{report the four cells, then answer three questions.} Whether either
+factor has a main effect large relative to the seed spread; whether they
+interact, which the $2\times2$ can show but not explain; and whether any gain
+from GAT is worth its cost per step, since a policy that reaches the same
+survival with a cheaper operator is the better default for the larger grids.
+State explicitly whether the inherited GINE/mean cell was re-run for
+confirmation, and if it was not, bound the comparison with the replication gap
+from Screen A.
+
+\section{Screen C: Structural Augmentations of the Busbar Graph}
+\label{sec:screen-bus-structure}
+
+\subsection*{Question}
+
+Three optional augmentations add computational structure to the busbar graph
+without adding any physical measurement: same-substation edges ($e$), which let
+the busbars of one substation exchange messages directly; substation-summary
+nodes ($n$), which insert one learned hub per substation; and virtual-node
+readout ($v$), which replaces mean pooling with a learned graph-summary node.
+Each is motivated by the same intuition --- shorten the path between related
+busbars --- so the question is whether any of them earns its cost, and whether
+they compose.
+
+\subsection*{Design}
+
+A complete $2^3$ factorial with three seeds per cell, 24 runs, in
+\path{configs/gnn_graph_screening/stage2_structure}. The graph type is
+\texttt{bus} throughout and the baseline cell is the unaugmented
+\texttt{e0n0v0}, which is the reference configuration of
+Section~\ref{subsec:screening-reference-config}. Cells are named by their three
+switches, so \texttt{e1n0v1} means same-substation edges on, summary nodes off,
+virtual-node readout on. Because the design is a cube rather than a grid, the
+eight cells are reported in full before any marginal.
+
+\subsection*{Coverage}
+
+All 24 runs finished, each reaching at least 99.2\% of the 15M-step budget. The
+common budget is 14.681M steps. Endpoint numbers use the final-window
+statistic; the eight-cell tables use the mean of the last seven unsmoothed test
+evaluations, and the ranking and main effects use the smoothed value at the
+common budget, which is why the two differ slightly for the same cell.
+
+\subsection*{Result}
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Screen C. Mean of the final seven test evaluations for all eight
+  cells, with the seed-to-seed standard deviation in parentheses and the
+  difference from the \texttt{e0n0v0} baseline (94.26\%) in brackets.}
+  \label{tab:structure-cube}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{lcc}
+    \toprule
+    & \multicolumn{2}{c}{Readout} \\
+    \cmidrule(lr){2-3}
+    Substation edges / nodes & \texttt{v0} (mean) & \texttt{v1} (virtual node) \\
+    \midrule
+    \texttt{e0n0} & 94.26 (4.45) [--] & 94.56 (3.74) [$+0.30$] \\
+    \texttt{e0n1} & 94.26 (0.98) [$0.00$] & 65.20 (0.35) [$-29.06$] \\
+    \texttt{e1n0} & \textbf{96.61} (3.38) [$+2.35$] & 89.68 (8.25) [$-4.58$] \\
+    \texttt{e1n1} & 85.02 (6.55) [$-9.24$] & 66.53 (30.47) [$-27.73$] \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Screen C. Cells ranked at the 14.681M-step common budget.}
+  \label{tab:structure-ranking}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{lrrrrr}
+    \toprule
+    Cell & Mean (\%) & Std (pp) & Min (\%) & Max (\%) & $\Delta$ baseline (pp) \\
+    \midrule
+    \texttt{e1n0v0} & 96.22 & 3.69 & 91.98 & 98.70 & $+1.79$ \\
+    \texttt{e0n1v0} & 94.64 & 4.29 & 90.81 & 99.27 & $+0.21$ \\
+    \texttt{e0n0v0} & 94.43 & 4.45 & 89.83 & 98.70 & $0.00$ \\
+    \texttt{e0n0v1} & 92.62 & 6.26 & 85.39 & 96.36 & $-1.81$ \\
+    \texttt{e1n0v1} & 89.45 & 6.99 & 82.28 & 96.24 & $-4.98$ \\
+    \texttt{e1n1v0} & 83.72 & 8.82 & 73.55 & 89.32 & $-10.71$ \\
+    \texttt{e1n1v1} & 67.54 & 32.28 & 30.88 & 91.71 & $-26.88$ \\
+    \texttt{e0n1v1} & 62.01 & 6.68 & 54.30 & 65.94 & $-32.42$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Screen C. Main effect of each factor at the common budget (12 runs
+  per level), and the four single-factor flips of the cube measured with the
+  final-window statistic. \texttt{Spread} is the range of those four flips.}
+  \label{tab:structure-effects}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{lrrrlrr}
+    \toprule
+    Factor & Off (\%) & On (\%) & Effect & Flips (pp) & Mean flip & Spread \\
+     & & & (pp) & & (pp) & (pp) \\
+    \midrule
+    $e$ (substation edges) & 85.92 & 84.23 & $-1.69$ & $+2.4,\,-4.9,\,-9.2,\,+1.3$ & $-2.61$ & 11.59 \\
+    $v$ (virtual readout) & 92.25 & 77.91 & $-14.34$ & $+0.3,\,-29.1,\,-6.9,\,-18.5$ & $-13.55$ & 29.36 \\
+    $n$ (summary nodes) & 93.18 & 76.98 & $-16.20$ & $0.0,\,-29.4,\,-11.6,\,-23.2$ & $-16.02$ & 29.36 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection*{Reading}
+
+No augmentation earns its place. Both hierarchy factors are strongly negative
+on average, $-16.20$ points for summary nodes and $-14.34$ for virtual-node
+readout, and they are not independent: each of them is nearly harmless in the
+cell where the other is off ($n$ costs $0.00$ points at \texttt{e0v0}; $v$ gains
+$0.30$ at \texttt{e0n0}) and catastrophic once the other is on, with all four
+$n1v1$ cells landing between 65\% and 67\%. The spread column of
+Table~\ref{tab:structure-effects} makes this explicit: for $n$ and $v$ the four
+single-factor flips range over 29 percentage points and change sign, so the
+main effect alone is not a usable summary of either factor.
+
+The interpretation is that the two hierarchy mechanisms are redundant rather
+than complementary. Both insert a learned aggregation node above the busbars,
+and the virtual node attaches to the summary nodes when they exist
+(Figure~\ref{fig:virtual-node-readout}), so enabling both stacks two learned
+hubs in series between the busbars and the readout. With only two
+message-passing layers, the readout of the \texttt{n1v1} cells is separated
+from most physical nodes by more hops than the encoder has layers. Screen A
+varies exactly that depth, so its $K=3$ row is the direct test of this
+explanation.
+
+Same-substation edges are the only factor that ever helps: \texttt{e1n0v0} is
+the best cell in both tables, at $+2.35$ points on the final-window statistic
+and $+1.79$ at the common budget. Neither margin survives the seed spread of
+3.4--3.7 points in those cells, so this is not evidence that the factor helps;
+it is evidence that it is harmless when used alone. Its own flips also change
+sign, ranging from $+2.35$ to $-9.24$.
+
+The operational conclusion is to keep the plain busbar graph with mean readout
+for subsequent stages, and to treat any future hierarchy proposal as needing a
+deeper encoder rather than another augmentation on top of two layers.
+
+\section{Screen D: Generator and Load Message Direction}
+\label{sec:screen-message-direction}
+
+\subsection*{Question}
+
+In the disaggregated graph, each generator and load is a node attached to its
+busbar. Section~\ref{sec:heterogeneous-graph-representation} leaves the
+direction of that attachment open: the asset may send messages to the busbar,
+receive them from it, or both. The two directions are not symmetric in effect,
+because the mean readout of Section~\ref{subsec:graph-mean-pooling} pools
+asset nodes as well as busbars. Does the choice matter, and do the generator
+and load relations behave independently?
+
+This is the one screen that leaves the busbar schema, so it has its own
+baseline cell rather than the reference configuration of
+Section~\ref{subsec:screening-reference-config}.
+
+\subsection*{Design}
+
+A complete $3\times3$ factorial over the generator and load directions with
+three seeds per cell: 27 runs, held in the configuration folder
+\path{configs/gnn_graph_screening/heterogenous_message_direction}.
+The graph type is \texttt{heterogeneous} throughout; the line and summary
+directions stay \texttt{bidirectional} and are inert for this schema. The
+encoder matches the reference configuration --- GINE, two layers, 128
+features, mean readout, no augmentations --- so the only screened factors are
+the two attachment directions. The baseline cell is bidirectional on both
+relations. Directions are abbreviated \texttt{bi} (bidirectional), \texttt{a2b}
+(asset to busbar), and \texttt{b2a} (busbar to asset).
+
+\subsection*{Coverage}
+
+All 27 runs finished. Every run reached at least 96\% of the 15M-step budget
+and most reached 14.97M steps; the common budget is 14.432M steps, set by
+\texttt{gbi\_la2b\_s1}. Endpoint numbers come from the full-test statistic, so
+each cell aggregates three runs $\times$ 201 chronics. The saved best
+checkpoint is not always late in training: for one seed of the
+\texttt{a2b}/\texttt{a2b} cell it was selected at 4.31M steps, which is itself
+a symptom of that cell's instability.
+
+\subsection*{Result}
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Screen D. Full-test survival of the best checkpoint, averaged over
+  three seeds, by generator direction (rows) and load direction (columns).
+  Seed-to-seed standard deviation in parentheses. The baseline cell is
+  \texttt{bi}/\texttt{bi}.}
+  \label{tab:direction-grid}
+  \setlength{\tabcolsep}{6pt}
+  \begin{tabular}{lccc}
+    \toprule
+    & \multicolumn{3}{c}{Load direction} \\
+    \cmidrule(lr){2-4}
+    Generator direction & \texttt{bi} & \texttt{a2b} & \texttt{b2a} \\
+    \midrule
+    \texttt{bi}  & 92.65 (8.24) & 91.35 (5.54) & 87.76 (11.04) \\
+    \texttt{a2b} & 83.16 (12.75) & 56.41 (22.12) & 94.47 (7.53) \\
+    \texttt{b2a} & 84.93 (13.01) & \textbf{97.43} (1.42) & \textbf{97.94} (2.20) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Screen D. Direction pairs ranked by full-test survival, with the
+  difference from the \texttt{bi}/\texttt{bi} baseline.}
+  \label{tab:direction-ranking}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{lrrrrr}
+    \toprule
+    Generator / load & Mean (\%) & Std (pp) & Min (\%) & Max (\%) & $\Delta$ baseline (pp) \\
+    \midrule
+    \texttt{b2a} / \texttt{b2a} & 97.94 & 2.20 & 95.40 & 99.25 & $+5.30$ \\
+    \texttt{b2a} / \texttt{a2b} & 97.43 & 1.42 & 96.32 & 99.03 & $+4.79$ \\
+    \texttt{a2b} / \texttt{b2a} & 94.47 & 7.53 & 85.78 & 99.03 & $+1.83$ \\
+    \texttt{bi} / \texttt{bi} & 92.65 & 8.24 & 83.21 & 98.40 & $0.00$ \\
+    \texttt{bi} / \texttt{a2b} & 91.35 & 5.54 & 86.52 & 97.40 & $-1.30$ \\
+    \texttt{bi} / \texttt{b2a} & 87.76 & 11.04 & 77.64 & 99.53 & $-4.89$ \\
+    \texttt{b2a} / \texttt{bi} & 84.93 & 13.01 & 70.11 & 94.46 & $-7.72$ \\
+    \texttt{a2b} / \texttt{bi} & 83.16 & 12.75 & 72.27 & 97.19 & $-9.49$ \\
+    \texttt{a2b} / \texttt{a2b} & 56.41 & 22.12 & 30.88 & 69.60 & $-36.24$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Screen D. Marginal effect of each relation, averaging over the other
+  one. Nine runs per level.}
+  \label{tab:direction-marginals}
+  \setlength{\tabcolsep}{6pt}
+  \begin{tabular}{lrrrr}
+    \toprule
+    & \multicolumn{2}{c}{Generator relation} & \multicolumn{2}{c}{Load relation} \\
+    \cmidrule(lr){2-3}\cmidrule(lr){4-5}
+    Direction & Mean (\%) & Std (pp) & Mean (\%) & Std (pp) \\
+    \midrule
+    \texttt{b2a} & 93.43 & 9.21 & 93.39 & 8.12 \\
+    \texttt{bi} & 90.58 & 7.74 & 86.91 & 10.91 \\
+    \texttt{a2b} & 78.01 & 21.53 & 81.73 & 22.32 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection*{Reading}
+
+Busbar-to-asset is the better direction for both relations, and the ordering
+\texttt{b2a} $>$ \texttt{bi} $>$ \texttt{a2b} holds in both marginals of
+Table~\ref{tab:direction-marginals}. The strongest part of the result is not the
+mean but the spread: the two best cells, \texttt{b2a}/\texttt{b2a} and
+\texttt{b2a}/\texttt{a2b}, have seed standard deviations of 2.20 and 1.42
+percentage points against 8.24 for the bidirectional baseline, and their worst
+seeds (95.40\% and 96.32\%) are above the baseline's mean. A gain of about five
+points that comes with a fourfold reduction in seed spread is a different kind
+of finding from a gain of five points at unchanged variance.
+
+The failure case is equally clear. Making both relations asset-to-busbar
+collapses the policy to 56.41\% with a 22.12-point spread and a worst seed at
+30.88\%, which is 36 points below the baseline and the largest single effect
+measured anywhere in this chapter.
+
+A plausible mechanism, consistent with the readout defined in
+Section~\ref{subsec:graph-mean-pooling} but not directly measured here, is that
+the mean pooling includes generator and load nodes. Under \texttt{b2a} an asset
+node receives busbar context and its updated embedding enters the readout, so
+the asset row carries information about its local neighborhood. Under
+\texttt{a2b} the asset node never receives a message, so after $K$ layers its
+embedding is still a projection of its own raw features, and it dilutes the
+pooled vector with context-free rows; with both relations set that way, every
+generator and load row is inert. Testing this would require re-running the
+worst cell with controlled readout, which restricts pooling to controlled
+nodes, and is not part of the present screen.
+
+Two caveats bound the conclusion. It is measured on \texttt{bus14} only, and
+the full-test statistic reports selected checkpoints, so the level of every
+cell is optimistic even though the comparison between cells is paired.
+
+\section{Campaign Status}
+\label{sec:screening-status}
+
+Table~\ref{tab:screening-campaign-status} lists every screening folder that
+exists in the repository, so that configured work is not read as measured work.
+Only Screens C and D carry results; Screens A and B are training.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{State of the graph-screening campaign. ``Complete'' means a finished
+  factorial with a seed-aggregated summary in this chapter.}
+  \label{tab:screening-campaign-status}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{L{0.34\textwidth}rL{0.44\textwidth}}
+    \toprule
+    Configuration folder & Runs & Status \\
+    \midrule
+    \path{stage3_depth_width} & 36 & Training: Screen A \\
+    \path{stage3_encoder_pooling} & 9 & Training: Screen B \\
+    \path{stage2_structure} & 24 & Complete: Screen C \\
+    \path{heterogenous_message_direction} & 27 & Complete: Screen D \\
+    \midrule
+    \path{stage1_representation_normalization} & 12 & Run under an earlier explicit-line edge definition; superseded \\
+    \path{stage1b_normalization_confirmation} & 9 & Superseded by the same change \\
+    \path{stage1c_provisional_structure} & 7 & Provisional; replaced by Screen C \\
+    \path{stage1d_heterogeneous_directions} & 8 & Provisional; replaced by Screen D \\
+    \path{stage1e_heterogeneous_structure} & 8 & Not analysed \\
+    \path{stabilize_training} & 6 & Configured, not analysed \\
+    \path{stage3_encoder} & 0 & Placeholder, no configurations \\
+    \path{stage4_confirmation} & 0 & Placeholder, no configurations \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The two completed screens fix two defaults for the remaining stages: the busbar
+graph is used without structural augmentation, and any run on the disaggregated
+graph attaches generators and loads with busbar-to-asset relations rather than
+the bidirectional default. Both defaults are established on \texttt{bus14}
+alone and would need re-checking before being carried to a larger grid. Screens
+A and B may revise the encoder that both defaults were measured with, in which
+case the two completed screens should be spot-checked at the revised encoder
+rather than assumed to carry over.

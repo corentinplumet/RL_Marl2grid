@@ -11,6 +11,7 @@
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{graphicx}
+\usepackage{xcolor}
 \usepackage{subcaption}
 \usepackage{pdflscape}
 \usepackage{amsmath}
@@ -30,6 +31,16 @@
 }
 
 \newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+% Placeholder for a figure whose runs are still training. Replace the whole
+% \pendingplot{...} call with \includegraphics when the plot exists.
+\newcommand{\pendingplot}[2][0.20\textheight]{%
+  \setlength{\fboxrule}{0.7pt}%
+  \fbox{\begin{minipage}[c][#1][c]{0.90\linewidth}%
+    \centering\small\itshape\color{gray}#2%
+  \end{minipage}}%
+}
+\newcommand{\pending}[1]{{\color{gray}\itshape[pending: #1]}}
 \setlist[itemize]{topsep=0.25em,itemsep=0.15em}
 \setlist[enumerate]{topsep=0.25em,itemsep=0.15em}
 

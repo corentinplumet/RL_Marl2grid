@@ -8,7 +8,11 @@ from packaging import version
 from gymnasium.spaces import Discrete, Box
 
 import grid2op
-from grid2op.Chronics import MultifolderWithCache, Multifolder
+from grid2op.Chronics import (
+    MultifolderWithCache,
+    Multifolder,
+    GridStateFromFileWithForecasts,
+)
 from grid2op.gym_compat import (
     GymEnv,
     BoxGymObsSpace,
@@ -215,6 +219,52 @@ class PathSeededMultifolderWithCache(MultifolderWithCache):
             data.seed(self._cached_seeds[i])
             data.regenerate_with_new_seed()
         return res
+
+
+def _check_maintenance_setup(
+    g2op_env: Any, env_id: str, maintenance_expected: bool
+) -> None:
+    """Fail fast when a scenario declares no maintenance but grid2op still has some.
+
+    Maintenance would then be simulated without being observable (the maintenance
+    obs attributes are only kept when the scenario flag is set), which silently
+    breaks any comparison against a genuinely maintenance-free environment.
+    """
+    if maintenance_expected:
+        return
+
+    chronics = getattr(g2op_env.chronics_handler, "real_data", None)
+    grid_value_class = getattr(chronics, "gridvalueClass", None)
+    if grid_value_class is not None and "maintenance" in grid_value_class.__name__.lower():
+        raise RuntimeError(
+            f"Environment '{env_id}' declares maintenance=false but grid2op still uses "
+            f"{grid_value_class.__name__} to feed the chronics. The "
+            "`data_feeding_kwargs={'gridvalueClass': ...}` override was ignored, most "
+            "likely because of a grid2op version change."
+        )
+
+    # A file-based maintenance schedule is read by every grid value class, so
+    # overriding the class cannot remove it. `maintenance_meta.json` is excluded on
+    # purpose: it is only consumed by the maintenance-generating classes above.
+    subpaths = getattr(chronics, "subpaths", None)
+    if subpaths is None or not len(subpaths):
+        return
+    try:
+        entries = os.listdir(str(subpaths[0]))
+    except OSError:
+        return
+    from_file = [
+        entry
+        for entry in entries
+        if entry.startswith("maintenance") and ".csv" in entry
+    ]
+    if from_file:
+        raise RuntimeError(
+            f"Environment '{env_id}' declares maintenance=false but its chronics ship "
+            f"maintenance data files ({', '.join(sorted(from_file))}). Those are read "
+            "whatever the grid value class is, so maintenance cannot be disabled this "
+            "way for this grid."
+        )
 
 
 def _fraction_arg(value: float, name: str) -> float:
@@ -737,6 +787,17 @@ class MAEnvWrapper(MAEnv):
         else:
             chronics_class = Multifolder if args.optimize_mem else MultifolderWithCache
 
+        # Some grids (l2rpn_wcci_2020, ...) ship a config.py whose grid value class
+        # generates maintenance from `maintenance_meta.json` at every reset. When the
+        # scenario declares no maintenance we override that class, otherwise outages
+        # would still happen while being invisible to the agent (the maintenance obs
+        # attributes are only added when the flag is set).
+        make_kwargs = {}
+        if not deterministic_maintenance:
+            make_kwargs["data_feeding_kwargs"] = {
+                "gridvalueClass": GridStateFromFileWithForecasts
+            }
+
         # With vec envs, infos return an array of dicts (one for each env) containing the rewards
         self.g2op_env = grid2op.make(
             env_config[env_id]["grid2op_id"],
@@ -744,7 +805,9 @@ class MAEnvWrapper(MAEnv):
             backend=LightSimBackend(),
             other_rewards=rewards,
             chronics_class=chronics_class,
+            **make_kwargs,
         )
+        _check_maintenance_setup(self.g2op_env, env_id, deterministic_maintenance)
 
         ###
         # print(self.g2op_env.chronics_handler.max_episode_duration())
