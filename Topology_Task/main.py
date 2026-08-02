@@ -199,6 +199,28 @@ if __name__ == "__main__":
         help="Delete the loaded checkpoint after a successful load.",
     )
 
+    # Cross-environment transfer
+    parser.add_argument(
+        "--transfer-encoder-checkpoint",
+        type=str,
+        default="",
+        help=(
+            "Optional checkpoint stem or .tar path whose actor graph encoder is "
+            "loaded into this run. Only encoder.graph_encoder.* weights are "
+            "reused, so the source may come from a different grid; the action "
+            "heads and critic always start fresh. Ignored when resuming."
+        ),
+    )
+    parser.add_argument(
+        "--transfer-freeze-encoder",
+        type=str2bool,
+        default=False,
+        help=(
+            "Freeze the actor graph encoder so only the heads train. Applies to "
+            "a transferred encoder and is reapplied on resume."
+        ),
+    )
+
     # Reproducibility [MAPPO, QPLEX, LAGRMAPPO]
     parser.add_argument("--alg", type=str, default="MAPPO", help="Algorithm to run")
     parser.add_argument("--seed", type=int, default=0, help="Random seed")

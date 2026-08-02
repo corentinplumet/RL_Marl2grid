@@ -25,6 +25,7 @@ from common.explainability import (
 from common.gnn import build_graph_encoder
 from common.imports import *
 from common.logger import Logger
+from common.transfer import freeze_graph_encoders, load_encoder_from_checkpoint
 from common.utils import (
     ReturnNormalizer,
     cast_np_to_tensors,
@@ -562,7 +563,31 @@ class MAPPO:
                 actors[agent].load_state_dict(ckpt.loaded_run[agent])
             critic.load_state_dict(ckpt.loaded_run["critic"])
 
-        actor_params = _unique_parameters(list(actors.values()))
+        # Cross-environment transfer: reuse a graph encoder trained on another
+        # grid. A resume already carries the encoder (frozen or fine-tuned) in
+        # its own state dict, so only the freeze is reapplied in that case.
+        transfer_report = None
+        transfer_checkpoint = str(
+            getattr(args, "transfer_encoder_checkpoint", "") or ""
+        ).strip()
+        freeze_encoder = bool(getattr(args, "transfer_freeze_encoder", False))
+        if transfer_checkpoint and not ckpt.resumed:
+            transfer_report = load_encoder_from_checkpoint(
+                actors,
+                transfer_checkpoint,
+                freeze=freeze_encoder,
+                device=device,
+            )
+            print(f"Transferred actor graph encoder: {transfer_report}")
+        elif freeze_encoder:
+            transfer_report = freeze_graph_encoders(actors)
+            print(f"Froze actor graph encoder: {transfer_report}")
+
+        actor_params = [
+            param
+            for param in _unique_parameters(list(actors.values()))
+            if param.requires_grad
+        ]
         actor_param_count = int(sum(param.numel() for param in actor_params))
         critic_param_count = int(sum(param.numel() for param in critic.parameters()))
         token_specs = getattr(envs, "token_specs", None) or {}

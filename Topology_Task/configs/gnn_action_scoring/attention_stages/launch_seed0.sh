@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
+cd "$repo_root"
+
+config_dir="Topology_Task/configs/gnn_action_scoring/attention_stages"
+submitted=0
+for config_path in "$config_dir"/*_s0.toml; do
+  sbatch --time=7-00:00:00 job_jed.sh "${config_path#Topology_Task/}"
+  submitted=$((submitted + 1))
+done
+
+echo "Submitted $submitted seed-0 candidate-action attention-stage runs on JED."
