@@ -106,7 +106,10 @@ def collect_env_samples(
             env.reset()
             episodes += 1
             done = False
+            episode_steps = 0
             while not done and steps < cli.steps:
+                if cli.max_episode_steps and episode_steps >= cli.max_episode_steps:
+                    break
                 graphs = env.graph_builder.build(env._obs)
                 # Measure what the encoder is actually fed: with both scaling
                 # flags off this is a no-op and the values stay raw, but with
@@ -144,6 +147,7 @@ def collect_env_samples(
                 # would end every episode after one step.
                 done = any(terminated.values()) or any(truncated.values())
                 steps += 1
+                episode_steps += 1
 
         meta["episodes"] = episodes
         meta["steps"] = steps
@@ -181,6 +185,15 @@ def parse_args() -> Namespace:
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument(
         "--steps", type=int, default=3000, help="Env steps sampled per environment."
+    )
+    parser.add_argument(
+        "--max-episode-steps",
+        type=int,
+        default=300,
+        help=(
+            "Move to the next chronic after this many steps. Keeps the sample "
+            "spread over many scenarios instead of one long episode. 0 disables."
+        ),
     )
     parser.add_argument(
         "--split",
@@ -235,13 +248,22 @@ def main() -> int:
     np.savez_compressed(
         output_dir / f"samples_{label_b}.npz", **collected[label_b]
     )
-    plot_distributions(
-        collected[label_a],
-        collected[label_b],
-        label_a,
-        label_b,
-        output_dir / "distributions.png",
-    )
+    try:
+        plot_distributions(
+            collected[label_a],
+            collected[label_b],
+            label_a,
+            label_b,
+            output_dir / "distributions.png",
+        )
+    except ImportError:
+        # The metrics are the point; plotting is optional and matplotlib is not
+        # installed everywhere. The sample archives are already on disk.
+        print(
+            "matplotlib is unavailable here, so distributions.png was skipped. "
+            "Render it anywhere with numpy+matplotlib:\n"
+            f"  python tools/plot_feature_samples.py {output_dir}"
+        )
 
     print("")
     print("========== Largest distribution shifts ==========")
