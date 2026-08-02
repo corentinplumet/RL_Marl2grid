@@ -73,6 +73,25 @@ always start fresh. The encoder's `edge_index` / `node_ids` buffers are skipped
 during the load: they describe the source grid, and `GraphAndFlatEncoder`
 overrides them per agent from the target env's own spec at call time.
 
+## Action space
+
+Unlike the bus14 bases, these configs set
+`reduced_action_space = ".../reduced_action_space_wcci_full2048a_90_v3_mk256.json"`,
+matching the other WCCI configs. The full WCCI action space is ~67k actions
+(agent_1 alone is ~65.6k, see `teacher_student/ACTION_SPACE_REDUCTION_README.md`),
+which is not trainable within this budget. This does not affect the transfer:
+the action head never crosses grids, and with `actor_action_head = "mlp"` the
+encoder does not depend on `n_actions`.
+
+Override per run without editing the configs — a different reduction:
+
+```bash
+REDUCED_ACTION_SPACE=outputs/.../reduced_action_space_wcci_full2048a_90_v3_mk64.json sbatch job_izar.sh <config>
+```
+
+or the empty string for the unreduced space, since `run_from_config.py` drops
+empty values and `main.py` then falls back to its default.
+
 ## Caveat: input scale
 
 These configs inherit `gnn_physical_scaling = false` and

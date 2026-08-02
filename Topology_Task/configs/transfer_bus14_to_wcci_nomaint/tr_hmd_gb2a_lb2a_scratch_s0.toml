@@ -45,6 +45,7 @@ n_threads = 4
 env_id = "bus36_wcci_nomaint"
 n_envs = 72
 action_type = "topology"
+reduced_action_space = "outputs/teacher_student_datasets/wcci_full2048a_90_v3/metadata/reduced_action_space_wcci_full2048a_90_v3_mk256.json"
 difficulty = 0
 decentralized = true
 n1_reward = false
