@@ -187,7 +187,7 @@ per width column rather than one budget for the whole grid.}
     \toprule
     Launch & Mean (\%) & Std (pp) & Seeds \\
     \midrule
-    Screen C \texttt{e0n0v0} & 94.26 & 4.45 & 3 \\
+    Screen C \texttt{e0n0v0} & 97.31 & 1.22 & 3 \\
     Screen A $(K,d_h)=(2,128)$ & -- & -- & 3 \\
     \midrule
     Difference & -- & & \\
@@ -308,13 +308,13 @@ common budget and say so rather than at each run's own endpoint.}
     \cmidrule(lr){2-3}
     Encoder & Mean & Max \\
     \midrule
-    GINE & 94.26 (4.45)\textsuperscript{\dag} & -- \\
+    GINE & 97.31 (1.22)\textsuperscript{\dag} & -- \\
     GAT & -- & -- \\
     \bottomrule
   \end{tabular}
   \\[0.4em]
-  {\small \textsuperscript{\dag}Reference configuration, final-window
-  statistic; not a new run.}
+  {\small \textsuperscript{\dag}Reference configuration, full-test survival of
+  the best checkpoint; not a new run.}
 \end{table}
 
 \begin{figure}[H]
@@ -375,54 +375,63 @@ eight cells are reported in full before any marginal.
 
 \subsection*{Coverage}
 
-All 24 runs finished, each reaching at least 99.2\% of the 15M-step budget. The
-common budget is 14.681M steps. Endpoint numbers use the final-window
-statistic; the eight-cell tables use the mean of the last seven unsmoothed test
-evaluations, and the ranking and main effects use the smoothed value at the
-common budget, which is why the two differ slightly for the same cell.
+All 24 runs finished, each reaching at least 99.2\% of the 15M-step budget.
+Endpoint numbers come from the full-test statistic, so each cell aggregates
+three runs $\times$ 201 chronics. The saved best checkpoint is late in training
+for most runs, between 13.7M and 14.9M steps, but not for all: the
+\texttt{e0n1v0} seed-1 checkpoint was selected at 2.65M steps and the
+\texttt{e1n1v1} seed-2 checkpoint at 9.87M, which is a symptom of those runs
+never improving on an early peak.
 
 \subsection*{Result}
 
-\begin{table}[H]
+\begin{figure}[H]
   \centering
-  \small
-  \caption{Screen C. Mean of the final seven test evaluations for all eight
-  cells, with the seed-to-seed standard deviation in parentheses and the
-  difference from the \texttt{e0n0v0} baseline (94.26\%) in brackets.}
-  \label{tab:structure-cube}
-  \setlength{\tabcolsep}{5pt}
-  \begin{tabular}{lcc}
-    \toprule
-    & \multicolumn{2}{c}{Readout} \\
-    \cmidrule(lr){2-3}
-    Substation edges / nodes & \texttt{v0} (mean) & \texttt{v1} (virtual node) \\
-    \midrule
-    \texttt{e0n0} & 94.26 (4.45) [--] & 94.56 (3.74) [$+0.30$] \\
-    \texttt{e0n1} & 94.26 (0.98) [$0.00$] & 65.20 (0.35) [$-29.06$] \\
-    \texttt{e1n0} & \textbf{96.61} (3.38) [$+2.35$] & 89.68 (8.25) [$-4.58$] \\
-    \texttt{e1n1} & 85.02 (6.55) [$-9.24$] & 66.53 (30.47) [$-27.73$] \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+  \includegraphics[width=\linewidth]{figures/gs_s2_structure_vs_baseline_curves.png}
+  \caption{Screen C. Test episodic survival during training, one panel per
+  augmented cell against the unaugmented \texttt{e0n0v0} baseline in grey. Thin
+  lines are the three seeds, the thick line is their mean, and the band is one
+  standard deviation.}
+  \label{fig:structure-curves}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.86\linewidth]{figures/gs_s2_structure_cube.png}
+  \caption{Screen C. The factorial as a cube: each vertex is one of the eight
+  cells and each edge flips a single factor with the other two held fixed. The
+  baseline \texttt{e0n0v0} is circled in red.}
+  \label{fig:structure-cube}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\linewidth]{figures/gs_s2_structure_seed_heatmap.png}
+  \caption{Screen C. The same eight cells as a heatmap of the full-test
+  survival of each run's best checkpoint, with the three individual seed values
+  printed under each cell mean.}
+  \label{fig:structure-seed-heatmap}
+\end{figure}
 
 \begin{table}[H]
   \centering
   \small
-  \caption{Screen C. Cells ranked at the 14.681M-step common budget.}
+  \caption{Screen C. Cells ranked by full-test survival, with the difference
+  from the unaugmented \texttt{e0n0v0} baseline.}
   \label{tab:structure-ranking}
   \setlength{\tabcolsep}{5pt}
   \begin{tabular}{lrrrrr}
     \toprule
     Cell & Mean (\%) & Std (pp) & Min (\%) & Max (\%) & $\Delta$ baseline (pp) \\
     \midrule
-    \texttt{e1n0v0} & 96.22 & 3.69 & 91.98 & 98.70 & $+1.79$ \\
-    \texttt{e0n1v0} & 94.64 & 4.29 & 90.81 & 99.27 & $+0.21$ \\
-    \texttt{e0n0v0} & 94.43 & 4.45 & 89.83 & 98.70 & $0.00$ \\
-    \texttt{e0n0v1} & 92.62 & 6.26 & 85.39 & 96.36 & $-1.81$ \\
-    \texttt{e1n0v1} & 89.45 & 6.99 & 82.28 & 96.24 & $-4.98$ \\
-    \texttt{e1n1v0} & 83.72 & 8.82 & 73.55 & 89.32 & $-10.71$ \\
-    \texttt{e1n1v1} & 67.54 & 32.28 & 30.88 & 91.71 & $-26.88$ \\
-    \texttt{e0n1v1} & 62.01 & 6.68 & 54.30 & 65.94 & $-32.42$ \\
+    \texttt{e0n0v0} & 97.31 & 1.22 & 96.55 & 98.72 & $0.00$ \\
+    \texttt{e1n0v0} & 96.20 & 3.94 & 91.66 & 98.68 & $-1.11$ \\
+    \texttt{e0n0v1} & 95.63 & 6.19 & 88.52 & 99.82 & $-1.68$ \\
+    \texttt{e0n1v0} & 93.51 & 6.39 & 86.72 & 99.40 & $-3.80$ \\
+    \texttt{e1n1v0} & 90.01 & 4.92 & 85.42 & 95.19 & $-7.30$ \\
+    \texttt{e1n0v1} & 89.92 & 9.42 & 80.48 & 99.33 & $-7.39$ \\
+    \texttt{e0n1v1} & 68.91 & 5.77 & 62.59 & 73.91 & $-28.40$ \\
+    \texttt{e1n1v1} & 66.11 & 33.95 & 27.86 & 92.68 & $-31.20$ \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -430,9 +439,9 @@ common budget, which is why the two differ slightly for the same cell.
 \begin{table}[H]
   \centering
   \small
-  \caption{Screen C. Main effect of each factor at the common budget (12 runs
-  per level), and the four single-factor flips of the cube measured with the
-  final-window statistic. \texttt{Spread} is the range of those four flips.}
+  \caption{Screen C. Main effect of each factor (12 runs per level) and the four
+  single-factor flips of the cube, each one enabling that factor with the other
+  two held fixed. \texttt{Spread} is the range of those four flips.}
   \label{tab:structure-effects}
   \setlength{\tabcolsep}{4pt}
   \begin{tabular}{lrrrlrr}
@@ -440,25 +449,36 @@ common budget, which is why the two differ slightly for the same cell.
     Factor & Off (\%) & On (\%) & Effect & Flips (pp) & Mean flip & Spread \\
      & & & (pp) & & (pp) & (pp) \\
     \midrule
-    $e$ (substation edges) & 85.92 & 84.23 & $-1.69$ & $+2.4,\,-4.9,\,-9.2,\,+1.3$ & $-2.61$ & 11.59 \\
-    $v$ (virtual readout) & 92.25 & 77.91 & $-14.34$ & $+0.3,\,-29.1,\,-6.9,\,-18.5$ & $-13.55$ & 29.36 \\
-    $n$ (summary nodes) & 93.18 & 76.98 & $-16.20$ & $0.0,\,-29.4,\,-11.6,\,-23.2$ & $-16.02$ & 29.36 \\
+    $e$ (substation edges) & 88.84 & 85.56 & $-3.28$ & $-1.1,\,-5.7,\,-3.5,\,-2.8$ & $-3.28$ & 4.60 \\
+    $v$ (virtual readout) & 94.26 & 80.14 & $-14.11$ & $-1.7,\,-24.6,\,-6.3,\,-23.9$ & $-14.11$ & 22.92 \\
+    $n$ (summary nodes) & 94.77 & 79.63 & $-15.13$ & $-3.8,\,-26.7,\,-6.2,\,-23.8$ & $-15.13$ & 22.92 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
 \subsection*{Reading}
 
-No augmentation earns its place. Both hierarchy factors are strongly negative
-on average, $-16.20$ points for summary nodes and $-14.34$ for virtual-node
-readout, and they are not independent: each of them is nearly harmless in the
-cell where the other is off ($n$ costs $0.00$ points at \texttt{e0v0}; $v$ gains
-$0.30$ at \texttt{e0n0}) and catastrophic once the other is on, with all four
-$n1v1$ cells landing between 65\% and 67\%. The spread column of
-Table~\ref{tab:structure-effects} makes this explicit: for $n$ and $v$ the four
-single-factor flips range over 29 percentage points and change sign, so the
-main effect alone is not a usable summary of either factor.
+No augmentation earns its place, and the result is unambiguous: the
+unaugmented \texttt{e0n0v0} baseline is the best cell at 97.31\%, and all
+twelve single-factor flips in Table~\ref{tab:structure-effects} are negative.
+Not one of the three mechanisms helps in any context. The baseline is also the
+most stable cell in the screen, with a seed spread of 1.22 points against
+3.9--33.9 for every augmented cell, so the augmentations cost reliability as
+well as survival. The training curves in Figure~\ref{fig:structure-curves}
+separate the cells well before the budget ends, so this is not an artefact of
+where the runs were cut.
 
+The two hierarchy factors dominate, at $-15.13$ points for summary nodes and
+$-14.11$ for virtual-node readout, and they are not independent: each is mild
+in the cell where the other is off ($n$ costs 3.80 points at \texttt{e0v0}; $v$
+costs 1.68 at \texttt{e0n0}) and severe once the other is on, with both $n1v1$
+cells landing between 66\% and 69\%. The upper face of the cube in
+Figure~\ref{fig:structure-cube} shows this directly, and the spread column of
+Table~\ref{tab:structure-effects} makes it explicit: for $n$ and $v$ the four
+flips range over 23 percentage points, so the main effect alone is not a usable
+summary of either factor.
+\\
+\\
 The interpretation is that the two hierarchy mechanisms are redundant rather
 than complementary. Both insert a learned aggregation node above the busbars,
 and the virtual node attaches to the summary nodes when they exist
@@ -468,14 +488,20 @@ message-passing layers, the readout of the \texttt{n1v1} cells is separated
 from most physical nodes by more hops than the encoder has layers. Screen A
 varies exactly that depth, so its $K=3$ row is the direct test of this
 explanation.
-
-Same-substation edges are the only factor that ever helps: \texttt{e1n0v0} is
-the best cell in both tables, at $+2.35$ points on the final-window statistic
-and $+1.79$ at the common budget. Neither margin survives the seed spread of
-3.4--3.7 points in those cells, so this is not evidence that the factor helps;
-it is evidence that it is harmless when used alone. Its own flips also change
-sign, ranging from $+2.35$ to $-9.24$.
-
+\\
+\\
+Same-substation edges are the mildest of the three, at $-3.28$ points on
+average and within a narrow band: its four flips range only from $-1.11$ to
+$-5.71$, so unlike $n$ and $v$ it behaves like a small, consistent cost rather
+than a context-dependent one. Its best cell \texttt{e1n0v0} sits 1.11 points
+below the baseline, which is inside the seed spread of both cells, and the
+per-seed values in Figure~\ref{fig:structure-seed-heatmap} show why nothing
+stronger can be claimed: two of its seeds reach 98.7\% and 98.3\% while the
+third reaches only 91.7\%, straddling the baseline's much tighter
+96.6--98.7\%. The honest reading is that the edges neither help nor clearly
+hurt on their own, and that they add candidate edges for no measured return.
+\\
+\\
 The operational conclusion is to keep the plain busbar graph with mean readout
 for subsequent stages, and to treat any future hierarchy proposal as needing a
 deeper encoder rather than another augmentation on top of two layers.
@@ -522,27 +548,25 @@ a symptom of that cell's instability.
 
 \subsection*{Result}
 
-\begin{table}[H]
+\begin{figure}[H]
   \centering
-  \small
-  \caption{Screen D. Full-test survival of the best checkpoint, averaged over
-  three seeds, by generator direction (rows) and load direction (columns).
-  Seed-to-seed standard deviation in parentheses. The baseline cell is
+  \includegraphics[width=\linewidth]{figures/gs_hmd_direction_vs_baseline_curves.png}
+  \caption{Screen D. Test episodic survival during training, one panel per
+  direction pair against the bidirectional baseline in grey. Thin lines are the
+  three seeds, the thick line is their mean, and the band is one standard
+  deviation.}
+  \label{fig:direction-curves}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.96\linewidth]{figures/gs_hmd_direction_seed_heatmap.png}
+  \caption{Screen D. Full-test survival of the best checkpoint by generator
+  direction (rows) and load direction (columns), with the three individual seed
+  values printed under each cell mean. The baseline cell is
   \texttt{bi}/\texttt{bi}.}
-  \label{tab:direction-grid}
-  \setlength{\tabcolsep}{6pt}
-  \begin{tabular}{lccc}
-    \toprule
-    & \multicolumn{3}{c}{Load direction} \\
-    \cmidrule(lr){2-4}
-    Generator direction & \texttt{bi} & \texttt{a2b} & \texttt{b2a} \\
-    \midrule
-    \texttt{bi}  & 92.65 (8.24) & 91.35 (5.54) & 87.76 (11.04) \\
-    \texttt{a2b} & 83.16 (12.75) & 56.41 (22.12) & 94.47 (7.53) \\
-    \texttt{b2a} & 84.93 (13.01) & \textbf{97.43} (1.42) & \textbf{97.94} (2.20) \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+  \label{fig:direction-seed-heatmap}
+\end{figure}
 
 \begin{table}[H]
   \centering
@@ -568,42 +592,29 @@ a symptom of that cell's instability.
   \end{tabular}
 \end{table}
 
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Screen D. Marginal effect of each relation, averaging over the other
-  one. Nine runs per level.}
-  \label{tab:direction-marginals}
-  \setlength{\tabcolsep}{6pt}
-  \begin{tabular}{lrrrr}
-    \toprule
-    & \multicolumn{2}{c}{Generator relation} & \multicolumn{2}{c}{Load relation} \\
-    \cmidrule(lr){2-3}\cmidrule(lr){4-5}
-    Direction & Mean (\%) & Std (pp) & Mean (\%) & Std (pp) \\
-    \midrule
-    \texttt{b2a} & 93.43 & 9.21 & 93.39 & 8.12 \\
-    \texttt{bi} & 90.58 & 7.74 & 86.91 & 10.91 \\
-    \texttt{a2b} & 78.01 & 21.53 & 81.73 & 22.32 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
 \subsection*{Reading}
 
-Busbar-to-asset is the better direction for both relations, and the ordering
-\texttt{b2a} $>$ \texttt{bi} $>$ \texttt{a2b} holds in both marginals of
-Table~\ref{tab:direction-marginals}. The strongest part of the result is not the
-mean but the spread: the two best cells, \texttt{b2a}/\texttt{b2a} and
+Busbar-to-asset is the better direction for both relations. Averaging over the
+other relation, the generator marginal is 93.43\% for \texttt{b2a}, 90.58\% for
+\texttt{bi}, and 78.01\% for \texttt{a2b}; the load marginal follows the same
+order at 93.39\%, 86.91\%, and 81.73\%. The strongest part of the result is not
+the mean but the spread: the two best cells, \texttt{b2a}/\texttt{b2a} and
 \texttt{b2a}/\texttt{a2b}, have seed standard deviations of 2.20 and 1.42
 percentage points against 8.24 for the bidirectional baseline, and their worst
-seeds (95.40\% and 96.32\%) are above the baseline's mean. A gain of about five
-points that comes with a fourfold reduction in seed spread is a different kind
-of finding from a gain of five points at unchanged variance.
+seeds (95.40\% and 96.32\%) are above the baseline's mean. The seed values
+printed in Figure~\ref{fig:direction-seed-heatmap} show this at a glance: the
+bottom row holds three tightly grouped seeds per cell, while the baseline cell
+spans 83.2\% to 98.4\%. A gain of about five points that comes with a fourfold
+reduction in seed spread is a different kind of finding from a gain of five
+points at unchanged variance.
 
 The failure case is equally clear. Making both relations asset-to-busbar
 collapses the policy to 56.41\% with a 22.12-point spread and a worst seed at
 30.88\%, which is 36 points below the baseline and the largest single effect
-measured anywhere in this chapter.
+measured anywhere in this chapter. Its panel in
+Figure~\ref{fig:direction-curves} separates from the baseline within the first
+two million steps and never recovers, so this is a training failure rather than
+a late collapse.
 
 A plausible mechanism, consistent with the readout defined in
 Section~\ref{subsec:graph-mean-pooling} but not directly measured here, is that
