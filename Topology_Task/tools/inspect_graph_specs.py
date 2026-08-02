@@ -70,12 +70,15 @@ def _print_spec(name: str, spec: dict) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, add_help=False)
     parser.add_argument("--help", action="help")
+    # --seed is owned by main.py's parser, which this tool does not use, but
+    # MAEnvWrapper needs it to seed the environment.
+    parser.add_argument("--seed", type=int, default=0)
     cli, _ = parser.parse_known_args()
-    del cli
 
     env_args = get_env_args()
     alg_args = get_alg_args()
     args = Namespace(**vars(env_args), **vars(alg_args))
+    args.seed = cli.seed
     args.actor_encoder = "gnn"
     if getattr(args, "critic_encoder", "mlp") != "gnn":
         args.critic_encoder = "mlp"
