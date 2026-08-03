@@ -15,7 +15,7 @@ gs_s1e_hetero_line_n0_none_e0n0v0_s0.toml
 ```
 
 The heterogeneous-line encoder, message directions, critic, PPO settings,
-reward, chronic split, normalization, and 8M-step budget are unchanged.
+reward, chronic split, normalization, and 15M-step budget are unchanged.
 Only the candidate-head flags and training seed vary. The chronic split seed
 stays fixed at 0 for paired comparisons.
 

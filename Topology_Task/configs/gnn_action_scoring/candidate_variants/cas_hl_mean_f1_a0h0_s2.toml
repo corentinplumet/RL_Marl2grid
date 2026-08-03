@@ -109,8 +109,8 @@ gnn_running_norm = false
 gnn_power_scale_mw = 0.0
 gnn_norm_clip = 10.0
 
-# Approximately half of the 15M-step bus14 reference budget
-total_timesteps = 8000000
+# 15M-step bus14 reference budget
+total_timesteps = 15000000
 n_steps = 576
 eval_freq = 82944
 actor_layers = [128, 128]
