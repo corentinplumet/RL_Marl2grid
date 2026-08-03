@@ -104,7 +104,40 @@ explicit asset nodes while keeping physical lines as busbar-to-busbar edges. The
 lines into explicit line nodes.
 \\
 \\
-{\color{blue}Grid2Op exposes the instantaneous electrical state and topology through a
+Table~\ref{tab:schema-comparison} states what separates them. The three differ
+in one respect only, how much of the grid is given its own node, and everything
+below follows from that choice.
+
+\begin{table}[H]
+  \centering
+  \scriptsize
+  \caption{The three graph schemas. Each row is a consequence of how much
+  equipment receives its own node.}
+  \label{tab:schema-comparison}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{L{0.15\textwidth}L{0.24\textwidth}L{0.24\textwidth}L{0.25\textwidth}}
+    \toprule
+    Aspect & \texttt{bus} & \texttt{heterogeneous} & \texttt{heterogeneous\_line} \\
+    \midrule
+    Node types & Busbar & Busbar, generator, load & Busbar, generator, load, transmission line \\
+    Generator and load state & Summed and averaged onto the busbar & One node per asset & One node per asset \\
+    Physical line & Direct busbar-to-busbar edge & Typed direct busbar-to-busbar edge & Typed node between its endpoint busbars \\
+    Line state & Continuous edge attributes & Continuous edge attributes & Features of the line node \\
+    Endpoint path & One hop between busbars & One hop between busbars & Two hops through the line node \\
+    Minimum useful depth & One layer for adjacent busbar exchange & One layer for adjacent busbars; two for asset-to-remote-busbar flow & Two layers for adjacent busbar exchange through a line node \\
+    Hidden line state & None: the edge modifies a message & None: the edge modifies a message & Yes: each line obtains and updates an embedding \\
+    Node count & $SB$ & $SB+N_g+N_d$ & $SB+N_g+N_d+L$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Candidate graph and dynamic mask}
+\label{subsec:graph-candidate-edges}
+
+All three schemas share one construction.
+\\
+\\
+Grid2Op exposes the instantaneous electrical state and topology through a
 structured observation~\cite{donnot2020grid2op}. For each representation,
 the graph construction keeps the set of candidate nodes and edges fixed
 throughout an episode while using a dynamic edge mask to express the topology
@@ -124,7 +157,43 @@ node features, $\mathbf{Z}^{(a)}_t$ contains edge features, and
 $\mathbf{m}^{(a)}_t$ indicates which candidate edges are active. This separates
 the physical equipment layout, which does not change during an episode, from
 the busbar assignment and line status, which can change after every topology
-action.}
+action.
+\\
+\\
+The mechanism is easiest to see on a transmission line, which is where every
+schema uses it. Consider a physical line~$\ell$ whose origin and extremity
+belong to substations $o(\ell)$ and $e(\ell)$. For every pair of possible
+endpoint busbars $(b_o,b_e)$, the graph reserves the two directed candidate
+edges
+\begin{equation}
+  i(o(\ell),b_o)\rightarrow i(e(\ell),b_e)
+  \quad\text{and}\quad
+  i(e(\ell),b_e)\rightarrow i(o(\ell),b_o),
+  \label{eq:candidate-line-edges}
+\end{equation}
+so each physical line contributes $2B^2$ candidate directed edges and the two
+directions share the same line attributes. For the usual case $B=2$, one line
+reserves eight candidate edges even though at most two, one per direction, are
+electrically active at any time.
+\\
+\\
+Which of them is active is decided by the mask
+\begin{equation}
+  m_{\ell,b_o,b_e,t}=
+  \mathbf{1}\!\left[\text{line }\ell\text{ is connected at }t\right]
+  \mathbf{1}\!\left[b^{\mathrm{or}}_{\ell,t}=b_o\right]
+  \mathbf{1}\!\left[b^{\mathrm{ex}}_{\ell,t}=b_e\right].
+  \label{eq:physical-edge-mask}
+\end{equation}
+A disconnected line has all of its candidates masked; a connected one keeps
+only the pair matching its current origin and extremity busbars. A topology
+action therefore changes connectivity by changing $\mathbf{m}^{(a)}_t$, never
+by rebuilding the graph, and the node and edge tensors keep a fixed shape for
+the whole episode. The same pattern governs the asset attachments of
+Section~\ref{sec:heterogeneous-graph-representation} and the line-node
+attachments of Section~\ref{sec:heterogeneous-line-graph};
+Appendix~\ref{app:graph-construction} gives the resulting sizes and the
+masking conventions.
 \\
 \\
 The following subsections define the three schemas.
@@ -145,7 +214,7 @@ load quantities are aggregated into their currently assigned busbars.
   \label{fig:busbar-graph-representation}
 \end{figure}
 
-\subsubsection{Busbar nodes}
+\subsubsection{Nodes and features}
 \label{subsec:graph-busbar-nodes}
 
 Let $S$ denote the number of substations and let $B$ denote the maximum number
@@ -158,9 +227,7 @@ node identifier is assigned as
   b\in\{0,\ldots,B-1\}.
   \label{eq:busbar-node-id}
 \end{equation}
-The complete graph therefore contains $SB$ nodes.{\color{blue}Grid2Op uses one-based
-busbar identifiers in its topology vector; these identifiers are converted to
-the zero-based index $b$ in Equation~\ref{eq:busbar-node-id}.}
+The complete graph therefore contains $SB$ nodes.
 \\
 \\
 Table~\ref{tab:graph-node-features} lists the six node features. Generator and
@@ -193,40 +260,12 @@ cooldown is repeated on every busbar node of that substation.
 \noindent This aggregation produces a compact representation but deliberately removes
 the identities and counts of individual generators and loads.
 
-\subsubsection{Candidate line edges and dynamic topology}
-\label{subsec:graph-candidate-edges}
+\subsubsection{Relations and edge features}
+\label{subsec:graph-line-edge-features}
 
-{\color{blue}Consider a physical line~$\ell$ whose origin and extremity belong to
-substations $o(\ell)$ and $e(\ell)$. For every pair of possible endpoint
-busbars $(b_o,b_e)$, the graph reserves the two directed candidate edges
-\begin{equation}
-  i(o(\ell),b_o)\rightarrow i(e(\ell),b_e)
-  \quad\text{and}\quad
-  i(e(\ell),b_e)\rightarrow i(o(\ell),b_o).
-  \label{eq:candidate-line-edges}
-\end{equation}
-Thus, each physical line contributes $2B^2$ candidate directed edges. The two
-directions share the same line attributes. For the usual case $B=2$, one line
-produces eight candidate edges even though at most two---one per direction---are
-electrically active at a given time.
-\\
-\\
-The mask for a candidate endpoint assignment is
-\begin{equation}
-  m_{\ell,b_o,b_e,t}=
-  \mathbf{1}\!\left[\text{line }\ell\text{ is connected at }t\right]
-  \mathbf{1}\!\left[b^{\mathrm{or}}_{\ell,t}=b_o\right]
-  \mathbf{1}\!\left[b^{\mathrm{ex}}_{\ell,t}=b_e\right].
-  \label{eq:physical-edge-mask}
-\end{equation}
-If a line is disconnected, all of its candidate edges are masked. Otherwise,
-only the pair corresponding to its current origin and extremity busbars remains
-active. Inactive edge features are set to zero, and inactive edges are removed
-before message passing. Topology changes can therefore modify graph connectivity
-without rebuilding the candidate graph.}
-\\
-\\
-The dynamic attributes copied onto active physical-line edges are given in
+The busbar schema instantiates Equation~\ref{eq:candidate-line-edges} directly:
+its only physical relations are the busbar-to-busbar candidates of a
+transmission line. The dynamic attributes copied onto active physical-line edges are given in
 Table~\ref{tab:graph-edge-features}. The two maintenance features are present
 only for environments with scheduled maintenance.
 
@@ -256,8 +295,16 @@ and same-substation edges use the same feature width: all physical channels are
 zero except \texttt{rho}$=1$, which is a neutral structural value. The
 homogeneous schema does not append relation one-hots, so these optional
 relations are distinguished only by their endpoints and neutral physical
-attributes. {\color{blue}Inactive candidate edges are removed before either encoder is
-called; their zero feature rows never generate messages.}
+attributes.
+
+\subsubsection{Message-passing path}
+\label{subsec:graph-busbar-message-path}
+
+Asset values already sit on their busbar, so information follows the single
+path busbar $\leftrightarrow$ busbar and one message-passing layer is enough to
+carry a substation's state to an adjacent one. This is the shortest path of the
+three schemas, and the baseline against which the two disaggregated ones trade
+extra hops for individually addressable equipment.
 
 
 \subsection{Disaggregated Representation}
@@ -285,26 +332,9 @@ therefore preserved individually.
   \label{fig:heterogeneous-equipment-graph}
 \end{figure}
 
-{\color{blue}\subsubsection{End-to-end architecture}
-\label{subsec:heterogeneous-architecture}
-
-With bidirectional asset and line relations, information follows the path
-\begin{equation}
-  \text{generator}
-  \leftrightarrow
-  \text{local busbar}
-  \leftrightarrow
-  \text{remote busbar}
-  \leftrightarrow
-  \text{load}.
-  \label{eq:heterogeneous-message-path}
-\end{equation}
-One message-passing layer crosses one arrow. Generator or load information
-therefore reaches its local busbar after one layer and the adjacent remote
-busbar after two. With one-way asset relations, the reverse flow is absent.}
 {\color{red}Mean readout includes all nodes in the local graph, including one-hop context.}
 
-\subsubsection{Typed nodes and features}
+\subsubsection{Nodes and features}
 \label{subsec:heterogeneous-nodes}
 
 For a graph with $S$ included substations, $B$ busbars per substation, $N_g$
@@ -315,9 +345,7 @@ included generators, and $N_d$ included loads, the number of nodes is
 \end{equation}
 Busbar nodes are created exactly as in
 Section~\ref{subsec:graph-busbar-nodes}. In addition, each generator and load
-whose substation is present in the graph receives its own node. {\color{blue}Asset nodes
-remain present when an asset is disconnected, so the node set stays fixed
-throughout an episode.}
+whose substation is present in the graph receives its own node.
 \\
 \\
 Every busbar, generator, and load node is represented by the same ordered
@@ -366,9 +394,25 @@ the column is still present for that node type but is explicitly zero-filled.
   \end{tabular}
 \end{table}
 
-\subsubsection{Typed relations}
+\subsubsection{Relations and edge features}
 \label{subsec:heterogeneous-relations}
 
+{\color{blue}Physical lines keep the busbar-to-busbar candidates of
+Equation~\ref{eq:candidate-line-edges}; what this schema adds is the asset
+attachments. For generator $g$ at substation $s(g)$, the fixed candidate graph
+contains
+\begin{equation}
+  g \rightarrow i(s(g),b)
+  \quad\text{and}\quad
+  i(s(g),b) \rightarrow g,
+  \qquad b\in\{0,\ldots,B-1\},
+  \label{eq:generator-busbar-candidates}
+\end{equation}
+that is, $B$ candidates per direction. Loads follow the same rule.
+Appendix~\ref{app:graph-construction} collects the resulting candidate-edge
+counts.}
+\\
+\\
 Every candidate directed edge is represented by the same ordered feature
 vector. Its physical block is
 \begin{equation}
@@ -425,9 +469,7 @@ so only the shared \texttt{rho} column is nonzero. In every active edge row,
 exactly one column of \(\mathbf{r}_{uv}\) is one and the other six are zero.\\
 \\
 Table~\ref{tab:heterogeneous-edge-features} shows the values placed in these
-common blocks for every relation. {\color{blue}An inactive candidate retains the same vector
-width, but its entire row is zero-filled and \texttt{edge\_mask}$=0$ removes it
-before GINE or GAT message passing.}
+common blocks for every relation.
 
 \begin{table}[H]
   \centering
@@ -454,44 +496,28 @@ before GINE or GAT message passing.}
 
 \noindent Generator and load directions are selected independently as \texttt{bidirectional},
 \texttt{asset\_to\_busbar}, or \texttt{busbar\_to\_asset}. The default is
-\texttt{bidirectional}. Physical-line and same-substation relations remain
-bidirectional.
-\\
-\\
-{\color{blue}Physical lines use Equation~\ref{eq:candidate-line-edges}. For generator $g$ at
-substation $s(g)$, the bidirectional candidates are
-\begin{equation}
-  g \rightarrow i(s(g),b)
-  \quad\text{and}\quad
-  i(s(g),b) \rightarrow g,
-  \qquad b\in\{0,\ldots,B-1\}.
-  \label{eq:generator-busbar-candidates}
-\end{equation}
-One-way modes retain only one member of each pair. Loads use the same rule. A
-disconnected asset has no active attachment.
-\\
-\\
-Let $d_g,d_d\in\{1,2\}$ denote the selected number of directions for generator
-and load attachments. Without optional self and same-substation relations, the
-candidate edge count is
-\begin{equation}
-  |\mathcal{E}_{\mathrm{cand}}| =
-  2B^2L + B(d_gN_g+d_dN_d),
-  \label{eq:heterogeneous-edge-count}
-\end{equation}
-where $L$ is the number of included physical lines. Enabling both optional
-relations adds $|\mathcal{V}|$ self-edges and $SB(B-1)$ directed
-same-substation busbar edges.}
+\texttt{bidirectional}. A one-way mode retains only one member of each pair in
+Equation~\ref{eq:generator-busbar-candidates}. Physical-line and
+same-substation relations remain bidirectional.
 
-{\color{blue}\subsubsection{Local disaggregated graphs}
-\label{subsec:local-heterogeneous-graphs}
 
-A local actor graph contains controlled substations plus optional one-hop
-neighbors. Nodes belonging to the controlled substations form the action
-domain, while the additional neighbors provide context. The state graph
-contains the full grid. Relative to the busbar graph, this schema adds
-$N_g+N_d$ nodes and between $B(N_g+N_d)$ and $2B(N_g+N_d)$ asset candidates,
-but preserves individual asset states.}
+{\color{blue}\subsubsection{Message-passing path}
+\label{subsec:heterogeneous-architecture}
+
+With bidirectional asset and line relations, information follows the path
+\begin{equation}
+  \text{generator}
+  \leftrightarrow
+  \text{local busbar}
+  \leftrightarrow
+  \text{remote busbar}
+  \leftrightarrow
+  \text{load}.
+  \label{eq:heterogeneous-message-path}
+\end{equation}
+One message-passing layer crosses one arrow. Generator or load information
+therefore reaches its local busbar after one layer and the adjacent remote
+busbar after two. With one-way asset relations, the reverse flow is absent.}
 
 
 \subsection{Disaggregated Representation with Line Nodes}
@@ -517,7 +543,7 @@ with a transmission-line node between its endpoint busbars. Its node set is
   \label{fig:heterogeneous-line-node-graph}
 \end{figure}
 
-\subsubsection{Shared node features}
+\subsubsection{Nodes and features}
 \label{subsec:heterogeneous-line-nodes}
 
 For $S$ included substations, $B$ busbars per substation, $N_g$ generators,
@@ -526,8 +552,7 @@ $N_d$ loads, and $L$ included transmission lines, the graph contains
   |\mathcal{V}| = SB + N_g + N_d + L
   \label{eq:heterogeneous-line-node-count}
 \end{equation}
-nodes. {\color{blue}A generator or load node remains allocated when it is disconnected, and
-a transmission-line node remains allocated when the line is offline.}
+nodes.
 \\
 \\
 Every node type uses the same ordered feature vector:
@@ -595,28 +620,28 @@ the asset is disconnected.
   \end{tabular}
 \end{table}
 
-{\color{blue}\noindent A disconnected line therefore keeps its node row.} Its \texttt{line\_status}
-and \texttt{connected} entries are zero, its busbar attachments are masked, and
-the remaining observed line-state entries, including cooldown and maintenance,
-remain in the line-node vector.
-
-\subsubsection{Shared edge features and endpoint relations}
+\subsubsection{Relations and edge features}
 \label{subsec:heterogeneous-line-relations}
 
-{\color{blue}Let $o(\ell)$ and $e(\ell)$ denote the origin and extremity substations of line
+{\color{blue}This schema replaces the busbar-to-busbar candidates of
+Equation~\ref{eq:candidate-line-edges} by attachments to a line node. Let
+$o(\ell)$ and $e(\ell)$ denote the origin and extremity substations of line
 $\ell$. For every busbar index $b$, the fixed candidate graph contains
 \begin{equation}
-  i(o(\ell),b) \leftrightarrow \ell
-  \qquad\text{and}\qquad
-  i(e(\ell),b) \leftrightarrow \ell,
-  \quad b\in\{0,\ldots,B-1\}.
+  \begin{aligned}
+    i(o(\ell),b) &\rightarrow \ell, &\qquad \ell &\rightarrow i(o(\ell),b), \\
+    i(e(\ell),b) &\rightarrow \ell, &\qquad \ell &\rightarrow i(e(\ell),b),
+  \end{aligned}
+  \qquad b\in\{0,\ldots,B-1\},
   \label{eq:heterogeneous-line-candidates}
 \end{equation}
-}
+that is, $2B$ candidates per end.}
+\\
+\\
 The line direction is \texttt{bidirectional}, \texttt{line\_to\_busbar}, or
-\texttt{busbar\_to\_line}. An online line has four active attachments in the
-bidirectional case and two in a one-way case. The mask selects the current
-origin and extremity busbars.
+\texttt{busbar\_to\_line}; a one-way mode retains only one column of
+Equation~\ref{eq:heterogeneous-line-candidates}. An online line therefore has
+four active attachments in the bidirectional case and two in a one-way case.
 \\
 \\
 Every candidate directed edge uses the same ordered ten-dimensional feature
@@ -676,7 +701,7 @@ nonzero entries for every relation.
 load attachments follow Equation~\ref{eq:generator-busbar-candidates}; self and
 same-substation relations remain optional.
 
-\subsubsection{Message-passing path through a line node}
+\subsubsection{Message-passing path}
 \label{subsec:heterogeneous-line-message-path}
 
 The direct-line graph connects endpoint busbars in one hop. The explicit-line
@@ -695,57 +720,7 @@ so endpoint exchange requires two layers. The first layer forms
     \right),
 \end{equation}
 and the second returns this joint state to the endpoints. Later layers enlarge
-the receptive field. The edges around the line node are bidirectional: the line gathers both endpoints and sends the updated state back; endpoint exchange is possible;
-\\
-\\
-{\color{blue}\noindent Let $d_{\ell}\in\{1,2\}$ denote the number of selected line-attachment
-directions and retain $d_g,d_d$ from the preceding section. Without the optional
-relations, the number of candidate directed edges is
-\begin{equation}
-  |\mathcal{E}_{\mathrm{cand}}| =
-  2Bd_{\ell}L + B(d_gN_g+d_dN_d).
-  \label{eq:heterogeneous-line-edge-count}
-\end{equation}
-For the common case $B=2$, the line-attachment term has the same size as the
-$2B^2L$ direct busbar-to-busbar candidate set in
-Equation~\ref{eq:heterogeneous-edge-count}. For $B>2$, explicit line nodes make
-this term grow linearly rather than quadratically with the number of busbars.}
-
-{\color{blue}\subsubsection{Local disaggregated-line graphs}
-\label{subsec:local-heterogeneous-line-graphs}
-
-Local graphs use the same controlled-domain and one-hop rules. A line is marked
-controlled when either endpoint is controlled. The state graph contains the
-full grid. Relative to \texttt{heterogeneous}, this schema adds $L$ nodes and
-one message-passing hop between adjacent busbars.}
-
-\subsubsection{Architectural comparison of the two disaggregated schemas}
-\label{subsec:heterogeneous-architecture-comparison}
-
-Table~\ref{tab:heterogeneous-architecture-comparison} summarizes the structural
-differences between the two heterogeneous schemas.
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Architectural comparison of the disaggregated graph schemas.}
-  \label{tab:heterogeneous-architecture-comparison}
-  \setlength{\tabcolsep}{4pt}
-  \begin{tabular}{L{0.20\textwidth}L{0.34\textwidth}L{0.34\textwidth}}
-    \toprule
-    Aspect & \texttt{heterogeneous} & \texttt{heterogeneous\_line} \\
-    \midrule
-    Node types & Busbar, generator, load & Busbar, generator, load, transmission line \\
-    Physical line & Typed direct busbar-to-busbar edge & Typed node between its endpoint busbars \\
-    Line state & Continuous edge attributes & Features of the line node \\
-    Endpoint path & One hop between busbars & Two hops through the line node \\
-    Minimum useful depth & One layer for adjacent busbar exchange; two for asset-to-remote-busbar flow & Two layers for adjacent busbar exchange through a line node \\
-    Hidden line state & None: the edge modifies a message & Yes: each line obtains and updates an embedding \\
-    Graph size & Fewer nodes & Adds $L$ line nodes \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
+the receptive field. The edges around the line node are bidirectional: the line gathers both endpoints and sends the updated state back; endpoint exchange is possible.
 
 \subsection{Local actor graphs and the global state graph}
 \label{subsec:graph-local-global}
@@ -847,20 +822,6 @@ between alternative busbars but do not represent an electrical connection.
   attached to them.}
   \label{fig:same-substation-busbar-edge}
 \end{figure}
-
-{\color{blue}For a full graph containing $S$ substations and $L$ physical lines, the number
-of candidate directed edges is
-\begin{equation}
-  |\mathcal{E}_{\mathrm{cand}}| = 2B^2L
-  \label{eq:standard-graph-size}
-\end{equation}
-for the standard representation, and
-\begin{equation}
-  |\mathcal{E}_{\mathrm{cand}}| =
-  2B^2L + SB + SB(B-1)
-  \label{eq:sparse-transformer-graph-size}
-\end{equation}
-when self and same-substation relations are both enabled.}
 
 
 \subsection{Substation summary nodes (n)}
@@ -1079,136 +1040,157 @@ its immediate busbar or substation neighbors.}
 \section{Candidate-Action Scoring from the Explicit-Line Graph}
 \label{sec:candidate-action-scoring}
 
-The default action head maps the graph embedding to one output column per
-discrete action. That column is tied to an action index and not to the physical
-objects the action modifies. This section describes an alternative head that
-scores every candidate action from the graph nodes it touches. It is available
-only for the explicit-line schema of
-Section~\ref{sec:heterogeneous-line-graph} and is selected with
-\texttt{actor\_action\_head=candidate\_pool}; the default remains the
-action-index MLP head of Appendix~\ref{sec:gnn-action-head}. The PPO objective,
-the categorical policy, sampling, deterministic evaluation, and checkpointing
-are unchanged.
+The default action head produces one output column per discrete action. That
+column is tied to an action index and knows nothing about the physical objects
+the action modifies. This section describes an alternative head that scores each
+action from the graph nodes it touches. It is available only for the
+explicit-line schema of Section~\ref{sec:heterogeneous-line-graph} and is
+selected with \texttt{actor\_action\_head=candidate\_pool}; the default remains
+the action-index head of Appendix~\ref{sec:gnn-action-head}. The PPO objective,
+the categorical policy, sampling, and deterministic evaluation are unchanged.
 
-\subsection{Action-index head versus candidate scoring}
+\subsection{From action indices to candidate scoring}
 \label{subsec:candidate-motivation}
 
-With the default head, agent $a$ produces its logit vector in one step from the
-readout $\mathbf{z}_a$ of Equation~\ref{eq:gnn-output-projection}:
+Throughout this section, $\mathbf{z}_a$ denotes the graph embedding of agent
+$a$: the node states of its local graph pooled as in
+Section~\ref{sec:graph-pooling} and passed through the output projection
+(Equation~\ref{eq:gnn-output-projection}). It is one 128-dimensional vector per
+agent per step, and it is the only thing the actor has ever seen of the graph.
+\\
+\\
+With the default head, agent $a$ produces its logit vector in one step from
+$\mathbf{z}_a$:
 \begin{equation}
   \boldsymbol{\ell}_a = \operatorname{MLP}_a(\mathbf{z}_a),
   \qquad \boldsymbol{\ell}_a\in\mathbb{R}^{|\mathcal{A}_a|}.
   \label{eq:action-index-head}
 \end{equation}
-The last layer of $\operatorname{MLP}_a$ has one row per action index, so the
-mapping from a grid state to a topology change must be learned separately for
-every index, and the head grows with $|\mathcal{A}_a|$.
-
-Candidate scoring replaces Equation~\ref{eq:action-index-head} by one shared
-scalar-valued network applied to every action:
+The last layer has one row per action index, so what makes an action good must
+be learned separately for every index, and the head grows with
+$|\mathcal{A}_a|$.
+\\
+\\
+Candidate scoring replaces that by one shared scalar-valued network applied to
+every action in turn:
 \begin{equation}
   \ell_{a,j} =
   \operatorname{score}
   \left(
-    \underbrace{\mathbf{z}_a}_{\text{global context}},\
-    \underbrace{\mathbf{c}_j}_{\text{touched-node context}},\
-    \underbrace{\boldsymbol{\phi}_j}_{\text{static action features}}
-  \right),
-  \qquad j\in\{0,\ldots,|\mathcal{A}_a|-1\}.
+    \underbrace{\mathbf{z}_a}_{\text{whole graph}},\
+    \underbrace{\mathbf{c}_j}_{\text{nodes action }j\text{ touches}},\
+    \underbrace{\boldsymbol{\phi}_j}_{\text{what action }j\text{ does}}
+  \right).
   \label{eq:candidate-scoring-head}
 \end{equation}
-The scoring parameters are shared by all actions, so the head size no longer
-depends on $|\mathcal{A}_a|$, and the ranking of two actions is driven by the
-difference between their touched-node contexts rather than by two independent
-output rows. This makes the explicit line nodes directly usable: an action next
-to a loaded line is scored from that line's own embedding.
+The same parameters score all actions, so the head no longer grows with
+$|\mathcal{A}_a|$, and two actions are ranked by the difference between their
+touched-node contexts rather than by two independent output rows. This is what
+makes the explicit line nodes usable: an action next to a loaded line is scored
+from that line's own embedding.
+\\
+\\
+Two ingredients are needed: a static table saying which nodes each action
+touches (Section~\ref{subsec:candidate-action-metadata}), and a rule for
+turning those nodes into the context vector $\mathbf{c}_j$
+(Section~\ref{subsec:candidate-pooling}).
 
-\subsection{Candidate-action metadata}
+\subsection{What each action touches}
 \label{subsec:candidate-action-metadata}
 
-The mapping from actions to node rows is static and is built once, when the
-environment and its graph specification are created, rather than at every
-rollout step. The explicit-line builder exports the row maps
-\texttt{busbar\_id\_to\_node\_row}, \texttt{line\_id\_to\_node\_row},
-\texttt{gen\_id\_to\_node\_row}, \texttt{load\_id\_to\_node\_row}, and
-\texttt{substation\_busbar\_node\_rows}, which give the node index of each
-physical object in the local graph of the agent and $-1$ for objects absent
-from that graph.
-
-Each exposed action $j$ of agent $a$ is converted to its global Grid2Op action
-and decoded once. Bus-assignment and bus-change sections give the modified
-substations and, for each modified position of the topology vector, the object
-type and identifier: line endpoint, generator, or load. Line-status sections
-give the connected or disconnected lines; for those, both endpoint substations
-are added to the touched set, because a status change alters the local
-connectivity at both ends. This yields, for action $j$, the physical sets
-\begin{equation}
-  \mathcal{S}(j),\quad
-  \mathcal{L}(j),\quad
-  \mathcal{G}(j),\quad
-  \mathcal{D}(j)
-  \label{eq:candidate-physical-sets}
-\end{equation}
-of touched substations, lines, generators, and loads. They are converted to the
-node-index sets
-\begin{equation}
-  \begin{aligned}
-    \mathcal{N}_{\mathrm{bus}}(j)
-      &= \left\{
-        i(s,b)\;\middle|\;s\in\mathcal{S}(j),\ b\in\{0,\ldots,B-1\}
-      \right\}, \\
-    \mathcal{N}_{\mathrm{line}}(j)
-      &= \left\{\text{node row of }\ell\;\middle|\;\ell\in\mathcal{L}(j)\right\},
-  \end{aligned}
-  \label{eq:candidate-node-sets}
-\end{equation}
-and analogously $\mathcal{N}_{\mathrm{gen}}(j)$ and
-$\mathcal{N}_{\mathrm{load}}(j)$. A touched substation therefore contributes
-all of its busbar nodes, not only the busbar currently used. The sets are stored
-as padded index matrices of shape
-$|\mathcal{A}_a|\times m_t$ with a boolean mask, where $m_t$ is the largest
-number of touched objects of type $t$ over the action space; padded entries hold
-index $-1$ and mask $0$.
-
-The builder is strict. It rejects an action space whenever a touched line,
-generator, load, or substation is missing from the agent graph, whenever an
-index falls outside $[0,|\mathcal{V}|)$, whenever the exposed action $0$ touches
-any object, or whenever a non-idle action touches no graph-represented object.
-Because a topology action at a controlled substation moves line endpoints whose
-line nodes may sit at the boundary of the local graph, the head requires
-\texttt{gnn\_include\_neighbors=true}. Reduced action spaces are supported: the
-metadata keeps the original action identifiers alongside the exposed ones, so
-the decoded physical context always refers to the action actually executed.
-
-Each action also carries a static feature vector
-$\boldsymbol{\phi}_j\in\mathbb{R}^{12}$, listed in
-Table~\ref{tab:candidate-action-features}. The five indicator entries are binary;
-the seven count entries are divided by their largest value over the action
-space of that agent, so all entries lie in $[0,1]$ and are independent of the
-grid size.
+The first ingredient is one lookup table per agent, with one row per action,
+answering a single question: which nodes of the local graph does this action
+physically touch? It is built once, when the environment is created, and never
+recomputed during training.
+\\
+\\
+A Grid2Op topology action states which entries of the topology vector it
+changes, and each entry belongs to a known object: a line endpoint, a
+generator, or a load. Reading those entries gives the objects the action
+modifies, and the graph builder's row maps turn each object into the row of the
+graph that holds its embedding. Table~\ref{tab:candidate-metadata-example}
+follows one action through this.
 
 \begin{table}[H]
   \centering
   \small
-  \caption{Static action-feature vector $\boldsymbol{\phi}_j$ appended to each
-  candidate score. Count entries are divided by the per-agent column maximum.}
-  \label{tab:candidate-action-features}
-  \setlength{\tabcolsep}{4pt}
-  \begin{tabular}{L{0.20\textwidth}L{0.34\textwidth}L{0.36\textwidth}}
+  \caption{One action, from Grid2Op to node rows: moving the origin end of
+  line~4 onto the other busbar of substation~6. Row indices are illustrative.}
+  \label{tab:candidate-metadata-example}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{L{0.28\textwidth}L{0.62\textwidth}}
     \toprule
-    Group & Entries & Meaning \\
+    Step & Result for this action \\
     \midrule
-    Indicators & \texttt{is\_do\_nothing}, \texttt{has\_busbar\_context}, \texttt{has\_line}, \texttt{has\_load}, \texttt{has\_generator} & Whether the action is the idle action and which object types it touches \\
-    Scaled counts & \texttt{n\_substations}, \texttt{n\_topology\_changes}, \texttt{n\_line\_status\_changes}, \texttt{n\_line\_endpoint\_changes}, \texttt{n\_generator\_changes}, \texttt{n\_load\_changes}, \texttt{n\_other\_changes} & Size of the action: how many substations and how many objects of each type it modifies \\
+    Objects the action changes & Substation 6, line 4 \\
+    Their rows in the graph & Both busbars of substation 6, here 12 and 13, and the line node of line 4, here 22 \\
+    Stored for scoring & Busbar $[12,13]$, line $[22]$, generator and load empty \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-\subsection{Node embeddings from the encoder}
-\label{subsec:candidate-node-output}
+\noindent Two decoding rules are worth stating. A touched substation contributes
+\emph{all} of its busbar rows, not only the busbar in use, because the action
+changes which of them the equipment sits on. An action that connects or
+disconnects a line contributes that line and \emph{both} of its endpoint
+substations, because the connectivity changes at each end. The rows are stored
+as fixed-size arrays with a mask, padded to the widest action, so that a single
+gather serves the whole action space.
+\\
+\\
+Write $\mathcal{N}_{\mathrm{bus}}(j)$, $\mathcal{N}_{\mathrm{line}}(j)$,
+$\mathcal{N}_{\mathrm{load}}(j)$, and $\mathcal{N}_{\mathrm{gen}}(j)$ for the
+four sets of node rows that action $j$ touches. Because a topology change moves
+line endpoints whose line node may sit at the edge of the local graph, the head
+requires one-hop neighbor context; the builder raises an error rather than pool
+an incomplete context.
+\\
+\\
+Each action also carries a static feature vector
+$\boldsymbol{\phi}_j\in\mathbb{R}^{12}$, listed in
+Table~\ref{tab:candidate-action-features}. It describes what the action does
+independently of the current grid state, so the scorer can tell a single
+endpoint move from an action that reconfigures a whole substation even when
+both touch the same nodes.
 
-Candidate pooling needs the node states before readout. The encoders therefore
-expose
+\begin{table}[H]
+  \centering
+  \small
+  \caption{The static action-feature vector $\boldsymbol{\phi}_j$. The five
+  indicators are binary; the seven counts are divided by their largest value
+  over that agent's action space, so every entry lies in $[0,1]$ and is
+  independent of the grid size.}
+  \label{tab:candidate-action-features}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{L{0.36\textwidth}L{0.54\textwidth}}
+    \toprule
+    Entry & Meaning \\
+    \midrule
+    \multicolumn{2}{l}{\emph{Indicators}} \\
+    \texttt{is\_do\_nothing} & The action is the idle action \\
+    \texttt{has\_busbar\_context} & It modifies at least one substation \\
+    \texttt{has\_line} & It touches at least one line \\
+    \texttt{has\_load} & It touches at least one load \\
+    \texttt{has\_generator} & It touches at least one generator \\
+    \midrule
+    \multicolumn{2}{l}{\emph{Scaled counts}} \\
+    \texttt{n\_substations} & Substations modified \\
+    \texttt{n\_topology\_changes} & Topology-vector entries changed \\
+    \texttt{n\_line\_status\_changes} & Lines connected or disconnected \\
+    \texttt{n\_line\_endpoint\_changes} & Line endpoints moved to another busbar \\
+    \texttt{n\_generator\_changes} & Generators moved to another busbar \\
+    \texttt{n\_load\_changes} & Loads moved to another busbar \\
+    \texttt{n\_other\_changes} & Changed objects of any other type \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Pooling the touched nodes}
+\label{subsec:candidate-pooling}
+
+The second ingredient turns the touched rows into $\mathbf{c}_j$. In
+$\mathbf{z}_a$ the nodes have already been averaged away, so the encoder also
+returns the node states themselves:
 \begin{equation}
   (\mathbf{z}_a,\mathbf{H})
   = \operatorname{encoder}_{\mathrm{nodes}}(\mathcal{G}^{(a)}_t),
@@ -1216,65 +1198,51 @@ expose
   \mathbf{H}\in\mathbb{R}^{|\mathcal{V}|\times d_h},
   \label{eq:forward-with-nodes}
 \end{equation}
-where row $v$ of $\mathbf{H}$ is the post-message-passing state
-$\mathbf{h}^{(K)}_v$ of Equation~\ref{eq:methods-mean-pooling} and $d_h$ is the
-hidden width, which is not the readout width of $\mathbf{z}_a$. The ordinary
-forward pass is a projection of Equation~\ref{eq:forward-with-nodes} onto its
-first output, so existing configurations produce identical embeddings. The
-GINE, GAT, GCN, and GraphSAGE encoders and the sparse graph transformer all
-provide it, and the flat-concatenation wrapper forwards it unchanged.
-
-Only the $|\mathcal{V}|$ physical rows of Equation~\ref{eq:heterogeneous-line-node-set}
-are returned. Substation-summary nodes and the virtual node, when enabled, are
-appended after those rows and are excluded from candidate pooling; they still
-influence the physical rows through message passing and still determine
-$\mathbf{z}_a$ under virtual-node readout.
-
-\subsection{Typed candidate pooling}
-\label{subsec:candidate-pooling}
-
-For each action $j$ and each object type
-$t\in\{\mathrm{bus},\mathrm{line},\mathrm{load},\mathrm{gen}\}$, the masked mean
-over the touched rows is
+where row $v$ of $\mathbf{H}$ is the state $\mathbf{h}^{(K)}_v$ of node $v$
+after the last message-passing layer. These are exactly the vectors that mean
+pooling averages into $\mathbf{z}_a$; nothing new is computed, and a run with
+the default head is unaffected. Only the physical nodes appear in $\mathbf{H}$:
+substation-summary and virtual nodes are excluded, since an action touches
+equipment and not a learned hub.
+\\
+\\
+The basic operation is a masked mean over the rows of one object type,
 \begin{equation}
   \mathbf{c}^{(t)}_j =
   \frac{1}{\max\left(1,|\mathcal{N}_t(j)|\right)}
-  \sum_{v\in\mathcal{N}_t(j)}\mathbf{h}^{(K)}_v.
+  \sum_{v\in\mathcal{N}_t(j)}\mathbf{h}^{(K)}_v,
   \label{eq:candidate-typed-mean}
 \end{equation}
-The clamped denominator makes an empty type produce the zero vector rather than
-a division by zero, which is what happens for every type of the idle action. The
-two implemented pooling modes are
-\begin{equation}
-  \begin{aligned}
-    \texttt{typed\_mean}:\quad
-    \mathbf{c}_j &=
-    \left[
-      \mathbf{c}^{(\mathrm{bus})}_j;
-      \mathbf{c}^{(\mathrm{line})}_j;
-      \mathbf{c}^{(\mathrm{load})}_j;
-      \mathbf{c}^{(\mathrm{gen})}_j
-    \right]\in\mathbb{R}^{4d_h}, \\
-    \texttt{mean}:\quad
-    \mathbf{c}_j &=
-    \frac{1}{\max\left(1,|\mathcal{N}(j)|\right)}
-    \sum_{v\in\mathcal{N}(j)}\mathbf{h}^{(K)}_v\in\mathbb{R}^{d_h},
-    \qquad
-    \mathcal{N}(j)=\bigcup_t\mathcal{N}_t(j).
-  \end{aligned}
-  \label{eq:candidate-pool-modes}
-\end{equation}
-The typed mode keeps the roles separated, so the scorer can distinguish a
-stressed line node from the load attached to the same substation; the untyped
-mode is the smaller control. Attention pooling, in which the action queries its
-own touched nodes, is not implemented and is left for after the typed-mean
-baseline has been measured.
+where the clamped denominator makes an untouched type give the zero vector
+instead of a division by zero. Table~\ref{tab:candidate-pool-modes} lists the
+ways of combining these.
 
-\subsection{Shared scorer and idle action}
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Pooling modes. Only the first two are implemented; \texttt{typed\_mean}
+  is the default.}
+  \label{tab:candidate-pool-modes}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{L{0.17\textwidth}L{0.36\textwidth}L{0.10\textwidth}L{0.27\textwidth}}
+    \toprule
+    Mode & Context $\mathbf{c}_j$ & Width & What it buys \\
+    \midrule
+    \texttt{mean} & One masked mean over all touched rows, whatever their type & $d_h$ & The smaller control; mixes roles together \\
+    \texttt{typed\_mean} & The four typed means of Equation~\ref{eq:candidate-typed-mean}, concatenated & $4d_h$ & The scorer can tell a stressed line from the load beside it \\
+    \texttt{attention} & The action queries its own touched rows and weights them & $d_h$ & Could focus on the one endpoint that matters; not implemented \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\noindent Attention pooling is left for after the typed-mean baseline has been measured,
+because it adds parameters and a second failure mode to a head whose value is
+not yet established.
+
+\subsection{Scoring, including the idle action}
 \label{subsec:candidate-scorer}
 
-All non-idle actions are scored by one network with a single output unit and
-the same hidden widths as the MLP head:
+All non-idle actions are scored by one network with a single output unit:
 \begin{equation}
   \ell_{a,j} =
   \operatorname{MLP}_{\mathrm{score}}
@@ -1284,11 +1252,9 @@ the same hidden widths as the MLP head:
   \qquad j\geq 1.
   \label{eq:candidate-shared-scorer}
 \end{equation}
-The action-feature block is omitted when
-\texttt{candidate\_action\_use\_features=false}. Because the idle action touches
-no object, its pooled context is identically zero and would otherwise be scored
-by a network trained on non-zero contexts. It therefore receives a dedicated
-head over the global context only:
+The idle action touches nothing, so its pooled context is identically zero and
+would otherwise be scored by a network trained on non-zero contexts. It
+therefore gets its own head over the graph embedding alone:
 \begin{equation}
   \ell_{a,0} =
   \operatorname{MLP}_{\varnothing}(\mathbf{z}_a) + b_{\varnothing},
@@ -1296,86 +1262,33 @@ head over the global context only:
 \end{equation}
 with $b_{\varnothing}$ a learned scalar applied to action $0$ alone. This makes
 the idle logit an explicit judgment of whether the local grid state is safe
-enough not to intervene. With
-\texttt{candidate\_action\_do\_nothing\_head=false}, action $0$ instead passes
-through Equation~\ref{eq:candidate-shared-scorer} with $\mathbf{c}_0=\mathbf{0}$
-and keeps the bias $b_{\varnothing}$.
+enough not to intervene.
 
-The initial idle prior is preserved. Setting \texttt{init\_do\_nothing\_prob}
-$=p_0$ zeroes the output layer of $\operatorname{MLP}_{\mathrm{score}}$ and of
-$\operatorname{MLP}_{\varnothing}$ and sets the remaining idle bias to
-\begin{equation}
-  \log\frac{p_0\left(|\mathcal{A}_a|-1\right)}{1-p_0},
-  \label{eq:candidate-do-nothing-prior}
-\end{equation}
-so the initial policy assigns probability exactly $p_0$ to action $0$ and
-spreads the rest uniformly. The evaluation-time and training-time logit bonus on
-action $0$ is added after Equations~\ref{eq:candidate-shared-scorer}
-and~\ref{eq:candidate-do-nothing-head} and is therefore unaffected.
-
-\subsection{Configuration, cost, and current limits}
+{\color{blue}
+\subsection{Cost and current limits}
 \label{subsec:candidate-configuration}
 
-Table~\ref{tab:candidate-action-flags} lists the flags. Construction fails
-unless the run also sets \path{actor_encoder=gnn},
-\path{gnn_graph_type=heterogeneous_line}, and
-\path{gnn_include_neighbors=true}, which are the settings that make node
-embeddings and complete action metadata available. Setting
-\texttt{intervention\_gate=true} is rejected as well: its two-level
-factorization would have to be combined with candidate pooling as a separate
-step. The metadata is attached to the agent graph specifications when the
-environment is built, so all workers and evaluation environments reuse the same
-static mapping.
-
-\begin{table}[H]
-  \centering
-  \scriptsize
-  \caption{Configuration flags of the candidate-action head. Defaults reproduce
-  the existing action-index head.}
-  \label{tab:candidate-action-flags}
-  \setlength{\tabcolsep}{4pt}
-  \begin{tabular}{L{0.33\textwidth}L{0.22\textwidth}L{0.37\textwidth}}
-    \toprule
-    Flag & Values (default) & Effect \\
-    \midrule
-    \texttt{actor\_action\_head} & \texttt{mlp}, \texttt{candidate\_pool} (\texttt{mlp}) & Selects Equation~\ref{eq:action-index-head} or Equation~\ref{eq:candidate-scoring-head} \\
-    \texttt{candidate\_action\_pool} & \texttt{mean}, \texttt{typed\_mean} (\texttt{typed\_mean}) & Pooling of Equation~\ref{eq:candidate-pool-modes} \\
-    \texttt{candidate\_action\_use\_features} & boolean (\texttt{true}) & Appends $\boldsymbol{\phi}_j$ to each candidate score \\
-    \texttt{candidate\_action\_do\_nothing\_head} & boolean (\texttt{true}) & Dedicated idle head of Equation~\ref{eq:candidate-do-nothing-head} \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-The candidate context is materialized as a tensor of shape
-$\left[\text{batch},|\mathcal{A}_a|,d_c\right]$ with
-$d_c=\dim\mathbf{z}_a+4d_h+\dim\boldsymbol{\phi}_j$ under typed pooling, so
-memory grows with the action-space size. This is the reason to start on
-\texttt{bus14} and on reduced action spaces before the full WCCI action space.
-
-Two properties matter for a fair comparison. First, the head no longer scales
-with $|\mathcal{A}_a|$, so a candidate-pool actor and an action-index actor with
-the same graph settings do not have the same parameter count; the comparison
-holds the encoder, PPO settings, reward, normalization, chronic split, and
-evaluation protocol fixed and reports both counts. Second, the idle logit is
-produced by a different mechanism than the other logits, so the action-$0$
-frequency has to be compared against the action-index baseline rather than
-assumed comparable. The controlled comparison is one explicit-line
-configuration run twice, once with \texttt{actor\_action\_head=mlp} and once
-with \texttt{actor\_action\_head=candidate\_pool}.
-
-Correctness of the static mapping is checked by unit tests covering the exported
-row maps, the decoded touched objects of bus-change and line-status actions,
-the strict rejection of a local graph without neighbor context, finite logits
-and non-zero node-embedding gradients under both pooling modes, the exact idle
-prior of Equation~\ref{eq:candidate-do-nothing-prior}, equality between the
-ordinary readout and the first output of Equation~\ref{eq:forward-with-nodes},
-and an actor-level sampling, evaluation, and checkpoint-reload pass.
-
-Auxiliary heads over the same node embeddings, such as predicting which lines
-are about to overload, are a possible later addition; they are not part of the
-current head.
-
-
+The candidate contexts form a tensor of shape
+$\left[\text{batch},|\mathcal{A}_a|,d_c\right]$, so memory grows with the size
+of the action space. This is the reason to start on \texttt{bus14} and on
+reduced action spaces before the full WCCI one.
+\\
+\\
+Two properties matter when comparing this head against the default. The head no
+longer scales with $|\mathcal{A}_a|$, so the two actors do not have the same
+parameter count even at identical graph settings, and both counts should be
+reported. The idle logit also comes from a different mechanism than the other
+logits, so the action-$0$ frequency has to be compared against the action-index
+baseline rather than assumed comparable.
+\\
+\\
+The head currently requires the explicit-line graph with one-hop neighbor
+context, does not yet combine with the intervention gate, and implements only
+the first two pooling modes of Table~\ref{tab:candidate-pool-modes}. Auxiliary
+heads over the same node embeddings, such as predicting which lines are about to
+overload, are a possible later addition.
+}
+{\color{orange}
 \section{Graph Actor and Critic Configuration}
 \label{sec:graph-model-configuration}
 
@@ -1398,3 +1311,68 @@ Section~\ref{subsec:graph-feature-normalization} and is independent of the
 critic's flat-state normalization. The exact GINE and GAT updates, graph
 readout, output projection, and action-head equations are given in
 Appendix~\ref{app:gine-architecture}.
+}
+
+
+\section{Action-Space Reduction for Large Grids}
+\label{sec:wcci-action-space-reduction}
+
+The representations above change what an agent sees. This section changes what
+it can do, and is what makes the larger grids tractable at all: the WCCI bus36
+setting has a far larger discrete topology-action space than \texttt{bus14}, so
+before training MAPPO on it the action space is reduced offline from simulated
+action outcomes. During rollouts, states are collected
+when the grid is stressed,
+\[
+  \rho_{\max}>0.90.
+\]
+For each collected state \(s\), candidate actions are simulated and compared
+against do nothing:
+\[
+  \Delta(s,a)=\rho_{\mathrm{after}}(s,a)
+  -\rho_{\mathrm{after}}(s,0).
+\]
+An action is counted as useful when it lowers the post-action loading relative
+to do nothing, i.e. \(\Delta(s,a)<-\epsilon\). Each action is then scored by its
+empirical improvement rate,
+\[
+  \mathrm{score}(a)=
+  \frac{\#\{\text{tested states where }a\text{ improves the grid}\}}
+       {\#\{\text{tested states where }a\text{ is evaluated}\}},
+\]
+with a minimum-count filter to avoid selecting rarely sampled actions. The final
+reduced action space keeps the best actions per agent, while always preserving
+action \(0\). The candidate sets are then sanity-checked with a one-step
+simulator-greedy controller: at each risky state, the controller simulates the
+available reduced actions and executes the best improving one. That check also
+sizes the reduced space, since it shows how much survival is still reachable
+once the action set is cut. Table~\ref{tab:wcci-h1-greedy-reduced-action-spaces}
+reports it for five sizes; the survival of trained agents on this environment is
+a separate question and is not covered here.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{One-step greedy evaluation of WCCI reduced action spaces on 50
+  random test chronics. All rows use the same chronic sample
+  (\texttt{chronic\_sample\_seed=0}); the do-nothing mean survival on this
+  sample is \(28.30\%\).}
+  \label{tab:wcci-h1-greedy-reduced-action-spaces}
+  \setlength{\tabcolsep}{4pt}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{L{0.30\textwidth}L{0.28\textwidth}rrrr}
+    \toprule
+    Reduced action space & Kept actions per agent
+    \((a_0,a_1,a_2,a_3)\) & Greedy survival (\%) &
+    Do-nothing survival (\%) & Survival delta (\%) & Greedy full survival (\%) \\
+    \midrule
+    Do-nothing reference & \(1,1,1,1\) & -- & 28.30 & -- & -- \\
+    WCCI \(h=1\), \texttt{mk64} & \(64,64,64,64\) & 55.24 & 28.30 & 26.94 & 22.00 \\
+    WCCI \(h=1\), \texttt{mk128} & \(77,128,127,128\) & 60.65 & 28.30 & 32.35 & 22.00 \\
+    WCCI \(h=1\), \texttt{mk256} & \(77,256,127,256\) & 68.61 & 28.30 & 40.31 & 36.00 \\
+    WCCI \(h=1\), \texttt{mk512} & \(77,512,127,512\) & 71.21 & 28.30 & 42.90 & 40.00 \\
+    WCCI \(h=1\), \texttt{mk1024} & \(77,1024,127,1024\) & 78.18 & 28.30 & 49.87 & 54.00 \\
+    \bottomrule
+  \end{tabular}
+  }
+\end{table}

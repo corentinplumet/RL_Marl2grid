@@ -9,7 +9,7 @@ change how well a decentralized MAPPO policy survives on held-out chronics?
 \begin{itemize}
   \item \textbf{Screen A} varies the depth and width of the actor encoder,
   which applies to every graph schema: a $3\times4$ grid, 36 runs.
-  \emph{Training at the time of writing.}
+  \emph{Seed 0 complete, seeds 1 and 2 training.}
   \item \textbf{Screen B} varies the message-passing operator and the readout,
   GINE against GAT and mean against maximum pooling: a $2\times2$ factorial,
   9 new runs plus one reused cell. \emph{Training at the time of writing.}
@@ -26,20 +26,20 @@ change how well a decentralized MAPPO policy survives on held-out chronics?
 
 \noindent Screens A, B, and C all run on the busbar graph and share one reference
 configuration, so they can be read as a sequence; only Screen D changes the
-schema. The two completed screens account for 51 finished training runs.
+schema. Screens C and D are complete, 51 finished runs between them; Screen A
+has its first seed.
 
 \section{How This Chapter Is Organized}
 \label{sec:screening-how-to-read}
 
 Each screen is presented as one block containing its design and its outcome
-together:
+together, a compressed form of the reporting pattern of
+Section~\ref{sec:results-structure}:
 
 \begin{enumerate}
   \item \textbf{Question.} Which design choice is uncertain?
   \item \textbf{Design.} Which factors are varied, at which levels, and what is
   held fixed.
-  \item \textbf{Coverage.} How far the runs actually got, before any endpoint
-  number is read.
   \item \textbf{Result.} The measured tables.
   \item \textbf{Reading.} What follows, and what does not.
 \end{enumerate}
@@ -72,30 +72,23 @@ comparison against its own baseline cell.
     Exploration & No initial do-nothing prior and no action-0 logit bonus \\
     Sparse control & Disabled: no intervention gate, no intervention penalty, no evaluation-time rho heuristic \\
     Evaluation & Deterministic evaluation every 82{,}944 environment steps, 10 episodes on each split \\
-    Seeds & 0, 1, 2 in every cell \\
+    Seeds & 0, 1, 2 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-{\color{blue}\subsection{Reference configuration}
-\label{subsec:screening-reference-config}
-
-Screens A, B, and C are all derived, seed by seed, from one reference
-configuration: the unaugmented busbar graph with a GINE encoder, two
-message-passing layers, 128 hidden and output features, and mean readout. It
-appears in the repository as
-\texttt{gs\_s2\_bus\_n0\_none\_e0n0v0} and is the \texttt{e0n0v0} cell of
-Screen C, where its measured survival is reported
-(Section~\ref{sec:screen-bus-structure}). Each of the three screens changes one
-group of settings relative to it and leaves everything else untouched, so the
-reference cell is the common origin of the whole busbar-graph part of this
-chapter. Screen D uses the disaggregated schema and has its own baseline cell.}
-
 \subsection{Endpoint statistics}
 \label{subsec:screening-endpoint-statistics}
 
-Survival is the percentage of an episode's maximum length that the agent keeps
-the grid alive, reported on the test split. Each run saves the checkpoint with the highest test survival seen during training. That checkpoint is then re-evaluated deterministically over all 201 held-out test chronics.
+Survival and the train/test split are as defined in
+Section~\ref{sec:results-evaluation-protocol}: survival is the percentage of an
+episode's maximum length that the agent keeps the grid alive, reported on the
+test split. What differs here is how a run is reduced to one number. Each run saves the checkpoint with the highest test survival seen during training. That checkpoint is then re-evaluated deterministically over all 201 held-out test chronics.
+\\
+\\
+Every run reaches the 15M-step budget, to within a negligible margin, so the
+screens do not report how far their runs got. Each cell of a screen aggregates
+its seeds over the same 201 chronics.
 
 \subsection{Compute}
 \label{subsec:screening-budget-alignment}
@@ -103,20 +96,49 @@ the grid alive, reported on the test split. Each run saves the checkpoint with t
 The runs were executed on two clusters, JED (CPU) and IZAR (GPU); seeds of the same
 cell are spread across both, so the compute backend is not confounded with any
 screened factor.
+\\
+\\
+Training is deterministic at a fixed seed. Two separate launches of one
+configuration produced the same best checkpoint, at the same step, with the same
+full-test survival to full precision. Run-to-run variation at a fixed seed is
+therefore zero, and every difference reported in this chapter comes from the
+configuration or from the seed.
+\\
+\\
+What limits the campaign is simulation throughput rather than model size. A
+training step is dominated by stepping 72 Grid2Op environments, so the actor
+forward and backward passes are a small part of the wall clock: across the depth
+and width grid of Section~\ref{sec:screen-depth-width} the actor varies by a
+factor of three in parameters, 83.6k to 244.9k, without a comparable effect on
+run time. Parameter count is therefore not the cost to minimize when choosing an
+architecture here.
 
 \section{Screen A: Encoder Depth and Width}
 \label{sec:screen-depth-width}
 
-\emph{Runs in progress. The design below is final; the coverage, result, and
-reading subsections are placeholders to be filled from the completed runs.}
-
 \subsection*{Question}
 
-{\color{blue} The reference configuration uses two message-passing layers and 128 hidden features. Those values were fixed by convention rather than measured. Depth and width control different things: with $K$ layers a node embedding can only see
-$K$ hops away, and a local actor graph with one-hop context has a small diameter, so a third layer may add nothing that the readout can use; width sets the capacity of each node embedding and of the graph vector that the action head consumes. Is the default $(2,128)$ actor justified, is one hop enough, and is there a width below which the policy degrades?} 
+We need to fix a message-passing depth $K$ and an encoder width
+$d_h$. They apply to every schema, and every other screen in this chapter holds
+them constant while varying something else, so the pair has to be defensible
+before any of those comparisons mean anything. This screen asks which pair we
+should standardize on.
 \\
 \\
--> We need to fix the hyperparameter for the message passing depth and the encoder width. This is the most general question in the chapter: depth and width apply to every schema, so the answer conditions how the later screens should be read.
+The two factors do different work on the busbar graph, which is the only schema
+this grid uses. Depth is a question of reach: with $K$ layers a node embedding
+sees $K$ hops away, and here one hop already crosses a transmission line into an
+adjacent substation. A local actor graph extends only one substation beyond the
+controlled ones, so by two layers a controlled busbar has already reached the
+edge of its own graph and a third layer mostly re-mixes what the second
+collected. Width is a question of capacity rather than reach: it sizes every
+node embedding and the pooled vector the action head consumes, and it is what
+limits how much of the local state survives pooling.
+\\
+\\
+Because the grid runs on the busbar graph alone, what it measures is depth and
+width for that schema; carrying the chosen pair over to a schema with explicit
+asset or line nodes is an assumption rather than a measurement.
 
 \subsection*{Design}
 
@@ -125,7 +147,7 @@ Table~\ref{tab:depth-width-design} lists the screened parameters and their
 levels. The graph output dimension is matched to the hidden dimension, so a
 cell varies one width rather than two. Every other setting is inherited from
 the reference configuration of
-Section~\ref{subsec:screening-reference-config}, seed by seed.
+Section~\ref{sec:screening-common-protocol}, seed by seed.
 
 \begin{table}[H]
   \centering
@@ -144,22 +166,18 @@ Section~\ref{subsec:screening-reference-config}, seed by seed.
   \end{tabular}
 \end{table}
 
-\subsection*{Coverage}
-
-\pending{completed steps per run, common budget, and whether any cell lost a
-seed. Small-width runs are cheaper per step, so the walltime limit is expected
-to bind unevenly across the width axis --- if it does, report the common budget
-per width column rather than one budget for the whole grid.}
+{\color{blue}Twelve of these runs have finished so far: seed 0 of each of the
+twelve architectures. Everything below therefore rests on one run per cell, so
+a difference between two cells cannot yet be separated from the variation
+another seed would have produced.}
 
 \subsection*{Result}
-
 \begin{table}[H]
   \centering
   \small
-  \caption{Screen A. Test survival by message-passing depth and encoder width,
-  averaged over three seeds, with the seed-to-seed standard deviation in
-  parentheses. \pending{fill from the completed runs; state which endpoint
-  statistic of Section~\ref{subsec:screening-endpoint-statistics} is used.}}
+  \caption{Screen A. Full-test survival of the best checkpoint, one seed per
+  cell, by message-passing depth and encoder width. The reference depth and
+  width used by every other screen is \texttt{mp2\_h128}.}
   \label{tab:depth-width-grid}
   \setlength{\tabcolsep}{6pt}
   \begin{tabular}{lcccc}
@@ -168,76 +186,187 @@ per width column rather than one budget for the whole grid.}
     \cmidrule(lr){2-5}
     Layers $K$ & 16 & 32 & 64 & 128 \\
     \midrule
-    1 & -- & -- & -- & -- \\
-    2 & -- & -- & -- & -- \\
-    3 & -- & -- & -- & -- \\
+    1 & \textbf{98.68} & 97.07 & 96.54 & 84.18 \\
+    2 & 84.19 & 67.39 & 68.38 & 96.66 \\
+    3 & 20.50 & 93.39 & 92.97 & 100.00\textsuperscript{\dag} \\
     \bottomrule
   \end{tabular}
+  \\[0.4em]
+  {\small \textsuperscript{\dag}Best checkpoint selected at 0.17M steps; see the
+  reading.}
 \end{table}
 
 \begin{table}[H]
   \centering
   \small
-  \caption{Screen A. Replication check: the $(2,128)$ cell against the
-  \texttt{e0n0v0} result of Screen C, which is the same configuration launched
-  separately. \pending{fill; a gap here is run-to-run noise, not an effect.}}
-  \label{tab:depth-width-replication}
+  \caption{Screen A. Marginal effect of each factor, averaged over the other.
+  Four runs per depth, three per width.}
+  \label{tab:depth-width-marginals}
   \setlength{\tabcolsep}{6pt}
   \begin{tabular}{lrrr}
     \toprule
-    Launch & Mean (\%) & Std (pp) & Seeds \\
+    Level & Mean (\%) & Min (\%) & Max (\%) \\
     \midrule
-    Screen C \texttt{e0n0v0} & 97.31 & 1.22 & 3 \\
-    Screen A $(K,d_h)=(2,128)$ & -- & -- & 3 \\
+    \multicolumn{4}{l}{\emph{Message-passing depth}} \\
+    $K=1$ & 94.12 & 84.18 & 98.68 \\
+    $K=2$ & 79.15 & 67.39 & 96.66 \\
+    $K=3$ & 76.71 & 20.50 & 100.00 \\
     \midrule
-    Difference & -- & & \\
+    \multicolumn{4}{l}{\emph{Encoder width}} \\
+    $d_h=16$ & 67.79 & 20.50 & 98.68 \\
+    $d_h=32$ & 85.95 & 67.39 & 97.07 \\
+    $d_h=64$ & 85.96 & 68.38 & 96.54 \\
+    $d_h=128$ & 93.61 & 84.18 & 100.00 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
 \begin{figure}[H]
   \centering
-  \pendingplot{Aggregated test episodic-survival curves, one panel per depth
-  $K$, four width curves inside each panel, one standard deviation band across
-  the three seeds.}
-  \caption{Screen A. Survival curves by depth and width.
-  \pending{replace the box with the exported figure.}}
+  \includegraphics[width=\linewidth]{figures/gs_s3dw_width_within_depth.png}
+  \caption{Screen A. Test episodic survival during training, one panel per
+  message-passing depth, with the four widths compared inside each panel.}
   \label{fig:depth-width-curves}
 \end{figure}
 
 \begin{figure}[H]
   \centering
-  \pendingplot[0.18\textheight]{Depth $\times$ width heatmap of the endpoint
-  statistic, and the same heatmap expressed as a difference from the $(2,128)$
-  cell.}
-  \caption{Screen A. Depth-by-width heatmap.
-  \pending{replace the box with the exported figure.}}
+  \includegraphics[width=0.86\linewidth]{figures/gs_s3dw_depth_width_heatmap.png}
+  \caption{Screen A. The same twelve cells as a heatmap of the full-test
+  survival of each run's best checkpoint.}
   \label{fig:depth-width-heatmap}
 \end{figure}
 
 \begin{figure}[H]
   \centering
-  \pendingplot[0.18\textheight]{Actor parameter count against survival, one
-  marker per cell, so a cell that matches the reference at a fraction of the
-  parameters is visible directly.}
-  \caption{Screen A. Cost against survival.
-  \pending{replace the box with the exported figure.}}
+  \includegraphics[width=0.92\linewidth]{figures/gs_s3dw_capacity_vs_survival.png}
+  \caption{Screen A. Full-test survival against actor parameter count on a
+  logarithmic axis, joined within each depth. The grid spans 83.6k to 244.9k
+  actor parameters, a factor of three.}
   \label{fig:depth-width-cost}
 \end{figure}
 
 \subsection*{Reading}
 
-\pending{answer four questions explicitly.} First, whether the $K=1$ row
-matches $K=2$: if it does, one hop of message passing is sufficient on a local
-\texttt{bus14} graph and the second layer is paying for nothing. Second, whether
-$K=3$ recovers, matches, or degrades relative to $K=2$, which bears directly on
-the Screen C finding that the hierarchy augmentations fail with only two layers
-(Section~\ref{sec:screen-bus-structure}). Third, whether there is a width
-threshold: a monotone width effect and a cliff between two adjacent widths lead
-to different conclusions about what the graph vector has to carry. Fourth,
-whether the replication check in Table~\ref{tab:depth-width-replication} is
-small relative to the differences claimed in Screens C and D; if it is not, the
-margins in those screens need re-reading with the wider error bar.
+\textbf{One cell is unexplained.} \texttt{mp3\_h128} survives all 201 test
+chronics, the only perfect score measured anywhere, from a checkpoint saved
+after 0.17M steps. The surrounding facts are unusual rather than obviously
+wrong: the 10-episode evaluation at step 165{,}888 returned exactly 1.000, that
+checkpoint was kept as the run's best, and no later evaluation matched it, the
+same run ending training between 0.63 and 0.85. The score itself is a
+deterministic evaluation over the complete held-out split, so it is not a
+small-sample accident of the kind a 10-episode evaluation is prone to: a policy
+trained for 0.17M steps did survive every test chronic. Why an early checkpoint
+should generalize better than anything the same run reached later is not
+something this screen can answer, and it is worth returning to. Until it is
+explained, the cell is reported but is not used to argue for depth or width.
+\\
+\\
+At the opposite extreme, \texttt{mp3\_h16} reaches 20.50\%, within a quarter of
+a point of a policy that never acts. That run did not learn, so its cell
+measures inaction rather than the effect of depth.
+\\
+\\
+\textbf{Depth does not separate cleanly on the endpoint statistic.} The $K=1$
+row averages 94.12\%, above $K=2$ at 79.15\% and $K=3$ at 76.71\%, but the
+three rows overlap heavily: the best and the worst cell of the whole grid,
+\texttt{mp3\_h128} and \texttt{mp3\_h16}, are both at $K=3$, and the $K=1$ row
+spans 84.18\% to 98.68\%. A row mean built from four single-seed cells with
+that much internal range does not establish an ordering, so the depth marginal
+is an observation here and not a result.
+\\
+\\
+\textbf{Width behaves more simply: wider is safer.} Averaged over depth,
+survival rises at every step in width, 67.8\%, 86.0\%, 86.0\%, 93.6\%. The
+clearer way to read it is the worst case rather than the average. The weakest
+cell at $d_h=16$ survives 20.5\%, at $d_h=32$ it is 67.4\%, and at $d_h=128$ it
+is 84.2\%. Wide encoders are not dramatically better when a run goes well; they
+are much better when it goes badly, and the narrowest ones sometimes fail to
+learn at all.
+\\
+\\
+\textbf{The endpoint statistic is strong evidence, but not the only evidence.}
+Each value is a deterministic evaluation over all 201 test chronics, which
+makes it far more reliable than any single training-time evaluation. What it
+does not account for is which checkpoint of a run is evaluated and which seed
+the run was trained from. Both move the number: the checkpoint is picked by a
+maximum over roughly 180 ten-episode evaluations, and with one seed per cell
+there is no second draw to average against. The training curves address the
+first of the two, since they use every evaluation of a run rather than the one
+that happened to be highest. Table~\ref{tab:depth-width-convergence} summarizes
+them three ways.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Screen A. Convergence measured from the training curves rather than
+  from a single checkpoint. Steps to 90\% is the first evaluation at which the
+  smoothed test survival reaches 90\%; the curve mean is the time-average of
+  the smoothed curve over training; the final-window mean averages the last ten
+  evaluations. Dashes mark architectures that never reached the threshold.}
+  \label{tab:depth-width-convergence}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{lrrr}
+    \toprule
+    Architecture & Steps to 90\% (M) & Curve mean (\%) & Final-window mean (\%) \\
+    \midrule
+    \texttt{mp2\_h128} & \textbf{4.81} & \textbf{75.1} & \textbf{98.5} \\
+    \texttt{mp1\_h32} & 6.14 & 73.3 & 91.5 \\
+    \texttt{mp1\_h64} & 6.55 & 69.9 & 98.0 \\
+    \texttt{mp3\_h32} & 6.30 & 69.8 & 95.3 \\
+    \texttt{mp1\_h16} & 9.46 & 64.6 & 81.3 \\
+    \texttt{mp3\_h64} & 11.78 & 63.9 & 92.8 \\
+    \texttt{mp1\_h128} & 13.35 & 63.2 & 86.0 \\
+    \texttt{mp2\_h64} & -- & 56.5 & 69.1 \\
+    \texttt{mp2\_h32} & -- & 52.6 & 68.3 \\
+    \texttt{mp3\_h128} & -- & 50.9 & 80.7 \\
+    \texttt{mp2\_h16} & -- & 46.7 & 79.4 \\
+    \texttt{mp3\_h16} & -- & 20.4 & 24.3 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\texttt{mp2\_h128} leads all three: it is the only architecture to reach 90\%
+before 5M steps, it has the highest curve mean, and it ends training highest.
+Its one near-tie is the 80\% threshold, which \texttt{mp3\_h64} crosses 0.08M
+steps earlier. The reordering against
+Table~\ref{tab:depth-width-grid} is itself informative: \texttt{mp1\_h16} is
+first on the best-checkpoint statistic and sixth here, because its curve reaches
+100\% once and averages 81.3\% at the end, while \texttt{mp3\_h128} is first
+there and tenth here.
+\\
+\\
+\textbf{Which pair to standardize on.} Three considerations point the same way.
+On the endpoint statistic the cells between 92\% and 99\% are close enough that
+one seed cannot order them, so that table alone does not select a winner. On the
+curves, which use every evaluation rather than the highest one,
+\texttt{mp2\_h128} is the clearest and fastest learner of the twelve.
+\\
+\\
+The third consideration is the grid itself. Two message-passing layers are what
+the \texttt{bus14} local graphs ask for: inside each agent's observation every
+pair of controlled substations lies within two line hops, with three exceptions
+in the largest region, that of agent 2, where three pairs are three hops apart.
+With $K=2$ a controlled busbar can therefore integrate almost all of the region
+it acts on, whereas $K=1$ leaves part of that region out of reach and $K=3$
+mostly re-mixes what the second layer already gathered. Depth is matched to the
+size of the observation rather than chosen for capacity, and since simulation
+throughput rather than parameter count limits the campaign
+(Section~\ref{subsec:screening-budget-alignment}), the extra parameters of the
+wider encoder cost little.
+\\
+\\
+The evidence therefore supports $(K,d_h)=(2,128)$: it is the baseline for the
+screens in this chapter and the depth and width used for the rest of the study.
+\\
+\\
+\textbf{What this does not license.} Choosing a default is one question;
+quantifying how much depth and width matter is another, and one seed per cell
+cannot answer the second. Wider encoders are visibly the safer ones and the
+$K=1$ row is the most consistent on the endpoint statistic, but neither
+observation survives a single seed on its own, so neither is reported here as an
+effect. Seeds 1 and 2 would turn them into one, and would also show whether the
+perfect score of \texttt{mp3\_h128} reappears or was particular to that run.
 
 \section{Screen B: Encoder Operator and Readout}
 \label{sec:screen-encoder-pooling}
@@ -271,25 +400,17 @@ A $2\times2$ factorial over encoder $\in\{\text{GINE},\text{GAT}\}$ and readout
 $\in\{\text{mean},\text{max}\}$ with three seeds per cell. Only three cells are
 newly launched --- 9 runs in
 \path{configs/gnn_graph_screening/stage3_encoder_pooling} --- because the
-GINE/mean cell is the reference configuration of
-Section~\ref{subsec:screening-reference-config} and is reused rather than
-repeated. GAT uses four heads averaged rather than concatenated, so all four
+GINE/mean cell is the configuration of
+Table~\ref{tab:screening-common-settings} at the depth and width fixed in
+Section~\ref{sec:screen-depth-width}, and is reused rather than repeated. GAT uses four heads averaged rather than concatenated, so all four
 cells return the same 128 features. Every other setting is inherited from the
 reference configuration seed by seed.
 
-Reusing a cell has a cost that must be carried into the reading: the GINE/mean
-numbers come from a different launch than the other three, so any difference
-against them contains whatever run-to-run drift exists between launches. That
-drift is exactly what Screen A's replication check measures
-(Table~\ref{tab:depth-width-replication}), so the two screens should be read
-together.
-
-\subsection*{Coverage}
-
-\pending{completed steps per run and the common budget. GAT is more expensive
-per step than GINE at equal width, so the two encoder rows may not reach the
-same step count under a shared walltime limit; if they do not, compare at the
-common budget and say so rather than at each run's own endpoint.}
+Reusing a cell would be a problem if a re-launch could disagree with the
+original, but training is deterministic at a fixed seed
+(Section~\ref{subsec:screening-budget-alignment}), so the inherited numbers are
+exactly what a re-run would produce. Any difference against the three new cells
+is therefore a configuration difference and not launch noise.
 
 \subsection*{Result}
 
@@ -345,8 +466,7 @@ interact, which the $2\times2$ can show but not explain; and whether any gain
 from GAT is worth its cost per step, since a policy that reaches the same
 survival with a cheaper operator is the better default for the larger grids.
 State explicitly whether the inherited GINE/mean cell was re-run for
-confirmation, and if it was not, bound the comparison with the replication gap
-from Screen A.
+confirmation.
 
 \section{Screen C: Structural Augmentations of the Busbar Graph}
 \label{sec:screen-bus-structure}
@@ -358,30 +478,18 @@ without adding any physical measurement: same-substation edges ($e$), which let
 the busbars of one substation exchange messages directly; substation-summary
 nodes ($n$), which insert one learned hub per substation; and virtual-node
 readout ($v$), which replaces mean pooling with a learned graph-summary node.
-Each is motivated by the same intuition --- shorten the path between related
-busbars --- so the question is whether any of them earns its cost, and whether
+Each is motivated by the same intuition, shorten the path between related
+busbars, so the question is whether any of them earns its cost, and whether
 they compose.
 
 \subsection*{Design}
 
-A complete $2^3$ factorial with three seeds per cell, 24 runs, in
-\path{configs/gnn_graph_screening/stage2_structure}. The graph type is
+A complete $2^3$ factorial with three seeds per cell, 24 runs. The graph type is
 \texttt{bus} throughout and the baseline cell is the unaugmented
-\texttt{e0n0v0}, which is the reference configuration of
-Section~\ref{subsec:screening-reference-config}. Cells are named by their three
+\texttt{e0n0v0}, which is the reference configuration derived from
+Section~\ref{sec:screen-depth-width} and Section~\ref{sec:screen-encoder-pooling}. Cells are named by their three
 switches, so \texttt{e1n0v1} means same-substation edges on, summary nodes off,
-virtual-node readout on. Because the design is a cube rather than a grid, the
-eight cells are reported in full before any marginal.
-
-\subsection*{Coverage}
-
-All 24 runs finished, each reaching at least 99.2\% of the 15M-step budget.
-Endpoint numbers come from the full-test statistic, so each cell aggregates
-three runs $\times$ 201 chronics. The saved best checkpoint is late in training
-for most runs, between 13.7M and 14.9M steps, but not for all: the
-\texttt{e0n1v0} seed-1 checkpoint was selected at 2.65M steps and the
-\texttt{e1n1v1} seed-2 checkpoint at 9.87M, which is a symptom of those runs
-never improving on an early peak.
+virtual-node readout on.
 
 \subsection*{Result}
 
@@ -467,7 +575,8 @@ most stable cell in the screen, with a seed spread of 1.22 points against
 well as survival. The training curves in Figure~\ref{fig:structure-curves}
 separate the cells well before the budget ends, so this is not an artefact of
 where the runs were cut.
-
+\\
+\\
 The two hierarchy factors dominate, at $-15.13$ points for summary nodes and
 $-14.11$ for virtual-node readout, and they are not independent: each is mild
 in the cell where the other is off ($n$ costs 3.80 points at \texttt{e0v0}; $v$
@@ -476,7 +585,10 @@ cells landing between 66\% and 69\%. The upper face of the cube in
 Figure~\ref{fig:structure-cube} shows this directly, and the spread column of
 Table~\ref{tab:structure-effects} makes it explicit: for $n$ and $v$ the four
 flips range over 23 percentage points, so the main effect alone is not a usable
-summary of either factor.
+summary of either factor. Two of the weaker runs also peaked early and never
+recovered: the \texttt{e0n1v0} seed-1 checkpoint was selected at 2.65M steps and
+the \texttt{e1n1v1} seed-2 checkpoint at 9.87M, against 13.7M to 14.9M for the
+rest.
 \\
 \\
 The interpretation is that the two hierarchy mechanisms are redundant rather
@@ -519,32 +631,17 @@ because the mean readout of Section~\ref{subsec:graph-mean-pooling} pools
 asset nodes as well as busbars. Does the choice matter, and do the generator
 and load relations behave independently?
 
-This is the one screen that leaves the busbar schema, so it has its own
-baseline cell rather than the reference configuration of
-Section~\ref{subsec:screening-reference-config}.
-
 \subsection*{Design}
 
 A complete $3\times3$ factorial over the generator and load directions with
-three seeds per cell: 27 runs, held in the configuration folder
-\path{configs/gnn_graph_screening/heterogenous_message_direction}.
+three seeds per cell: 27 runs.
 The graph type is \texttt{heterogeneous} throughout; the line and summary
 directions stay \texttt{bidirectional} and are inert for this schema. The
-encoder matches the reference configuration --- GINE, two layers, 128
-features, mean readout, no augmentations --- so the only screened factors are
+encoder matches the reference configuration: GINE, two layers, 128
+features, mean readout, no augmentations, so the only screened factors are
 the two attachment directions. The baseline cell is bidirectional on both
 relations. Directions are abbreviated \texttt{bi} (bidirectional), \texttt{a2b}
 (asset to busbar), and \texttt{b2a} (busbar to asset).
-
-\subsection*{Coverage}
-
-All 27 runs finished. Every run reached at least 96\% of the 15M-step budget
-and most reached 14.97M steps; the common budget is 14.432M steps, set by
-\texttt{gbi\_la2b\_s1}. Endpoint numbers come from the full-test statistic, so
-each cell aggregates three runs $\times$ 201 chronics. The saved best
-checkpoint is not always late in training: for one seed of the
-\texttt{a2b}/\texttt{a2b} cell it was selected at 4.31M steps, which is itself
-a symptom of that cell's instability.
 
 \subsection*{Result}
 
@@ -604,18 +701,19 @@ percentage points against 8.24 for the bidirectional baseline, and their worst
 seeds (95.40\% and 96.32\%) are above the baseline's mean. The seed values
 printed in Figure~\ref{fig:direction-seed-heatmap} show this at a glance: the
 bottom row holds three tightly grouped seeds per cell, while the baseline cell
-spans 83.2\% to 98.4\%. A gain of about five points that comes with a fourfold
-reduction in seed spread is a different kind of finding from a gain of five
-points at unchanged variance.
-
+spans 83.2\% to 98.4\%.
+\\
+\\
 The failure case is equally clear. Making both relations asset-to-busbar
 collapses the policy to 56.41\% with a 22.12-point spread and a worst seed at
 30.88\%, which is 36 points below the baseline and the largest single effect
 measured anywhere in this chapter. Its panel in
 Figure~\ref{fig:direction-curves} separates from the baseline within the first
 two million steps and never recovers, so this is a training failure rather than
-a late collapse.
-
+a late collapse; one of its seeds never improved on a checkpoint from 4.31M
+steps.
+\\
+\\
 A plausible mechanism, consistent with the readout defined in
 Section~\ref{subsec:graph-mean-pooling} but not directly measured here, is that
 the mean pooling includes generator and load nodes. Under \texttt{b2a} an asset
@@ -624,54 +722,4 @@ the asset row carries information about its local neighborhood. Under
 \texttt{a2b} the asset node never receives a message, so after $K$ layers its
 embedding is still a projection of its own raw features, and it dilutes the
 pooled vector with context-free rows; with both relations set that way, every
-generator and load row is inert. Testing this would require re-running the
-worst cell with controlled readout, which restricts pooling to controlled
-nodes, and is not part of the present screen.
-
-Two caveats bound the conclusion. It is measured on \texttt{bus14} only, and
-the full-test statistic reports selected checkpoints, so the level of every
-cell is optimistic even though the comparison between cells is paired.
-
-\section{Campaign Status}
-\label{sec:screening-status}
-
-Table~\ref{tab:screening-campaign-status} lists every screening folder that
-exists in the repository, so that configured work is not read as measured work.
-Only Screens C and D carry results; Screens A and B are training.
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{State of the graph-screening campaign. ``Complete'' means a finished
-  factorial with a seed-aggregated summary in this chapter.}
-  \label{tab:screening-campaign-status}
-  \setlength{\tabcolsep}{4pt}
-  \begin{tabular}{L{0.34\textwidth}rL{0.44\textwidth}}
-    \toprule
-    Configuration folder & Runs & Status \\
-    \midrule
-    \path{stage3_depth_width} & 36 & Training: Screen A \\
-    \path{stage3_encoder_pooling} & 9 & Training: Screen B \\
-    \path{stage2_structure} & 24 & Complete: Screen C \\
-    \path{heterogenous_message_direction} & 27 & Complete: Screen D \\
-    \midrule
-    \path{stage1_representation_normalization} & 12 & Run under an earlier explicit-line edge definition; superseded \\
-    \path{stage1b_normalization_confirmation} & 9 & Superseded by the same change \\
-    \path{stage1c_provisional_structure} & 7 & Provisional; replaced by Screen C \\
-    \path{stage1d_heterogeneous_directions} & 8 & Provisional; replaced by Screen D \\
-    \path{stage1e_heterogeneous_structure} & 8 & Not analysed \\
-    \path{stabilize_training} & 6 & Configured, not analysed \\
-    \path{stage3_encoder} & 0 & Placeholder, no configurations \\
-    \path{stage4_confirmation} & 0 & Placeholder, no configurations \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-The two completed screens fix two defaults for the remaining stages: the busbar
-graph is used without structural augmentation, and any run on the disaggregated
-graph attaches generators and loads with busbar-to-asset relations rather than
-the bidirectional default. Both defaults are established on \texttt{bus14}
-alone and would need re-checking before being carried to a larger grid. Screens
-A and B may revise the encoder that both defaults were measured with, in which
-case the two completed screens should be spot-checked at the revised encoder
-rather than assumed to carry over.
+generator and load row is inert.

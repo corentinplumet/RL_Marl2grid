@@ -30,6 +30,13 @@
   pdfauthor={Corentin Plumet}
 }
 
+% More air around headings so section boundaries are easy to spot when
+% skimming. Values are in units of \baselineskip: {left}{before}{after}.
+\usepackage{titlesec}
+\titlespacing*{\section}      {0pt}{2.6\baselineskip}{1.0\baselineskip}
+\titlespacing*{\subsection}   {0pt}{2.0\baselineskip}{0.7\baselineskip}
+\titlespacing*{\subsubsection}{0pt}{1.6\baselineskip}{0.5\baselineskip}
+
 \newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
 
 % Placeholder for a figure whose runs are still training. Replace the whole
@@ -59,9 +66,10 @@
 
 \pagenumbering{arabic}
 \input{chapters/00_plan}
+\input{chapters/02_baseline}
 \input{chapters/04_methods}
 \input{chapters/05_experiments}
-\input{chapters/05_results_rerun_survival}
+\input{chapters/06_sparse_control}
 
 \appendix
 \chapter{GINE and GAT Graph-Actor Architectures}
@@ -343,6 +351,81 @@ and~\ref{tab:heterogeneous-line-edge-features}. Those tables distinguish, for
 example, generator-to-busbar from busbar-to-generator and origin from
 extremity line attachments. These distinctions matter directly to both
 edge-aware models: GINE changes message content and GAT changes attention.
+
+\chapter{Graph Construction Details}
+\label{app:graph-construction}
+
+{\color{blue}This appendix collects the construction and sizing details of the three graph
+schemas of Section~\ref{sec:graph-representation}: how large each candidate
+graph is, how inactive candidates are neutralized, and how a local actor graph
+is cut out of the full grid. None of it changes the representations themselves.
+
+\section{Candidate graph sizes}
+\label{app:graph-sizes}
+
+Let $S$ be the number of included substations, $B$ the busbars per substation,
+$L$ the included physical lines, and $N_g$, $N_d$ the generators and loads.
+Write $d_g,d_d,d_{\ell}\in\{1,2\}$ for the number of retained directions of the
+generator, load, and line-node attachments: $2$ for \texttt{bidirectional} and
+$1$ for either one-way mode. Table~\ref{tab:appendix-graph-sizes} gives the
+size of the fixed candidate graph, before any mask is applied.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Size of the candidate graph of each schema. Enabling self edges adds
+  $|\mathcal{V}|$ directed edges and enabling same-substation edges adds
+  $SB(B-1)$, in every schema.}
+  \label{tab:appendix-graph-sizes}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{L{0.24\textwidth}L{0.26\textwidth}L{0.38\textwidth}}
+    \toprule
+    Schema & Candidate nodes & Candidate directed edges \\
+    \midrule
+    \texttt{bus} & $SB$ & $2B^2L$ \\
+    \texttt{heterogeneous} & $SB+N_g+N_d$ & $2B^2L + B(d_gN_g+d_dN_d)$ \\
+    \texttt{heterogeneous\_line} & $SB+N_g+N_d+L$ & $2Bd_{\ell}L + B(d_gN_g+d_dN_d)$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Three consequences are worth naming. A busbar graph with both optional
+relations enabled therefore has $2B^2L+SB+SB(B-1)$ candidate directed edges.
+The disaggregated schema adds $N_g+N_d$ nodes and between $B(N_g+N_d)$ and
+$2B(N_g+N_d)$ asset candidates to the busbar graph, and buys individual asset
+states with them. The explicit-line schema replaces the $2B^2L$
+busbar-to-busbar term by $2Bd_{\ell}L$: identical at $B=2$ and cheaper for
+$B>2$, at the cost of $L$ extra nodes and one extra message-passing hop between
+adjacent busbars.
+
+The hierarchical augmentations of Section~\ref{sec:substation-representation}
+add on top of any of these: one substation-summary node per substation, with
+$SB$ directed edges for \texttt{toward\_summary} or $2SB$ for
+\texttt{bidirectional}; and one virtual node, with $N_{\mathrm{bus}}$ or
+$2N_{\mathrm{bus}}$ edges, or $S$ or $2S$ when summary nodes are also enabled.
+
+\section{Indexing and masking conventions}
+\label{app:graph-indexing}
+
+Grid2Op numbers busbars from one in its topology vector; those identifiers are
+converted to the zero-based index $b$ used in
+Equation~\ref{eq:busbar-node-id}.
+
+An inactive candidate edge keeps its row in the edge-feature tensor, so the
+tensor shape is fixed for an episode, but the row is zero-filled and its
+\texttt{edge\_mask} entry is $0$. Masked edges are removed before the encoder
+is called, so those zero rows never generate a message. This is what allows a
+topology change to alter connectivity without rebuilding the graph.
+
+\section{Local actor graphs}
+\label{app:local-graphs}
+
+A local actor graph contains the controlled substations plus, optionally, their
+one-hop neighbors. Nodes of the controlled substations form the action domain,
+and the neighbors provide context only; the centralized state graph always
+contains the full grid. In the explicit-line schema a line node counts as
+controlled when either of its endpoints is controlled. The same controlled-domain
+and one-hop rules apply to all three schemas.}
 
 \chapter{Full-Test Checkpoint Registry}
 \label{app:full-test-checkpoint-registry}
