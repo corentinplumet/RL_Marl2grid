@@ -5,10 +5,10 @@ This folder contains the learned adaptive-pooling ladder for the heterogeneous-l
 The configs are copied from the strongest a-priori hard-pooling control:
 
 ```text
-configs/gnn_action_scoring/candidate_variants/cas_hl_tmean_f1_a0h1_s*.toml
+configs/gnn_action_scoring/candidate_variants/cas_hl_mean_f1_a0h0_s*.toml
 ```
 
-Only the pooling mechanism is changed from uniform `typed_mean` to learned `typed_attention`. The encoder, critic, PPO settings, reward, chronic split, and training budget remain paired with `candidate_variants`.
+Only the pooling mechanism is changed from uniform `mean` to learned `typed_attention`. The encoder, critic, PPO settings, reward, chronic split, and training budget remain paired with `candidate_variants`.
 
 ## Stages
 
@@ -24,7 +24,7 @@ Every run uses:
 actor_action_head = "candidate_pool"
 candidate_action_pool = "typed_attention"
 candidate_action_use_features = true
-candidate_action_do_nothing_head = true
+candidate_action_do_nothing_head = false
 candidate_action_attention_heads = 1
 candidate_action_attention_dim = 0
 candidate_action_attention_temperature = 1.0
@@ -47,13 +47,13 @@ done
 If you want the strictest incremental test first, launch only `affected` seed 0:
 
 ```bash
-sbatch --time=7-00:00:00 job_jed.sh configs/gnn_action_scoring/attention_stages/cas_hl_tattn_affected_f1_a0h1_s0.toml
+sbatch --time=7-00:00:00 job_jed.sh configs/gnn_action_scoring/attention_stages/cas_hl_tattn_affected_f1_a0h0_s0.toml
 ```
 
 Once a stage looks stable, promote the same stage to seeds 1 and 2:
 
 ```bash
-for cfg in Topology_Task/configs/gnn_action_scoring/attention_stages/cas_hl_tattn_affected_f1_a0h1_s{1,2}.toml; do
+for cfg in Topology_Task/configs/gnn_action_scoring/attention_stages/cas_hl_tattn_affected_f1_a0h0_s{1,2}.toml; do
   sbatch --time=7-00:00:00 job_jed.sh "${cfg#Topology_Task/}"
 done
 ```

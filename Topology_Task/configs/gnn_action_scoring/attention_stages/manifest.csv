@@ -1,10 +1,10 @@
 run_name,attention_scope,seed,description,config_path
-cas_hl_tattn_affected_f1_a0h1_s0,affected,0,"typed attention over only the hardcoded affected nodes",configs/gnn_action_scoring/attention_stages/cas_hl_tattn_affected_f1_a0h1_s0.toml
-cas_hl_tattn_affected_f1_a0h1_s1,affected,1,"typed attention over only the hardcoded affected nodes",configs/gnn_action_scoring/attention_stages/cas_hl_tattn_affected_f1_a0h1_s1.toml
-cas_hl_tattn_affected_f1_a0h1_s2,affected,2,"typed attention over only the hardcoded affected nodes",configs/gnn_action_scoring/attention_stages/cas_hl_tattn_affected_f1_a0h1_s2.toml
-cas_hl_tattn_softprior_f1_a0h1_s0,soft_prior,0,"typed attention over all nodes with an affected-node score bonus",configs/gnn_action_scoring/attention_stages/cas_hl_tattn_softprior_f1_a0h1_s0.toml
-cas_hl_tattn_softprior_f1_a0h1_s1,soft_prior,1,"typed attention over all nodes with an affected-node score bonus",configs/gnn_action_scoring/attention_stages/cas_hl_tattn_softprior_f1_a0h1_s1.toml
-cas_hl_tattn_softprior_f1_a0h1_s2,soft_prior,2,"typed attention over all nodes with an affected-node score bonus",configs/gnn_action_scoring/attention_stages/cas_hl_tattn_softprior_f1_a0h1_s2.toml
-cas_hl_tattn_all_f1_a0h1_s0,all,0,"typed attention over all graph nodes without a physical prior",configs/gnn_action_scoring/attention_stages/cas_hl_tattn_all_f1_a0h1_s0.toml
-cas_hl_tattn_all_f1_a0h1_s1,all,1,"typed attention over all graph nodes without a physical prior",configs/gnn_action_scoring/attention_stages/cas_hl_tattn_all_f1_a0h1_s1.toml
-cas_hl_tattn_all_f1_a0h1_s2,all,2,"typed attention over all graph nodes without a physical prior",configs/gnn_action_scoring/attention_stages/cas_hl_tattn_all_f1_a0h1_s2.toml
+cas_hl_tattn_affected_f1_a0h0_s0,affected,0,"typed attention over only the hardcoded affected nodes",configs/gnn_action_scoring/attention_stages/cas_hl_tattn_affected_f1_a0h0_s0.toml
+cas_hl_tattn_affected_f1_a0h0_s1,affected,1,"typed attention over only the hardcoded affected nodes",configs/gnn_action_scoring/attention_stages/cas_hl_tattn_affected_f1_a0h0_s1.toml
+cas_hl_tattn_affected_f1_a0h0_s2,affected,2,"typed attention over only the hardcoded affected nodes",configs/gnn_action_scoring/attention_stages/cas_hl_tattn_affected_f1_a0h0_s2.toml
+cas_hl_tattn_softprior_f1_a0h0_s0,soft_prior,0,"typed attention over all nodes with an affected-node score bonus",configs/gnn_action_scoring/attention_stages/cas_hl_tattn_softprior_f1_a0h0_s0.toml
+cas_hl_tattn_softprior_f1_a0h0_s1,soft_prior,1,"typed attention over all nodes with an affected-node score bonus",configs/gnn_action_scoring/attention_stages/cas_hl_tattn_softprior_f1_a0h0_s1.toml
+cas_hl_tattn_softprior_f1_a0h0_s2,soft_prior,2,"typed attention over all nodes with an affected-node score bonus",configs/gnn_action_scoring/attention_stages/cas_hl_tattn_softprior_f1_a0h0_s2.toml
+cas_hl_tattn_all_f1_a0h0_s0,all,0,"typed attention over all graph nodes without a physical prior",configs/gnn_action_scoring/attention_stages/cas_hl_tattn_all_f1_a0h0_s0.toml
+cas_hl_tattn_all_f1_a0h0_s1,all,1,"typed attention over all graph nodes without a physical prior",configs/gnn_action_scoring/attention_stages/cas_hl_tattn_all_f1_a0h0_s1.toml
+cas_hl_tattn_all_f1_a0h0_s2,all,2,"typed attention over all graph nodes without a physical prior",configs/gnn_action_scoring/attention_stages/cas_hl_tattn_all_f1_a0h0_s2.toml
