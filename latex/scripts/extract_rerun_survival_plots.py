@@ -11,6 +11,31 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+RENAME_MAP = {
+    "best_000": "No Flat Concat",
+    "best_00": "Heavy GINE Baseline",
+    "best_01": "Opt. Critic Updates",
+    "best_02": "MLP Critic",
+    "best_03": "Unshared Actor",
+    "best_04": "Light GINE Encoder",
+    "best_05": "Zero Entropy Decay",
+    "best_06": "No Node-ID Embs",
+    "best_07": "GAT Message Passing",
+    "best_08": "Weighted GCN",
+    "best_09": "Light GINE (No Concat, MLP Critic)",
+    "best_10": "Light GINE (Concat, MLP Critic)",
+    "best_11": "No Initial Bias",
+    "best_12": "No Bias, Opt Critic",
+    "best_13": "Optimized Heavy GINE",
+    "best_14": "Optimized Light GINE",
+}
+
+def rename_trace(name: str) -> str:
+    for k in sorted(RENAME_MAP.keys(), key=len, reverse=True):
+        if name.startswith(k):
+            return name.replace(k, RENAME_MAP[k])
+    return name
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 NOTEBOOK = (
     REPO_ROOT
@@ -19,15 +44,12 @@ NOTEBOOK = (
     / "metrics"
     / "notebooks"
     / "episodic_survival"
-    / "rerun_episodic_survival_plots.ipynb"
+    / "baseline_episodic_survival_plots.ipynb"
 )
 OUT_DIR = REPO_ROOT / "latex" / "figures"
 
 FIGURES = {
     8: "rerun_gine_best00_vs_best10_14.png",
-    11: "rerun_a0_core_pairwise_comparisons.png",
-    12: "rerun_a0_core_all_curves.png",
-    14: "rerun_a0_bias_comparison.png",
 }
 
 HTML_FIGURES = {
@@ -35,9 +57,42 @@ HTML_FIGURES = {
     / "Topology_Task"
     / "outputs"
     / "wandb_figures"
-    / "gine_best_search2_baseline_comparisons.html": {
+    / "gine_best_search2_a0_baseline_editable_comparisons.html": {
         "filename": "gine_best_search2_baseline_comparisons.png",
-        "figsize": (12.8, 9.8),
+        "figsize": (8.5, 10.5),
+        "layout": (4, 3),
+    },
+    REPO_ROOT
+    / "Topology_Task"
+    / "outputs"
+    / "wandb_figures"
+    / "rerun_a0_core_all_curves_editable_cut.html": {
+        "filename": "rerun_a0_core_all_curves.png",
+        "figsize": (8.5, 4.8),
+    },
+    REPO_ROOT
+    / "Topology_Task"
+    / "outputs"
+    / "wandb_figures"
+    / "paper_mappo_discrete_baseline_vs_a0_baselines.html": {
+        "filename": "paper_mappo_discrete_baseline_vs_a0_baselines.png",
+        "figsize": (8.5, 4.8),
+    },
+    REPO_ROOT
+    / "Topology_Task"
+    / "outputs"
+    / "wandb_figures"
+    / "rerun_a0_core_pairwise_editable_comparisons_cut.html": {
+        "filename": "rerun_a0_core_pairwise_comparisons.png",
+        "figsize": (10.5, 3.4),
+    },
+    REPO_ROOT
+    / "Topology_Task"
+    / "outputs"
+    / "wandb_figures"
+    / "rerun_a0_opt_vs_bias05_bias07_editable_cut.html": {
+        "filename": "rerun_a0_bias_comparison.png",
+        "figsize": (8.5, 4.5),
     },
 }
 
@@ -143,13 +198,16 @@ def subplot_order(fig, axes_with_data: set[int]) -> tuple[list[int], int, int]:
     return order, rows, cols
 
 
-def render_figure(fig, out_path: Path, figsize: tuple[float, float] | None = None) -> None:
+def render_figure(fig, out_path: Path, figsize: tuple[float, float] | None = None, layout_override: tuple[int, int] | None = None) -> None:
     axes_with_data = {
         axis_number(trace.get("xaxis"))
         for trace in fig.get("data", [])
         if len(decode_array(trace.get("x"))) and len(decode_array(trace.get("y")))
     }
     order, rows, cols = subplot_order(fig, axes_with_data)
+
+    if layout_override:
+        rows, cols = layout_override
 
     if figsize is None:
         width = 11.5 if cols > 1 else 8.5
@@ -178,7 +236,7 @@ def render_figure(fig, out_path: Path, figsize: tuple[float, float] | None = Non
         if len(x) == 0 or len(y) == 0:
             continue
 
-        name = trace.get("name", "")
+        name = rename_trace(trace.get("name", ""))
         line = trace.get("line", {})
         color = line.get("color", "#333333")
         dash = line_style(line.get("dash"))
@@ -218,8 +276,7 @@ def render_figure(fig, out_path: Path, figsize: tuple[float, float] | None = Non
         ax.grid(True, color="#d9d9d9", linewidth=0.5, alpha=0.8)
         ax.legend(loc="best", fontsize=7, frameon=True)
 
-    figure.suptitle(fig.get("layout", {}).get("title", {}).get("text", ""), fontsize=12)
-    figure.tight_layout(rect=[0, 0, 1, 0.96])
+    figure.tight_layout()
     figure.savefig(out_path, dpi=220, bbox_inches="tight")
     plt.close(figure)
 
@@ -235,7 +292,7 @@ def collect_summary(fig):
             continue
         rows.append(
             {
-                "name": trace.get("name", ""),
+                "name": rename_trace(trace.get("name", "")),
                 "axis": axis_number(trace.get("xaxis")),
                 "final_step_m": float(x[-1]),
                 "final_survival": float(y[-1]),
@@ -254,14 +311,15 @@ def main() -> None:
         for output in notebook["cells"][cell_idx].get("outputs", []):
             fig = output.get("data", {}).get("application/vnd.plotly.v1+json") or fig
         if fig is None:
-            raise RuntimeError(f"No Plotly figure found in notebook cell {cell_idx}")
+            print(f"Skipping: No Plotly figure found in notebook cell {cell_idx}")
+            continue
         render_figure(fig, OUT_DIR / filename)
         summaries[filename] = collect_summary(fig)
 
     for html_path, spec in HTML_FIGURES.items():
         fig = extract_plotly_html_figure(html_path)
         filename = spec["filename"]
-        render_figure(fig, OUT_DIR / filename, figsize=spec.get("figsize"))
+        render_figure(fig, OUT_DIR / filename, figsize=spec.get("figsize"), layout_override=spec.get("layout"))
         summaries[filename] = collect_summary(fig)
 
     summary_path = OUT_DIR / "rerun_survival_summary.json"

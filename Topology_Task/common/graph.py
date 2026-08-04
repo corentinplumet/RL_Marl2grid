@@ -12,6 +12,23 @@ LINE_NODE_EDGE_DIRECTIONS = {
     "busbar_to_line",
 }
 
+# How voltage angles enter the graph. "node" keeps the absolute per-asset angle
+# on the nodes; "edge_diff" replaces it with the angle difference across each
+# transmission line.
+ANGLE_REPRESENTATIONS = {"node", "edge_diff"}
+NODE_ANGLE_FEATURES = ("gen_theta", "load_theta", "theta")
+EDGE_ANGLE_FEATURE = "theta_diff"
+
+
+def _validate_angle_representation(value: str) -> str:
+    representation = str(value).strip().lower()
+    if representation not in ANGLE_REPRESENTATIONS:
+        choices = ", ".join(sorted(ANGLE_REPRESENTATIONS))
+        raise ValueError(
+            f"Unsupported angle representation '{value}'. Use one of: {choices}."
+        )
+    return representation
+
 
 def _validate_edge_direction(value: str, allowed, option_name: str) -> str:
     direction = str(value).strip().lower()
@@ -68,6 +85,7 @@ class GridGraphBuilder:
         include_maintenance: bool = False,
         add_self_edges: bool = False,
         add_substation_edges: bool = False,
+        angle_representation: str = "node",
     ) -> None:
         self.g2op_env = g2op_env
         self.observation_domains = {
@@ -77,8 +95,23 @@ class GridGraphBuilder:
         self.include_neighbors = include_neighbors
         self.add_self_edges = bool(add_self_edges)
         self.add_substation_edges = bool(add_substation_edges)
+        self.angle_representation = _validate_angle_representation(
+            angle_representation
+        )
         self.node_features = list(self.BASE_NODE_FEATURES)
         self.edge_features = list(self.BASE_EDGE_FEATURES)
+        if self.angle_representation == "edge_diff":
+            # An absolute voltage angle is measured against whichever bus is
+            # slack, so its level is grid-specific while only differences carry
+            # physical meaning. Moving the angle onto the lines makes it
+            # gauge-invariant, and dense: every line has two ends, whereas a
+            # busbar only has an angle when an asset is attached to it.
+            self.node_features = [
+                name
+                for name in self.node_features
+                if name not in NODE_ANGLE_FEATURES
+            ]
+            self.edge_features = self.edge_features + [EDGE_ANGLE_FEATURE]
         if include_maintenance:
             self.edge_features += self.MAINTENANCE_EDGE_FEATURES
 
@@ -276,10 +309,12 @@ class GridGraphBuilder:
         col = {name: idx for idx, name in enumerate(self.node_features)}
 
         self._put_bus_asset_feature(features, col["gen_p"], obs, self.gen_to_sub, self.gen_pos, self._obs_array(obs, "gen_p"), mode="sum")
-        self._put_bus_asset_feature(features, col["gen_theta"], obs, self.gen_to_sub, self.gen_pos, self._obs_array(obs, "gen_theta"), mode="mean")
+        if "gen_theta" in col:
+            self._put_bus_asset_feature(features, col["gen_theta"], obs, self.gen_to_sub, self.gen_pos, self._obs_array(obs, "gen_theta"), mode="mean")
 
         self._put_bus_asset_feature(features, col["load_p"], obs, self.load_to_sub, self.load_pos, self._obs_array(obs, "load_p"), mode="sum")
-        self._put_bus_asset_feature(features, col["load_theta"], obs, self.load_to_sub, self.load_pos, self._obs_array(obs, "load_theta"), mode="mean")
+        if "load_theta" in col:
+            self._put_bus_asset_feature(features, col["load_theta"], obs, self.load_to_sub, self.load_pos, self._obs_array(obs, "load_theta"), mode="mean")
 
         sub_cooldown = self._obs_array(obs, "time_before_cooldown_sub", expected=self.n_sub)
         if sub_cooldown is not None:
@@ -342,10 +377,27 @@ class GridGraphBuilder:
     def _line_feature_matrix(self, obs):
         features = np.zeros((self.n_line, self.edge_dim), dtype=np.float32)
         for idx, name in enumerate(self.edge_features):
-            values = self._obs_array(obs, name, expected=self.n_line)
+            if name == EDGE_ANGLE_FEATURE:
+                values = self._line_theta_difference(obs)
+            else:
+                values = self._obs_array(obs, name, expected=self.n_line)
             if values is not None:
                 features[:, idx] = values
         return features
+
+    def _line_theta_difference(self, obs):
+        """Voltage angle drop across each line, origin minus extremity.
+
+        Unlike the per-asset angles this is defined on every line and does not
+        depend on the slack bus the angles are referenced to.
+        """
+        theta_or = self._obs_array(obs, "theta_or", expected=self.n_line)
+        theta_ex = self._obs_array(obs, "theta_ex", expected=self.n_line)
+        if theta_or is None or theta_ex is None:
+            return None
+        return np.asarray(theta_or, dtype=np.float32) - np.asarray(
+            theta_ex, dtype=np.float32
+        )
 
     def _put_bus_asset_feature(self, features, col, obs, mapping, topo_pos, values, mode="sum"):
         if values is None or len(mapping) == 0 or len(values) != len(mapping):
@@ -499,6 +551,7 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
         add_substation_edges: bool = False,
         generator_edge_direction: str = "bidirectional",
         load_edge_direction: str = "bidirectional",
+        angle_representation: str = "node",
     ) -> None:
         # Initialize the shared Grid2Op metadata and helper methods first. The
         # bus-only specs produced by the parent are immediately replaced below.
@@ -509,6 +562,7 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
             include_maintenance=include_maintenance,
             add_self_edges=add_self_edges,
             add_substation_edges=add_substation_edges,
+            angle_representation=angle_representation,
         )
         self.n_gen = int(getattr(g2op_env, "n_gen", len(self.gen_to_sub)))
         self.n_load = int(getattr(g2op_env, "n_load", len(self.load_to_sub)))
@@ -523,6 +577,14 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
             "load edge direction",
         )
         self.node_features = list(self.HETERO_NODE_FEATURES)
+        if self.angle_representation == "edge_diff":
+            self.node_features = [
+                name
+                for name in self.node_features
+                if name not in NODE_ANGLE_FEATURES
+            ]
+        # theta_diff was appended to the parent's edge features, so it rides
+        # along with the rest of the physical line channels.
         self.physical_edge_features = list(self.edge_features)
         self.relation_edge_features = [
             f"relation_{name}" for name in self.EDGE_TYPE_NAMES
@@ -888,7 +950,7 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
         features[rows, col["connected"]] = connected.astype(np.float32)
         if p_values is not None:
             features[rows[connected], col["p"]] = p_values[asset_ids[connected]]
-        if theta_values is not None:
+        if theta_values is not None and "theta" in col:
             features[rows[connected], col["theta"]] = theta_values[
                 asset_ids[connected]
             ]
@@ -1026,7 +1088,16 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
         generator_edge_direction: str = "bidirectional",
         load_edge_direction: str = "bidirectional",
         line_node_edge_direction: str = "bidirectional",
+        angle_representation: str = "node",
     ) -> None:
+        if _validate_angle_representation(angle_representation) != "node":
+            # This builder puts each line on its own node, so an angle drop is
+            # a node attribute here rather than an edge one. Supporting it
+            # needs a different placement than the two graph types above.
+            raise ValueError(
+                "angle_representation='edge_diff' is not implemented for the "
+                "heterogeneous line-node graph."
+            )
         super().__init__(
             g2op_env,
             observation_domains,
@@ -1036,6 +1107,7 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
             add_substation_edges=add_substation_edges,
             generator_edge_direction=generator_edge_direction,
             load_edge_direction=load_edge_direction,
+            angle_representation=angle_representation,
         )
         self.line_node_edge_direction = _validate_edge_direction(
             line_node_edge_direction,

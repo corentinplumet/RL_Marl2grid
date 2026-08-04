@@ -17,6 +17,7 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{float}
+\usepackage{soul}
 \usepackage[backend=biber,style=ieee]{biblatex}
 
 \addbibresource{references.bib}
@@ -70,6 +71,7 @@
 \input{chapters/04_methods}
 \input{chapters/05_experiments}
 \input{chapters/06_sparse_control}
+\input{chapters/07_wcci_transfer}
 
 \appendix
 \chapter{GINE and GAT Graph-Actor Architectures}
@@ -426,6 +428,108 @@ and the neighbors provide context only; the centralized state graph always
 contains the full grid. In the explicit-line schema a line node counts as
 controlled when either of its endpoints is controlled. The same controlled-domain
 and one-hop rules apply to all three schemas.}
+
+\chapter{Experiment Configurations}
+\label{app:experiment-configurations}
+
+This appendix provides the complete run configurations for the GINE encoder and heavy GINE ablations.
+
+\begin{landscape}
+\begin{table}[p]
+  \centering
+  \scriptsize
+  \caption{GINE rerun configuration summary. The reference run is
+  \texttt{Heavy GINE Baseline}.}
+  \label{tab:gine-run-configurations}
+  \setlength{\tabcolsep}{2.4pt}
+  \renewcommand{\arraystretch}{1.12}
+  \begin{tabular}{L{0.18\linewidth}L{0.075\linewidth}L{0.065\linewidth}L{0.095\linewidth}L{0.050\linewidth}L{0.060\linewidth}L{0.050\linewidth}L{0.065\linewidth}L{0.070\linewidth}L{0.19\linewidth}}
+    \toprule
+    Run & Actor/critic encoder & GNN hidden/layers & Actor/critic heads &
+    Concat flat & Edge pre-enc. & Entropy & Init action-0 & Opt. critic &
+    Difference from \texttt{Heavy GINE Baseline} \\
+    \midrule
+    \texttt{Heavy GINE Baseline} & \texttt{gnn} / \texttt{gnn} & 128 / 2 &
+    \(3\times256\) / \(3\times256\) & true & true & 0.02 & 0.7 & false &
+    Baseline: heavy concat-flat GINE actor, GNN critic, and legacy critic updates \\
+    \texttt{Light GINE (Concat, MLP Critic)} & \texttt{gnn} / \texttt{mlp} & 64 / 1 &
+    \(2\times128\) / \(2\times128\) & true & false & 0.02 & 0.7 & true &
+    Light GINE actor, MLP critic, smaller heads, no edge pre-encoder, optimized critic updates \\
+    \texttt{Heavy GINE (No Bias)} & \texttt{gnn} / \texttt{gnn} & 128 / 2 &
+    \(3\times256\) / \(3\times256\) & true & true & 0.02 & 0.0 & false &
+    Bias ablation: same as baseline, but the initial do-nothing prior is 0.0 \\
+    \texttt{No Bias, Opt Critic} & \texttt{gnn} / \texttt{gnn} & 128 / 2 &
+    \(3\times256\) / \(3\times256\) & true & true & 0.02 & 0.0 & true &
+    Bias 0.0 plus optimized critic updates; otherwise heavy concat-flat GINE with GNN critic \\
+    \texttt{Optimized Heavy GINE} & \texttt{gnn} / \texttt{gnn} & 128 / 2 &
+    \(3\times256\) / \(3\times256\) & true & true & 0.01 & 0.0 & true &
+    Optimized heavy GINE: bias 0.0, lower entropy 0.01, optimized critic updates \\
+    \texttt{Optimized Light GINE} & \texttt{gnn} / \texttt{mlp} & 64 / 1 &
+    \(2\times128\) / \(2\times128\) & false & false & 0.01 & 0.0 & true &
+    Light optimized GINE: MLP critic, no concat-flat, lower entropy 0.01, bias 0.0, optimized critic updates \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+\end{landscape}
+
+\begin{landscape}
+\begin{table}[p]
+  \centering
+  \tiny
+  \caption{Heavy-GINE parameter comparison from
+  \texttt{configs/gine\_s0\_s1\_s2}.}
+  \label{tab:heavy-gine-configurations}
+  \setlength{\tabcolsep}{2pt}
+  \renewcommand{\arraystretch}{1.12}
+  \begin{tabular}{L{0.10\linewidth}L{0.18\linewidth}L{0.045\linewidth}L{0.060\linewidth}L{0.050\linewidth}L{0.075\linewidth}L{0.045\linewidth}L{0.045\linewidth}L{0.045\linewidth}L{0.045\linewidth}L{0.060\linewidth}L{0.045\linewidth}L{0.055\linewidth}}
+    \toprule
+    Run & Main change from baseline & GNN & GNN size & Critic &
+    Actor/critic heads & Concat & Shared & Edge pre. & Node ID & Entropy &
+    Init action-0 & Opt. critic \\
+    \midrule
+    \texttt{No Flat Concat} & Removes flat-observation concatenation &
+    \texttt{gine} & \(2\times128\) & \texttt{gnn} & \(3\times256\) / \(3\times256\) &
+    no & yes & yes & yes & 0.02--0.02 & 0.7 & no \\
+    \texttt{Heavy GINE Baseline} & Reference: heavy concat-flat GINE with GNN critic &
+    \texttt{gine} & \(2\times128\) & \texttt{gnn} & \(3\times256\) / \(3\times256\) &
+    yes & yes & yes & yes & 0.02--0.02 & 0.7 & no \\
+    \texttt{Opt. Critic Updates} & Enables optimized critic updates &
+    \texttt{gine} & \(2\times128\) & \texttt{gnn} & \(3\times256\) / \(3\times256\) &
+    yes & yes & yes & yes & 0.02--0.02 & 0.7 & yes \\
+    \texttt{MLP Critic} & Replaces the GNN critic with an MLP critic &
+    \texttt{gine} & \(2\times128\) & \texttt{mlp} & \(3\times256\) / \(3\times256\) &
+    yes & yes & yes & yes & 0.02--0.02 & 0.7 & no \\
+    \texttt{Unshared Actor} & Uses non-shared actor GNN weights &
+    \texttt{gine} & \(2\times128\) & \texttt{gnn} & \(3\times256\) / \(3\times256\) &
+    yes & no & yes & yes & 0.02--0.02 & 0.7 & no \\
+    \texttt{Light GINE Encoder} & Uses a lighter GINE encoder &
+    \texttt{gine} & \(1\times64\) & \texttt{gnn} & \(3\times256\) / \(3\times256\) &
+    yes & yes & yes & yes & 0.02--0.02 & 0.7 & no \\
+    \texttt{Zero Entropy Decay} & Decays entropy from 0.02 to 0.0 &
+    \texttt{gine} & \(2\times128\) & \texttt{gnn} & \(3\times256\) / \(3\times256\) &
+    yes & yes & yes & yes & 0.02--0.00 & 0.7 & no \\
+    \texttt{No Node-ID Embs} & Removes learned node-ID embeddings &
+    \texttt{gine} & \(2\times128\) & \texttt{gnn} & \(3\times256\) / \(3\times256\) &
+    yes & yes & yes & no & 0.02--0.02 & 0.7 & no \\
+    \texttt{GAT Message Passing} & Replaces GINE with GAT message passing &
+    \texttt{gat} & \(2\times128\) & \texttt{gnn} & \(3\times256\) / \(3\times256\) &
+    yes & yes & yes & yes & 0.02--0.02 & 0.7 & no \\
+    \texttt{Weighted GCN} & Replaces GINE with weighted GCN message passing &
+    \texttt{gcn} & \(2\times128\) & \texttt{gnn} & \(3\times256\) / \(3\times256\) &
+    yes & yes & yes & yes & 0.02--0.02 & 0.7 & no \\
+    \texttt{Light GINE (No Concat, MLP Critic)} & Light no-concat GINE with MLP critic and optimized critic updates &
+    \texttt{gine} & \(1\times64\) & \texttt{mlp} & \(2\times128\) / \(2\times128\) &
+    no & yes & no & yes & 0.02--0.02 & 0.7 & yes \\
+    \texttt{Light GINE (Concat, MLP Critic)} & Light concat-flat GINE with MLP critic and optimized critic updates &
+    \texttt{gine} & \(1\times64\) & \texttt{mlp} & \(2\times128\) / \(2\times128\) &
+    yes & yes & no & yes & 0.02--0.02 & 0.7 & yes \\
+    \texttt{No Initial Bias} & Removes the initial do-nothing bias &
+    \texttt{gine} & \(2\times128\) & \texttt{gnn} & \(3\times256\) / \(3\times256\) &
+    yes & yes & yes & yes & 0.02--0.02 & 0.0 & no \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+\end{landscape}
 
 \chapter{Full-Test Checkpoint Registry}
 \label{app:full-test-checkpoint-registry}

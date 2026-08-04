@@ -113,7 +113,7 @@ evaluated on.
 \begin{itemize}
   \item MAPPO baseline: actor, critic, rollout collection, PPO objective, and
   centralized training assumptions.
-  \item Baseline MLP agents and the A0 family of reruns.
+  \item Baseline MLP agents and the MLP baseline family of reruns.
   \item Graph-encoder agents: bus graph construction, GINE/GAT/GCN variants,
   node and edge pre-encoders, graph readout, and flat-feature concatenation.
   \item Action heads: the action-index MLP head and the candidate-action head
@@ -141,7 +141,7 @@ learn.
   \item Action-head ablation: candidate-action scoring versus the action-index
   head on the explicit-line graph, on \texttt{bus14} first and then on the
   reduced WCCI action space.
-  \item A0 rerun ablations: optimized critic updates, smaller MLP, reward
+  \item MLP baseline rerun ablations: optimized critic updates, smaller MLP, reward
   normalization, and do-nothing initialization bias.
   \item Sparse-control ablations: fixed penalty, global-safe weighting,
   local-safe adaptive budget, rho-threshold sensitivity, and budget target
@@ -154,7 +154,7 @@ learn.
 \textbf{Figures and tables to prepare.}
 \begin{itemize}
   \item Table of run families and what each ablation changes.
-  \item Survival curves for baseline, GNN, A0, and sparse-control comparisons.
+  \item Survival curves for paper baseline, GNN, MLP baseline, and sparse-control comparisons.
   \item Action-frequency plots: action 0 fraction, any non-idle action, and
   multi-agent simultaneous interventions.
   \item Summary table with final survival, peak survival, and action sparsity.

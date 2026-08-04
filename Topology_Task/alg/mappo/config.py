@@ -832,6 +832,20 @@ def get_alg_args() -> Namespace:
         ),
     )
     parser.add_argument(
+        "--gnn-angle-representation",
+        type=str,
+        default="node",
+        choices=["node", "edge_diff"],
+        help=(
+            "How voltage angles enter the graph. 'node' keeps the absolute "
+            "per-asset angle on the nodes. 'edge_diff' drops those channels "
+            "and adds the angle drop across each line, which is gauge "
+            "invariant and defined on every line rather than only where an "
+            "asset is attached. Not supported by "
+            "--gnn-graph-type=heterogeneous_line."
+        ),
+    )
+    parser.add_argument(
         "--tokenizer-type",
         type=str,
         default="group",

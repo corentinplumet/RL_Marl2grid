@@ -1063,6 +1063,9 @@ class MAEnvWrapper(MAEnv):
                 line_node_edge_direction=getattr(
                     args, "gnn_line_node_edge_direction", "bidirectional"
                 ),
+                angle_representation=getattr(
+                    args, "gnn_angle_representation", "node"
+                ),
             )
             self.graph_specs = self.graph_builder.specs
             self.graph_feature_processor = GraphFeatureProcessor(

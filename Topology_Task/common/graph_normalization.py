@@ -26,6 +26,7 @@ class GraphFeatureProcessor:
         "gen_theta",
         "load_theta",
         "theta",
+        "theta_diff",
         "time_before_cooldown_sub",
         "timestep_overflow",
         "time_before_cooldown_line",
@@ -196,6 +197,7 @@ class GraphFeatureProcessor:
             "gen_theta": self.scale_factors["angle_degree"],
             "load_theta": self.scale_factors["angle_degree"],
             "theta": self.scale_factors["angle_degree"],
+            "theta_diff": self.scale_factors["angle_degree"],
             "time_before_cooldown_sub": self.scale_factors[
                 "substation_cooldown"
             ],
