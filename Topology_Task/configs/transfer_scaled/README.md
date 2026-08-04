@@ -34,7 +34,7 @@ screening config from `gnn_graph_screening` with only the two input settings and
 the run name changed, so it stays comparable to the original screening result.
 
 ```bash
-Topology_Task/configs/transfer_scaled/sources/launch_izar.sh
+Topology_Task/configs/transfer_scaled/sources/launch_jed.sh
 ```
 
 ### Stage 2 — 24 WCCI arms
@@ -48,12 +48,28 @@ Topology_Task/configs/transfer_scaled/check_sources.sh
 ```
 
 ```bash
-Topology_Task/configs/transfer_scaled/wcci/launch_izar.sh
+Topology_Task/configs/transfer_scaled/wcci/launch_jed.sh
 ```
 
-Both launchers take a substring filter, so `launch_izar.sh _s0` runs seed 0 only
-— 4 jobs in stage 1, 8 in stage 2. Worth doing first: 36 runs is a lot of
+Each stage has a `launch_jed.sh` and a `launch_izar.sh`, differing only in the
+job script. Both take a substring filter, so `launch_jed.sh _s0` runs seed 0
+only — 4 jobs in stage 1, 8 in stage 2. Worth doing first: 36 runs is a lot of
 cluster time to commit before seeing a curve.
+
+## Wall clock
+
+`job_jed.sh` requests `3-12:00:00`, i.e. 5040 minutes. Every config here sets
+`time_limit = 4980`, leaving an hour for the run to stop and write its final
+checkpoint instead of being killed mid-write. The screening configs these
+derive from used 2880 (heterogeneous) and 5760 (bus), the latter of which
+overruns jed outright.
+
+`total_timesteps` stays at 15M, and that is what makes a source comparable to
+its screening counterpart — the wall clock is only a guard. If a run stops at
+4980 minutes short of 15M steps, resume it with
+`scripts/prepare_resume_runs.py` so all twelve sources end at the same step
+count before stage 2 starts. `job_izar.sh` requests `3-00:12:00` (4332
+minutes), so the same configs need a resume more often there.
 
 ## What the pairing buys
 

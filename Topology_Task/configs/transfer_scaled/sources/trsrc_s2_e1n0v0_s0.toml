@@ -27,7 +27,7 @@ XDG_CACHE_HOME = "{run_dir}/cache"
 
 [args]
 # Paired bus14 screening protocol
-time_limit = 5760
+time_limit = 4980
 checkpoint = true
 alg = "MAPPO"
 seed = 0

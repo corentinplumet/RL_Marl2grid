@@ -26,7 +26,7 @@ XDG_CACHE_HOME = "{run_dir}/cache"
 
 [args]
 # Paired transfer protocol
-time_limit = 5040
+time_limit = 4980
 checkpoint = true
 alg = "MAPPO"
 seed = 2
