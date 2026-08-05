@@ -180,7 +180,7 @@ class LineNodeGraphAngleRepresentationTest(unittest.TestCase):
 
 class FactoryTest(unittest.TestCase):
     def test_option_reaches_each_supported_builder(self):
-        for graph_type, expected in (("bus", 5), ("heterogeneous", 12)):
+        for graph_type, expected in (("bus", 5), ("heterogeneous", 11)):
             builder = make_grid_graph_builder(
                 graph_type,
                 MockGridEnv(),

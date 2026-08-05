@@ -1066,6 +1066,9 @@ class MAEnvWrapper(MAEnv):
                 angle_representation=getattr(
                     args, "gnn_angle_representation", "node"
                 ),
+                include_legacy_self_relation_feature=(
+                    int(getattr(args, "gnn_edge_feature_schema_version", 1)) < 2
+                ),
             )
             self.graph_specs = self.graph_builder.specs
             self.graph_feature_processor = GraphFeatureProcessor(

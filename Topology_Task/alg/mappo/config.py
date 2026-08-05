@@ -646,6 +646,17 @@ def get_alg_args() -> Namespace:
         ),
     )
     parser.add_argument(
+        "--gnn-edge-feature-schema-version",
+        type=int,
+        choices=[1, 2],
+        default=2,
+        help=(
+            "Version 2 removes the unused relation_self input column from "
+            "heterogeneous edge features. Version 1 is retained only for "
+            "loading checkpoints trained with the former feature width."
+        ),
+    )
+    parser.add_argument(
         "--sparse-gt-add-substation-edges",
         type=str2bool,
         default=None,

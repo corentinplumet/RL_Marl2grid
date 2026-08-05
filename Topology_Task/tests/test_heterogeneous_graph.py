@@ -64,7 +64,8 @@ class HeterogeneousGridGraphBuilderTest(unittest.TestCase):
         self.assertEqual(len(spec["node_ids"]), 6)
         self.assertEqual(spec["edge_index"].shape, (2, 16))
         self.assertEqual(spec["node_dim"], 8)
-        self.assertEqual(spec["edge_dim"], 11)
+        self.assertEqual(spec["edge_dim"], 10)
+        self.assertNotIn("relation_self", spec["edge_feature_names"])
         np.testing.assert_array_equal(
             np.bincount(spec["node_type"], minlength=3), [4, 1, 1]
         )
@@ -100,12 +101,25 @@ class HeterogeneousGridGraphBuilderTest(unittest.TestCase):
         active_rows = np.nonzero(graph["edge_mask"])[0]
         for row in active_rows:
             edge_type = int(spec["edge_type"][row])
+            relation_column = self.builder.relation_edge_columns[edge_type]
             self.assertEqual(
-                graph["edge_features"][row, relation_offset + edge_type], 1.0
+                graph["edge_features"][row, relation_offset + relation_column],
+                1.0,
             )
         self.assertTrue(
             np.all(graph["edge_features"][graph["edge_mask"] == 0] == 0.0)
         )
+
+    def test_legacy_schema_only_restores_the_old_checkpoint_width(self):
+        builder = HeterogeneousGridGraphBuilder(
+            MockGridEnv(),
+            {"agent_0": [0]},
+            include_neighbors=True,
+            include_legacy_self_relation_feature=True,
+        )
+        spec = builder.specs["state"]
+        self.assertEqual(spec["edge_dim"], 11)
+        self.assertIn("relation_self", spec["edge_feature_names"])
 
     def test_topology_change_updates_masks_without_changing_shapes(self):
         original = self.builder.build(make_obs())["state"]
@@ -336,6 +350,10 @@ class HeterogeneousGridGraphBuilderTest(unittest.TestCase):
         self.assertNotIsInstance(bus_builder, HeterogeneousGridGraphBuilder)
         self.assertIsInstance(hetero_builder, HeterogeneousGridGraphBuilder)
         self.assertIsInstance(line_builder, HeterogeneousLineGraphBuilder)
+        for builder in (bus_builder, hetero_builder, line_builder):
+            self.assertNotIn(
+                "relation_self", builder.specs["state"]["edge_feature_names"]
+            )
 
 
 class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
@@ -354,8 +372,9 @@ class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
         self.assertEqual(len(spec["node_ids"]), 7)
         self.assertEqual(spec["edge_index"].shape, (2, 16))
         self.assertEqual(spec["node_dim"], 13)
-        self.assertEqual(spec["edge_dim"], 10)
+        self.assertEqual(spec["edge_dim"], 9)
         self.assertNotIn("rho", spec["edge_feature_names"])
+        self.assertNotIn("relation_self", spec["edge_feature_names"])
         np.testing.assert_array_equal(
             np.bincount(spec["node_type"], minlength=4), [4, 1, 1, 1]
         )
@@ -399,8 +418,10 @@ class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
         relation_offset = len(self.builder.physical_edge_features)
         for row in np.nonzero(graph["edge_mask"])[0]:
             edge_type = int(spec["edge_type"][row])
+            relation_column = self.builder.relation_edge_columns[edge_type]
             self.assertEqual(
-                graph["edge_features"][row, relation_offset + edge_type], 1.0
+                graph["edge_features"][row, relation_offset + relation_column],
+                1.0,
             )
             self.assertEqual(float(graph["edge_features"][row].sum()), 1.0)
         self.assertTrue(

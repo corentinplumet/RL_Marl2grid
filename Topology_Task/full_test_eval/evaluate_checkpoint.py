@@ -49,6 +49,9 @@ def _merge_missing_defaults(args: Namespace) -> Namespace:
     from alg.mappo.config import get_alg_args
     from env.config import get_env_args
 
+    has_edge_feature_schema_version = hasattr(
+        args, "gnn_edge_feature_schema_version"
+    )
     defaults: Dict[str, Any] = {
         "alg": "MAPPO",
         "seed": 0,
@@ -68,6 +71,11 @@ def _merge_missing_defaults(args: Namespace) -> Namespace:
     for key, value in defaults.items():
         if not hasattr(args, key):
             setattr(args, key, value)
+    if not has_edge_feature_schema_version:
+        # Checkpoints created before schema v2 were trained with the obsolete
+        # relation_self input column. Rebuild their original input width so the
+        # saved weights remain exactly loadable.
+        args.gnn_edge_feature_schema_version = 1
     return args
 
 

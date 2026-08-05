@@ -552,6 +552,7 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
         generator_edge_direction: str = "bidirectional",
         load_edge_direction: str = "bidirectional",
         angle_representation: str = "node",
+        include_legacy_self_relation_feature: bool = False,
     ) -> None:
         # Initialize the shared Grid2Op metadata and helper methods first. The
         # bus-only specs produced by the parent are immediately replaced below.
@@ -576,6 +577,13 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
             ASSET_EDGE_DIRECTIONS,
             "load edge direction",
         )
+        # Explicit self edges are not part of the GINE graph schemas used by
+        # the experiments. Older checkpoints nevertheless allocated an
+        # always-zero ``relation_self`` input column. Keep that obsolete width
+        # only when reconstructing one of those checkpoints.
+        self.include_legacy_self_relation_feature = bool(
+            include_legacy_self_relation_feature
+        )
         self.node_features = list(self.HETERO_NODE_FEATURES)
         if self.angle_representation == "edge_diff":
             self.node_features = [
@@ -586,9 +594,18 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
         # theta_diff was appended to the parent's edge features, so it rides
         # along with the rest of the physical line channels.
         self.physical_edge_features = list(self.edge_features)
+        self.relation_edge_types = {
+            edge_type: name
+            for name, edge_type in self.EDGE_TYPE_NAMES.items()
+            if name != "self" or self.include_legacy_self_relation_feature
+        }
         self.relation_edge_features = [
-            f"relation_{name}" for name in self.EDGE_TYPE_NAMES
+            f"relation_{name}" for name in self.relation_edge_types.values()
         ]
+        self.relation_edge_columns = {
+            edge_type: column
+            for column, edge_type in enumerate(self.relation_edge_types)
+        }
         self.edge_features = (
             self.physical_edge_features + self.relation_edge_features
         )
@@ -962,10 +979,9 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
         edge_type = spec["edge_type"]
 
         relation_offset = len(self.physical_edge_features)
-        if n_edges > 0:
-            edge_features[
-                np.arange(n_edges), relation_offset + edge_type
-            ] = 1.0
+        for edge_type_id, relation_column in self.relation_edge_columns.items():
+            rows = np.nonzero(edge_type == edge_type_id)[0]
+            edge_features[rows, relation_offset + relation_column] = 1.0
 
         physical = spec["edge_line_ids"] >= 0
         if np.any(physical):
@@ -1089,6 +1105,7 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
         load_edge_direction: str = "bidirectional",
         line_node_edge_direction: str = "bidirectional",
         angle_representation: str = "node",
+        include_legacy_self_relation_feature: bool = False,
     ) -> None:
         if _validate_angle_representation(angle_representation) != "node":
             # This builder puts each line on its own node, so an angle drop is
@@ -1108,6 +1125,9 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
             generator_edge_direction=generator_edge_direction,
             load_edge_direction=load_edge_direction,
             angle_representation=angle_representation,
+            include_legacy_self_relation_feature=(
+                include_legacy_self_relation_feature
+            ),
         )
         self.line_node_edge_direction = _validate_edge_direction(
             line_node_edge_direction,
@@ -1123,7 +1143,7 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
         # transmission-line node. Attachment edges encode only their relation.
         self.physical_edge_features = []
         self.relation_edge_features = [
-            f"relation_{name}" for name in self.EDGE_TYPE_NAMES
+            f"relation_{name}" for name in self.relation_edge_types.values()
         ]
         self.edge_features = (
             self.physical_edge_features + self.relation_edge_features
@@ -1577,10 +1597,9 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
         edge_type = spec["edge_type"]
 
         relation_offset = len(self.physical_edge_features)
-        if n_edges > 0:
-            edge_features[
-                np.arange(n_edges), relation_offset + edge_type
-            ] = 1.0
+        for edge_type_id, relation_column in self.relation_edge_columns.items():
+            rows = np.nonzero(edge_type == edge_type_id)[0]
+            edge_features[rows, relation_offset + relation_column] = 1.0
 
         line_edges = spec["edge_line_ids"] >= 0
         if np.any(line_edges):
@@ -1632,6 +1651,7 @@ def make_grid_graph_builder(
         kwargs.pop("generator_edge_direction", None)
         kwargs.pop("load_edge_direction", None)
         kwargs.pop("line_node_edge_direction", None)
+        kwargs.pop("include_legacy_self_relation_feature", None)
     elif graph_type in {"heterogeneous", "hetero"}:
         builder_cls = HeterogeneousGridGraphBuilder
         kwargs.pop("line_node_edge_direction", None)

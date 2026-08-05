@@ -359,6 +359,7 @@ class GraphEncoder(_VirtualNodeEncoderBase):
         if self.readout_aggr not in {"mean", "sum", "max", "virtual_node"}:
             raise ValueError(f"Unsupported GNN readout aggregation: {readout_aggr}")
         self.edge_dim = int(graph_spec["edge_dim"])
+        self.edge_feature_names = list(graph_spec.get("edge_feature_names", []))
         self.gcn_edge_weight_feature = str(gcn_edge_weight_feature).lower()
         self.gcn_edge_weight_idx = self._resolve_gcn_edge_weight_idx(graph_spec)
         self.register_buffer("edge_index", th.tensor(graph_spec["edge_index"], dtype=th.long))
@@ -827,6 +828,7 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
             )
 
         self.edge_dim = int(graph_spec["edge_dim"])
+        self.edge_feature_names = list(graph_spec.get("edge_feature_names", []))
         self.base_n_edge_types = int(graph_spec.get("n_edge_types", 3))
         self.substation_edge_type = (
             self.base_n_edge_types if add_substation_nodes else None

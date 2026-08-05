@@ -91,6 +91,38 @@ def _source_encoder_state(record: Dict[str, Any], path: str) -> Dict[str, th.Ten
     return state
 
 
+def _drop_legacy_relation_self_column(
+    graph_encoder: nn.Module,
+    source_tensor: th.Tensor,
+    target_tensor: th.Tensor,
+) -> Optional[th.Tensor]:
+    """Migrate an old edge-input weight whose removed input was always zero."""
+    feature_names = list(getattr(graph_encoder, "edge_feature_names", []))
+    if "relation_self" in feature_names:
+        return None
+    relation_columns = [
+        idx for idx, name in enumerate(feature_names) if name.startswith("relation_")
+    ]
+    if not relation_columns or source_tensor.ndim != 2 or target_tensor.ndim != 2:
+        return None
+    removed_column = relation_columns[0]
+    edge_dim = int(getattr(graph_encoder, "edge_dim", -1))
+    if (
+        target_tensor.shape[1] != edge_dim
+        or source_tensor.shape[0] != target_tensor.shape[0]
+        or source_tensor.shape[1] != target_tensor.shape[1] + 1
+        or removed_column >= source_tensor.shape[1]
+    ):
+        return None
+    return th.cat(
+        [
+            source_tensor[:, :removed_column],
+            source_tensor[:, removed_column + 1 :],
+        ],
+        dim=1,
+    )
+
+
 def freeze_graph_encoders(actors: Dict[str, nn.Module]) -> Dict[str, Any]:
     """Stop the actor graph encoders from requiring gradients.
 
@@ -158,6 +190,7 @@ def load_encoder_from_checkpoint(
 
     loaded_params: List[str] = []
     skipped_buffers: List[str] = []
+    migrated_legacy_self_columns = 0
     for agent_id, graph_encoder in targets:
         target_state = graph_encoder.state_dict()
         param_names = {name for name, _ in graph_encoder.named_parameters()}
@@ -169,8 +202,14 @@ def load_encoder_from_checkpoint(
                 continue
             source_tensor = source_state[name]
             if tuple(source_tensor.shape) != tuple(target_tensor.shape):
-                shape_mismatch.append(name)
-                continue
+                migrated_tensor = _drop_legacy_relation_self_column(
+                    graph_encoder, source_tensor, target_tensor
+                )
+                if migrated_tensor is None:
+                    shape_mismatch.append(name)
+                    continue
+                source_tensor = migrated_tensor
+                migrated_legacy_self_columns += 1
             transferable[name] = source_tensor
 
         # Grid-shaped buffers are expected to differ between the source and
@@ -223,6 +262,9 @@ def load_encoder_from_checkpoint(
         "checkpoint": path,
         "encoders": len(targets),
         "loaded_parameters": len(loaded_params),
+        "migrated_legacy_relation_self_weights": int(
+            migrated_legacy_self_columns
+        ),
         "skipped_topology_buffers": skipped_buffers,
         "frozen": bool(freeze),
         "frozen_parameter_count": int(n_frozen),

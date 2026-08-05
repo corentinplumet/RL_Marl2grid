@@ -212,7 +212,7 @@ The following subsections define the three schemas.
 \label{subsec:busbar-representation}
 
 The \texttt{bus} schema is the compact busbar representation. Busbars are the
-only nodes, active transmission lines form the graph backbone, and generator and
+only nodes, active transmission lines form the graph edges, and generator and
 load quantities are aggregated into their currently assigned busbars.
 
 \begin{figure}[htbp]
@@ -273,9 +273,8 @@ the identities and counts of individual generators and loads.
 \subsubsection{Relations and edge features}
 \label{subsec:graph-line-edge-features}
 
-The busbar schema instantiates Equation~\ref{eq:candidate-line-edges} directly:
-its only physical relations are the busbar-to-busbar candidates of a
-transmission line. The dynamic attributes copied onto active physical-line edges are given in
+The only physical relations (edges) of the busbar schema are the busbar-to-busbar transmission line.
+The dynamic attributes copied onto active physical-line edges are given in
 Table~\ref{tab:graph-edge-features}. The two maintenance features are present
 only for environments with scheduled maintenance.
 
@@ -299,22 +298,22 @@ only for environments with scheduled maintenance.
   \end{tabular}
 \end{table}
 
-\noindent For GINE and GAT, the edge embedding of a busbar-to-busbar transmission edge is
-therefore exactly the row of Table~\ref{tab:graph-edge-features}. Optional self
-and same-substation edges use the same feature width: all physical channels are
+\noindent The edge embedding of a busbar-to-busbar transmission edge is
+exactly the row of Table~\ref{tab:graph-edge-features}. \hl{Optional
+same-substation edges use the same feature width: all physical channels are
 zero except \texttt{rho}$=1$, which is a neutral structural value. The
 homogeneous schema does not append relation one-hots, so these optional
 relations are distinguished only by their endpoints and neutral physical
-attributes.
+attributes.}
 
-\subsubsection{Message-passing path}
-\label{subsec:graph-busbar-message-path}
+% \subsubsection{Message-passing path}
+% \label{subsec:graph-busbar-message-path}
 
-Asset values already sit on their busbar, so information follows the single
-path busbar $\leftrightarrow$ busbar and one message-passing layer is enough to
-carry a substation's state to an adjacent one. This is the shortest path of the
-three schemas, and the baseline against which the two disaggregated ones trade
-extra hops for individually addressable equipment.
+% Asset values already sit on their busbar, so information follows the single
+% path busbar $\leftrightarrow$ busbar and one message-passing layer is enough to
+% carry a substation's state to an adjacent one. This is the shortest path of the
+% three schemas, and the baseline against which the two disaggregated ones trade
+% extra hops for individually addressable equipment.
 
 
 \subsection{Disaggregated Representation}
@@ -367,7 +366,7 @@ eight-dimensional feature vector
   \texttt{p},\
   \texttt{theta},\\
   &\texttt{time\_before\_cooldown\_sub},\
-  \texttt{connected},\
+  \hl{\texttt{connected}},\
   \texttt{domain\_mask}
   \,]^{\mathsf T}\in\mathbb{R}^{8}.
   \end{split}
@@ -396,7 +395,7 @@ the column is still present for that node type but is explicitly zero-filled.
     \texttt{p} & $0$ & \texttt{gen\_p} if connected; $0$ otherwise & \texttt{load\_p} if connected; $0$ otherwise \\
     \texttt{theta} & $0$ & \texttt{gen\_theta} if connected; $0$ otherwise & \texttt{load\_theta} if connected; $0$ otherwise \\
     \texttt{time\_before\_cooldown\_sub} & Substation value & $0$ & $0$ \\
-    \texttt{connected} & $1$ & $1$ connected; $0$ disconnected & $1$ connected; $0$ disconnected \\
+    \hl{\texttt{connected}} & $1$ & $1$ connected; $0$ disconnected & $1$ connected; $0$ disconnected \\
     \texttt{domain\_mask} & $1$ controlled; $0$ contextual & $1$ controlled; $0$ contextual & $1$ controlled; $0$ contextual \\
     \bottomrule
   \end{tabular}
@@ -405,22 +404,22 @@ the column is still present for that node type but is explicitly zero-filled.
 \subsubsection{Relations and edge features}
 \label{subsec:heterogeneous-relations}
 
-{\color{blue}Physical lines keep the busbar-to-busbar candidates of
-Equation~\ref{eq:candidate-line-edges}; what this schema adds is the asset
-attachments. For generator $g$ at substation $s(g)$, the fixed candidate graph
-contains
-\begin{equation}
-  g \rightarrow i(s(g),b)
-  \quad\text{and}\quad
-  i(s(g),b) \rightarrow g,
-  \qquad b\in\{0,\ldots,B-1\},
-  \label{eq:generator-busbar-candidates}
-\end{equation}
-that is, $B$ candidates per direction. Loads follow the same rule.
-Appendix~\ref{app:graph-construction} collects the resulting candidate-edge
-counts.}
-\\
-\\
+% {\color{blue}Physical lines keep the busbar-to-busbar candidates of
+% Equation~\ref{eq:candidate-line-edges}; what this schema adds is the asset
+% attachments. For generator $g$ at substation $s(g)$, the fixed candidate graph
+% contains
+% \begin{equation}
+%   g \rightarrow i(s(g),b)
+%   \quad\text{and}\quad
+%   i(s(g),b) \rightarrow g,
+%   \qquad b\in\{0,\ldots,B-1\},
+%   \label{eq:generator-busbar-candidates}
+% \end{equation}
+% that is, $B$ candidates per direction. Loads follow the same rule.
+% Appendix~\ref{app:graph-construction} collects the resulting candidate-edge
+% counts.}
+% \\
+% \\
 Every candidate directed edge is represented by the same ordered feature
 vector. Its physical block is
 \begin{equation}
@@ -438,11 +437,10 @@ vector. Its physical block is
   \label{eq:heterogeneous-common-edge-physical-block}
 \end{equation}
 The two maintenance columns are appended only when scheduled maintenance is
-available. The relation block is the same seven-column vector for every edge:
+available. The relation block is the same six-column vector for every edge:
 \begin{equation}
   \begin{split}
   \mathbf{r}_{uv} = [\,&
-  \texttt{relation\_self},\
   \texttt{relation\_physical\_line},\\
   &\texttt{relation\_same\_substation\_busbar},\\
   &\texttt{relation\_generator\_to\_busbar},\
@@ -460,8 +458,8 @@ The complete common edge vector is therefore
        \mathbf{r}_{uv}^{\mathsf T}\,]^{\mathsf T}
   \in
   \begin{cases}
-    \mathbb{R}^{11}, & \text{without maintenance columns},\\
-    \mathbb{R}^{13}, & \text{with maintenance columns}.
+    \mathbb{R}^{10}, & \text{without maintenance columns},\\
+    \mathbb{R}^{12}, & \text{with maintenance columns}.
   \end{cases}
   \label{eq:heterogeneous-common-edge-vector}
 \end{equation}
@@ -474,7 +472,7 @@ state. Every active structural or asset-attachment edge instead uses
   \label{eq:heterogeneous-neutral-edge-physical-block}
 \end{equation}
 so only the shared \texttt{rho} column is nonzero. In every active edge row,
-exactly one column of \(\mathbf{r}_{uv}\) is one and the other six are zero.\\
+exactly one column of \(\mathbf{r}_{uv}\) is one and the other five are zero.\\
 \\
 Table~\ref{tab:heterogeneous-edge-features} shows the values placed in these
 common blocks for every relation.
@@ -484,48 +482,46 @@ common blocks for every relation.
   \scriptsize
   \caption{Values placed in the common edge-feature vector shared by every
   active directed relation in the direct-line heterogeneous graph. ``Other
-  six'' refers to the remaining columns of the seven-column relation block.}
+  five'' refers to the remaining columns of the six-column relation block.}
   \label{tab:heterogeneous-edge-features}
   \setlength{\tabcolsep}{3pt}
   \begin{tabular}{L{0.20\textwidth}L{0.25\textwidth}L{0.17\textwidth}L{0.29\textwidth}}
     \toprule
     Directed relation & Active rule & Shared physical block & Shared relation block \\
     \midrule
-    $v\rightarrow v$ (self) & Optional; always active when enabled & $\mathbf{p}_{\mathrm{neutral}}$ & \texttt{relation\_self}$=1$; other six $=0$ \\
-    $i_o\rightarrow i_e$ and reverse (physical line) & Line online and candidate busbars match the current endpoints & Measured $\mathbf{p}_{uv}$ & \texttt{relation\_physical\_line}$=1$; other six $=0$ \\
-    $i(s,b)\rightarrow i(s,b')$, $b\neq b'$ & Optional; every ordered same-substation busbar pair & $\mathbf{p}_{\mathrm{neutral}}$ & \texttt{relation\_same\_substation\_busbar}$=1$; other six $=0$ \\
-    $g\rightarrow i(s(g),b)$ & Generator connected to candidate busbar $b$; direction enabled & $\mathbf{p}_{\mathrm{neutral}}$ & \texttt{relation\_generator\_to\_busbar}$=1$; other six $=0$ \\
-    $i(s(g),b)\rightarrow g$ & Same mask; reverse direction enabled & $\mathbf{p}_{\mathrm{neutral}}$ & \texttt{relation\_busbar\_to\_generator}$=1$; other six $=0$ \\
-    $d\rightarrow i(s(d),b)$ & Load connected to candidate busbar $b$; direction enabled & $\mathbf{p}_{\mathrm{neutral}}$ & \texttt{relation\_load\_to\_busbar}$=1$; other six $=0$ \\
-    $i(s(d),b)\rightarrow d$ & Same mask; reverse direction enabled & $\mathbf{p}_{\mathrm{neutral}}$ & \texttt{relation\_busbar\_to\_load}$=1$; other six $=0$ \\
+    $i_o\rightarrow i_e$ and reverse (physical line) & Line online and candidate busbars match the current endpoints & Measured $\mathbf{p}_{uv}$ & \texttt{relation\_physical\_line}$=1$; other five $=0$ \\
+    $i(s,b)\rightarrow i(s,b')$, $b\neq b'$ & Optional; every ordered same-substation busbar pair & $\mathbf{p}_{\mathrm{neutral}}$ & \texttt{relation\_same\_substation\_busbar}$=1$; other five $=0$ \\
+    $g\rightarrow i(s(g),b)$ & Generator connected to candidate busbar $b$; direction enabled & $\mathbf{p}_{\mathrm{neutral}}$ & \texttt{relation\_generator\_to\_busbar}$=1$; other five $=0$ \\
+    $i(s(g),b)\rightarrow g$ & Same mask; reverse direction enabled & $\mathbf{p}_{\mathrm{neutral}}$ & \texttt{relation\_busbar\_to\_generator}$=1$; other five $=0$ \\
+    $d\rightarrow i(s(d),b)$ & Load connected to candidate busbar $b$; direction enabled & $\mathbf{p}_{\mathrm{neutral}}$ & \texttt{relation\_load\_to\_busbar}$=1$; other five $=0$ \\
+    $i(s(d),b)\rightarrow d$ & Same mask; reverse direction enabled & $\mathbf{p}_{\mathrm{neutral}}$ & \texttt{relation\_busbar\_to\_load}$=1$; other five $=0$ \\
     \bottomrule
   \end{tabular}
 \end{table}
 
 \noindent Generator and load directions are selected independently as \texttt{bidirectional},
 \texttt{asset\_to\_busbar}, or \texttt{busbar\_to\_asset}. The default is
-\texttt{bidirectional}. A one-way mode retains only one member of each pair in
-Equation~\ref{eq:generator-busbar-candidates}. Physical-line and
+\texttt{bidirectional}. Physical-line and
 same-substation relations remain bidirectional.
 
 
-{\color{blue}\subsubsection{Message-passing path}
-\label{subsec:heterogeneous-architecture}
+% {\color{blue}\subsubsection{Message-passing path}
+% \label{subsec:heterogeneous-architecture}
 
-With bidirectional asset and line relations, information follows the path
-\begin{equation}
-  \text{generator}
-  \leftrightarrow
-  \text{local busbar}
-  \leftrightarrow
-  \text{remote busbar}
-  \leftrightarrow
-  \text{load}.
-  \label{eq:heterogeneous-message-path}
-\end{equation}
-One message-passing layer crosses one arrow. Generator or load information
-therefore reaches its local busbar after one layer and the adjacent remote
-busbar after two. With one-way asset relations, the reverse flow is absent.}
+% With bidirectional asset and line relations, information follows the path
+% \begin{equation}
+%   \text{generator}
+%   \leftrightarrow
+%   \text{local busbar}
+%   \leftrightarrow
+%   \text{remote busbar}
+%   \leftrightarrow
+%   \text{load}.
+%   \label{eq:heterogeneous-message-path}
+% \end{equation}
+% One message-passing layer crosses one arrow. Generator or load information
+% therefore reaches its local busbar after one layer and the adjacent remote
+% busbar after two. With one-way asset relations, the reverse flow is absent.}
 
 
 \subsection{Disaggregated Representation with Line Nodes}
@@ -631,33 +627,32 @@ the asset is disconnected.
 \subsubsection{Relations and edge features}
 \label{subsec:heterogeneous-line-relations}
 
-{\color{blue}This schema replaces the busbar-to-busbar candidates of
-Equation~\ref{eq:candidate-line-edges} by attachments to a line node. Let
-$o(\ell)$ and $e(\ell)$ denote the origin and extremity substations of line
-$\ell$. For every busbar index $b$, the fixed candidate graph contains
-\begin{equation}
-  \begin{aligned}
-    i(o(\ell),b) &\rightarrow \ell, &\qquad \ell &\rightarrow i(o(\ell),b), \\
-    i(e(\ell),b) &\rightarrow \ell, &\qquad \ell &\rightarrow i(e(\ell),b),
-  \end{aligned}
-  \qquad b\in\{0,\ldots,B-1\},
-  \label{eq:heterogeneous-line-candidates}
-\end{equation}
-that is, $2B$ candidates per end.}
-\\
-\\
-The line direction is \texttt{bidirectional}, \texttt{line\_to\_busbar}, or
-\texttt{busbar\_to\_line}; a one-way mode retains only one column of
-Equation~\ref{eq:heterogeneous-line-candidates}. An online line therefore has
-four active attachments in the bidirectional case and two in a one-way case.
-\\
-\\
-Every candidate directed edge uses the same ordered ten-dimensional feature
+% {\color{blue}This schema replaces the busbar-to-busbar candidates of
+% Equation~\ref{eq:candidate-line-edges} by attachments to a line node. Let
+% $o(\ell)$ and $e(\ell)$ denote the origin and extremity substations of line
+% $\ell$. For every busbar index $b$, the fixed candidate graph contains
+% \begin{equation}
+%   \begin{aligned}
+%     i(o(\ell),b) &\rightarrow \ell, &\qquad \ell &\rightarrow i(o(\ell),b), \\
+%     i(e(\ell),b) &\rightarrow \ell, &\qquad \ell &\rightarrow i(e(\ell),b),
+%   \end{aligned}
+%   \qquad b\in\{0,\ldots,B-1\},
+%   \label{eq:heterogeneous-line-candidates}
+% \end{equation}
+% that is, $2B$ candidates per end.}
+% \\
+% \\
+% The line direction is \texttt{bidirectional}, \texttt{line\_to\_busbar}, or
+% \texttt{busbar\_to\_line}; a one-way mode retains only one column of
+% Equation~\ref{eq:heterogeneous-line-candidates}. An online line therefore has
+% four active attachments in the bidirectional case and two in a one-way case.
+% \\
+% \\
+Every candidate directed edge uses the same ordered nine-dimensional feature
 vector:
 \begin{equation}
   \begin{split}
   \mathbf{e}_{uv} = [\,&
-  \texttt{relation\_self},\
   \texttt{relation\_same\_substation\_busbar},\\
   &\texttt{relation\_busbar\_to\_line\_origin},\
   \texttt{relation\_line\_origin\_to\_busbar},\\
@@ -667,14 +662,14 @@ vector:
   \texttt{relation\_busbar\_to\_generator},\\
   &\texttt{relation\_load\_to\_busbar},\
   \texttt{relation\_busbar\_to\_load}
-  \,]^{\mathsf T}\in\mathbb{R}^{10}.
+  \,]^{\mathsf T}\in\mathbb{R}^{9}.
   \end{split}
   \label{eq:heterogeneous-line-common-edge-vector}
 \end{equation}
 These edges contain no continuous line-state attributes because the
 transmission-line node already contains \texttt{rho}, status, overflow,
 cooldown, and maintenance. For an active edge, exactly one relation column is
-one and the other nine are zero. An inactive candidate has all ten entries set
+one and the other eight are zero. An inactive candidate has all nine entries set
 to zero and is removed by \texttt{edge\_mask}$=0$ before message passing.
 Table~\ref{tab:heterogeneous-line-edge-features} gives the active rule and the
 nonzero entries for every relation.
@@ -682,7 +677,7 @@ nonzero entries for every relation.
 \begin{table}[H]
   \centering
   \scriptsize
-  \caption{Nonzero entries in the common 10-column edge-feature vector of the
+  \caption{Nonzero entries in the common 9-column edge-feature vector of the
   explicit-line heterogeneous graph. All relation columns not named in a row
   are zero.}
   \label{tab:heterogeneous-line-edge-features}
@@ -691,7 +686,6 @@ nonzero entries for every relation.
     \toprule
     Directed relation & Active rule & Relation column set to $1$ \\
     \midrule
-    $v\rightarrow v$ (self) & Optional; always active when enabled & \texttt{relation\_self} \\
     $i(s,b)\rightarrow i(s,b')$, $b\neq b'$ & Optional; every ordered same-substation pair & \texttt{relation\_same\_substation\_busbar} \\
     $i_o\rightarrow\ell$ & Online line, current origin busbar, direction enabled & \texttt{relation\_busbar\_to\_line\_origin} \\
     $\ell\rightarrow i_o$ & Same mask; reverse direction enabled & \texttt{relation\_line\_origin\_to\_busbar} \\
@@ -705,30 +699,30 @@ nonzero entries for every relation.
   \end{tabular}
 \end{table}
 
-\noindent Origin, extremity, and direction have separate relation types. Generator and
-load attachments follow Equation~\ref{eq:generator-busbar-candidates}; self and
-same-substation relations remain optional.
+% \noindent Origin, extremity, and direction have separate relation types. Generator and
+% load attachments follow Equation~\ref{eq:generator-busbar-candidates};
+% same-substation relations remain optional.
 
-\subsubsection{Message-passing path}
-\label{subsec:heterogeneous-line-message-path}
+% \subsubsection{Message-passing path}
+% \label{subsec:heterogeneous-line-message-path}
 
-The direct-line graph connects endpoint busbars in one hop. The explicit-line
-graph uses
-\begin{equation}
-  i_o \rightarrow \ell \rightarrow i_e,
-  \label{eq:heterogeneous-line-two-hop-path}
-\end{equation}
-so endpoint exchange requires two layers. The first layer forms
-\begin{equation}
-  \mathbf{h}_{\ell}^{(1)}
-  = f_{\ell}\!\left(
-      \mathbf{h}_{\ell}^{(0)},
-      \mathbf{h}_{i_o}^{(0)},
-      \mathbf{h}_{i_e}^{(0)}
-    \right),
-\end{equation}
-and the second returns this joint state to the endpoints. Later layers enlarge
-the receptive field. The edges around the line node are bidirectional: the line gathers both endpoints and sends the updated state back; endpoint exchange is possible.
+% The direct-line graph connects endpoint busbars in one hop. The explicit-line
+% graph uses
+% \begin{equation}
+%   i_o \rightarrow \ell \rightarrow i_e,
+%   \label{eq:heterogeneous-line-two-hop-path}
+% \end{equation}
+% so endpoint exchange requires two layers. The first layer forms
+% \begin{equation}
+%   \mathbf{h}_{\ell}^{(1)}
+%   = f_{\ell}\!\left(
+%       \mathbf{h}_{\ell}^{(0)},
+%       \mathbf{h}_{i_o}^{(0)},
+%       \mathbf{h}_{i_e}^{(0)}
+%     \right),
+% \end{equation}
+% and the second returns this joint state to the endpoints. Later layers enlarge
+% the receptive field. The edges around the line node are bidirectional: the line gathers both endpoints and sends the updated state back; endpoint exchange is possible.
 
 \subsection{Local actor graphs and the global state graph}
 \label{subsec:graph-local-global}
@@ -872,12 +866,12 @@ learned substation-summary node per included substation.
 \subsection{Direct same-substation edges (e)}
 \label{subsec:graph-relation-edges}
 
-In addition to physical-line relations, the graph may include a self-edge
-$v\rightarrow v$ for every node and a directed same-substation edge
-$i(s,b)\rightarrow i(s,b')$ for every $b\neq b'$. These relations remain active
-throughout the episode and use zero physical-line features except for the
-neutral value \texttt{rho}$=1$. Same-substation edges permit message passing
-between alternative busbars but do not represent an electrical connection.
+In addition to physical-line relations, the graph may include a directed
+same-substation edge $i(s,b)\rightarrow i(s,b')$ for every $b\neq b'$.
+These relations remain active throughout the episode and use zero physical-line
+features except for the neutral value \texttt{rho}$=1$. Same-substation edges
+permit message passing between alternative busbars but do not represent an
+electrical connection.
 
 \begin{figure}[htbp]
   \centering

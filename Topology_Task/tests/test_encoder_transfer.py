@@ -23,6 +23,14 @@ class FakeGraphEncoder(nn.Module):
         self.register_buffer("node_ids", th.arange(n_nodes, dtype=th.long))
 
 
+class FakeEdgeSchemaEncoder(nn.Module):
+    def __init__(self, edge_dim: int, feature_names):
+        super().__init__()
+        self.edge_dim = edge_dim
+        self.edge_feature_names = list(feature_names)
+        self.edge_projection = nn.Linear(edge_dim, 4, bias=False)
+
+
 class FakeGraphAndFlatEncoder(nn.Module):
     def __init__(self, graph_encoder: nn.Module):
         super().__init__()
@@ -146,6 +154,43 @@ class EncoderTransferTest(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             load_encoder_from_checkpoint(actors, self.path)
         self.assertIn("architecture mismatch", str(ctx.exception))
+
+    def test_old_relation_self_weight_is_dropped_during_transfer(self):
+        source_encoder = FakeEdgeSchemaEncoder(
+            4,
+            [
+                "rho",
+                "relation_self",
+                "relation_physical_line",
+                "relation_generator_to_busbar",
+            ],
+        )
+        with th.no_grad():
+            source_encoder.edge_projection.weight.copy_(
+                th.arange(16, dtype=th.float32).reshape(4, 4)
+            )
+        source_actors = {
+            "agent_0": FakeActor(source_encoder, n_actions=2)
+        }
+        path = os.path.join(self.tmp.name, "legacy_edge_schema.tar")
+        save_checkpoint(source_actors, path)
+
+        target_encoder = FakeEdgeSchemaEncoder(
+            3,
+            [
+                "rho",
+                "relation_physical_line",
+                "relation_generator_to_busbar",
+            ],
+        )
+        target_actors = {
+            "agent_0": FakeActor(target_encoder, n_actions=2)
+        }
+        report = load_encoder_from_checkpoint(target_actors, path)
+
+        expected = source_encoder.edge_projection.weight[:, [0, 2, 3]]
+        self.assertTrue(th.equal(target_encoder.edge_projection.weight, expected))
+        self.assertEqual(report["migrated_legacy_relation_self_weights"], 1)
 
     def test_checkpoint_without_graph_encoder_raises(self):
         mlp_actor = nn.Module()
