@@ -28,6 +28,8 @@ RENAME_MAP = {
     "best_12": "No Bias, Opt Critic",
     "best_13": "Optimized Heavy GINE",
     "best_14": "Optimized Light GINE",
+    "A0_baseline": "MLP Baseline",
+    "ancient_GINE_baseline": "Historical GINE Baseline",
 }
 
 def rename_trace(name: str) -> str:
@@ -49,7 +51,6 @@ NOTEBOOK = (
 OUT_DIR = REPO_ROOT / "latex" / "figures"
 
 FIGURES = {
-    8: "rerun_gine_best00_vs_best10_14.png",
 }
 
 HTML_FIGURES = {
@@ -61,6 +62,15 @@ HTML_FIGURES = {
         "filename": "gine_best_search2_baseline_comparisons.png",
         "figsize": (8.5, 10.5),
         "layout": (4, 3),
+    },
+    REPO_ROOT
+    / "Topology_Task"
+    / "outputs"
+    / "wandb_figures"
+    / "rerun_gine_a0_baseline_editable_comparisons.html": {
+        "filename": "rerun_gine_best00_vs_best10_14.png",
+        "figsize": (8.5, 7.5),
+        "layout": (3, 2),
     },
     REPO_ROOT
     / "Topology_Task"
@@ -157,7 +167,12 @@ def title_for_axis(fig, axis_num: int, order: list[int]) -> str:
         key=lambda item: (-float(item.get("y", 0)), float(item.get("x", 0))),
     )
     if idx < len(sorted_annotations):
-        return sorted_annotations[idx].get("text", "")
+        title = sorted_annotations[idx].get("text", "")
+        if "A0 baseline" in title:
+            title = title.replace("A0 baseline", "MLP Baseline")
+        if "Optimized MLP" in title:
+            title = title.replace("Optimized MLP", "MLP Baseline")
+        return title
     return ""
 
 
@@ -274,7 +289,7 @@ def render_figure(fig, out_path: Path, figsize: tuple[float, float] | None = Non
         ax.set_ylabel("Episodic survival (%)")
         ax.set_ylim(0, 105)
         ax.grid(True, color="#d9d9d9", linewidth=0.5, alpha=0.8)
-        ax.legend(loc="best", fontsize=7, frameon=True)
+        ax.legend(loc="lower right", fontsize=7, frameon=True)
 
     figure.tight_layout()
     figure.savefig(out_path, dpi=220, bbox_inches="tight")

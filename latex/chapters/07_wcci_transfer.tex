@@ -681,9 +681,112 @@ scratch arm with and without the input correction isolates whether the
 correction helps or harms on the target grid, independently of any transfer
 effect, on otherwise identical settings.
 
-\paragraph{Status.}
-\pending{transfer results; the runs in Table~\ref{tab:wcci-transfer-design} are
-training at the time of writing}
+\section{First transfer results}
+\label{sec:wcci-first-results}
+
+The runs reported here are the first arm described above: the eight launched
+before the input analysis was complete, one seed each, with physical scaling and
+running standardization both disabled and the original angle representation. They
+are therefore the uncorrected-input condition, which is the one
+Section~\ref{sec:wcci-implication} predicts should be hardest on a frozen
+encoder. The corrected runs of Table~\ref{tab:wcci-transfer-design} are still
+training.
+
+Each value below is a deterministic evaluation of a run's best checkpoint over 50
+held-out WCCI chronics. The reference to beat is the do-nothing policy, which
+survives 56\% of those episodes; on this grid inaction is a far stronger baseline
+than on \texttt{bus14}, where it survives about 20\%.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\linewidth]{figures/tr_wcci_full_test_bars.png}
+  \caption{50-episode full-test survival of the best checkpoint, by architecture
+  and training arm, with uncorrected inputs and one seed. The dashed line is the
+  do-nothing policy at 56\%.}
+  \label{fig:wcci-transfer-bars}
+\end{figure}
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{50-episode full-test survival and the step at which each run's best
+  checkpoint was saved. One seed per cell, uncorrected inputs.}
+  \label{tab:wcci-transfer-results}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{lrrrrr}
+    \toprule
+    Architecture & Scratch (\%) & Frozen (\%) & $\Delta$ (pp) &
+    Scratch ckpt (M) & Frozen ckpt (M) \\
+    \midrule
+    \texttt{e0n0v0} (bus) & 47.62 & 30.48 & $-17.13$ & 7.38 & 0.58 \\
+    \texttt{e1n0v0} (bus) & 51.31 & 13.94 & $-37.37$ & 4.31 & 13.02 \\
+    \texttt{gb2a\_la2b} & 52.32 & 52.60 & $+0.27$ & 7.38 & 14.68 \\
+    \texttt{gb2a\_lb2a} & \textbf{54.46} & 54.37 & $-0.09$ & 7.38 & 10.12 \\
+    \midrule
+    Do-nothing policy & \multicolumn{2}{c}{56.0} & & & \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{figures/tr_wcci_frozen_vs_scratch_curves.png}
+  \caption{Test episodic survival during training, one panel per architecture,
+  frozen transfer against training from scratch. The dashed line is the
+  do-nothing reference at 57.2\% on the training-time evaluation split.}
+  \label{fig:wcci-transfer-curves}
+\end{figure}
+
+\noindent\textbf{No arm beats doing nothing.} The best of the eight runs reaches
+54.5\% against 56.0\% for a policy that never acts, and in
+Figure~\ref{fig:wcci-transfer-curves} the curves cross the reference only in
+transient peaks. Whatever the graph representation contributes on
+\texttt{bus14}, it does not yet produce a useful controller here, and every
+comparison below is between policies that are all worse than inaction.
+\\
+\\
+\textbf{Freezing is neutral on the disaggregated schema and destructive on the
+bus schema.} The two heterogeneous architectures match their scratch
+counterparts to within 0.3 points, so the transferred encoder neither helps nor
+obstructs. The two bus architectures lose 17.1 and 37.4 points. This is the
+deficit Section~\ref{sec:wcci-implication} warned would be confounded, and the
+confound is real: with uncorrected inputs a frozen \texttt{bus14} encoder is
+reading displaced power and angle channels, so the loss cannot be attributed to
+the representation failing to generalize. The asymmetry between the schemas is
+the part worth pursuing. In the bus graph every node carries the power and angle
+channels, because generator and load values are aggregated onto their busbar,
+so a frozen encoder meets the miscalibrated quantities on every node it reads.
+In the disaggregated graph those channels are non-zero only on asset nodes,
+which are a minority of the node set, while busbars carry cooldown and
+connectivity, and \texttt{rho} rides on the edges where
+Section~\ref{sec:wcci-interpretation} measured it as already comparable across
+grids. That is a hypothesis this experiment does not test, but it is the one the
+corrected runs will separate.
+\\
+\\
+\textbf{The bus architectures are also the unstable ones.} Their end-of-training
+survival, 10\% and 18\% on the smoothed curve, is far below their own best
+checkpoints at 47.6\% and 51.3\%: both peak early and decay for the rest of
+training. The disaggregated runs end near 47\% and 51\%, close to their best
+checkpoints, so their endpoint numbers describe a policy that still exists at
+the end of training rather than one that was passed through. The gap is worth
+keeping in view whenever a best-checkpoint statistic is quoted for this
+environment.
+\\
+\\
+\textbf{The \texttt{bus14} ordering partly survives.} The two disaggregated
+architectures finish above the two bus ones, and \texttt{gb2a\_lb2a}, the
+direction pair that won the message-direction screen, is the best of the four
+here as well. That is consistent with Chapter~\ref{ch:experiments} without being
+evidence for it: one seed per cell and 2.1 points between the two disaggregated
+architectures cannot separate them.
+\\
+\\
+\textbf{What is still open.} One seed per condition, uncorrected inputs, and an
+encoder frozen for all 15M steps rather than unfrozen after a warm start, which
+tests reuse without adaptation and not the only useful form of transfer. The
+first thing the corrected runs have to establish is not the transfer question at
+all, but whether any arm can clear 56\%.
 
 
 \section{What this chapter establishes}

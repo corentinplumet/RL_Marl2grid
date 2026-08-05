@@ -1,53 +1,39 @@
 \chapter{Establishing a Baseline}
 \label{ch:baseline}
 
-This chapter covers the first stage of the work: obtaining a decentralized
-MAPPO agent that trains stably on the IEEE 14-bus task, and then testing
-whether replacing its flat MLP actor with a graph encoder is worth the added
-complexity. This investigation is motivated by the fact that an MLP's architecture is tied to the specific size of the power grid and thus lacks transferability, whereas a GNN encoder can process graphs of arbitrary size and could theoretically transfer across different grids. Everything here maximizes survival; the representation is fixed and
-deliberately simple. 
+This chapter establishes a robust baseline for the IEEE 14-bus task. First, we tune a decentralized MLP-based MAPPO agent to achieve stable training and high survival rates. Second, we replace the flat MLP actor with a Graph Neural Network (GNN) encoder. 
 \\
 \\
-Its conclusion sets up the two chapters that follow. The first objective is to establish a strong MLP baseline. We then implement a GNN encoder to determine if it can improve upon, or at least match, the MLP's performance, an important milestone given the GNN's potential for transferability. If a graph encoder proves viable,
-the next question is which graph, which is what Chapter~\ref{ch:methods} defines
-and Chapter~\ref{ch:experiments} screens.
+This architectural shift is essential for generalizability: an MLP's input size is strictly tied to a specific grid size, preventing transferability. In contrast, a shared GNN encoder processes graphs of arbitrary sizes, theoretically enabling zero-shot transfer across different power grids. If a GNN encoder proves viable and competitive with the optimized MLP, it justifies investigating the optimal graph representation of the power grid, which is addressed in Chapters~\ref{ch:methods} and~\ref{ch:experiments}.
 
-\section{How to Read This Chapter}
-\label{sec:results-structure}
+% \section{How to Read This Chapter}
+% \label{sec:results-structure}
 
-This chapter is organized as a sequence of experiment blocks, and the later
-experimental chapters reuse the same pattern. Each block follows the same
-structure:
+% This chapter is organized as a sequence of experiment blocks, and the later
+% experimental chapters reuse the same pattern. Each block follows the same
+% structure:
 
-\begin{enumerate}
-  \item \textbf{Question.} What uncertainty or design choice does this test
-  address?
-  \item \textbf{Baseline and change.} Which run is the control, and what is
-  changed in the comparison runs?
-  \item \textbf{Protocol.} Which data split, checkpoint, seeds, and metric are
-  used?
-  \item \textbf{Implementation detail.} Which algorithmic, architectural, or
-  mathematical change is being tested, when this is relevant?
-  \item \textbf{Evidence.} Which table and figure summarize the result?
-  \item \textbf{Interpretation.} What can be concluded, and what still needs to
-  be verified?
-\end{enumerate}
+% \begin{enumerate}
+%   \item \textbf{Question.} What uncertainty or design choice does this test
+%   address?
+%   \item \textbf{Baseline and change.} Which run is the control, and what is
+%   changed in the comparison runs?
+%   \item \textbf{Protocol.} Which data split, checkpoint, seeds, and metric are
+%   used?
+%   \item \textbf{Implementation detail.} Which algorithmic, architectural, or
+%   mathematical change is being tested, when this is relevant?
+%   \item \textbf{Evidence.} Which table and figure summarize the result?
+%   \item \textbf{Interpretation.} What can be concluded, and what still needs to
+%   be verified?
+% \end{enumerate}
 
 \section{Evaluation Protocol}
 \label{sec:results-evaluation-protocol}
 
-The experiments use a train/test chronic split. The training set contains
-80\% of the chronics and is used to update the policy. The test set contains
-the remaining 20\% and is used to estimate generalization during training and
-for final evaluation.
+All experiments use an 80/20 train/test chronic split. The 80\% training split is used for policy updates, while the 20\% test split estimates generalization. Evaluation rollouts run periodically during training using 10 episodes per split. 
 \\
 \\
-During training, evaluation rollouts are periodically run on both the train and
-test splits using 10 episodes each time. The main
-reported metric is the test episodic survival, expressed as a percentage. 
-Higher survival means that the agent keeps the grid alive for a larger fraction 
-of the evaluation episodes. The final plots show seed-aggregated mean curves, 
-faint individual seed curves, and the variability band. The final evaluation currently uses the saved checkpoint with the best test survival.
+The primary performance metric is test episodic survival (expressed as a percentage), representing the fraction of evaluation episodes where the agent successfully prevents a blackout. Results are reported using seed-aggregated mean curves, with shaded regions indicating variability. Final evaluations report the performance of the checkpoint that achieved the highest test survival during training.
 
 \section{Experiment Index}
 \label{sec:results-experiment-index}
@@ -80,13 +66,9 @@ faint individual seed curves, and the variability band. The final evaluation cur
 \section{IEEE 14-Bus Experiments}
 \label{sec:bus14-results}
 
-The first result group focuses on the IEEE 14-bus topology-control task. The
-initial PPO/MAPPO baseline from the MARL2Grid framework was not satisfactory:
-the agents did not learn a robust policy and the survival rate remained low.
-The following experiments therefore test training and architecture changes that
-could make the baseline more stable.
+The initial PPO/MAPPO baseline from the MARL2Grid framework yielded unstable policies and low survival rates on the IEEE 14-bus topology-control task. The following experiments systematically test training and architectural modifications to establish a high-performing baseline.
 
-\subsection{MLP Baseline Reruns}
+\subsection{MLP Baseline}
 \label{subsec:a0-core-reruns}
 
 \paragraph{Question.}
@@ -119,7 +101,7 @@ stabilization choices:
     n\_envs (number parallel environment) & 20 & 10 \\
     \midrule
     \textbf{PPO OPTIMIZATION} & & \\
-    Total time step & 20,000,000 & 25,000,000 \\
+    Total time step & 15,000,000 & 25,000,000 \\
     Actor learning rate & 1e-4 & 3e-5 \\
     Critic learning rate & 1e-4 & 3e-5 \\
     Gamma & 0.9 & 0.99 \\
@@ -137,13 +119,7 @@ ablations. Figure~\ref{fig:rerun-a0-pairwise} shows each comparison against the
 core MLP baseline curves.
 
 \paragraph{Interpretation.}
-The optimized baseline, the non-optimized critic-update variant, and the
-smaller MLP variant all finish around \(93\%\) survival. This suggests that the
-main recipe is robust once the rerun protocol is fixed. Disabling reward
-normalization still reaches high peak survival, but it learns more slowly and
-finishes lower. The old no-validation, non-optimized baseline is clearly not
-competitive and should not be used as the main reference for later ablations.
-Because \texttt{Optimized MLP Baseline} achieves the highest and most stable final survival, it is adopted as our new standard MLP baseline for all subsequent comparisons.
+The \texttt{Optimized MLP Baseline}, which combines three hidden layers, reward normalization, and an optimized critic update, achieves the best performance and convergence speed, yielding the highest and most stable final survival (\(\sim\)93\%). Removing or reducing any of these three elements, using a smaller architecture, disabling reward normalization, or reverting to a non-optimized critic update, results in a drop in either learning speed or final survival. The original unoptimized baseline fails entirely to learn a competitive policy. Because the \texttt{Optimized MLP Baseline} consistently outperforms the ablations, it is established as the standard reference for all subsequent comparisons.
 
 \begin{table}[H]
   \centering
@@ -208,7 +184,7 @@ Because \texttt{Optimized MLP Baseline} achieves the highest and most stable fin
   }
 \end{table}
 
-\hl{I need to run a full test eval on the best checkpoint of that MLP baseline}
+% \hl{I need to run a full test eval on the best checkpoint of that MLP baseline}
 
 \subsection{Initial Do-Nothing Bias}
 \label{subsec:a0-bias-reruns}
@@ -232,21 +208,13 @@ of representational capacity.
 \paragraph{Evidence.}
 Table~\ref{tab:a0-bias-summary} and Figure~\ref{fig:rerun-a0-bias} compare the
 zero-bias baseline with \texttt{Initial Bias 50\%} and
-\texttt{Initial Bias 70\%}. The bias values tested are 0.5 and 0.7, corresponding to a 50\% and 70\% initial probability assigned to the do-nothing action, respectively.
+\texttt{Initial Bias 70\%}.
 
 \paragraph{Interpretation.}
 The effect of the action-0 bias is large and non-monotonic. The 0.5-bias curve
 remains unstable and substantially below the zero-bias baseline, whereas the
 0.7-bias curve eventually reaches the highest final survival in this comparison.
 The current conclusion is that adding an initialization bias is generally hurtful or highly unstable for the models. Instead of aiding exploration, a strong initialization prior appears to restrict the agent's ability to reliably discover diverse beneficial actions and should be treated cautiously as a first-order ablation variable.
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\textwidth]{figures/rerun_a0_bias_comparison.png}
-  \caption{Optimized MLP baseline compared with initial do-nothing bias controls
-  \texttt{Initial Bias 50\%} and \texttt{Initial Bias 70\%}.}
-  \label{fig:rerun-a0-bias}
-\end{figure}
 
 \begin{table}[H]
   \centering
@@ -264,23 +232,31 @@ The current conclusion is that adding an initialization bias is generally hurtfu
   \end{tabular}
 \end{table}
 
-\hl{I might need to run a full test eval of these runs}
-\hl{maybe i need to rerrun all these runs because they don't go/stop at 15M steps}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figures/rerun_a0_bias_comparison.png}
+  \caption{Optimized MLP baseline compared with initial do-nothing bias controls
+  \texttt{Initial Bias 50\%} and \texttt{Initial Bias 70\%}.}
+  \label{fig:rerun-a0-bias}
+\end{figure}
 
-\subsection{GNN Encoder Viability and Architecture}
+% \hl{I might need to run a full test eval of these runs}
+% \hl{maybe i need to rerrun all these runs because they don't go/stop at 15M steps}
+
+\subsection{Actor GNN Encoder Viability and Architecture}
 \label{subsec:gnn-viability}
 
 \paragraph{Question.}
 Can a graph encoder perform as well as the MLP? This is a crucial question because if all agents share the same GNN encoder, the architecture becomes independent of the grid size and could maybe transfer to any grid topology. If each agent requires its own separate encoder or if the GNN cannot stabilize, this transferability is lost.
 
 \paragraph{Baseline and changes.}
-We conducted an exploratory study comparing several variations of the GINE architecture. We tested the encoder size (light vs. heavy GINE), actor sharing (shared vs. unshared encoder), the critic architecture (MLP vs. GNN), and the impact of the optimizations we established for the MLP baseline (optimized critic updates, reward normalization, and removing the initial do-nothing bias). 
+We conducted an exploratory study comparing several variations of the GINE architecture. We tested the encoder size (light vs. heavy GINE), actor sharing (shared vs. unshared encoder), the critic architecture (MLP vs. GNN), and the impact of the optimizations we established for the MLP baseline (optimized critic updates, reward normalization). 
 
 \paragraph{Protocol.}
 All GINE runs use \texttt{gnn\_type = gine}, \(15{,}000{,}000\) total timesteps, evaluation every \(80{,}000\) timesteps, \(2{,}000\) rollout steps, deterministic evaluation, and the same 80/20 chronic split used by the MLP experiments. We use GINE because it naturally incorporates edge features and has been shown to be powerful at distinguishing graph topologies \cite{xu2018how}. The complete graph-actor pipeline is described in Appendix~\ref{app:gine-architecture}, and Appendix~\ref{app:experiment-configurations} details the exhaustive parameter configurations used for these ablations in Tables~\ref{tab:gine-run-configurations} and~\ref{tab:heavy-gine-configurations}.
 
 \paragraph{Evidence.}
-Table~\ref{tab:gine-rerun-summary} and Figure~\ref{fig:rerun-gine-best00} compare the core architectural improvements against the \texttt{Heavy GINE Baseline}. Figure~\ref{fig:gine-best-search2} provides a broader search, showing how the baseline reacts to individual isolated changes.
+Table~\ref{tab:gine-rerun-summary} and Figure~\ref{fig:rerun-gine-best00} compare the core architectural improvements against the \texttt{MLP Baseline}. Figure~\ref{fig:gine-best-search2} provides a broader search, showing how the baseline reacts to individual isolated changes.
 
 \begin{table}[H]
   \centering
@@ -304,21 +280,21 @@ Table~\ref{tab:gine-rerun-summary} and Figure~\ref{fig:rerun-gine-best00} compar
 \begin{figure}[H]
   \centering
   \includegraphics[width=\textwidth]{figures/rerun_gine_best00_vs_best10_14.png}
-  \caption{Seed-aggregated test episodic survival for the \texttt{Heavy GINE Baseline} against various architectural modifications.}
+  \caption{Seed-aggregated test episodic survival comparing the \texttt{MLP Baseline} against high-performing GINE architectural modifications.}
   \label{fig:rerun-gine-best00}
 \end{figure}
 
 \begin{figure}[p]
   \centering
   \includegraphics[width=\textwidth,height=0.9\textheight,keepaspectratio]{figures/gine_best_search2_baseline_comparisons.png}
-  \caption{Heavy-GINE survival comparisons. Each subplot compares the \texttt{Heavy GINE Baseline} (heavy concat-flat GINE) against one controlled alternative from \texttt{configs/gine\_s0\_s1\_s2}.}
+  \caption{GINE survival comparisons. Each subplot compares the \texttt{MLP Baseline} against a specific GINE variant from \texttt{configs/gine\_s0\_s1\_s2}. All runs are modifications of a baseline GINE model; full hyperparameters and architectural details are provided in Appendix~\ref{app:gine-architecture} and Appendix~\ref{app:experiment-configurations}.}
   \label{fig:gine-best-search2}
 \end{figure}
 
 \paragraph{Interpretation.}
-The results from the broad search and the core reruns provide several critical takeaways regarding the GNN architecture:
+The results from the broad search provide several critical takeaways regarding the GNN architecture:
 \begin{itemize}
-  \item \textbf{Shared Encoder Viability:} As shown in Figure~\ref{fig:gine-best-search2}, the \texttt{Unshared Actor} variant does not outperform the \texttt{Heavy GINE Baseline}. This proves that a single shared GNN encoder for all agents is achievable and does not bottleneck performance, which is exactly what is needed for transferability.
+  \item \textbf{Shared Encoder Viability:} As shown in Figure~\ref{fig:gine-best-search2}, the \texttt{Unshared Actor} variant does not outperform the other runs. This proves that a single shared GNN encoder for all agents is achievable and does not bottleneck performance, which is exactly what is needed for transferability.
   \item \textbf{Critic Architecture:} Attempting to use a GNN for the centralized critic proved unstable and degraded performance. The \texttt{MLP Critic} variants were significantly more stable. The best performance is clearly achieved by pairing the shared GNN actor with a standard MLP critic.
   \item \textbf{Optimization Synergies:} The GNN architecture is heavily dependent on the same optimizations that stabilized our MLP baseline. Specifically, optimized critic updates, reward normalization, and removing the initial do-nothing bias (bias 0.0) were crucial for getting the GNN to learn reliably.
 \end{itemize}
@@ -326,5 +302,19 @@ The results from the broad search and the core reruns provide several critical t
 \noindent The strongest overall result is the \texttt{Optimized Light GINE}, which combines the shared light GINE actor, the MLP critic, and all the baseline optimizations to reach \(95.7\%\) final survival. This validates that a GNN encoder is highly competitive on the 14-bus task.
 \\
 \\
-With a stable, viable, and theoretically transferable GNN architecture established, the next critical question is which graph representation best captures the underlying power grid. This sets the stage for the representational screening in Chapter~\ref{ch:methods}.
+
+\begin{tcolorbox}[colframe=red!75!black, colback=red!5!white, title=Chapter Summary]
+\textbf{Objective:} Establish a stable, high-performing MAPPO baseline and validate the viability of a GNN encoder.
+
+\textbf{Findings:}
+\begin{itemize}
+    \item \textbf{MLP Optimization:} Tuning hyperparameters, enabling reward normalization, and optimizing critic updates increased the flat MLP baseline survival to \(\sim\)93\%.
+    \item \textbf{GNN Viability:} Replacing the MLP actor with a GNN (GINE) is highly competitive. Combined with our baseline optimizations, the \texttt{Optimized Light GINE} achieved \(95.7\%\) survival.
+    \item \textbf{Transferability (Shared Actor):} A shared GNN encoder for all agents performs optimally. This is critical: because the encoder processes subgraphs of consistent dimensions regardless of the global grid size, a shared GNN actor theoretically enables zero-shot transferability to larger grids.
+    \item \textbf{Critic Architecture:} The centralized critic observes the entire global graph, inherently tying it to the training grid's specific size. Consequently, a GNN critic offers no transferability benefits and was empirically found to induce training instability. We therefore retain a standard MLP critic.
+\end{itemize}
+
+\textbf{Conclusion:} We have proven that a shared GNN encoder is viable, providing us with an architecture that is structurally transferable and performs excellently on the IEEE 14-bus grid. However, while the architecture allows for transferability in theory, we do not yet know how it will perform in practice when transferred to a different grid. To address this, the next logical step is to explore the optimal ways to represent and process the power grid as a graph, identify the best representation, and attempt transferring it to a larger environment. Chapter~\ref{ch:methods} defines these representational spaces, and Chapter~\ref{ch:experiments} evaluates them.
+\end{tcolorbox}
+
 

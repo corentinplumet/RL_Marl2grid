@@ -1,21 +1,21 @@
 {
   "gine_best_search2_baseline_comparisons.png": [
     {
-      "name": "A0_baseline",
+      "name": "MLP Baseline",
       "axis": 1,
       "final_step_m": 14.32,
       "final_survival": 93.40699404761907,
       "peak_survival": 98.55944113756614
     },
     {
-      "name": "ancient_GINE_baseline",
+      "name": "Historical GINE Baseline",
       "axis": 1,
       "final_step_m": 11.92,
       "final_survival": 59.182539682539684,
       "peak_survival": 93.86507936507937
     },
     {
-      "name": "A0_baseline",
+      "name": "MLP Baseline",
       "axis": 2,
       "final_step_m": 14.32,
       "final_survival": 93.40699404761907,
@@ -29,7 +29,7 @@
       "peak_survival": 91.14136904761905
     },
     {
-      "name": "A0_baseline",
+      "name": "MLP Baseline",
       "axis": 3,
       "final_step_m": 14.32,
       "final_survival": 93.40699404761907,
@@ -43,7 +43,7 @@
       "peak_survival": 92.63624338624338
     },
     {
-      "name": "A0_baseline",
+      "name": "MLP Baseline",
       "axis": 4,
       "final_step_m": 14.32,
       "final_survival": 93.40699404761907,
@@ -57,7 +57,7 @@
       "peak_survival": 92.97569444444444
     },
     {
-      "name": "A0_baseline",
+      "name": "MLP Baseline",
       "axis": 5,
       "final_step_m": 14.32,
       "final_survival": 93.40699404761907,
@@ -71,7 +71,7 @@
       "peak_survival": 98.2777777777778
     },
     {
-      "name": "A0_baseline",
+      "name": "MLP Baseline",
       "axis": 6,
       "final_step_m": 14.32,
       "final_survival": 93.40699404761907,
@@ -85,7 +85,7 @@
       "peak_survival": 84.16493055555556
     },
     {
-      "name": "A0_baseline",
+      "name": "MLP Baseline",
       "axis": 7,
       "final_step_m": 14.32,
       "final_survival": 93.40699404761907,
@@ -99,7 +99,7 @@
       "peak_survival": 96.48131613756613
     },
     {
-      "name": "A0_baseline",
+      "name": "MLP Baseline",
       "axis": 8,
       "final_step_m": 14.32,
       "final_survival": 93.40699404761907,
@@ -113,7 +113,7 @@
       "peak_survival": 94.6577380952381
     },
     {
-      "name": "A0_baseline",
+      "name": "MLP Baseline",
       "axis": 9,
       "final_step_m": 14.32,
       "final_survival": 93.40699404761907,
@@ -127,7 +127,7 @@
       "peak_survival": 81.97495039682539
     },
     {
-      "name": "A0_baseline",
+      "name": "MLP Baseline",
       "axis": 10,
       "final_step_m": 14.32,
       "final_survival": 93.40699404761907,
@@ -141,7 +141,7 @@
       "peak_survival": 82.18898809523809
     },
     {
-      "name": "A0_baseline",
+      "name": "MLP Baseline",
       "axis": 11,
       "final_step_m": 14.32,
       "final_survival": 93.40699404761907,
@@ -155,7 +155,7 @@
       "peak_survival": 90.5124007936508
     },
     {
-      "name": "A0_baseline",
+      "name": "MLP Baseline",
       "axis": 12,
       "final_step_m": 14.32,
       "final_survival": 93.40699404761907,
@@ -167,6 +167,92 @@
       "final_step_m": 14.96,
       "final_survival": 78.91104497354497,
       "peak_survival": 90.37450396825398
+    }
+  ],
+  "rerun_gine_best00_vs_best10_14.png": [
+    {
+      "name": "Optimized MLP Baseline",
+      "axis": 1,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "Historical GINE Baseline",
+      "axis": 1,
+      "final_step_m": 11.92,
+      "final_survival": 59.182539682539684,
+      "peak_survival": 93.86507936507937
+    },
+    {
+      "name": "Optimized MLP Baseline",
+      "axis": 2,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "Light GINE with MLP critic",
+      "axis": 2,
+      "final_step_m": 14.96,
+      "final_survival": 78.91104497354497,
+      "peak_survival": 90.37450396825398
+    },
+    {
+      "name": "Optimized MLP Baseline",
+      "axis": 3,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "Historical GINE (Bias 0.0)",
+      "axis": 3,
+      "final_step_m": 10.96,
+      "final_survival": 53.65277777777777,
+      "peak_survival": 83.895667989418
+    },
+    {
+      "name": "Optimized MLP Baseline",
+      "axis": 4,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "Optimized critic and Bias 0.0",
+      "axis": 4,
+      "final_step_m": 10.56,
+      "final_survival": 82.4890873015873,
+      "peak_survival": 85.74603174603175
+    },
+    {
+      "name": "Optimized MLP Baseline",
+      "axis": 5,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "A0-style heavy GINE",
+      "axis": 5,
+      "final_step_m": 11.6,
+      "final_survival": 59.294642857142854,
+      "peak_survival": 84.32614087301587
+    },
+    {
+      "name": "Optimized MLP Baseline",
+      "axis": 6,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "Light A0-style GINE with MLP critic",
+      "axis": 6,
+      "final_step_m": 12.64,
+      "final_survival": 95.69196428571429,
+      "peak_survival": 97.42757936507938
     }
   ],
   "rerun_a0_core_all_curves.png": [

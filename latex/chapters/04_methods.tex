@@ -91,6 +91,16 @@ edge masks, domain masks, type indicators, and relation one-hot attributes are
 also left unchanged. Only the continuous channels listed in
 Table~\ref{tab:graph-physical-scales} enter the running statistics.
 The running moments are frozen during evaluation.
+\\
+\\
+Both transformations are available to every experiment, but neither is used in
+the screening protocol of Chapter~\ref{ch:experiments} or the sparse-control
+experiments of Chapter~\ref{ch:sparse-control}, which read raw features. The
+transfer study of Chapter~\ref{ch:wcci-transfer} enables physical scaling alone:
+Section~\ref{sec:wcci-running-norm} measures running standardization on a
+cross-grid comparison and finds it counterproductive for features whose support
+is sparse, because standardizing a channel that is mostly structural zeros
+relocates that point mass to a grid-dependent value.
 
 
 \section{Graph Representations}
@@ -331,8 +341,6 @@ therefore preserved individually.
   relations between busbar nodes.}
   \label{fig:heterogeneous-equipment-graph}
 \end{figure}
-
-{\color{red}Mean readout includes all nodes in the local graph, including one-hop context.}
 
 \subsubsection{Nodes and features}
 \label{subsec:heterogeneous-nodes}
@@ -725,16 +733,90 @@ the receptive field. The edges around the line node are bidirectional: the line 
 \subsection{Local actor graphs and the global state graph}
 \label{subsec:graph-local-global}
 
-Each agent controls a set of substations $\mathcal{C}_a$. Under decentralized
-observability, its local graph can be constructed in two ways. Without neighbor
-context, the node set contains only substations in $\mathcal{C}_a$, and the line
-set contains only lines whose two endpoints lie inside this region. With
-one-hop context enabled, the graph additionally contains every line touching
-$\mathcal{C}_a$ and the substations at the opposite endpoints of those lines.
-The \texttt{domain\_mask} node feature and a separate controlled-node mask
-distinguish the controlled region from contextual neighbors. {\color{red}This second mask also permits graph readout to pool only the nodes on which the agent can act.}
+Each agent $a$ controls a set of substations $\mathcal{C}_a$ and never sees the
+whole grid. Its local graph is built in two steps. First the \emph{region} is
+fixed: with one-hop context enabled, which is the setting used throughout, it
+contains every line with at least one endpoint in $\mathcal{C}_a$, together with
+the substations at both ends of those lines. The region is therefore
+$\mathcal{C}_a$ plus a ring of neighboring substations that the agent can see but
+cannot act on. Without one-hop context the region is $\mathcal{C}_a$ alone and
+only lines internal to it are kept.
 \\
 \\
+The region is a set of substations, but no node of the graph is a substation.
+The second step fills the region with the entities that do get nodes, and this
+is where the three schemas differ. A substation contributes its $B$ busbar
+nodes, one per possible busbar, in every schema; a node standing for the
+substation itself exists only when the summary augmentation of
+Section~\ref{sec:substation-summary-nodes} is enabled. \emph{Controlled} and
+\emph{contextual} below therefore describe where a node sits, not a node type:
+a busbar is controlled when its substation is in $\mathcal{C}_a$. Table~\ref{tab:pooled-nodes} states what each one puts in the
+graph, with a worked count for one agent.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{What each schema puts in one agent's local graph, with one-hop
+  context enabled. The example is agent 0 of \texttt{bus14}, which controls
+  substations $\{0,1,2,4\}$ and sees substations $\{3,5\}$ as context, with
+  $B=2$ busbars per substation and eight lines touching its region.}
+  \label{tab:pooled-nodes}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{L{0.23\textwidth}L{0.42\textwidth}L{0.24\textwidth}}
+    \toprule
+    Schema & Node types in the local graph & Example: agent 0 \\
+    \midrule
+    \texttt{bus} & Busbar nodes only, $B$ for each substation of the region &
+    12 busbar nodes, 8 controlled and 4 contextual \\
+    \texttt{heterogeneous} & The same busbars, plus one node per generator and
+    one per load attached to any substation of the region &
+    12 busbars, 5 generators, 5 loads: 22 \\
+    \texttt{heterogeneous\_line} & The same busbars and asset nodes, plus one
+    node per line of the region & 22 as above, plus 8 line nodes: 30 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+{\color{darkred}
+\noindent The readout takes \emph{one} mean over \emph{every} node of that
+graph. Nothing is filtered out, and Table~\ref{tab:pooling-summary} lists what
+that includes and what it costs.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{What the mean readout averages, and the two effects it produces.
+  Counts are for agent 0 of \texttt{bus14}.}
+  \label{tab:pooling-summary}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{L{0.30\textwidth}L{0.58\textwidth}}
+    \toprule
+    Averaged & Consequence \\
+    \midrule
+    Busbars of controlled substations & The nodes the agent acts on: 8 of 22 \\
+    Busbars of contextual substations & Neighbors it cannot act on are averaged in on equal terms: 4 of 22 \\
+    Empty busbars & Half the busbars in the nominal topology; they add rows of zeros \\
+    Generator and load nodes, contextual ones included & Only these carry \texttt{p} and \texttt{theta}: 10 of 22 \\
+    Disconnected assets & Keep their node, with zeros and \texttt{connected}$=0$ \\
+    Line nodes, in \texttt{heterogeneous\_line} only & Add the line state to the same average \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\noindent Two effects follow. Context dilutes: a third of agent 0's busbar
+nodes belong to substations it cannot act on, and ten of agent 1's eighteen. And
+in the disaggregated schemas a busbar node has \texttt{p} and \texttt{theta}
+exactly zero, because those quantities moved to the asset nodes, so the mean of
+those columns is the asset total divided by the count of \emph{all} nodes. On
+\texttt{bus14} busbars are 55\,\% of the pooled set for agent 0, 64\,\% for
+agent 1 and 62\,\% for agent 2, so the same generation reaches each agent's
+readout attenuated by a different factor, and by a different one again on
+another grid (Section~\ref{sec:wcci-why-distribution}).
+
+\noindent The \texttt{domain\_mask} feature marks which nodes are controlled,
+but it is an input column the encoder reads, not a filter on the readout.
+}
+
 The full-grid state graph is available to the centralized critic during
 training, while each actor receives only its local graph. This follows the
 centralized-training, decentralized-execution structure of MAPPO
@@ -910,13 +992,18 @@ local graph:
   \label{eq:methods-mean-pooling}
 \end{equation}
 where $m_v$ is the valid-node mask. This is one mean over all valid node types,
-not one mean per type {\color{red} to be invariant}. Thus the busbar graph pools busbar nodes, the
-disaggregated graph pools busbars, generators, and loads, and the
-disaggregated-line graph additionally pools transmission-line nodes. One-hop
-contextual nodes are included in the ordinary mean readout.
+not one mean per type, so that the readout stays comparable across grids of
+different composition. The nodes entering that average are every node of the
+agent's local graph, listed per schema in Table~\ref{tab:pooled-nodes}.
+
+The hierarchy nodes of Section~\ref{sec:substation-representation}, when
+enabled, enter the average as ordinary nodes as well.
 \\
 \\
-{\color{red} No sum pooling because ultimately the objective would be to have something tranfarable to other graph and sum pooling would be dependent on the number of nodes in the graph.}
+Sum pooling is available but is not used in any reported experiment. Its
+magnitude grows with the number of pooled nodes, which differs between agents
+and between grids, so a readout built from it would not be comparable across the
+transfer studied in Chapter~\ref{ch:wcci-transfer}.
 \\
 \\
 Maximum pooling instead takes an independent maximum in every feature channel:
