@@ -11,3 +11,5 @@ latex/chapters/*
 !latex/figures/
 latex/figures/*
 !latex/figures/graph_*.png
+!latex/figures/graph_*.tex
+!latex/figures/graph_*.drawio

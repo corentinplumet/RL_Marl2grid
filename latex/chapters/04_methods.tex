@@ -724,6 +724,7 @@ nonzero entries for every relation.
 % and the second returns this joint state to the endpoints. Later layers enlarge
 % the receptive field. The edges around the line node are bidirectional: the line gathers both endpoints and sends the updated state back; endpoint exchange is possible.
 
+{\color{red}
 \subsection{Local actor graphs and the global state graph}
 \label{subsec:graph-local-global}
 
@@ -771,7 +772,7 @@ graph, with a worked count for one agent.
   \end{tabular}
 \end{table}
 
-{\color{darkred}
+
 \noindent The readout takes \emph{one} mean over \emph{every} node of that
 graph. Nothing is filtered out, and Table~\ref{tab:pooling-summary} lists what
 that includes and what it costs.
@@ -809,69 +810,130 @@ another grid (Section~\ref{sec:wcci-why-distribution}).
 
 \noindent The \texttt{domain\_mask} feature marks which nodes are controlled,
 but it is an input column the encoder reads, not a filter on the readout.
-}
-
+\\
+\\
 The full-grid state graph is available to the centralized critic during
 training, while each actor receives only its local graph. This follows the
 centralized-training, decentralized-execution structure of MAPPO
-\cite{yu2022mappo}.
+\cite{yu2022mappo}.}
 
-{\color{red}
-\subsection{Graph encoder}
+\subsection{Graph actor and centralized critic}
 \label{subsec:graph-representation-encoder-boundary}
 
-GINE and GAT receive every column of the edge-feature vector. The homogeneous
-graph provides only physical-line columns; the heterogeneous graphs append the
-relation one-hot columns defined in
-Tables~\ref{tab:heterogeneous-edge-features}
-and~\ref{tab:heterogeneous-line-edge-features}. Node types are encoded by the
-explicit \texttt{is\_*} node features.
+\begin{figure}[H]
+  \color{black}
+  \centering
+  \resizebox{\textwidth}{!}{%
+    \input{figures/graph_actor_pipeline.tex}%
+  }
+  \caption{End-to-end graph-actor architecture. Candidate edges masked by the
+  current topology are removed before message passing. The graph encoder and
+  its output projection are shared across agents, whereas the final MLP has one
+  output per action available to agent $a$ and is therefore agent-specific.}
+  \label{fig:graph-actor-pipeline}
+\end{figure}
 
-GINE and GAT use the same high-level actor pipeline:
-\begin{equation}
-  \begin{aligned}
-    (\mathbf{X},\mathbf{E},\mathbf{m})
-    &\longrightarrow \text{active-edge filtering}
-     \longrightarrow \text{node projection}
-     \longrightarrow \mathbf{H}^{(0)}, \\
-    \mathbf{H}^{(0)}
-    &\longrightarrow K\text{ message-passing layers}
-     \longrightarrow \text{graph readout}
-     \longrightarrow \text{action logits}.
-  \end{aligned}
-  \label{eq:graph-actor-pipeline}
-\end{equation}
-They differ only in the message-passing block. GINE inserts the projected edge
-vector into the content of every message. GAT uses the projected edge vector
-to compute the attention weight assigned to that message. Pooling, the graph
-output projection, and the action head are otherwise identical. The exact
-equations and architectural dimensions are given in
+GINE and GAT use the same actor pipeline and differ only in the
+message-passing operator. In the reported configuration, the input node
+projection and the two message-passing layers have 128 features. LayerNorm is
+applied after the input projection and after each message-passing layer. The
+graph readout produces a 128-dimensional embedding, followed by an
+agent-specific action head with two 128-unit hidden layers. The graph encoder
+and output projection are shared across agents, whereas the action heads are
+separate because their action-set sizes may differ.
+\\
+\\
+This is the default configuration. The
+candidate-scoring alternative of Section~\ref{sec:candidate-action-scoring}
+replaces this head.
+\\
+\\
+The centralized critic is a separate MLP over the normalized flat state. It
+does not reuse the actor graph embedding and is used only during centralized
+training. Its flat-state normalization is independent of the graph-input
+normalization. The exact GINE and GAT updates, graph readout, output projection,
+and action-head equations are given in
 Appendix~\ref{app:gine-architecture}.
-\\
-\\
-The busbar schema aggregates generator and load states and omits reactive power,
-voltage magnitudes, and directional endpoint flows. Empty busbars remain in the
-node set. The preprocessing in
-Section~\ref{subsec:graph-feature-normalization} changes feature values but not
-the graph schema.}
 
+\begin{tcolorbox}[
+  colframe=red!75!black,
+  colback=red!5!white,
+  title=Chapter Summary (1/3): Graph Construction and Model
+]
+\textbf{Purpose:} Define how the electrical state becomes the input of each
+actor and how that input is encoded.
+
+\begin{itemize}
+  \item \textbf{Input processing:} Continuous physical quantities can be
+  divided by fixed physical scales and optionally standardized from training
+  statistics. The loading ratio \texttt{rho}, binary features, and masks remain
+  unchanged. The graph-screening experiments use raw features; the cross-grid
+  transfer study uses deterministic physical scaling.
+  \item \textbf{Dynamic topology:} Nodes and candidate edges remain fixed, while
+  a time-dependent mask retains only the relations that are electrically active
+  in the current topology.
+  \item \textbf{Graph representations:} The \texttt{bus} schema aggregates
+  equipment on busbars; \texttt{heterogeneous} gives generators and loads their
+  own nodes; and \texttt{heterogeneous\_line} also represents each transmission
+  line as a node. This changes both the feature location and the number of
+  message-passing steps between physical objects.
+  \item \textbf{Actor and critic:} Each actor receives its controlled region and
+  one-hop neighboring context. The reference architecture uses a two-layer,
+  128-feature GINE or GAT encoder shared across agents, followed by an
+  agent-specific action head. The centralized critic remains a separate MLP
+  over the normalized full-grid flat state.
+\end{itemize}
+
+\textbf{Takeaway:} The graph variants change how the same grid state is
+represented and propagated, while the MAPPO training structure and agent
+partition remain unchanged.
+\end{tcolorbox}
 
 \section{Substation Representation: Direct Edges and Summary Nodes}
 \label{sec:substation-representation}
 
 Two optional factors change how information is exchanged inside a substation.
 The factor $e$ adds direct same-substation busbar edges. The factor $n$ adds one
-learned substation-summary node per included substation.
+learned substation-summary node per included substation. Both augmentations are
+part of the constructed graph $G_a$ shown at the left of
+Figure~\ref{fig:graph-actor-pipeline}; their nodes and edges therefore enter the
+same node projection, edge filtering, and message-passing pipeline as the base
+graph.
 
 \subsection{Direct same-substation edges (e)}
 \label{subsec:graph-relation-edges}
 
-In addition to physical-line relations, the graph may include a directed
-same-substation edge $i(s,b)\rightarrow i(s,b')$ for every $b\neq b'$.
-These relations remain active throughout the episode and use zero physical-line
-features except for the neutral value \texttt{rho}$=1$. Same-substation edges
-permit message passing between alternative busbars but do not represent an
-electrical connection.
+In addition to physical-line relations, the augmentation inserts
+$i(s,b)\rightarrow i(s,b')$ for every ordered pair $b\neq b'$ of busbars in the
+same included substation. The edges are therefore bidirectional between each
+pair of busbars, remain active throughout the episode, and do not represent an
+electrical connection. Figure~\ref{fig:same-substation-busbar-edge} shows this
+relation for the busbar and disaggregated schemas.
+\\
+\\
+Table~\ref{tab:same-substation-augmentation-features} gives the exact feature
+values of the added edges. The neutral value \texttt{rho}$=1$ is used whenever
+the schema contains physical edge attributes; every other physical attribute is
+zero.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Node and edge features introduced by the direct same-substation
+  augmentation. ``None'' means that the augmentation neither adds nodes nor
+  changes the features of existing nodes.}
+  \label{tab:same-substation-augmentation-features}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{L{0.20\textwidth}L{0.16\textwidth}L{0.54\textwidth}}
+    \toprule
+    Graph schema & Added node features & Feature values on each added directed edge \\
+    \midrule
+    Busbar & None & \texttt{rho}$=1$; all other physical-line features are $0$. \\
+    Disaggregated & None & \texttt{rho}$=1$ and \texttt{relation\_same\_substation\_busbar}$=1$; all other entries are $0$. \\
+    Disaggregated with line nodes & None & \texttt{relation\_same\_substation\_busbar}$=1$; the other eight relation entries are $0$. \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 \begin{figure}[htbp]
   \centering
@@ -903,27 +965,26 @@ electrical connection.
 \subsection{Substation summary nodes (n)}
 \label{sec:substation-summary-nodes}
 
-An optional hierarchical augmentation introduces one learned node $u_s$ for
-every included substation $s$. Let
-$\mathcal{B}(s)$ be its included busbar nodes. {\color{red}Summary edges are either
-\texttt{bidirectional} or \texttt{toward\_summary}.}{\color{blue} In the latter case, the
-augmented graph contains only
+In all experiments, augmentation $n$ adds one learned summary node $u_s$ for
+each included substation $s$ and connects it in both directions to every busbar
+in $\mathcal{B}(s)$:
 \begin{equation}
   \mathcal{E}_{\mathrm{sub}} =
   \left\{
-    (i,u_s)
+    (i,u_s),(u_s,i)
     \;\middle|\;
     i\in\mathcal{B}(s)
   \right\};
   \label{eq:substation-node-edges}
 \end{equation}
-the bidirectional setting additionally includes every reverse edge $(u_s,i)$.
-Each substation node therefore gathers information from every busbar belonging
-to that substation. In the bidirectional case it can also redistribute its
-learned summary to those busbars in later message-passing layers. It is not
-connected directly to generators,
-loads, or transmission-line nodes; those elements influence it through their
-busbar attachments.}
+For $S$ included substations with $B$ busbars each, this adds $S$ nodes and
+$2SB$ directed edges. Each $u_s$ gathers information from its busbars and sends
+the result back, so two busbars in the same substation communicate in two steps:
+$i(s,b)\rightarrow u_s\rightarrow i(s,b')$. It therefore provides the same
+intra-substation communication role as the direct relation in
+Figure~\ref{fig:same-substation-busbar-edge}. Only busbars connect directly to
+$u_s$; other node types reach it through their busbar attachments.
+Figure~\ref{fig:substation-summary-node} shows this construction.
 \\
 \begin{figure}[htbp]
   \centering
@@ -942,8 +1003,8 @@ busbar attachments.}
   \end{subfigure}
   \caption{Learned substation-summary augmentation, shown in the two schemas of
   Section~\ref{sec:graph-representation}. The orange substation node receives
-  messages from each of its blue busbar nodes and can optionally redistribute
-  the resulting substation-level representation. In~(a) the generator and load
+  messages from each of its blue busbar nodes and redistributes the resulting
+  substation-level representation through the reverse edges. In~(a) the generator and load
   quantities are aggregated into the busbar features, whereas in~(b) they are
   separate nodes; in both cases the summary node attaches only to busbars, so
   generators, loads, and transmission-line nodes reach it through their busbar
@@ -951,20 +1012,43 @@ busbar attachments.}
   \label{fig:substation-summary-node}
 \end{figure}
 
-{\color{blue}\noindent The initial substation-node states are learned embeddings indexed by the global
-substation identifiers. For $S$ included substations and $B$ busbars per
-substation, the augmentation adds $S$ nodes and either $SB$ directed edges for
-\texttt{toward\_summary} or $2SB$ for \texttt{bidirectional}.} The nodes
-participate in standard mean, sum, maximum, or attention readout. Controlled
-readout marks a substation node as controlled whenever at least one of its
-busbars is controlled. {\color{blue}The sparse graph transformer assigns the attachments a
-dedicated learned relation.}
+\noindent After the raw node projection in
+Figure~\ref{fig:graph-actor-pipeline}, the model initializes $u_s$ with
+$\mathbf q_s$, row $s$ of a trainable matrix
+$\mathbf Q\in\mathbb R^{S\times d_h}$. The same $\mathbf q_s$ is used whenever
+substation $s$ appears and contains no current grid measurement. Messages from
+the busbars then produce an observation-dependent state for $u_s$, while PPO
+learns $\mathbf Q$ together with the other network parameters.
+Table~\ref{tab:summary-node-augmentation-features} specifies this initial state
+and the edge features, which are identical in both directions.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Node and edge features introduced by the substation-summary
+  augmentation. Here $d_h$ is the hidden node width; $d_h=128$ in the screened
+  GINE models.}
+  \label{tab:summary-node-augmentation-features}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{L{0.20\textwidth}L{0.31\textwidth}L{0.39\textwidth}}
+    \toprule
+    Graph schema & Added summary-node state & Feature values on $i\leftrightarrow u_s$ \\
+    \midrule
+    Busbar & Trainable vector $\mathbf{q}_s\in\mathbb{R}^{d_h}$, selected by substation identifier; no measured feature. & \texttt{rho}$=1$; all other physical-line features are $0$. \\
+    Disaggregated & Same trainable vector $\mathbf{q}_s$; no measured feature. & \texttt{rho}$=1$; all physical and relation entries are otherwise $0$. \\
+    Disaggregated with line nodes & Same trainable vector $\mathbf{q}_s$; no measured feature. & All nine relation entries are $0$. \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\noindent In runs with mean readout, each $u_s$ is marked as a valid node and is
+included once in the mean together with all other valid nodes. In runs with a virtual
+node, there is no terminal mean: the virtual node connects to the summary nodes,
+and its final state is used as the graph representation.
 \\
 \\
-This augmentation differs from the same-substation edges in
-Section~\ref{subsec:graph-relation-edges}: it introduces a learned hub $u_s$
-instead of directly connecting pairs of busbars. It can be combined with the
-virtual-node readout.
+The summary-node and direct-edge augmentations may also be enabled together,
+and either may be combined with the virtual-node readout.
 
 
 \section{Pooling and Graph Readout}
@@ -974,39 +1058,49 @@ The final graph embedding is obtained either by pooling node embeddings directly
 or by reading out a learned virtual node. The output projection and action head
 are the same in both cases.
 
-\subsection{Mean, Max, Sum pooling}
+\subsection{Mean, maximum, and sum pooling}
 \label{subsec:graph-mean-pooling}
 
-Mean pooling averages the final node embeddings over the valid nodes in the
-local graph:
+Mean pooling averages the final embeddings of the valid nodes:
 \begin{equation}
   \overline{\mathbf{h}}_G =
   \frac{\sum_v m_v\mathbf{h}^{(K)}_v}
        {\max(1,\sum_v m_v)},
   \label{eq:methods-mean-pooling}
 \end{equation}
-where $m_v$ is the valid-node mask. This is one mean over all valid node types,
-not one mean per type, so that the readout stays comparable across grids of
-different composition. The nodes entering that average are every node of the
-agent's local graph, listed per schema in Table~\ref{tab:pooled-nodes}.
-
-The hierarchy nodes of Section~\ref{sec:substation-representation}, when
-enabled, enter the average as ordinary nodes as well.
+where $m_v=1$ for a valid node and $m_v=0$ otherwise. A single mean is computed
+over all node types; there is no separate pooling operation for each type. The
+division by the number of valid nodes keeps the scale of the graph embedding
+independent of graph size.
 \\
 \\
-Sum pooling is available but is not used in any reported experiment. Its
-magnitude grows with the number of pooled nodes, which differs between agents
-and between grids, so a readout built from it would not be comparable across the
-transfer studied in Chapter~\ref{ch:wcci-transfer}.
-\\
-\\
-Maximum pooling instead takes an independent maximum in every feature channel:
+Maximum pooling instead selects the largest value independently in every hidden
+feature channel:
 \begin{equation}
   \left(\overline{\mathbf{h}}^{\max}_G\right)_c =
   \max_{v\,:\,m_v=1}\left(\mathbf{h}^{(K)}_v\right)_c.
   \label{eq:methods-max-pooling}
 \end{equation}
-\noindent The three readouts differ in what they preserve. The mean is invariant to the number of pooled nodes, but it dilutes an isolated extreme node as the graph grows: one overloaded line among forty nodes moves the mean by a fortieth of itsown deviation. The sum preserves that node's full contribution and additionally encodes graph size, which the mean discards. The maximum is again invariant to the count and reports the strongest activation per channel, which suits detecting whether some node is in a critical state, at the cost of discarding how many nodes are in that state and of propagating gradients only to the arg-maximum node of each channel.
+It therefore keeps the strongest activation in each channel without depending
+on the number of nodes, but it does not preserve how many nodes produced a
+similar activation.
+\\
+\\
+Sum pooling is available but is not used in any reported experiment. Its
+magnitude grows with the number of nodes. That number differs across agents,
+graph representations, and grids, so the scale of a sum-pooled embedding would
+also change across the transfer studied in Chapter~\ref{ch:wcci-transfer}.
+\\
+\\
+For mean or maximum pooling, the pooled set is every valid node in the agent's
+local graph. It contains all controlled and contextual busbars, including empty
+busbars; all generator and load nodes in the disaggregated schemas, including
+disconnected assets; and all transmission-line nodes in the explicit-line
+schema. When the substation-summary augmentation is enabled, its summary nodes
+are included as well. Direct same-substation edges add no nodes and therefore do
+not change the pooled set. Table~\ref{tab:pooled-nodes} gives the node types and
+counts for each representation. Virtual-node runs do not use this terminal
+pooling and are described in Section~\ref{sec:virtual-node-readout}.
 
 \subsection{Virtual-node graph readout}
 \label{sec:virtual-node-readout}
@@ -1032,11 +1126,11 @@ the included busbar nodes otherwise. The augmented graph is
   \right\}.
   \label{eq:virtual-node-augmentation}
 \end{align}
-Equation~\ref{eq:virtual-node-augmentation} shows the
-\texttt{toward\_summary} case; \texttt{bidirectional} additionally inserts
-$(v_{\star},i)$ for every summary node. Thus the virtual node connects to all
-included busbars, or to all included substation-summary nodes when that
-augmentation is enabled. It has no direct edge to generator, load, or
+All reported experiments use a toward-summary direction: every added edge
+points from a node in $\mathcal{V}_{\mathrm{sum}}$ to $v_{\star}$. The virtual
+node therefore receives information but never sends messages back. It connects
+to all included busbars, or to all included substation-summary nodes when that
+augmentation is enabled, and has no direct edge to generator, load, or
 transmission-line nodes.
 
 \begin{figure}[htbp]
@@ -1057,8 +1151,8 @@ transmission-line nodes.
   \caption{Virtual-node graph readout, shown for both definitions of the
   summary set $\mathcal{V}_{\mathrm{sum}}$ in
   Equation~\ref{eq:virtual-node-augmentation}. The purple node aggregates that
-  set and its final embedding replaces terminal node pooling; reverse messages
-  are optional. In~(a) the substation-summary augmentation of
+  set and its final embedding replaces terminal node pooling. Every purple edge
+  is directed toward the virtual node, which sends no message back. In~(a) the substation-summary augmentation of
   Section~\ref{sec:substation-summary-nodes} is enabled, so the virtual node
   attaches to the orange substation nodes and reaches the busbars only through
   them, which gives a two-level hierarchy busbar $\rightarrow$ substation
@@ -1087,9 +1181,9 @@ message-passing layer jointly updates the physical and virtual nodes:
   \right).
   \label{eq:virtual-node-update}
 \end{equation}
-With \texttt{bidirectional} edges the virtual state can also influence its
-neighbors in later layers; with \texttt{toward\_summary} it only aggregates.
-After $K$ layers, the graph embedding is
+Because every virtual edge points toward $v_{\star}$, it only aggregates the
+node states and cannot influence them during message passing. After $K$ layers,
+the graph embedding is
 \begin{equation}
   \mathbf{z}_{G}
   = \operatorname{ReLU}
@@ -1105,18 +1199,44 @@ dimension is unchanged.
 
 Virtual connections are structural: their continuous edge attributes are zero,
 except for a neutral unit value in the
-\texttt{rho} position when that feature exists. {\color{blue}The sparse graph transformer allocates dedicated learned relations for substation attachments and virtual-node attachments, allowing its attention
-layers to distinguish hierarchy links from all physical and equipment
-relations.}
+\texttt{rho} position when that feature exists.
 \\
 \\
-{\color{blue}Without substation nodes, a graph containing $N_{\mathrm{bus}}$ included
-busbars receives one virtual node and either $N_{\mathrm{bus}}$ or
-$2N_{\mathrm{bus}}$ directed edges. With the hierarchy enabled, the
-virtual-node stage instead adds either $S$ or $2S$ edges on top of
-the substation augmentation. After one layer the virtual node has aggregated
-its immediate busbar or substation neighbors.}
+Without substation nodes, a graph containing $N_{\mathrm{bus}}$ included
+busbars receives one virtual node and $N_{\mathrm{bus}}$ directed edges. With
+the hierarchy enabled, the virtual-node stage instead adds $S$ edges from the
+$S$ substation-summary nodes. After one layer the virtual node has aggregated
+its immediate busbar or substation neighbors.
 
+\begin{tcolorbox}[
+  colframe=red!75!black,
+  colback=red!5!white,
+  title=Chapter Summary (2/3): Augmentations and Graph Readout
+]
+\textbf{Purpose:} Separate changes to information exchange inside the graph
+from changes to the final graph-level representation.
+
+\begin{itemize}
+  \item \textbf{Direct substation edges ($e$):} Add structural relations between
+  busbars of the same substation, without adding nodes or representing a
+  physical transmission line.
+  \item \textbf{Substation nodes ($n$):} Add one learned node per substation.
+  It has no raw electrical measurement, is updated from its busbars, and can be
+  included in the graph readout.
+  \item \textbf{Terminal pooling:} Mean pooling averages every valid node in the
+  local graph, including contextual and added substation nodes. Maximum pooling
+  keeps the largest value in each hidden channel. Sum pooling is not used
+  because its scale changes with the number of nodes.
+  \item \textbf{Virtual readout ($v$):} Replace terminal pooling with one learned
+  grid-summary node. Messages travel only toward this node, from the busbars or
+  from the added substation nodes, and its final state becomes the graph
+  embedding.
+\end{itemize}
+
+\textbf{Takeaway:} Factors $e$ and $n$ modify message passing, whereas pooling
+and factor $v$ determine how the encoded local graph is reduced to one vector
+for action selection. These choices can be combined with any base graph schema.
+\end{tcolorbox}
 
 \section{Candidate-Action Scoring from the Explicit-Line Graph}
 \label{sec:candidate-action-scoring}
@@ -1369,32 +1489,6 @@ the first two pooling modes of Table~\ref{tab:candidate-pool-modes}. Auxiliary
 heads over the same node embeddings, such as predicting which lines are about to
 overload, are a possible later addition.
 }
-{\color{orange}
-\section{Graph Actor and Critic Configuration}
-\label{sec:graph-model-configuration}
-
-The actor uses two message-passing layers with 128 hidden features. LayerNorm
-is applied after the input node projection and after each message-passing layer.
-The graph readout produces a 128-dimensional embedding, followed by an
-agent-specific action head with two 128-unit hidden layers. The graph encoder
-and output projection are shared across agents; the action heads are separate
-because their action-set sizes may differ. This is the default
-\texttt{actor\_action\_head=mlp} setting; the candidate-scoring alternative of
-Section~\ref{sec:candidate-action-scoring} replaces only this head. The flat observation is not
-concatenated to the graph embedding, and learned global node-identifier
-embeddings are disabled. Local actors include one-hop neighboring context.
-\\
-\\
-The centralized critic is a separate MLP over the normalized flat state and
-does not reuse the actor graph embedding. It is used only during centralized
-training. Graph-input normalization follows
-Section~\ref{subsec:graph-feature-normalization} and is independent of the
-critic's flat-state normalization. The exact GINE and GAT updates, graph
-readout, output projection, and action-head equations are given in
-Appendix~\ref{app:gine-architecture}.
-}
-
-
 \section{Action-Space Reduction for Large Grids}
 \label{sec:wcci-action-space-reduction}
 
@@ -1457,3 +1551,32 @@ a separate question and is not covered here.
   \end{tabular}
   }
 \end{table}
+
+\begin{tcolorbox}[
+  colframe=red!75!black,
+  colback=red!5!white,
+  title=Chapter Summary (3/3): Action Scoring and Large-Grid Reduction
+]
+\textbf{Purpose:} Define how graph embeddings become action logits and how the
+large WCCI action space is made tractable.
+
+\begin{itemize}
+  \item \textbf{Default action head:} An agent-specific MLP maps the graph
+  embedding directly to one logit per discrete action.
+  \item \textbf{Candidate-action head:} The optional explicit-line variant
+  scores each non-idle action from the encoded nodes it modifies and from static
+  action descriptors. The idle action has a separate score. The PPO objective
+  and categorical policy are unchanged.
+  \item \textbf{Current scope:} Candidate scoring requires the explicit-line
+  graph and one-hop context, and its memory cost still grows with the number of
+  candidate actions.
+  \item \textbf{WCCI reduction:} Actions are ranked offline by how often they
+  reduce loading in simulated stressed states. Action 0 is always retained, and
+  the reduced sets are checked with a one-step simulator-greedy controller
+  before policy training.
+\end{itemize}
+
+\textbf{Takeaway:} Graph representation, action scoring, and action-space size
+are separate design choices. This chapter defines them; the following chapters
+evaluate the resulting policies.
+\end{tcolorbox}

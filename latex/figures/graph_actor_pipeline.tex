@@ -1,0 +1,144 @@
+\begin{tikzpicture}[
+  >=stealth,
+  font=\small\sffamily,
+  flow/.style={->, very thick, draw=gray!70},
+  branch/.style={->, thick, draw=gray!65},
+  stage/.style={
+    draw=gray!65,
+    very thick,
+    rounded corners=4pt,
+    align=center,
+    text=black,
+    inner sep=7pt
+  },
+  note/.style={font=\scriptsize\sffamily, text=gray!75, fill=white, inner sep=1pt},
+  lane/.style={
+    draw=gray!55,
+    dashed,
+    rounded corners=6pt,
+    fill=gray!3,
+    very thick
+  }
+]
+
+% Draw.io-style group containers.
+\path[lane] (1.64,2.76) rectangle (15.95,-2.59);
+\node[anchor=west, font=\bfseries\small\sffamily, text=gray!75]
+  at (2.40,2.43) {Shared graph encoder};
+
+\path[lane] (6.95,-3.25) rectangle (15.95,-5.80);
+\node[anchor=west, font=\bfseries\small\sffamily, text=gray!75]
+  at (11.7,-3.54) {Agent-specific action head};
+
+% Constructed graph.
+\node[
+  stage,
+  fill=blue!9,
+  minimum width=3.40cm,
+  minimum height=3.45cm
+] (graph) at (-0.75,0) {
+  {\bfseries Constructed local graph}\\[-1pt]
+  $\mathcal{G}_a=(\mathcal{V}_a,\mathcal{E}_a)$\\[5pt]
+  \rule{2.45cm}{0.35pt}\\[5pt]
+  node features $\mathbf{X}_a$\\
+  edge features $\mathbf{E}_a$\\
+  candidate \texttt{edge\_index}\\
+  edge mask $\mathbf{m}^{E}_a$
+};
+
+% Encoder inputs.
+\node[
+  stage,
+  fill=cyan!10,
+  minimum width=3.10cm,
+  minimum height=1.65cm
+] (nodeproj) at (4,1.25) {
+  {\bfseries Node projection}\\[4pt]
+  Linear $d_v\!\rightarrow\!128$\\
+  ReLU, then LayerNorm
+};
+
+\node[
+  stage,
+  fill=cyan!10,
+  minimum width=3.10cm,
+  minimum height=1.65cm
+] (filter) at (3.9,-1.25) {
+  {\bfseries Active-edge filtering}\\[4pt]
+  retain rows with $m^E_{uv}=1$\\
+  $(\mathcal{E}^{\mathrm{act}}_a,\mathbf{E}^{\mathrm{act}}_a)$
+};
+
+% Repeated message-passing block.
+\node[
+  stage,
+  fill=violet!10,
+  minimum width=4.20cm,
+  minimum height=3.10cm
+] (message) at (8.85,0) {
+  {\bfseries $K\times$ GINE or GAT layers}\\[7pt]
+  edge-aware message passing\\[7pt]
+  ReLU, then LayerNorm\\[4pt]
+  $\mathbf{H}^{(0)}\!\rightarrow\!\mathbf{H}^{(K)}$
+};
+
+% Readout and shared graph projection.
+\node[
+  stage,
+  fill=green!11,
+  minimum width=3.60cm,
+  minimum height=1.70cm
+] (pool) at (13.65,1.25) {
+  {\bfseries Mean readout}\\[5pt]
+  $\displaystyle
+    \bar{\mathbf h}_a=
+    \frac{1}{|\mathcal V_a|}
+    \sum_{i\in\mathcal V_a}
+    \mathbf h_i^{(K)}$
+};
+
+\node[
+  stage,
+  fill=green!11,
+  minimum width=3.60cm,
+  minimum height=1.70cm
+] (graphproj) at (13.65,-1.25) {
+  {\bfseries Graph projection}\\[4pt]
+  Linear $128\!\rightarrow\!128$\\
+  ReLU $\Rightarrow \mathbf z_a$
+};
+
+% Per-agent policy head and logits.
+\node[
+  stage,
+  fill=orange!13,
+  minimum width=4.80cm,
+  minimum height=1.60cm
+] (actor) at (9.85,-4.55) {
+  {\bfseries Actor MLP}\\[4pt]
+  $2\times[\text{Linear }128\!\rightarrow\!128+\text{ReLU}]$\\
+  Linear $128\!\rightarrow\!|\mathcal A_a|$
+};
+
+\node[
+  stage,
+  fill=yellow!18,
+  minimum width=2.60cm,
+  minimum height=1.60cm
+] (logits) at (14.25,-4.55) {
+  {\bfseries Action logits}\\[5pt]
+  $\boldsymbol{\ell}_a\in
+   \mathbb{R}^{|\mathcal A_a|}$
+};
+
+% Data flow.
+\draw[branch] (graph.east) -- (1.51,0) |- (nodeproj.west);
+\draw[branch] (graph.east) -- (1.51,0) |- (filter.west);
+\draw[flow] (nodeproj.east) -- node[note, above=4pt, pos=0.54] {$\mathbf H^{(0)}$} (6.75,1.25);
+\draw[flow] (filter.east) -- (6.75,-1.25);
+\draw[flow] (message.east) -- (11.22,0) |- node[note, above=5pt, pos=0.69] {$\mathbf H^{(K)}$} (pool.west);
+\draw[flow] (pool.south) -- node[note, right] {$\bar{\mathbf h}_a$} (graphproj.north);
+\draw[flow] (graphproj.south) -- (13.65,-2.92) -| node[note, near start, right] {$\mathbf z_a\in\mathbb R^{128}$} (actor.north);
+\draw[flow] (actor.east) -- (logits.west);
+
+\end{tikzpicture}
