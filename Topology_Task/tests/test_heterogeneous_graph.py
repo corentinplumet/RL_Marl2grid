@@ -640,9 +640,15 @@ class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
             add_substation_nodes=True,
         )
 
-        x, edge_index, edge_attr, batch, node_mask, flat_node_ids = (
-            encoder._to_pyg_batch(tensor_graph)
-        )
+        (
+            x,
+            edge_index,
+            edge_attr,
+            batch,
+            node_mask,
+            flat_node_ids,
+            _controlled_node_mask,
+        ) = encoder._to_pyg_batch(tensor_graph)
         x = encoder.node_pre_encoder(x)
         (
             x,
@@ -716,9 +722,15 @@ class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
             summary_edge_direction="toward_summary",
         )
 
-        x, edge_index, edge_attr, batch, node_mask, flat_node_ids = (
-            encoder._to_pyg_batch(tensor_graph)
-        )
+        (
+            x,
+            edge_index,
+            edge_attr,
+            batch,
+            node_mask,
+            flat_node_ids,
+            _controlled_node_mask,
+        ) = encoder._to_pyg_batch(tensor_graph)
         x = encoder.node_pre_encoder(x)
         (
             _,
@@ -771,9 +783,15 @@ class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
             virtual_edge_direction="toward_virtual",
         )
 
-        x, edge_index, edge_attr, batch, node_mask, flat_node_ids = (
-            encoder._to_pyg_batch(tensor_graph)
-        )
+        (
+            x,
+            edge_index,
+            edge_attr,
+            batch,
+            node_mask,
+            flat_node_ids,
+            _controlled_node_mask,
+        ) = encoder._to_pyg_batch(tensor_graph)
         x = encoder.node_pre_encoder(x)
         (
             _,

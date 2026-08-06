@@ -356,7 +356,15 @@ class GraphEncoder(_VirtualNodeEncoderBase):
         self.node_out_dim = int(hidden_dim)
         self.uses_edge_attr = self.conv_type in {"gat", "gine"}
         self.readout_aggr = readout_aggr.lower()
-        if self.readout_aggr not in {"mean", "sum", "max", "virtual_node"}:
+        if self.readout_aggr not in {
+            "mean",
+            "sum",
+            "max",
+            "controlled_mean",
+            "controlled_sum",
+            "controlled_max",
+            "virtual_node",
+        }:
             raise ValueError(f"Unsupported GNN readout aggregation: {readout_aggr}")
         self.edge_dim = int(graph_spec["edge_dim"])
         self.edge_feature_names = list(graph_spec.get("edge_feature_names", []))
@@ -462,9 +470,15 @@ class GraphEncoder(_VirtualNodeEncoderBase):
         """Return the graph readout and physical post-message-passing nodes."""
         unbatched = graph_obs["node_features"].dim() == 2
         n_nodes = int(graph_obs["node_features"].shape[-2])
-        x, edge_index, edge_attr, batch, node_mask, flat_node_ids = self._to_pyg_batch(
-            graph_obs, edge_index=edge_index, node_ids=node_ids
-        )
+        (
+            x,
+            edge_index,
+            edge_attr,
+            batch,
+            node_mask,
+            flat_node_ids,
+            controlled_node_mask,
+        ) = self._to_pyg_batch(graph_obs, edge_index=edge_index, node_ids=node_ids)
         x = self._append_node_id_embeddings(x, flat_node_ids)
         x = self.node_pre_encoder(x)
         n_physical_nodes = int(x.shape[0])
@@ -475,7 +489,7 @@ class GraphEncoder(_VirtualNodeEncoderBase):
             batch,
             node_mask,
             _,
-            _,
+            controlled_node_mask,
             virtual_indices,
         ) = self._append_hierarchy_nodes(
             x,
@@ -484,6 +498,7 @@ class GraphEncoder(_VirtualNodeEncoderBase):
             batch,
             flat_node_ids,
             node_mask=node_mask,
+            controlled_node_mask=controlled_node_mask,
         )
         edge_attr = self.edge_pre_encoder(edge_attr)
 
@@ -508,7 +523,7 @@ class GraphEncoder(_VirtualNodeEncoderBase):
         pooled = (
             x[virtual_indices]
             if virtual_indices is not None
-            else self._pool_nodes(x, batch, node_mask)
+            else self._pool_nodes(x, batch, node_mask, controlled_node_mask)
         )
         embedding = self.readout(pooled)
         if unbatched:
@@ -520,25 +535,52 @@ class GraphEncoder(_VirtualNodeEncoderBase):
         x: th.Tensor,
         batch: th.Tensor,
         node_mask: Optional[th.Tensor],
+        controlled_node_mask: Optional[th.Tensor] = None,
     ) -> th.Tensor:
-        if node_mask is not None:
-            if self.readout_aggr == "max":
-                masked_x = x.masked_fill(node_mask.unsqueeze(-1) <= 0, -th.inf)
+        """Aggregate node states into one vector per graph.
+
+        A ``controlled_*`` readout restricts the aggregation to the nodes the
+        agent can act on. Contextual neighbours still take part in message
+        passing, so their state reaches the readout through the controlled
+        nodes, but they do not enter the average themselves. This keeps the
+        size of the pooled set fixed for an agent, whereas pooling every valid
+        node makes it move with the topology.
+        """
+        controlled_only = self.readout_aggr.startswith("controlled")
+        base_aggr = self.readout_aggr.replace("controlled_", "")
+
+        active_mask = node_mask
+        if controlled_only:
+            if controlled_node_mask is None:
+                raise ValueError(
+                    f"readout_aggr={self.readout_aggr!r} needs a "
+                    "controlled_node_mask in the graph observation."
+                )
+            controlled = controlled_node_mask.to(dtype=x.dtype)
+            active_mask = (
+                controlled if node_mask is None else node_mask.to(x.dtype) * controlled
+            )
+
+        if active_mask is not None:
+            if base_aggr == "max":
+                masked_x = x.masked_fill(active_mask.unsqueeze(-1) <= 0, -th.inf)
                 pooled = global_max_pool(masked_x, batch)
                 return th.nan_to_num(pooled, nan=0.0, neginf=0.0, posinf=0.0)
 
-            x = x * node_mask.unsqueeze(-1)
+            x = x * active_mask.unsqueeze(-1)
             pooled = global_add_pool(x, batch)
-            if self.readout_aggr == "mean":
-                denom = global_add_pool(node_mask.unsqueeze(-1), batch).clamp_min(1.0)
+            if base_aggr == "mean":
+                denom = global_add_pool(
+                    active_mask.unsqueeze(-1), batch
+                ).clamp_min(1.0)
                 pooled = pooled / denom
             return pooled
 
-        if self.readout_aggr == "max":
+        if base_aggr == "max":
             return global_max_pool(x, batch)
 
         pooled = global_add_pool(x, batch)
-        if self.readout_aggr == "mean":
+        if base_aggr == "mean":
             denom = th.bincount(batch, minlength=int(batch.max().item()) + 1).to(x).unsqueeze(-1).clamp_min(1.0)
             pooled = pooled / denom
         return pooled
@@ -553,12 +595,18 @@ class GraphEncoder(_VirtualNodeEncoderBase):
         edge_features = graph_obs["edge_features"]
         node_mask = graph_obs.get("node_mask")
         edge_mask = graph_obs.get("edge_mask")
+        controlled_node_mask = graph_obs.get("controlled_node_mask")
 
         if nodes.dim() == 2:
             nodes = nodes.unsqueeze(0)
             edge_features = edge_features.unsqueeze(0)
             node_mask = None if node_mask is None else node_mask.unsqueeze(0)
             edge_mask = None if edge_mask is None else edge_mask.unsqueeze(0)
+            controlled_node_mask = (
+                None
+                if controlled_node_mask is None
+                else controlled_node_mask.unsqueeze(0)
+            )
 
         base_edge_index = self.edge_index if edge_index is None else edge_index
         base_node_ids = self.node_ids if node_ids is None else node_ids
@@ -581,7 +629,20 @@ class GraphEncoder(_VirtualNodeEncoderBase):
             edge_attr = edge_attr[keep_edges]
 
         flat_node_mask = None if node_mask is None else node_mask.reshape(batch_size * n_nodes)
-        return x, edge_index, edge_attr, batch, flat_node_mask, flat_node_ids
+        flat_controlled_mask = (
+            None
+            if controlled_node_mask is None
+            else controlled_node_mask.reshape(batch_size * n_nodes)
+        )
+        return (
+            x,
+            edge_index,
+            edge_attr,
+            batch,
+            flat_node_mask,
+            flat_node_ids,
+            flat_controlled_mask,
+        )
 
     def _append_node_id_embeddings(
         self,

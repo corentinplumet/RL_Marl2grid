@@ -10,6 +10,9 @@ import unittest
 
 import numpy as np
 
+import torch as th
+
+from common.gnn import GraphEncoder
 from common.graph import (
     GridGraphBuilder,
     HeterogeneousGridGraphBuilder,
@@ -161,6 +164,118 @@ class ContextVisibilityTest(unittest.TestCase):
         visible = self.visible_busbars(spec, graph)
         self.assertIn("s0b0", visible)
         self.assertNotIn("s0b1", visible)
+
+
+class ControlledReadoutTest(unittest.TestCase):
+    """``controlled_*`` pools only the nodes the agent acts on.
+
+    Contextual neighbours still take part in message passing, so they reach the
+    readout through the controlled nodes, but they do not enter the average.
+    The size of the pooled set is then fixed instead of moving with the
+    topology.
+    """
+
+    ENCODER_TENSORS = {
+        "node_features",
+        "edge_features",
+        "node_mask",
+        "edge_mask",
+        "edge_type",
+        "controlled_node_mask",
+    }
+
+    def setUp(self):
+        self.builder = GridGraphBuilder(
+            ChainEnv(), {"agent_0": [1]}, include_neighbors=True
+        )
+        self.spec = self.builder.specs["agent_0"]
+
+    def graph(self, topo, line_status=(1, 1)):
+        built = self.builder.build(observation(topo, line_status))["agent_0"]
+        return {
+            key: th.tensor(value)
+            for key, value in built.items()
+            if key in self.ENCODER_TENSORS
+        }
+
+    def encoder(self, readout):
+        th.manual_seed(0)
+        return GraphEncoder(
+            self.spec,
+            hidden_dim=8,
+            out_dim=6,
+            n_layers=2,
+            conv_type="gine",
+            readout_aggr=readout,
+            node_pre_encoder=True,
+            edge_pre_encoder=True,
+        )
+
+    TOPOLOGIES = {
+        "nominal": ([1, 1, 1, 1, 1, 1], (1, 1)),
+        "neighbour split": ([2, 1, 1, 1, 1, 1], (1, 1)),
+        "line out": ([1, 1, 1, 1, 1, 1], (1, 0)),
+    }
+
+    def test_plain_mean_pools_a_topology_dependent_number_of_nodes(self):
+        sizes = {
+            int(self.graph(topo, status)["node_mask"].sum())
+            for topo, status in self.TOPOLOGIES.values()
+        }
+        self.assertGreater(len(sizes), 1)
+
+    def test_controlled_readout_pools_a_fixed_number_of_nodes(self):
+        sizes = {
+            int(
+                (
+                    self.graph(topo, status)["node_mask"]
+                    * self.graph(topo, status)["controlled_node_mask"]
+                ).sum()
+            )
+            for topo, status in self.TOPOLOGIES.values()
+        }
+        self.assertEqual(sizes, {2})
+
+    def test_context_still_reaches_the_readout(self):
+        # If contextual nodes were cut out of message passing too, the readout
+        # would be blind to them and these embeddings would coincide.
+        encoder = self.encoder("controlled_mean")
+        embeddings = [
+            encoder(self.graph(topo, status)).detach()
+            for topo, status in self.TOPOLOGIES.values()
+        ]
+        for other in embeddings[1:]:
+            self.assertFalse(th.allclose(embeddings[0], other, atol=1e-6))
+
+    def test_controlled_mean_is_the_mean_over_controlled_rows(self):
+        encoder = self.encoder("controlled_mean")
+        graph = self.graph([1, 1, 1, 1, 1, 1])
+        readout, nodes = encoder.forward_with_nodes(graph)
+        controlled = graph["controlled_node_mask"].bool()
+        expected = encoder.readout(nodes[controlled].mean(dim=0, keepdim=True))
+        self.assertTrue(th.allclose(readout, expected.squeeze(0), atol=1e-5))
+
+    def test_controlled_max_is_supported(self):
+        readout = self.encoder("controlled_max")(self.graph([1, 1, 1, 1, 1, 1]))
+        self.assertTrue(bool(th.isfinite(readout).all()))
+
+    def test_missing_controlled_mask_is_rejected(self):
+        graph = self.graph([1, 1, 1, 1, 1, 1])
+        graph.pop("controlled_node_mask")
+        with self.assertRaisesRegex(ValueError, "controlled_node_mask"):
+            self.encoder("controlled_mean")(graph)
+
+    def test_gradients_reach_the_contextual_nodes(self):
+        encoder = self.encoder("controlled_mean")
+        graph = self.graph([1, 1, 1, 1, 1, 1])
+        graph["node_features"] = graph["node_features"].clone().requires_grad_(True)
+        encoder(graph).sum().backward()
+        contextual = ~graph["controlled_node_mask"].bool()
+        visible = graph["node_mask"].bool()
+        rows = contextual & visible
+        self.assertGreater(
+            float(graph["node_features"].grad[rows].abs().sum()), 0.0
+        )
 
 
 if __name__ == "__main__":

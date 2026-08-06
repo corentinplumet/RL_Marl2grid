@@ -153,6 +153,54 @@ The effect is not obviously in one direction. Removing unobservable rows should
 help, but it also shrinks the pooled set and makes its size vary with topology,
 which changes the scale of a mean readout from step to step.
 
+## Controlled-only readout
+
+The visibility rule fixes *what an agent may see*, but it leaves the pooled set
+changing size with the topology, because the number of visible contextual nodes
+moves. Two mechanisms do it, both measured on agent 0 of `bus14`:
+
+- **splitting.** Substation 3 is contextual and is reached by three lines. When
+  all three sit on its first busbar only that busbar is visible, 10 pooled
+  nodes; switch one line onto the second busbar and both become visible, 11.
+  No outage, and the action is taken at a substation the agent does not control.
+- **losing the last live attachment.** Substation 5 hangs off the region by the
+  single line 4--5. Take it out and both its busbars leave: 9.
+
+A mean readout is sensitive to that: the denominator moves, so every surviving
+node's weight changes and the embedding shifts even when nothing about those
+nodes did.
+
+A `controlled_*` readout removes the dependence. Contextual neighbours still
+take part in message passing, so their state reaches the readout *through* the
+controlled nodes, but they do not enter the aggregation themselves. The pooled
+set is then exactly the agent's action domain, whose size is fixed for the
+episode.
+
+```text
+gnn_readout_aggr = "mean"              # every visible node, size varies
+gnn_readout_aggr = "controlled_mean"   # action domain only, size fixed
+```
+
+`controlled_mean`, `controlled_sum` and `controlled_max` are now accepted by the
+GINE/GAT/GCN/GraphSAGE encoder, not only by the sparse graph transformer. The
+implementation carries `controlled_node_mask` through `_to_pyg_batch` and
+`_append_hierarchy_nodes` into `GraphEncoder._pool_nodes`, which multiplies it
+into the active mask when the readout name starts with `controlled`. A missing
+mask raises rather than silently pooling everything.
+
+Measured on the three-substation chain, with the agent controlling the middle
+substation:
+
+| readout | nominal | neighbour split | line out |
+|---------|---------|-----------------|----------|
+| `mean` | 4 nodes | 4 nodes | 3 nodes |
+| `controlled_mean` | 2 nodes | 2 nodes | 2 nodes |
+
+The `controlled_mean` embedding still differs across those three topologies,
+which is the property that matters: the pool is fixed, but the context is not
+ignored. `tests/test_context_visibility.py::ControlledReadoutTest` asserts both
+halves, including that gradients still reach contextual node features.
+
 ## Not addressed
 
 Pooling only nodes that are currently energised is a separate question. It would

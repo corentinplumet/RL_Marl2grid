@@ -563,13 +563,19 @@ def get_alg_args() -> Namespace:
             "max",
             "attention",
             "controlled_mean",
+            "controlled_sum",
+            "controlled_max",
             "controlled_attention",
             "virtual_node",
         ],
         help=(
-            "Graph-level readout used by thesis-style GNN encoders. "
-            "virtual_node appends a learned node connected to every busbar and "
-            "uses its final state instead of pooling."
+            "Graph-level readout used by thesis-style GNN encoders. A "
+            "controlled_* readout pools only the nodes the agent can act on, "
+            "so contextual neighbours inform the node states through message "
+            "passing but do not enter the readout, and the pooled set does not "
+            "change size with the topology. virtual_node appends a learned "
+            "node connected to every busbar and uses its final state instead "
+            "of pooling."
         ),
     )
     parser.add_argument(
