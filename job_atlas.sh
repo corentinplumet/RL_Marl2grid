@@ -6,8 +6,8 @@
 # wrapper below passes the configurable values on the qsub command line.
 #PBS -N marl2grid_atlas
 #PBS -q parallel
-#PBS -l select=1:ncpus=24:mem=128gb
-#PBS -l walltime=48:00:00
+#PBS -l select=1:ncpus=72:mem=128gb
+#PBS -l walltime=120:00:00
 #PBS -j oe
 
 set -euo pipefail
@@ -33,10 +33,10 @@ Config paths are resolved relative to Topology_Task.
 PBS submission settings:
   ATLAS_PROJECT       PBS project/allocation passed with -P. No default.
   ATLAS_QUEUE         PBS queue. Default: parallel
-  ATLAS_NCPUS         CPU cores on one node. Default: 24
+  ATLAS_NCPUS         CPU cores on one node. Default: 72
   ATLAS_NGPUS         GPUs. Default: 0
   ATLAS_MEMORY        Memory. Default: 128gb
-  ATLAS_WALLTIME      Wall time. Default: 48:00:00
+  ATLAS_WALLTIME      Wall time. Default: 120:00:00
   ATLAS_JOB_NAME      PBS job name. Default: marl2grid_atlas
   ATLAS_ARRAY         Optional PBS array range, for example 0-7.
   ATLAS_MAIL_USER     Optional notification email address.
@@ -126,10 +126,10 @@ if [[ -z "${PBS_JOBID:-}" ]] && ! is_true "${ATLAS_RUN_DIRECT:-false}"; then
     fi
 
     ATLAS_QUEUE="${ATLAS_QUEUE:-parallel}"
-    ATLAS_NCPUS="${ATLAS_NCPUS:-24}"
+    ATLAS_NCPUS="${ATLAS_NCPUS:-72}"
     ATLAS_NGPUS="${ATLAS_NGPUS:-0}"
     ATLAS_MEMORY="${ATLAS_MEMORY:-128gb}"
-    ATLAS_WALLTIME="${ATLAS_WALLTIME:-48:00:00}"
+    ATLAS_WALLTIME="${ATLAS_WALLTIME:-120:00:00}"
     ATLAS_JOB_NAME="${ATLAS_JOB_NAME:-marl2grid_atlas}"
     if [[ -z "${ATLAS_SELECT:-}" ]]; then
         ATLAS_SELECT="select=1:ncpus=${ATLAS_NCPUS}:mem=${ATLAS_MEMORY}"

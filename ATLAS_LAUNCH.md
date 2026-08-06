@@ -42,9 +42,10 @@ If the NUS allocation requires a PBS project, specify it at submission time:
 ATLAS_PROJECT=your_project ./job_atlas.sh
 ```
 
-The defaults request one 24-core CPU node, no GPU, 128 GB of memory, and 48
-hours from the `parallel` queue. They can all be changed without editing the
-file:
+The defaults request 72 CPUs on one node, no GPU, 128 GB of memory, and 120
+hours from the `parallel` queue. This matches the pooling-screening configs'
+72 vectorized environments and leaves margin above their 96-hour time limit.
+The settings can all be changed without editing the file:
 
 ```bash
 ATLAS_PROJECT=your_project \
@@ -59,7 +60,18 @@ The environments created by `n_envs` are local Python subprocesses, not MPI
 workers. They can use many cores on one node, but requesting several PBS nodes
 will not distribute them automatically. Keep `select=1` and use the largest
 single-node CPU queue available to your project. Run `gstat`, `qstat -Q`, and
-`hpc parallel` on Atlas to see the current queues and limits.
+`pbsnodes -avSj` on Atlas to see the current queues and node limits. The
+current `hpc parallel` helper still prints obsolete LSF instructions, so do not
+use its `bsub` example.
+
+The generic Atlas account limit allows at most 96 CPUs running at once. A
+72-CPU default therefore runs one training job at a time; additional submitted
+jobs remain queued. To prioritize total screening throughput instead, submit
+three 32-CPU jobs so all three can run concurrently:
+
+```bash
+ATLAS_NCPUS=32 ./job_atlas.sh CONFIG
+```
 
 GPU execution remains available as an opt-in. This also sets `CUDA=true`:
 
