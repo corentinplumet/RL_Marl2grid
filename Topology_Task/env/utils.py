@@ -5,6 +5,7 @@ import hashlib
 from collections import defaultdict
 from packaging import version
 
+from gymnasium import Env
 from gymnasium.spaces import Discrete, Box
 
 import grid2op
@@ -21,7 +22,6 @@ from grid2op.gym_compat import (
 from grid2op.multi_agent import MultiAgentEnv
 from grid2op.Reward import CombinedReward
 from lightsim2grid import LightSimBackend
-from ray.rllib.env.multi_agent_env import MultiAgentEnv as MAEnv
 
 from common.imports import *
 from common.action_metadata import build_action_graph_metadata
@@ -706,7 +706,7 @@ def _load_reduced_action_id_mapping(
     return mapping, resolved_path
 
 
-class MAEnvWrapper(MAEnv):
+class MAEnvWrapper(Env):
     def __init__(
         self,
         args: Dict[str, Any],
