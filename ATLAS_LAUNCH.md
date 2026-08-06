@@ -43,7 +43,7 @@ ATLAS_PROJECT=your_project ./job_atlas.sh
 ```
 
 The defaults request one 24-core CPU node, no GPU, 128 GB of memory, and 48
-hours from the `parallel24` queue. They can all be changed without editing the
+hours from the `parallel` queue. They can all be changed without editing the
 file:
 
 ```bash
@@ -59,7 +59,7 @@ The environments created by `n_envs` are local Python subprocesses, not MPI
 workers. They can use many cores on one node, but requesting several PBS nodes
 will not distribute them automatically. Keep `select=1` and use the largest
 single-node CPU queue available to your project. Run `gstat`, `qstat -Q`, and
-`hpc parallel24` on Atlas to see the current queues and limits.
+`hpc parallel` on Atlas to see the current queues and limits.
 
 GPU execution remains available as an opt-in. This also sets `CUDA=true`:
 
@@ -128,11 +128,11 @@ qdel JOB_ID
 PBS normally writes a combined stdout/stderr file in the submission directory.
 Use `ATLAS_OUTPUT=/path/to/file.log` if a fixed output path is preferred.
 
-NUS's public documentation lists CPU queues such as `parallel24` and provides
-`gstat` for checking the queues currently available. Cluster policy and
-project names can change, so use `gstat`, `qstat -Q`, `hpc pbs help`, or your
-allocation documentation to confirm the current queue and project, then set
-`ATLAS_QUEUE` and `ATLAS_PROJECT` as needed.
+The current Atlas queue listing exposes the CPU queue as `parallel`, and NUS
+provides `gstat` for checking the queues currently available. Cluster policy
+and project names can change, so use `gstat`, `qstat -Q`, `hpc pbs help`, or
+your allocation documentation to confirm the current queue and project, then
+set `ATLAS_QUEUE` and `ATLAS_PROJECT` as needed.
 
 Public NUS references:
 

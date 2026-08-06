@@ -5,7 +5,7 @@
 # directly. When this file is executed as `./job_atlas.sh`, the submission
 # wrapper below passes the configurable values on the qsub command line.
 #PBS -N marl2grid_atlas
-#PBS -q parallel24
+#PBS -q parallel
 #PBS -l select=1:ncpus=24:mem=128gb
 #PBS -l walltime=48:00:00
 #PBS -j oe
@@ -32,7 +32,7 @@ Config paths are resolved relative to Topology_Task.
 
 PBS submission settings:
   ATLAS_PROJECT       PBS project/allocation passed with -P. No default.
-  ATLAS_QUEUE         PBS queue. Default: parallel24
+  ATLAS_QUEUE         PBS queue. Default: parallel
   ATLAS_NCPUS         CPU cores on one node. Default: 24
   ATLAS_NGPUS         GPUs. Default: 0
   ATLAS_MEMORY        Memory. Default: 128gb
@@ -125,7 +125,7 @@ if [[ -z "${PBS_JOBID:-}" ]] && ! is_true "${ATLAS_RUN_DIRECT:-false}"; then
         exit 1
     fi
 
-    ATLAS_QUEUE="${ATLAS_QUEUE:-parallel24}"
+    ATLAS_QUEUE="${ATLAS_QUEUE:-parallel}"
     ATLAS_NCPUS="${ATLAS_NCPUS:-24}"
     ATLAS_NGPUS="${ATLAS_NGPUS:-0}"
     ATLAS_MEMORY="${ATLAS_MEMORY:-128gb}"
