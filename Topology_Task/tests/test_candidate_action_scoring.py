@@ -148,19 +148,26 @@ class ActionGraphMetadataTest(unittest.TestCase):
             [6],
         )
 
-    def test_missing_neighbor_line_is_rejected(self):
+    def test_boundary_line_is_available_without_neighbor_equipment(self):
         local_builder = HeterogeneousLineGraphBuilder(
             MockGridEnv(),
             {"agent_0": [0]},
             include_neighbors=False,
         )
-        with self.assertRaisesRegex(ValueError, "gnn_include_neighbors=true"):
-            build_action_graph_metadata(
-                local_builder.specs["agent_0"],
-                [MockAction({}), topology_action(0, "line (origin)", 0)],
-                line_or_to_subid=MockGridEnv.line_or_to_subid,
-                line_ex_to_subid=MockGridEnv.line_ex_to_subid,
-            )
+        spec = local_builder.specs["agent_0"]
+        metadata = build_action_graph_metadata(
+            spec,
+            [MockAction({}), topology_action(0, "line (origin)", 0)],
+            line_or_to_subid=MockGridEnv.line_or_to_subid,
+            line_ex_to_subid=MockGridEnv.line_ex_to_subid,
+        )
+        self.assertEqual(spec["line_ids"].tolist(), [0])
+        np.testing.assert_array_equal(
+            spec["busbar_id_to_node_row"], [0, 1, -1, -1]
+        )
+        self.assertEqual(
+            metadata.line_indices[1][metadata.line_mask[1]].tolist(), [3]
+        )
 
 
 class CandidateActionScorerTest(unittest.TestCase):

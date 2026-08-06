@@ -31,6 +31,40 @@ ENV_ALIASES = {
 }
 
 
+def scheduler_job_id() -> str:
+    """Return a stable identifier for either a Slurm or PBS allocation."""
+    slurm_job_id = os.environ.get("SLURM_JOB_ID")
+    if slurm_job_id:
+        return slurm_job_id
+
+    pbs_job_id = os.environ.get("PBS_JOBID")
+    if pbs_job_id:
+        # PBS IDs commonly include the server name (for example
+        # 12345.atlas). It is not needed in local output directory names.
+        return f"pbs_{pbs_job_id.split('.', 1)[0]}"
+
+    return "local"
+
+
+def scheduler_array_task_id() -> str | None:
+    """Return the current Slurm or PBS array index, when present."""
+    return (
+        os.environ.get("SLURM_ARRAY_TASK_ID")
+        or os.environ.get("PBS_ARRAY_INDEX")
+        or os.environ.get("PBS_ARRAYID")
+    )
+
+
+def scheduler_cpu_count() -> str:
+    """Return the CPU count exposed by Slurm or PBS."""
+    return (
+        os.environ.get("SLURM_CPUS_PER_TASK")
+        or os.environ.get("NCPUS")
+        or os.environ.get("PBS_NCPUS")
+        or "72"
+    )
+
+
 def parse_bool(value: str) -> bool:
     lowered = value.strip().lower()
     if lowered in {"1", "true", "yes", "y", "on"}:
@@ -202,7 +236,7 @@ def main() -> int:
     config_args = dict(config.get("args", {}))
 
     if run.get("seed_from_slurm_array", False) and "SEED" not in os.environ:
-        array_task_id = os.environ.get("SLURM_ARRAY_TASK_ID")
+        array_task_id = scheduler_array_task_id()
         if array_task_id:
             config_args["seed"] = int(array_task_id)
 
@@ -214,11 +248,12 @@ def main() -> int:
                 os.environ[env_key], config_args[arg_key]
             )
 
-    job_id = os.environ.get("SLURM_JOB_ID", "local")
+    job_id = scheduler_job_id()
+    array_task_id = scheduler_array_task_id()
     context = {
         "config_name": config_path.stem,
         "job_id": job_id,
-        "array_task_id": os.environ.get("SLURM_ARRAY_TASK_ID", "0"),
+        "array_task_id": array_task_id or "0",
         "project_dir": str(project_dir),
         "task_dir": str(task_dir),
     }
@@ -263,8 +298,8 @@ def main() -> int:
     print(f"Run dir: {run_dir}")
     print(f"Task dir: {task_dir}")
     print(f"Job id: {job_id}")
-    print(f"Array task id: {os.environ.get('SLURM_ARRAY_TASK_ID', 'none')}")
-    print(f"CPUs per task: {os.environ.get('SLURM_CPUS_PER_TASK', '72')}")
+    print(f"Array task id: {array_task_id or 'none'}")
+    print(f"CPUs per task: {scheduler_cpu_count()}")
     print(f"Command: {' '.join(command)}")
     print("====================================")
 

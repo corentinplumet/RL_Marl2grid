@@ -1,5 +1,12 @@
 # Contextual Node Visibility in Local Actor Graphs
 
+> **Historical implementation note.** The information boundary was tightened
+> after this note was written. In particular, local heterogeneous graphs no
+> longer construct neighboring generator/load nodes, and local
+> heterogeneous-line graphs no longer construct any neighboring equipment.
+> See `GRAPH_CONSTRUCTION_INFORMATION_BOUNDARIES.md` for the authoritative
+> current behavior and the information hierarchy across representations.
+
 Branch: `pooling`. Commit: *Gate contextual graph nodes on a live electrical
 connection*.
 

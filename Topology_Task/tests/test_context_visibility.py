@@ -54,7 +54,8 @@ def busbar_labels(spec, n_busbar=2):
     """``s{substation}b{busbar}`` for busbar rows, ``None`` for other types.
 
     The disaggregated schemas append asset and line rows whose identifiers are
-    offset past the busbar block, so only busbar rows can be named this way.
+    offset past the busbar block and use a wider node-id stride. Their
+    ``entity_ids`` retain the global busbar indexing used for these labels.
     """
     node_type = spec.get("node_type")
     busbar_type = (
@@ -65,7 +66,14 @@ def busbar_labels(spec, n_busbar=2):
         if node_type is not None and node_type[index] != busbar_type:
             labels.append(None)
         else:
-            labels.append(f"s{node_id // n_busbar}b{node_id % n_busbar}")
+            busbar_id = (
+                spec["entity_ids"][index]
+                if "entity_ids" in spec
+                else node_id
+            )
+            labels.append(
+                f"s{busbar_id // n_busbar}b{busbar_id % n_busbar}"
+            )
     return labels
 
 
@@ -101,6 +109,39 @@ class ContextVisibilityTest(unittest.TestCase):
         self.assertIn("s2b0", visible)
         self.assertNotIn("s0b1", visible)       # neighbour, nothing attached
         self.assertNotIn("s2b1", visible)
+
+    def test_invisible_candidate_rows_contain_no_neighbor_state(self):
+        spec, graph = self.build(GridGraphBuilder, [1, 1, 1, 1, 1, 1])
+        hidden_context = (
+            (graph["node_mask"] == 0)
+            & (spec["controlled_node_mask"] == 0)
+        )
+        self.assertTrue(bool(np.any(hidden_context)))
+        self.assertTrue(
+            bool(np.all(graph["node_features"][hidden_context] == 0.0))
+        )
+        touches_hidden = np.isin(
+            spec["edge_index"], np.nonzero(hidden_context)[0]
+        ).any(axis=0)
+        self.assertTrue(bool(np.any(touches_hidden)))
+        self.assertTrue(
+            bool(np.all(graph["edge_mask"][touches_hidden] == 0.0))
+        )
+
+    def test_structural_edges_cannot_reactivate_an_invisible_candidate(self):
+        spec, graph = self.build(
+            GridGraphBuilder,
+            [1, 1, 1, 1, 1, 1],
+            add_substation_edges=True,
+        )
+        hidden = graph["node_mask"] == 0
+        touches_hidden = np.isin(
+            spec["edge_index"], np.nonzero(hidden)[0]
+        ).any(axis=0)
+        self.assertTrue(bool(np.any(touches_hidden)))
+        self.assertTrue(
+            bool(np.all(graph["edge_mask"][touches_hidden] == 0.0))
+        )
 
     def test_visibility_follows_the_topology(self):
         # Move line 0's far end onto the second busbar of substation 0.
@@ -138,32 +179,40 @@ class ContextVisibilityTest(unittest.TestCase):
         _, graph = self.build(GridGraphBuilder, [1, 1, 1, 1, 1, 1], gated=False)
         self.assertTrue(np.all(graph["node_mask"] > 0))
 
-    def test_contextual_assets_follow_their_busbar(self):
-        # The generator sits at substation 0. It is visible while its busbar is
-        # attached to the agent's region and hidden once line 0 goes out.
+    def test_heterogeneous_context_contains_no_neighbor_assets(self):
+        # The generator at substation 0 and load at substation 2 belong to
+        # neighboring agents. Only their boundary busbars may enter this local
+        # heterogeneous graph; the assets must not even be instantiated.
         spec, graph = self.build(
             HeterogeneousGridGraphBuilder, [1, 1, 1, 1, 1, 1]
         )
         node_type = spec["node_type"]
-        generator = node_type == spec["node_type_names"]["generator"]
-        self.assertTrue(np.all(graph["node_mask"][generator] > 0))
-
-        _, cut = self.build(
-            HeterogeneousGridGraphBuilder,
-            [1, 1, 1, 1, 1, 1],
-            line_status=(0, 1),
+        self.assertFalse(
+            bool(np.any(node_type == spec["node_type_names"]["generator"]))
         )
-        self.assertTrue(np.all(cut["node_mask"][generator] == 0))
+        self.assertFalse(
+            bool(np.any(node_type == spec["node_type_names"]["load"]))
+        )
+        self.assertEqual(
+            self.visible_busbars(spec, graph),
+            {"s0b0", "s1b0", "s1b1", "s2b0"},
+        )
 
-    def test_explicit_line_schema_reaches_through_the_line_node(self):
-        # Here a busbar connects to its neighbour through a line node, so
-        # visibility has to propagate over two hops.
+    def test_explicit_line_schema_has_shared_lines_but_no_neighbor_nodes(self):
+        # Both boundary lines are local controlled nodes, but neither far-end
+        # substation contributes a busbar, generator, or load node.
         spec, graph = self.build(
             HeterogeneousLineGraphBuilder, [1, 1, 1, 1, 1, 1]
         )
-        visible = self.visible_busbars(spec, graph)
-        self.assertIn("s0b0", visible)
-        self.assertNotIn("s0b1", visible)
+        node_type = spec["node_type"]
+        names = spec["node_type_names"]
+        self.assertEqual(self.visible_busbars(spec, graph), {"s1b0", "s1b1"})
+        self.assertEqual(
+            int(np.sum(node_type == names["transmission_line"])), 2
+        )
+        self.assertFalse(bool(np.any(node_type == names["generator"])))
+        self.assertFalse(bool(np.any(node_type == names["load"])))
+        self.assertTrue(bool(np.all(spec["controlled_node_mask"] > 0)))
 
 
 class ControlledReadoutTest(unittest.TestCase):

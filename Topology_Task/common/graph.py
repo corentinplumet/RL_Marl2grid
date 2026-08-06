@@ -298,10 +298,17 @@ class GridGraphBuilder:
             cache = self._make_obs_cache(obs)
         node_features = self._bus_node_features_from_cache(cache, spec)
         edge_features, edge_mask = self._bus_edge_features_from_cache(spec, cache)
+        node_mask = self._visible_node_mask(spec, edge_mask)
+        node_features = self._hide_invisible_node_features(
+            node_features, node_mask
+        )
+        edge_features, edge_mask = self._hide_invisible_node_edges(
+            spec, edge_features, edge_mask, node_mask
+        )
         return {
             "node_features": node_features.astype(np.float32, copy=False),
             "edge_features": edge_features.astype(np.float32, copy=False),
-            "node_mask": self._visible_node_mask(spec, edge_mask),
+            "node_mask": node_mask,
             "edge_mask": edge_mask.astype(np.float32, copy=False),
             "edge_type": spec["edge_type"].astype(np.int64, copy=False),
             "controlled_node_mask": spec["controlled_node_mask"].astype(
@@ -510,6 +517,46 @@ class GridGraphBuilder:
             visible = grown
         return visible.astype(np.float32)
 
+    @staticmethod
+    def _hide_invisible_node_features(node_features, node_mask) -> np.ndarray:
+        """Remove state from fixed-shape candidate rows that are not visible.
+
+        Local graph specs enumerate candidate busbar assignments so tensor
+        shapes remain constant while topology changes. An inactive contextual
+        candidate must not retain raw neighboring state in the observation,
+        even though its edges and readout entry are masked. Zeroing the entire
+        row makes the information boundary a property of graph construction
+        rather than something that depends on a particular encoder or pooling
+        implementation.
+        """
+        visible = np.asarray(node_mask, dtype=bool)
+        if bool(np.all(visible)):
+            return node_features
+        sanitized = np.asarray(node_features).copy()
+        sanitized[~visible] = 0.0
+        return sanitized
+
+    @staticmethod
+    def _hide_invisible_node_edges(
+        spec, edge_features, edge_mask, node_mask
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Deactivate every edge incident to an invisible candidate row.
+
+        Physical candidate edges are already topology-masked, but optional
+        self and same-substation relations are structurally active. Removing
+        all incident edges prevents an invisible placeholder from entering
+        message passing through encoder biases, node-id embeddings, or type
+        embeddings after its dynamic feature vector has been zeroed.
+        """
+        edge_index = np.asarray(spec["edge_index"], dtype=np.int64)
+        active = np.asarray(edge_mask, dtype=bool).copy()
+        if edge_index.size > 0:
+            visible = np.asarray(node_mask, dtype=bool)
+            active &= visible[edge_index[0]] & visible[edge_index[1]]
+        sanitized = np.asarray(edge_features).copy()
+        sanitized[~active] = 0.0
+        return sanitized, active.astype(np.float32)
+
     def _bus_node_ids(self, sub_ids):
         sub_ids = np.asarray(sub_ids, dtype=np.int64)
         return np.asarray(
@@ -555,6 +602,11 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
     enumerate every possible busbar assignment and use masks to activate the
     assignment selected by the current Grid2Op ``topo_vect``. Generator and
     load relations may independently be one-way or bidirectional.
+
+    In a local agent graph, one-hop neighboring substations contribute only the
+    busbar attached through a live shared line. Generators and loads are added
+    only for substations controlled by the agent; assets at neighboring
+    substations must never enter its graph or message-passing computation.
     """
 
     NODE_TYPE_BUSBAR = 0
@@ -706,8 +758,17 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
             if controlled_nodes is None
             else np.asarray(controlled_nodes, dtype=np.int64)
         )
-        gen_ids = np.nonzero(np.isin(self.gen_to_sub, sub_ids))[0].astype(np.int64)
-        load_ids = np.nonzero(np.isin(self.load_to_sub, sub_ids))[0].astype(
+        # ``sub_ids`` contains the controlled substations plus the far ends of
+        # boundary lines. The far-end busbar is needed to carry the physical
+        # line relation, but its generators and loads are private to the other
+        # agent. Selecting assets from ``controlled_nodes`` enforces that
+        # information boundary at construction time, before message passing or
+        # pooling can expose them. For the global state graph,
+        # ``controlled_nodes == sub_ids``, so all assets remain present.
+        gen_ids = np.nonzero(np.isin(self.gen_to_sub, controlled_nodes))[0].astype(
+            np.int64
+        )
+        load_ids = np.nonzero(np.isin(self.load_to_sub, controlled_nodes))[0].astype(
             np.int64
         )
 
@@ -951,10 +1012,17 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
             cache = self._make_obs_cache(obs)
         node_features = self._heterogeneous_node_features(obs, spec, cache)
         edge_features, edge_mask = self._heterogeneous_edge_features(spec, cache)
+        node_mask = self._visible_node_mask(spec, edge_mask)
+        node_features = self._hide_invisible_node_features(
+            node_features, node_mask
+        )
+        edge_features, edge_mask = self._hide_invisible_node_edges(
+            spec, edge_features, edge_mask, node_mask
+        )
         return {
             "node_features": node_features.astype(np.float32, copy=False),
             "edge_features": edge_features.astype(np.float32, copy=False),
-            "node_mask": self._visible_node_mask(spec, edge_mask),
+            "node_mask": node_mask,
             "edge_mask": edge_mask.astype(np.float32, copy=False),
             "node_type": spec["node_type"].astype(np.int64, copy=False),
             "edge_type": spec["edge_type"].astype(np.int64, copy=False),
@@ -1092,10 +1160,17 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
 class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
     """Build a typed graph with explicit transmission-line nodes.
 
-    Busbars, generators, loads, and physical lines are nodes. Every line node
-    has candidate attachment edges to every busbar at its origin and extremity
-    substations. Their configured message direction may be one-way or
-    bidirectional; masks select the two current endpoint busbars.
+    Busbars, generators, loads, and physical lines are nodes. In a local agent
+    graph, equipment nodes belong only to controlled substations. Every line
+    touching that domain is included as a controlled node, but a boundary line
+    is connected only to its endpoint inside the domain: no neighboring
+    busbar, generator, or load is instantiated. The line node itself carries
+    the shared-line measurements needed by the controlled busbar.
+
+    In the global state graph both endpoint substations are present, so every
+    line node has candidate attachment edges at both ends as before. Configured
+    message directions may be one-way or bidirectional, and masks select the
+    current endpoint busbars.
     """
 
     NODE_TYPE_BUSBAR = 0
@@ -1223,6 +1298,21 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
                 line_ids,
                 controlled_nodes=domain_nodes,
             )
+
+    def _local_ids(self, domain_nodes):
+        """Return controlled substations and every line touching the domain.
+
+        The explicit line node replaces the far-end busbar as boundary context.
+        Consequently ``include_neighbors`` does not expand equipment nodes for
+        this representation: shared lines are part of the agent's own graph,
+        while neighboring substations are never included.
+        """
+        domain_nodes = np.unique(np.asarray(domain_nodes, dtype=np.int64))
+        touches_domain = np.isin(self.line_or, domain_nodes) | np.isin(
+            self.line_ex, domain_nodes
+        )
+        line_ids = np.nonzero(touches_domain)[0].astype(np.int64)
+        return domain_nodes, line_ids
 
     def build_for_spec(
         self,
@@ -1357,54 +1447,61 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
             for bus_id in range(self.n_busbar):
                 or_bus_entity = self._bus_node_id(or_sub, bus_id)
                 ex_bus_entity = self._bus_node_id(ex_sub, bus_id)
-                if self.line_node_edge_direction in {
-                    "bidirectional",
-                    "busbar_to_line",
-                }:
-                    append_edge(
-                        or_bus_entity,
-                        line_entity,
-                        self.EDGE_TYPE_BUSBAR_TO_LINE_ORIGIN,
-                        line_id=int(line_id),
-                        line_endpoint=0,
-                        line_bus=bus_id,
-                    )
-                if self.line_node_edge_direction in {
-                    "bidirectional",
-                    "line_to_busbar",
-                }:
-                    append_edge(
-                        line_entity,
-                        or_bus_entity,
-                        self.EDGE_TYPE_LINE_ORIGIN_TO_BUSBAR,
-                        line_id=int(line_id),
-                        line_endpoint=0,
-                        line_bus=bus_id,
-                    )
-                if self.line_node_edge_direction in {
-                    "bidirectional",
-                    "busbar_to_line",
-                }:
-                    append_edge(
-                        ex_bus_entity,
-                        line_entity,
-                        self.EDGE_TYPE_BUSBAR_TO_LINE_EXTREMITY,
-                        line_id=int(line_id),
-                        line_endpoint=1,
-                        line_bus=bus_id,
-                    )
-                if self.line_node_edge_direction in {
-                    "bidirectional",
-                    "line_to_busbar",
-                }:
-                    append_edge(
-                        line_entity,
-                        ex_bus_entity,
-                        self.EDGE_TYPE_LINE_EXTREMITY_TO_BUSBAR,
-                        line_id=int(line_id),
-                        line_endpoint=1,
-                        line_bus=bus_id,
-                    )
+                # A local graph deliberately omits the far-end busbars of a
+                # boundary line. Only create attachment candidates for endpoint
+                # entities that actually belong to this graph. The global state
+                # graph still contains both endpoints and therefore retains all
+                # four relation directions per busbar candidate.
+                if or_bus_entity in local_index:
+                    if self.line_node_edge_direction in {
+                        "bidirectional",
+                        "busbar_to_line",
+                    }:
+                        append_edge(
+                            or_bus_entity,
+                            line_entity,
+                            self.EDGE_TYPE_BUSBAR_TO_LINE_ORIGIN,
+                            line_id=int(line_id),
+                            line_endpoint=0,
+                            line_bus=bus_id,
+                        )
+                    if self.line_node_edge_direction in {
+                        "bidirectional",
+                        "line_to_busbar",
+                    }:
+                        append_edge(
+                            line_entity,
+                            or_bus_entity,
+                            self.EDGE_TYPE_LINE_ORIGIN_TO_BUSBAR,
+                            line_id=int(line_id),
+                            line_endpoint=0,
+                            line_bus=bus_id,
+                        )
+                if ex_bus_entity in local_index:
+                    if self.line_node_edge_direction in {
+                        "bidirectional",
+                        "busbar_to_line",
+                    }:
+                        append_edge(
+                            ex_bus_entity,
+                            line_entity,
+                            self.EDGE_TYPE_BUSBAR_TO_LINE_EXTREMITY,
+                            line_id=int(line_id),
+                            line_endpoint=1,
+                            line_bus=bus_id,
+                        )
+                    if self.line_node_edge_direction in {
+                        "bidirectional",
+                        "line_to_busbar",
+                    }:
+                        append_edge(
+                            line_entity,
+                            ex_bus_entity,
+                            self.EDGE_TYPE_LINE_EXTREMITY_TO_BUSBAR,
+                            line_id=int(line_id),
+                            line_endpoint=1,
+                            line_bus=bus_id,
+                        )
 
         if self.add_substation_edges:
             for sub_id in sub_ids:
@@ -1571,10 +1668,17 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
             cache = self._make_obs_cache(obs)
         node_features = self._line_node_features(obs, spec, cache)
         edge_features, edge_mask = self._line_node_edge_features(spec, cache)
+        node_mask = self._visible_node_mask(spec, edge_mask)
+        node_features = self._hide_invisible_node_features(
+            node_features, node_mask
+        )
+        edge_features, edge_mask = self._hide_invisible_node_edges(
+            spec, edge_features, edge_mask, node_mask
+        )
         return {
             "node_features": node_features.astype(np.float32, copy=False),
             "edge_features": edge_features.astype(np.float32, copy=False),
-            "node_mask": self._visible_node_mask(spec, edge_mask),
+            "node_mask": node_mask,
             "edge_mask": edge_mask.astype(np.float32, copy=False),
             "node_type": spec["node_type"].astype(np.int64, copy=False),
             "edge_type": spec["edge_type"].astype(np.int64, copy=False),

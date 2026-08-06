@@ -194,8 +194,8 @@ def _rows_for_ids(
     if missing and strict:
         raise ValueError(
             f"Action {action_id} touches {object_name} IDs {missing}, but they "
-            "are absent from the agent graph. Candidate pooling requires "
-            "gnn_include_neighbors=true for local heterogeneous-line graphs."
+            "are absent from the agent graph. The graph construction must "
+            "include every physical object in the agent's action space."
         )
     return rows
 

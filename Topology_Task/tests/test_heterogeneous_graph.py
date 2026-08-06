@@ -167,7 +167,7 @@ class HeterogeneousGridGraphBuilderTest(unittest.TestCase):
         self.assertEqual(spec["generator_edge_direction"], "busbar_to_asset")
         self.assertEqual(spec["load_edge_direction"], "asset_to_busbar")
 
-    def test_local_graph_contains_assets_from_included_substations(self):
+    def test_local_graph_contains_assets_from_controlled_substations(self):
         builder = HeterogeneousGridGraphBuilder(
             MockGridEnv(),
             {"agent_0": [0]},
@@ -183,6 +183,27 @@ class HeterogeneousGridGraphBuilderTest(unittest.TestCase):
         self.assertEqual(len(spec["line_ids"]), 0)
         self.assertEqual(spec["edge_index"].shape, (2, 4))
         self.assertEqual(int(graph["edge_mask"].sum()), 2)
+
+    def test_local_graph_keeps_neighbor_busbar_but_excludes_neighbor_assets(self):
+        builder = HeterogeneousGridGraphBuilder(
+            MockGridEnv(),
+            {"agent_0": [0]},
+            include_neighbors=True,
+        )
+        spec = builder.specs["agent_0"]
+        graph = builder.build(make_obs())["agent_0"]
+
+        np.testing.assert_array_equal(
+            np.bincount(spec["node_type"], minlength=3), [4, 1, 0]
+        )
+        self.assertEqual(spec["gen_ids"].tolist(), [0])
+        self.assertEqual(spec["load_ids"].tolist(), [])
+        non_busbar = spec["node_type"] != builder.NODE_TYPE_BUSBAR
+        self.assertTrue(
+            bool(np.all(spec["node_substation_ids"][non_busbar] == 0))
+        )
+        self.assertEqual(spec["edge_index"].shape, (2, 12))
+        self.assertEqual(int(graph["edge_mask"].sum()), 4)
 
     def test_same_substation_busbar_edges_are_typed_and_always_active(self):
         builder = HeterogeneousGridGraphBuilder(
@@ -427,6 +448,50 @@ class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
         self.assertTrue(
             np.all(graph["edge_features"][graph["edge_mask"] == 0] == 0.0)
         )
+
+    def test_local_graph_uses_shared_line_node_without_neighbor_equipment(self):
+        for include_neighbors in (False, True):
+            with self.subTest(include_neighbors=include_neighbors):
+                builder = HeterogeneousLineGraphBuilder(
+                    MockGridEnv(),
+                    {"agent_0": [0]},
+                    include_neighbors=include_neighbors,
+                )
+                spec = builder.specs["agent_0"]
+                graph = builder.build(make_obs())["agent_0"]
+
+                np.testing.assert_array_equal(
+                    np.bincount(spec["node_type"], minlength=4), [2, 1, 0, 1]
+                )
+                self.assertEqual(spec["line_ids"].tolist(), [0])
+                self.assertEqual(spec["load_ids"].tolist(), [])
+                np.testing.assert_array_equal(
+                    spec["busbar_id_to_node_row"], [0, 1, -1, -1]
+                )
+                np.testing.assert_array_equal(spec["line_id_to_node_row"], [3])
+                self.assertEqual(spec["edge_index"].shape, (2, 8))
+                self.assertEqual(int(graph["edge_mask"].sum()), 4)
+                self.assertTrue(bool(np.all(spec["controlled_node_mask"] > 0)))
+
+                disconnected = builder.build(
+                    make_obs(line_status=np.asarray([0], dtype=np.float32))
+                )["agent_0"]
+                line_row = int(spec["line_id_to_node_row"][0])
+                line_edges = spec["edge_line_ids"] == 0
+                node_cols = {
+                    name: index
+                    for index, name in enumerate(spec["node_feature_names"])
+                }
+                self.assertEqual(disconnected["node_mask"][line_row], 1.0)
+                self.assertEqual(
+                    disconnected["node_features"][
+                        line_row, node_cols["line_status"]
+                    ],
+                    0.0,
+                )
+                self.assertTrue(
+                    bool(np.all(disconnected["edge_mask"][line_edges] == 0.0))
+                )
 
     def test_disconnected_line_remains_a_node_and_masks_attachments(self):
         original = self.builder.build(make_obs())["state"]
