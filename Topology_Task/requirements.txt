@@ -1,6 +1,6 @@
 # Extracted from the marl2grid conda env and cleaned for pip/venv on Linux.
-# Compatible with Python 3.9 on Izar. If possible, Python 3.10+ is still nicer
-# because it can use newer matplotlib/pandas wheels.
+# Use Python 3.10+ so the pinned Ray/RLlib release and the scientific stack can
+# use prebuilt Linux wheels on the supported clusters.
 #
 # For GPU jobs, install the matching PyTorch CUDA wheel first, for example:
 #   python -m pip install --index-url https://download.pytorch.org/whl/cu121 torch==2.2.0
@@ -13,7 +13,8 @@ numpy==1.26.4
 scipy==1.11.3
 pandas==2.2.3
 matplotlib==3.9.4
-packaging==23.1
+pillow==10.4.0
+packaging==24.2
 networkx==3.2.1
 cloudpickle==3.1.2
 tqdm==4.67.3
@@ -23,6 +24,8 @@ protobuf==3.20.3
 
 gymnasium==0.29.1
 stable-baselines3==2.3.2
+ray[rllib]==2.55.1
+dm-tree==0.1.9
 tensorboard==2.20.0
 wandb==0.25.0
 

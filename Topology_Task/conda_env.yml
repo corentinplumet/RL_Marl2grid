@@ -15,4 +15,4 @@ dependencies:
   - pip
   - pip:
       - "ray[rllib]==2.55.1"
-      - dm-tree==0.1.10
+      - dm-tree==0.1.9

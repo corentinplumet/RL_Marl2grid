@@ -220,6 +220,14 @@ if [[ -n "${PBS_NODEFILE:-}" && -r "${PBS_NODEFILE}" ]]; then
     echo "Allocated hosts:"
     sort -u "${PBS_NODEFILE}"
 fi
+if command -v lscpu >/dev/null 2>&1; then
+    echo "========== CPU allocation summary =========="
+    echo "Processing units visible to the job: $(nproc)"
+    LC_ALL=C lscpu | grep -E \
+        '^(CPU\(s\)|Model name|Thread\(s\) per core|Core\(s\) per socket|Socket\(s\)|NUMA node\(s\)):' \
+        || true
+    echo "============================================"
+fi
 
 # Atlas installations commonly expose software through environment modules.
 # Atlas currently provides Miniconda through this module. An explicitly empty
@@ -289,12 +297,12 @@ fi
 
 cd "${TASK_DIR}"
 
-run_config_args=()
 if is_true "${DRY_RUN:-false}"; then
-    run_config_args+=(--dry-run)
+    echo "Using config: ${CONFIG}"
+    "${PYTHON_BIN}" -u run_from_config.py --dry-run "${CONFIG}" "$@"
+else
+    echo "Using config: ${CONFIG}"
+    "${PYTHON_BIN}" -u run_from_config.py "${CONFIG}" "$@"
 fi
-
-echo "Using config: ${CONFIG}"
-"${PYTHON_BIN}" -u run_from_config.py "${run_config_args[@]}" "${CONFIG}" "$@"
 
 echo "Job ${PBS_JOBID:-direct} finished at $(date)"
