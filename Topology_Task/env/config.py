@@ -188,6 +188,16 @@ def get_env_args(argv: Optional[List[str]] = None) -> Namespace:
         default=False,
         help="For the thesis-style gnn encoder, include one-hop neighboring substations in local agent graphs.",
     )
+    parser.add_argument(
+        "--gnn-context-requires-connection",
+        type=str2bool,
+        default=True,
+        help=(
+            "Require contextual graph nodes to have a live electrical "
+            "connection to the agent's controlled region. Disable only to "
+            "reproduce the legacy always-visible neighboring-node behavior."
+        ),
+    )
 
     # Parse the arguments
     params, _ = parser.parse_known_args(argv)

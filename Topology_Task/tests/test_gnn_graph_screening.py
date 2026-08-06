@@ -415,6 +415,17 @@ class GraphScreeningConfigTests(unittest.TestCase):
             }
         )
 
+    def test_non_sparse_controlled_mean_readout_is_accepted(self):
+        validate_args(
+            {
+                "n_envs": 4,
+                "n_steps": 8,
+                "eval_freq": 16,
+                "gnn_type": "gine",
+                "gnn_readout_aggr": "controlled_mean",
+            }
+        )
+
     def test_invalid_relation_direction_is_rejected_early(self):
         with self.assertRaises(SystemExit):
             validate_args(

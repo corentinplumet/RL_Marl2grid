@@ -103,11 +103,20 @@ def validate_args(config_args: dict[str, Any]) -> None:
     readout = str(config_args.get("gnn_readout_aggr", "mean")).lower()
     if gnn_type == "sparse_transformer":
         readout = str(config_args.get("sparse_gt_pooling", "") or readout).lower()
-    elif readout not in {"mean", "sum", "max", "virtual_node"}:
+    elif readout not in {
+        "mean",
+        "sum",
+        "max",
+        "controlled_mean",
+        "controlled_sum",
+        "controlled_max",
+        "virtual_node",
+    }:
         raise SystemExit(
             "Invalid config: readout "
             f"'{readout}' is only implemented for gnn_type=sparse_transformer. "
-            "Use mean, sum, max, or virtual_node with ordinary GNN encoders."
+            "Use mean, sum, max, controlled_mean, controlled_sum, "
+            "controlled_max, or virtual_node with ordinary GNN encoders."
         )
 
     direction_choices = {

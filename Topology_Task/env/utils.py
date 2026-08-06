@@ -1051,6 +1051,9 @@ class MAEnvWrapper(MAEnv):
                 self.g2op_env,
                 self.observation_domains,
                 include_neighbors=getattr(args, "gnn_include_neighbors", False),
+                context_requires_connection=getattr(
+                    args, "gnn_context_requires_connection", True
+                ),
                 include_maintenance=env_config[env_id]["maintenance"],
                 add_self_edges=sparse_gt_add_self_edges,
                 add_substation_edges=add_substation_edges,
