@@ -50,7 +50,8 @@ Training environment:
   ATLAS_CONFIG        Default config path when CONFIG is omitted.
   CONDA_ENV           Conda environment. Default: marl2grid
   CONDA_BASE          Conda installation path when conda is not on PATH.
-  ATLAS_MODULES       Space-separated modules to load before activating conda.
+  ATLAS_MODULES       Modules loaded before conda. Default: miniconda/4.12
+                      Set to an empty string to skip module loading.
   PYTHON_BIN          Python executable; when set, conda activation is skipped.
   CUDA                Override config CUDA setting. Default: false for CPU jobs.
   DRY_RUN=true        Resolve/print the training command without training.
@@ -221,7 +222,9 @@ if [[ -n "${PBS_NODEFILE:-}" && -r "${PBS_NODEFILE}" ]]; then
 fi
 
 # Atlas installations commonly expose software through environment modules.
-# Loading is opt-in so this also works with a user-owned Miniforge install.
+# Atlas currently provides Miniconda through this module. An explicitly empty
+# ATLAS_MODULES value keeps support for user-owned Conda installations.
+ATLAS_MODULES="${ATLAS_MODULES-miniconda/4.12}"
 if [[ -n "${ATLAS_MODULES:-}" ]]; then
     if ! command -v module >/dev/null 2>&1; then
         for module_init in /etc/profile.d/modules.sh /usr/share/Modules/init/bash; do

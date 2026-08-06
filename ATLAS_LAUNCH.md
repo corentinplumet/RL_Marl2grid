@@ -15,10 +15,34 @@ cd /path/to/RL_Marl2grid
 chmod +x job_atlas.sh
 ```
 
-The default environment name is `marl2grid`. The repository's
-`Topology_Task/conda_env.yml` installs CPU-only PyTorch, which matches the
-default Atlas allocation. Atlas compute nodes may not have internet access, so
-install dependencies and populate any online caches before submitting.
+Atlas provides Conda through the `miniconda/4.12` module, which the launcher
+loads by default. Create the environment on the login node before submitting:
+
+```bash
+source /etc/profile.d/modules.sh
+module load miniconda/4.12
+source "$(conda info --base)/etc/profile.d/conda.sh"
+conda env create -f Topology_Task/conda_env.yml
+conda activate marl2grid
+```
+
+The Conda file provides the CPU-only PyTorch build used by the default Atlas
+allocation. Install the remaining project dependencies without replacing that
+CPU build:
+
+```bash
+sed '/^torch==2.2.0$/d' Topology_Task/requirements.txt | \
+  python -m pip install -r /dev/stdin
+```
+
+Verify the important imports on the login node:
+
+```bash
+python -c 'import torch, torch_geometric, gymnasium, grid2op, lightsim2grid, ray; print("Environment OK")'
+```
+
+Atlas compute nodes may not have internet access, so complete these steps and
+populate any required online caches before submitting.
 
 ## Submit a training run
 
@@ -117,10 +141,16 @@ The launcher searches for Conda in `PATH`, `~/miniconda3`, `~/miniforge3`, and
 CONDA_BASE=/path/to/miniforge3 CONDA_ENV=marl2grid ./job_atlas.sh CONFIG
 ```
 
-If Atlas requires modules before Conda or Python becomes available:
+To load additional modules before Conda or Python becomes available:
 
 ```bash
 ATLAS_MODULES="module_name another_module" ./job_atlas.sh CONFIG
+```
+
+To use a personal Conda installation instead of Atlas's default module:
+
+```bash
+ATLAS_MODULES="" CONDA_BASE=/path/to/miniforge3 ./job_atlas.sh CONFIG
 ```
 
 To bypass Conda activation entirely:
