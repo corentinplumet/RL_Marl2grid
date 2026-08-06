@@ -86,6 +86,7 @@ class GridGraphBuilder:
         add_self_edges: bool = False,
         add_substation_edges: bool = False,
         angle_representation: str = "node",
+        context_requires_connection: bool = True,
     ) -> None:
         self.g2op_env = g2op_env
         self.observation_domains = {
@@ -95,6 +96,10 @@ class GridGraphBuilder:
         self.include_neighbors = include_neighbors
         self.add_self_edges = bool(add_self_edges)
         self.add_substation_edges = bool(add_substation_edges)
+        # A contextual node is only observable when an active physical relation
+        # ties it to the region the agent controls. Set to False to restore the
+        # older behaviour, where every node of the local graph was always valid.
+        self.context_requires_connection = bool(context_requires_connection)
         self.angle_representation = _validate_angle_representation(
             angle_representation
         )
@@ -296,7 +301,7 @@ class GridGraphBuilder:
         return {
             "node_features": node_features.astype(np.float32, copy=False),
             "edge_features": edge_features.astype(np.float32, copy=False),
-            "node_mask": np.ones((len(spec["node_ids"]),), dtype=np.float32),
+            "node_mask": self._visible_node_mask(spec, edge_mask),
             "edge_mask": edge_mask.astype(np.float32, copy=False),
             "edge_type": spec["edge_type"].astype(np.int64, copy=False),
             "controlled_node_mask": spec["controlled_node_mask"].astype(
@@ -453,6 +458,58 @@ class GridGraphBuilder:
     def _bus_node_id(self, sub_id, bus_id):
         return int(sub_id) * self.n_busbar + int(bus_id)
 
+    #: Relations that are computational rather than electrical. They never
+    #: make a contextual node observable, because two busbars of one substation
+    #: are not electrically joined and a self edge connects nothing.
+    STRUCTURAL_EDGE_TYPE_NAMES = ("self", "same_substation_busbar")
+
+    def _visible_node_mask(self, spec, edge_mask) -> np.ndarray:
+        """Valid-node mask for one agent at one step.
+
+        Controlled nodes are always valid. A contextual node is valid only when
+        an active, non-structural relation connects it to the controlled
+        region, directly or through other contextual nodes. Without this, an
+        agent pools busbars of a neighbouring substation that no live line
+        attaches to its own region, which is state it has no way of observing.
+        """
+        controlled = np.asarray(spec["controlled_node_mask"], dtype=bool)
+        if not self.context_requires_connection or controlled.all():
+            return np.ones(controlled.shape, dtype=np.float32)
+
+        edge_index = np.asarray(spec["edge_index"], dtype=np.int64)
+        if edge_index.size == 0:
+            return controlled.astype(np.float32)
+
+        type_names = spec.get("edge_type_names", {})
+        structural = [
+            type_names[name]
+            for name in self.STRUCTURAL_EDGE_TYPE_NAMES
+            if name in type_names
+        ]
+        carries_state = np.asarray(edge_mask, dtype=bool)
+        if structural:
+            carries_state &= ~np.isin(
+                np.asarray(spec["edge_type"], dtype=np.int64), structural
+            )
+
+        src = edge_index[0][carries_state]
+        dst = edge_index[1][carries_state]
+        visible = controlled.copy()
+        # Propagate to a fixed point. The relation is symmetric for visibility
+        # even when the edge itself is one-way: an attachment that exists at
+        # all means the two endpoints are electrically joined.
+        for _ in range(len(visible)):
+            grown = visible.copy()
+            # ``np.logical_or.at`` is the unbuffered form: with plain fancy
+            # indexing a repeated destination keeps only the last write, which
+            # silently drops visibility when a node has several active edges.
+            np.logical_or.at(grown, dst, visible[src])
+            np.logical_or.at(grown, src, visible[dst])
+            if np.array_equal(grown, visible):
+                break
+            visible = grown
+        return visible.astype(np.float32)
+
     def _bus_node_ids(self, sub_ids):
         sub_ids = np.asarray(sub_ids, dtype=np.int64)
         return np.asarray(
@@ -553,6 +610,7 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
         load_edge_direction: str = "bidirectional",
         angle_representation: str = "node",
         include_legacy_self_relation_feature: bool = False,
+        context_requires_connection: bool = True,
     ) -> None:
         # Initialize the shared Grid2Op metadata and helper methods first. The
         # bus-only specs produced by the parent are immediately replaced below.
@@ -564,6 +622,7 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
             add_self_edges=add_self_edges,
             add_substation_edges=add_substation_edges,
             angle_representation=angle_representation,
+            context_requires_connection=context_requires_connection,
         )
         self.n_gen = int(getattr(g2op_env, "n_gen", len(self.gen_to_sub)))
         self.n_load = int(getattr(g2op_env, "n_load", len(self.load_to_sub)))
@@ -895,7 +954,7 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
         return {
             "node_features": node_features.astype(np.float32, copy=False),
             "edge_features": edge_features.astype(np.float32, copy=False),
-            "node_mask": np.ones((len(spec["node_ids"]),), dtype=np.float32),
+            "node_mask": self._visible_node_mask(spec, edge_mask),
             "edge_mask": edge_mask.astype(np.float32, copy=False),
             "node_type": spec["node_type"].astype(np.int64, copy=False),
             "edge_type": spec["edge_type"].astype(np.int64, copy=False),
@@ -1106,6 +1165,7 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
         line_node_edge_direction: str = "bidirectional",
         angle_representation: str = "node",
         include_legacy_self_relation_feature: bool = False,
+        context_requires_connection: bool = True,
     ) -> None:
         if _validate_angle_representation(angle_representation) != "node":
             # This builder puts each line on its own node, so an angle drop is
@@ -1128,6 +1188,7 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
             include_legacy_self_relation_feature=(
                 include_legacy_self_relation_feature
             ),
+            context_requires_connection=context_requires_connection,
         )
         self.line_node_edge_direction = _validate_edge_direction(
             line_node_edge_direction,
@@ -1513,7 +1574,7 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
         return {
             "node_features": node_features.astype(np.float32, copy=False),
             "edge_features": edge_features.astype(np.float32, copy=False),
-            "node_mask": np.ones((len(spec["node_ids"]),), dtype=np.float32),
+            "node_mask": self._visible_node_mask(spec, edge_mask),
             "edge_mask": edge_mask.astype(np.float32, copy=False),
             "node_type": spec["node_type"].astype(np.int64, copy=False),
             "edge_type": spec["edge_type"].astype(np.int64, copy=False),
