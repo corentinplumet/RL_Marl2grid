@@ -144,13 +144,16 @@ def validate_args(config_args: dict[str, Any]) -> None:
         "controlled_mean",
         "controlled_sum",
         "controlled_max",
+        "energized_mean",
+        "controlled_energized_mean",
         "virtual_node",
     }:
         raise SystemExit(
             "Invalid config: readout "
             f"'{readout}' is only implemented for gnn_type=sparse_transformer. "
             "Use mean, sum, max, controlled_mean, controlled_sum, "
-            "controlled_max, or virtual_node with ordinary GNN encoders."
+            "controlled_max, energized_mean, controlled_energized_mean, "
+            "or virtual_node with ordinary GNN encoders."
         )
 
     direction_choices = {

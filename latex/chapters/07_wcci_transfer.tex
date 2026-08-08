@@ -17,6 +17,21 @@ comparison turns out to matter more than expected: the graph features the
 encoder consumes are raw physical quantities, and they do not follow the same
 distribution on the two grids.
 
+\begin{tcolorbox}[
+  colframe=darkred,
+  colback=red!4!white,
+  title=Legacy graph-observation qualifier
+]
+Unless a result is explicitly identified as a leakage-free rerun, the graph
+statistics and transferred checkpoints in this chapter were produced before
+the information-boundary correction of
+Section~\ref{subsec:graph-local-global}. They include the legacy neighboring
+candidate rows and are not strictly comparable to runs using the corrected
+node and edge masks. The distribution measurements remain a description of
+the inputs consumed by those historical encoders, not of the final local actor
+observation.
+\end{tcolorbox}
+
 
 \section{The target environment}
 \label{sec:wcci-environment}
@@ -219,7 +234,7 @@ line as an edge. Table~\ref{tab:wcci-graph-features} lists the ten channels.
     \texttt{load\_p} & Active power drawn by attached loads & MW & 56.5 & 56.4 \\
     \texttt{load\_theta} & Voltage angle at the load connection & deg & 56.5 & 58.0 \\
     \texttt{time\_before\_cooldown\_sub} & Steps until this substation may be reconfigured & steps & 100 & 100 \\
-    \texttt{domain\_mask} & 1 for the agent's own substations, 0 for borrowed neighbors & --- & 39.1 & 35.7 \\
+    \texttt{domain\_mask} & 1 for the agent's own substations, 0 for legacy whole-substation context & --- & 39.1 & 35.7 \\
     \midrule
     \multicolumn{5}{l}{\textit{Edge features}} \\
     \texttt{line\_status} & 1 connected, 0 disconnected & --- & 0 & 0 \\
@@ -290,7 +305,8 @@ width, so KS stays small because the bulk still overlaps.
   \caption{The two dense channels. \texttt{rho} is nearly identical on the two
   grids, as expected from a quantity already normalized by each grid's own
   thermal limits. \texttt{domain\_mask} is structural, and its small difference
-  only reflects how many one-hop neighbor nodes each agent partition pulls in.}
+  reflects how many neighboring candidate rows the legacy construction pulled
+  into each agent partition.}
   \label{fig:wcci-dense}
 \end{figure}
 

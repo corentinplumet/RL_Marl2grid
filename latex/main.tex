@@ -222,17 +222,23 @@ layer is
        {\max(1,\sum_v m_v)},
   \label{eq:gnn-mean-pooling}
 \end{equation}
-where $m_v$ is the valid-node mask. This is one mean over all valid node types.
-It is not a separate mean per type. Therefore:
+where $m_v$ is the dynamic visibility mask. This is one mean over all visible
+node types, not a separate mean per type. Therefore:
 \begin{itemize}
-  \item the busbar graph pools all busbars;
-  \item the direct heterogeneous graph pools busbars, generators, and loads;
-  \item the explicit-line graph also pools transmission-line nodes.
+  \item the busbar graph pools controlled busbars and only the far-end busbars
+  currently attached by live boundary lines;
+  \item the direct heterogeneous graph additionally pools controlled generators
+  and loads, but never neighboring private assets;
+  \item the explicit-line graph additionally pools transmission-line nodes and
+  contains no neighboring equipment.
 \end{itemize}
-For a local actor graph, one-hop contextual nodes are included in the mean. The
-ordinary GINE/GAT mean readout does not restrict pooling to controlled nodes.
-Sum and maximum pooling change only Equation~\ref{eq:gnn-mean-pooling}; they do
-not change message passing.
+An inactive contextual candidate contributes neither to the numerator nor to
+the denominator. The ordinary GINE/GAT mean readout includes visible context;
+\texttt{controlled\_mean} replaces $m_v$ by the product of the visibility and
+controlled-node masks. Visible context can still influence controlled nodes
+through message passing, but it is not aggregated directly. Sum and maximum
+pooling, including their \texttt{controlled\_*} variants, change only the
+readout and do not change message passing or the information boundary.
 
 The pooled 128-dimensional vector then passes through the shared graph output
 projection
@@ -284,7 +290,10 @@ states that Equation~\ref{eq:gnn-mean-pooling} averages.
 
 All node types of one representation receive the same feature columns. Columns
 not listed for a node type are zero. Type identity reaches GINE and GAT through
-the \texttt{is\_*} columns.
+the \texttt{is\_*} columns. The inventory below describes visible nodes. For an
+inactive contextual candidate, the complete row---including type and role
+columns---is zero, all incident edges are inactive, and the node is excluded
+from readout.
 
 \begin{table}[H]
   \centering
@@ -371,8 +380,11 @@ Let $S$ be the number of included substations, $B$ the busbars per substation,
 $L$ the included physical lines, and $N_g$, $N_d$ the generators and loads.
 Write $d_g,d_d,d_{\ell}\in\{1,2\}$ for the number of retained directions of the
 generator, load, and line-node attachments: $2$ for \texttt{bidirectional} and
-$1$ for either one-way mode. Table~\ref{tab:appendix-graph-sizes} gives the
-size of the fixed candidate graph, before any mask is applied.
+$1$ for either one-way mode. Let $P_{\ell}$ be the number of represented line
+endpoints: an internal line contributes two and a boundary line in a local
+explicit-line graph contributes only its controlled endpoint. Thus
+$L\leq P_{\ell}\leq 2L$. Table~\ref{tab:appendix-graph-sizes} gives the size of
+the fixed candidate graph before any mask is applied.
 
 \begin{table}[H]
   \centering
@@ -388,7 +400,7 @@ size of the fixed candidate graph, before any mask is applied.
     \midrule
     \texttt{bus} & $SB$ & $2B^2L$ \\
     \texttt{heterogeneous} & $SB+N_g+N_d$ & $2B^2L + B(d_gN_g+d_dN_d)$ \\
-    \texttt{heterogeneous\_line} & $SB+N_g+N_d+L$ & $2Bd_{\ell}L + B(d_gN_g+d_dN_d)$ \\
+    \texttt{heterogeneous\_line} & $SB+N_g+N_d+L$ & $Bd_{\ell}P_{\ell} + B(d_gN_g+d_dN_d)$ \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -397,10 +409,12 @@ Three consequences are worth naming. A busbar graph with both optional
 relations enabled therefore has $2B^2L+SB+SB(B-1)$ candidate directed edges.
 The disaggregated schema adds $N_g+N_d$ nodes and between $B(N_g+N_d)$ and
 $2B(N_g+N_d)$ asset candidates to the busbar graph, and buys individual asset
-states with them. The explicit-line schema replaces the $2B^2L$
-busbar-to-busbar term by $2Bd_{\ell}L$: identical at $B=2$ and cheaper for
-$B>2$, at the cost of $L$ extra nodes and one extra message-passing hop between
-adjacent busbars.
+states with them. For a complete state graph, $P_{\ell}=2L$, so the
+explicit-line schema replaces the $2B^2L$ busbar-to-busbar term by
+$2Bd_{\ell}L$: identical at $B=2$ and cheaper for $B>2$. A local boundary line
+has candidates only at its controlled endpoint, which reduces $P_{\ell}$ and
+prevents construction of a far-end attachment. The schema adds $L$ line nodes
+and one message-passing hop for internal endpoint exchange.
 
 The hierarchical augmentations of Section~\ref{sec:substation-representation}
 add on top of any of these: one substation-summary node per substation, with
@@ -420,16 +434,40 @@ tensor shape is fixed for an episode, but the row is zero-filled and its
 \texttt{edge\_mask} entry is $0$. Masked edges are removed before the encoder
 is called, so those zero rows never generate a message. This is what allows a
 topology change to alter connectivity without rebuilding the graph.
+An inactive contextual node likewise retains its candidate row, but its
+complete feature vector is zero and its \texttt{node\_mask} entry is $0$.
+Every incident physical or structural edge is deactivated. The row therefore
+participates in neither message passing nor graph readout; a mean readout
+excludes it from both numerator and denominator.
 
 \section{Local actor graphs}
 \label{app:local-graphs}
 
-A local actor graph contains the controlled substations plus, optionally, their
-one-hop neighbors. Nodes of the controlled substations form the action domain,
-and the neighbors provide context only; the centralized state graph always
-contains the full grid. In the explicit-line schema a line node counts as
-controlled when either of its endpoints is controlled. The same controlled-domain
-and one-hop rules apply to all three schemas.}
+A local actor graph always contains the controlled substations and every line
+touching them. Additional membership is schema-specific. The \texttt{bus}
+graph contains only the far-end busbar currently attached by each live boundary
+line, and that busbar exposes aggregated neighboring power and angle. The
+direct \texttt{heterogeneous} graph contains the same far-end busbar, but never
+its generator or load nodes. The \texttt{heterogeneous\_line} graph represents
+the shared line itself and therefore constructs no neighboring busbar or
+private asset and no far-end attachment edge. The centralized state graph is
+intentionally unrestricted for centralized training. Ordinary pooling
+aggregates all visible nodes, whereas \texttt{controlled\_*} pooling restricts
+readout to action-domain nodes; neither choice changes the construction
+boundary.
+
+\section{Boundary verification}
+
+The regression suite checks that contextual visibility follows a live busbar
+attachment, moves when the attachment is switched, and disappears after a
+line outage; controlled nodes remain present; structural relations cannot make
+a hidden candidate visible; inactive rows are zero; neighboring private assets
+are absent from direct heterogeneous graphs; and all neighboring equipment is
+absent from explicit-line local graphs. Candidate-action tests additionally
+verify that a boundary line remains addressable through its line node without
+adding far-end equipment. Controlled-readout tests verify both that the pooled
+set is fixed and that gradients can still reach visible context through message
+passing.}
 
 \chapter{Experiment Configurations}
 \label{app:experiment-configurations}

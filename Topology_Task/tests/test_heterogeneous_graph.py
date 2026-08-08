@@ -81,6 +81,7 @@ class HeterogeneousGridGraphBuilderTest(unittest.TestCase):
         for edge_type, count in expected_counts.items():
             self.assertEqual(int(np.sum(active_types == edge_type)), count)
         self.assertEqual(int(graph["edge_mask"].sum()), 6)
+        self.assertEqual(int(graph["energized_node_mask"].sum()), 6)
 
         node_cols = {
             name: idx for idx, name in enumerate(spec["node_feature_names"])
@@ -249,6 +250,7 @@ class HeterogeneousGridGraphBuilderTest(unittest.TestCase):
         self.assertTrue(
             bool(np.all(disconnected["edge_mask"][relation_rows] == 1.0))
         )
+        self.assertEqual(int(disconnected["energized_node_mask"].sum()), 0)
 
         bus_builder = GridGraphBuilder(
             MockGridEnv(),
@@ -345,6 +347,7 @@ class HeterogeneousGridGraphBuilderTest(unittest.TestCase):
                 "edge_mask",
                 "edge_type",
                 "controlled_node_mask",
+                "energized_node_mask",
             }
         }
         sparse_embedding = sparse_encoder(sparse_tensor_graph)
@@ -414,6 +417,7 @@ class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
         for edge_type, count in expected_counts.items():
             self.assertEqual(int(np.sum(active_types == edge_type)), count)
         self.assertEqual(int(graph["edge_mask"].sum()), 8)
+        self.assertEqual(int(graph["energized_node_mask"].sum()), 7)
 
         node_cols = {
             name: idx for idx, name in enumerate(spec["node_feature_names"])
@@ -531,6 +535,8 @@ class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
         self.assertEqual(
             changed["node_features"][gen_row, node_cols["connected"]], 0.0
         )
+        self.assertEqual(changed["energized_node_mask"][line_row], 0.0)
+        self.assertEqual(int(changed["energized_node_mask"].sum()), 2)
 
     def test_one_way_relations_can_make_busbars_the_aggregators(self):
         builder = HeterogeneousLineGraphBuilder(
@@ -601,6 +607,7 @@ class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
                 "edge_mask",
                 "edge_type",
                 "controlled_node_mask",
+                "energized_node_mask",
             }
         }
         sparse_encoder = SparseGraphTransformerEncoder(
@@ -615,6 +622,18 @@ class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
         sparse_embedding = sparse_encoder(sparse_tensor_graph)
         self.assertEqual(tuple(sparse_embedding.shape), (4,))
         self.assertTrue(bool(th.isfinite(sparse_embedding).all()))
+
+        energized_sparse_encoder = SparseGraphTransformerEncoder(
+            spec,
+            hidden_dim=8,
+            out_dim=4,
+            n_layers=1,
+            heads=2,
+            readout_aggr="energized_mean",
+        )
+        energized_embedding = energized_sparse_encoder(sparse_tensor_graph)
+        self.assertEqual(tuple(energized_embedding.shape), (4,))
+        self.assertTrue(bool(th.isfinite(energized_embedding).all()))
 
     def test_virtual_node_readout_across_encoders(self):
         spec = self.builder.specs["state"]
@@ -713,6 +732,7 @@ class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
             node_mask,
             flat_node_ids,
             _controlled_node_mask,
+            _energized_node_mask,
         ) = encoder._to_pyg_batch(tensor_graph)
         x = encoder.node_pre_encoder(x)
         (
@@ -795,6 +815,7 @@ class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
             node_mask,
             flat_node_ids,
             _controlled_node_mask,
+            _energized_node_mask,
         ) = encoder._to_pyg_batch(tensor_graph)
         x = encoder.node_pre_encoder(x)
         (
@@ -856,6 +877,7 @@ class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
             node_mask,
             flat_node_ids,
             _controlled_node_mask,
+            _energized_node_mask,
         ) = encoder._to_pyg_batch(tensor_graph)
         x = encoder.node_pre_encoder(x)
         (

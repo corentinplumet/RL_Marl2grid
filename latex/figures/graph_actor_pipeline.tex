@@ -43,7 +43,8 @@
   node features $\mathbf{X}_a$\\
   edge features $\mathbf{E}_a$\\
   candidate \texttt{edge\_index}\\
-  edge mask $\mathbf{m}^{E}_a$
+  edge mask $\mathbf{m}^{E}_a$\\
+  node/control masks $\mathbf{m}^{V}_a,\mathbf{c}_a$
 };
 
 % Encoder inputs.
@@ -89,12 +90,12 @@
   minimum width=3.60cm,
   minimum height=1.70cm
 ] (pool) at (13.65,1.25) {
-  {\bfseries Mean readout}\\[5pt]
+  {\bfseries Masked mean readout}\\[5pt]
   $\displaystyle
     \bar{\mathbf h}_a=
-    \frac{1}{|\mathcal V_a|}
-    \sum_{i\in\mathcal V_a}
-    \mathbf h_i^{(K)}$
+    \frac{\sum_i m^V_i\mathbf h_i^{(K)}}
+         {\max(1,\sum_i m^V_i)}$\\[-1pt]
+  {\scriptsize use $m^V_i c_i$ for \texttt{controlled\_mean}}
 };
 
 \node[

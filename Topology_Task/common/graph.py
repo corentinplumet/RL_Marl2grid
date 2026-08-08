@@ -305,10 +305,12 @@ class GridGraphBuilder:
         edge_features, edge_mask = self._hide_invisible_node_edges(
             spec, edge_features, edge_mask, node_mask
         )
+        energized_node_mask = self._energized_node_mask(spec, edge_mask)
         return {
             "node_features": node_features.astype(np.float32, copy=False),
             "edge_features": edge_features.astype(np.float32, copy=False),
             "node_mask": node_mask,
+            "energized_node_mask": energized_node_mask,
             "edge_mask": edge_mask.astype(np.float32, copy=False),
             "edge_type": spec["edge_type"].astype(np.int64, copy=False),
             "controlled_node_mask": spec["controlled_node_mask"].astype(
@@ -469,6 +471,35 @@ class GridGraphBuilder:
     #: make a contextual node observable, because two busbars of one substation
     #: are not electrically joined and a self edge connects nothing.
     STRUCTURAL_EDGE_TYPE_NAMES = ("self", "same_substation_busbar")
+
+    def _energized_node_mask(self, spec, edge_mask) -> np.ndarray:
+        """Return nodes incident to at least one active electrical relation.
+
+        Direction is ignored for this mask: a one-way message-passing edge
+        still represents a physical connection between both endpoints. Self
+        and same-substation relations are computational aids rather than
+        electrical connections and therefore do not energize their nodes.
+        """
+        n_nodes = len(spec["node_ids"])
+        energized = np.zeros((n_nodes,), dtype=bool)
+        edge_index = np.asarray(spec["edge_index"], dtype=np.int64)
+        if edge_index.size == 0:
+            return energized.astype(np.float32)
+
+        active = np.asarray(edge_mask, dtype=bool).copy()
+        type_names = spec.get("edge_type_names", {})
+        structural = [
+            type_names[name]
+            for name in self.STRUCTURAL_EDGE_TYPE_NAMES
+            if name in type_names
+        ]
+        if structural:
+            active &= ~np.isin(
+                np.asarray(spec["edge_type"], dtype=np.int64), structural
+            )
+        if np.any(active):
+            energized[np.unique(edge_index[:, active])] = True
+        return energized.astype(np.float32)
 
     def _visible_node_mask(self, spec, edge_mask) -> np.ndarray:
         """Valid-node mask for one agent at one step.
@@ -1019,10 +1050,12 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
         edge_features, edge_mask = self._hide_invisible_node_edges(
             spec, edge_features, edge_mask, node_mask
         )
+        energized_node_mask = self._energized_node_mask(spec, edge_mask)
         return {
             "node_features": node_features.astype(np.float32, copy=False),
             "edge_features": edge_features.astype(np.float32, copy=False),
             "node_mask": node_mask,
+            "energized_node_mask": energized_node_mask,
             "edge_mask": edge_mask.astype(np.float32, copy=False),
             "node_type": spec["node_type"].astype(np.int64, copy=False),
             "edge_type": spec["edge_type"].astype(np.int64, copy=False),
@@ -1675,10 +1708,12 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
         edge_features, edge_mask = self._hide_invisible_node_edges(
             spec, edge_features, edge_mask, node_mask
         )
+        energized_node_mask = self._energized_node_mask(spec, edge_mask)
         return {
             "node_features": node_features.astype(np.float32, copy=False),
             "edge_features": edge_features.astype(np.float32, copy=False),
             "node_mask": node_mask,
+            "energized_node_mask": energized_node_mask,
             "edge_mask": edge_mask.astype(np.float32, copy=False),
             "node_type": spec["node_type"].astype(np.int64, copy=False),
             "edge_type": spec["edge_type"].astype(np.int64, copy=False),

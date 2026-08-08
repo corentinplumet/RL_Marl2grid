@@ -278,6 +278,27 @@ under these boundaries.
 That choice changes the graph summary but does not define what information the
 agent can access during message passing.
 
+Every graph observation also contains `energized_node_mask`. A node is marked
+energized when it is incident to at least one active electrical relation after
+visibility masking. Both endpoints are marked even when message passing is
+configured in only one direction. Self edges and same-substation busbar edges
+do not count because they are computational relations, not electrical
+connections.
+
+Two mean readouts use this mask:
+
+```toml
+gnn_readout_aggr = "energized_mean"             # visible and energized
+gnn_readout_aggr = "controlled_energized_mean"  # visible, controlled, energized
+```
+
+The selected rows contribute to both the numerator and denominator. If no row
+is selected, the pooled vector is zero before the readout projection. This
+mask changes only graph-level pooling: it does not remove nodes or edges from
+message passing. For an electrically isolated node with no structural or
+virtual connection, the distinction has no effect on the graph embedding
+because the node neither communicates nor enters the readout.
+
 The construction rules above hold for every pooling mode:
 
 - neighboring private assets are absent from the graph;
@@ -294,7 +315,8 @@ The information boundaries are covered by:
 
 - `tests/test_context_visibility.py`, which checks dynamic busbar visibility,
   zeroed inactive candidate rows, exclusion of heterogeneous neighbor assets,
-  and absence of all neighbor equipment from explicit-line local graphs;
+  absence of all neighbor equipment from explicit-line local graphs, and the
+  energized-only readouts;
 - `tests/test_heterogeneous_graph.py`, which checks the exact local node-type
   membership, row maps, boundary-line attachments, and active-edge counts;
 - `tests/test_candidate_action_scoring.py`, which checks that a boundary line

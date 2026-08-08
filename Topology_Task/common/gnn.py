@@ -363,6 +363,8 @@ class GraphEncoder(_VirtualNodeEncoderBase):
             "controlled_mean",
             "controlled_sum",
             "controlled_max",
+            "energized_mean",
+            "controlled_energized_mean",
             "virtual_node",
         }:
             raise ValueError(f"Unsupported GNN readout aggregation: {readout_aggr}")
@@ -478,6 +480,7 @@ class GraphEncoder(_VirtualNodeEncoderBase):
             node_mask,
             flat_node_ids,
             controlled_node_mask,
+            energized_node_mask,
         ) = self._to_pyg_batch(graph_obs, edge_index=edge_index, node_ids=node_ids)
         x = self._append_node_id_embeddings(x, flat_node_ids)
         x = self.node_pre_encoder(x)
@@ -500,6 +503,20 @@ class GraphEncoder(_VirtualNodeEncoderBase):
             node_mask=node_mask,
             controlled_node_mask=controlled_node_mask,
         )
+        if (
+            energized_node_mask is not None
+            and energized_node_mask.numel() < x.shape[0]
+        ):
+            energized_node_mask = th.cat(
+                [
+                    energized_node_mask,
+                    th.zeros(
+                        x.shape[0] - energized_node_mask.numel(),
+                        dtype=energized_node_mask.dtype,
+                        device=energized_node_mask.device,
+                    ),
+                ]
+            )
         edge_attr = self.edge_pre_encoder(edge_attr)
 
         for conv, norm in zip(self.convs, self.norms):
@@ -523,7 +540,13 @@ class GraphEncoder(_VirtualNodeEncoderBase):
         pooled = (
             x[virtual_indices]
             if virtual_indices is not None
-            else self._pool_nodes(x, batch, node_mask, controlled_node_mask)
+            else self._pool_nodes(
+                x,
+                batch,
+                node_mask,
+                controlled_node_mask,
+                energized_node_mask,
+            )
         )
         embedding = self.readout(pooled)
         if unbatched:
@@ -536,6 +559,7 @@ class GraphEncoder(_VirtualNodeEncoderBase):
         batch: th.Tensor,
         node_mask: Optional[th.Tensor],
         controlled_node_mask: Optional[th.Tensor] = None,
+        energized_node_mask: Optional[th.Tensor] = None,
     ) -> th.Tensor:
         """Aggregate node states into one vector per graph.
 
@@ -546,42 +570,39 @@ class GraphEncoder(_VirtualNodeEncoderBase):
         size of the pooled set fixed for an agent, whereas pooling every valid
         node makes it move with the topology.
         """
-        controlled_only = self.readout_aggr.startswith("controlled")
-        base_aggr = self.readout_aggr.replace("controlled_", "")
+        controlled_only = self.readout_aggr.startswith("controlled_")
+        readout = self.readout_aggr.removeprefix("controlled_")
+        energized_only = readout.startswith("energized_")
+        base_aggr = readout.removeprefix("energized_")
 
-        active_mask = node_mask
+        active_mask = th.ones((x.shape[0],), dtype=x.dtype, device=x.device)
+        if node_mask is not None:
+            active_mask = active_mask * node_mask.to(dtype=x.dtype)
         if controlled_only:
             if controlled_node_mask is None:
                 raise ValueError(
                     f"readout_aggr={self.readout_aggr!r} needs a "
                     "controlled_node_mask in the graph observation."
                 )
-            controlled = controlled_node_mask.to(dtype=x.dtype)
-            active_mask = (
-                controlled if node_mask is None else node_mask.to(x.dtype) * controlled
-            )
-
-        if active_mask is not None:
-            if base_aggr == "max":
-                masked_x = x.masked_fill(active_mask.unsqueeze(-1) <= 0, -th.inf)
-                pooled = global_max_pool(masked_x, batch)
-                return th.nan_to_num(pooled, nan=0.0, neginf=0.0, posinf=0.0)
-
-            x = x * active_mask.unsqueeze(-1)
-            pooled = global_add_pool(x, batch)
-            if base_aggr == "mean":
-                denom = global_add_pool(
-                    active_mask.unsqueeze(-1), batch
-                ).clamp_min(1.0)
-                pooled = pooled / denom
-            return pooled
+            active_mask = active_mask * controlled_node_mask.to(dtype=x.dtype)
+        if energized_only:
+            if energized_node_mask is None:
+                raise ValueError(
+                    f"readout_aggr={self.readout_aggr!r} needs an "
+                    "energized_node_mask in the graph observation."
+                )
+            active_mask = active_mask * energized_node_mask.to(dtype=x.dtype)
 
         if base_aggr == "max":
-            return global_max_pool(x, batch)
+            masked_x = x.masked_fill(active_mask.unsqueeze(-1) <= 0, -th.inf)
+            pooled = global_max_pool(masked_x, batch)
+            return th.nan_to_num(pooled, nan=0.0, neginf=0.0, posinf=0.0)
 
-        pooled = global_add_pool(x, batch)
+        pooled = global_add_pool(x * active_mask.unsqueeze(-1), batch)
         if base_aggr == "mean":
-            denom = th.bincount(batch, minlength=int(batch.max().item()) + 1).to(x).unsqueeze(-1).clamp_min(1.0)
+            denom = global_add_pool(
+                active_mask.unsqueeze(-1), batch
+            ).clamp_min(1.0)
             pooled = pooled / denom
         return pooled
 
@@ -596,6 +617,7 @@ class GraphEncoder(_VirtualNodeEncoderBase):
         node_mask = graph_obs.get("node_mask")
         edge_mask = graph_obs.get("edge_mask")
         controlled_node_mask = graph_obs.get("controlled_node_mask")
+        energized_node_mask = graph_obs.get("energized_node_mask")
 
         if nodes.dim() == 2:
             nodes = nodes.unsqueeze(0)
@@ -606,6 +628,11 @@ class GraphEncoder(_VirtualNodeEncoderBase):
                 None
                 if controlled_node_mask is None
                 else controlled_node_mask.unsqueeze(0)
+            )
+            energized_node_mask = (
+                None
+                if energized_node_mask is None
+                else energized_node_mask.unsqueeze(0)
             )
 
         base_edge_index = self.edge_index if edge_index is None else edge_index
@@ -634,6 +661,11 @@ class GraphEncoder(_VirtualNodeEncoderBase):
             if controlled_node_mask is None
             else controlled_node_mask.reshape(batch_size * n_nodes)
         )
+        flat_energized_mask = (
+            None
+            if energized_node_mask is None
+            else energized_node_mask.reshape(batch_size * n_nodes)
+        )
         return (
             x,
             edge_index,
@@ -642,6 +674,7 @@ class GraphEncoder(_VirtualNodeEncoderBase):
             flat_node_mask,
             flat_node_ids,
             flat_controlled_mask,
+            flat_energized_mask,
         )
 
     def _append_node_id_embeddings(
@@ -882,6 +915,8 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
             "attention",
             "controlled_mean",
             "controlled_attention",
+            "energized_mean",
+            "controlled_energized_mean",
             "virtual_node",
         }:
             raise ValueError(
@@ -1030,6 +1065,7 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
             batch,
             node_mask,
             controlled_node_mask,
+            energized_node_mask,
             flat_node_ids,
         ) = self._to_pyg_batch(graph_obs, edge_index=edge_index, node_ids=node_ids)
 
@@ -1057,6 +1093,20 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
             virtual_edge_type=self.virtual_edge_type,
             controlled_node_mask=controlled_node_mask,
         )
+        if (
+            energized_node_mask is not None
+            and energized_node_mask.numel() < x.shape[0]
+        ):
+            energized_node_mask = th.cat(
+                [
+                    energized_node_mask,
+                    th.zeros(
+                        x.shape[0] - energized_node_mask.numel(),
+                        dtype=energized_node_mask.dtype,
+                        device=energized_node_mask.device,
+                    ),
+                ]
+            )
         edge_attr = self.edge_pre_encoder(edge_attr)
 
         for layer in self.layers:
@@ -1070,7 +1120,13 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
         pooled = (
             x[virtual_indices]
             if virtual_indices is not None
-            else self._pool_nodes(x, batch, node_mask, controlled_node_mask)
+            else self._pool_nodes(
+                x,
+                batch,
+                node_mask,
+                controlled_node_mask,
+                energized_node_mask,
+            )
         )
         embedding = self.readout(pooled)
         if unbatched:
@@ -1089,6 +1145,7 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
         edge_mask = graph_obs.get("edge_mask")
         edge_type_obs = graph_obs.get("edge_type")
         controlled_node_mask = graph_obs.get("controlled_node_mask")
+        energized_node_mask = graph_obs.get("energized_node_mask")
 
         if nodes.dim() == 2:
             nodes = nodes.unsqueeze(0)
@@ -1102,6 +1159,11 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
                 None
                 if controlled_node_mask is None
                 else controlled_node_mask.unsqueeze(0)
+            )
+            energized_node_mask = (
+                None
+                if energized_node_mask is None
+                else energized_node_mask.unsqueeze(0)
             )
 
         base_edge_index = self.edge_index if edge_index is None else edge_index
@@ -1145,6 +1207,11 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
             )
         else:
             controlled_node_mask = controlled_node_mask.reshape(batch_size * n_nodes)
+        flat_energized_mask = (
+            None
+            if energized_node_mask is None
+            else energized_node_mask.reshape(batch_size * n_nodes)
+        )
         return (
             x,
             edge_index,
@@ -1153,6 +1220,7 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
             batch,
             flat_node_mask,
             controlled_node_mask,
+            flat_energized_mask,
             flat_node_ids,
         )
 
@@ -1178,26 +1246,43 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
         batch: th.Tensor,
         node_mask: Optional[th.Tensor],
         controlled_node_mask: Optional[th.Tensor],
+        energized_node_mask: Optional[th.Tensor],
     ) -> th.Tensor:
+        controlled_only = self.readout_aggr.startswith("controlled_")
+        readout = self.readout_aggr.removeprefix("controlled_")
+        energized_only = readout.startswith("energized_")
+        base_aggr = readout.removeprefix("energized_")
+
         active_mask = th.ones((x.shape[0],), dtype=x.dtype, device=x.device)
         if node_mask is not None:
             active_mask = active_mask * node_mask.to(dtype=x.dtype)
 
-        if self.readout_aggr.startswith("controlled"):
-            if controlled_node_mask is not None:
-                active_mask = active_mask * controlled_node_mask.to(dtype=x.dtype)
+        if controlled_only:
+            if controlled_node_mask is None:
+                raise ValueError(
+                    f"readout_aggr={self.readout_aggr!r} needs a "
+                    "controlled_node_mask in the graph observation."
+                )
+            active_mask = active_mask * controlled_node_mask.to(dtype=x.dtype)
+        if energized_only:
+            if energized_node_mask is None:
+                raise ValueError(
+                    f"readout_aggr={self.readout_aggr!r} needs an "
+                    "energized_node_mask in the graph observation."
+                )
+            active_mask = active_mask * energized_node_mask.to(dtype=x.dtype)
 
-        if self.readout_aggr in {"attention", "controlled_attention"}:
+        if base_aggr == "attention":
             return self._attention_pool(x, batch, active_mask)
 
-        if self.readout_aggr == "max":
+        if base_aggr == "max":
             masked_x = x.masked_fill(active_mask.unsqueeze(-1) <= 0, -th.inf)
             pooled = global_max_pool(masked_x, batch)
             return th.nan_to_num(pooled, nan=0.0, neginf=0.0, posinf=0.0)
 
         masked_x = x * active_mask.unsqueeze(-1)
         pooled = global_add_pool(masked_x, batch)
-        if self.readout_aggr in {"mean", "controlled_mean"}:
+        if base_aggr == "mean":
             denom = global_add_pool(active_mask.unsqueeze(-1), batch).clamp_min(1.0)
             pooled = pooled / denom
         return pooled

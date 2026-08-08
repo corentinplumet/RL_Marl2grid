@@ -175,6 +175,30 @@ class ContextVisibilityTest(unittest.TestCase):
         )
         self.assertNotIn("s0b1", self.visible_busbars(spec, graph))
 
+    def test_energized_mask_uses_only_active_electrical_relations(self):
+        spec, graph = self.build(
+            GridGraphBuilder,
+            [1, 1, 1, 1, 1, 1],
+            add_self_edges=True,
+            add_substation_edges=True,
+        )
+        labels = busbar_labels(spec)
+        energized = {
+            label
+            for label, keep in zip(labels, graph["energized_node_mask"])
+            if keep > 0
+        }
+        self.assertEqual(energized, {"s0b0", "s1b0", "s2b0"})
+
+        _, disconnected = self.build(
+            GridGraphBuilder,
+            [1, 1, 1, 1, 1, 1],
+            line_status=(0, 0),
+            add_self_edges=True,
+            add_substation_edges=True,
+        )
+        self.assertEqual(float(disconnected["energized_node_mask"].sum()), 0.0)
+
     def test_disabling_the_rule_restores_the_previous_behaviour(self):
         _, graph = self.build(GridGraphBuilder, [1, 1, 1, 1, 1, 1], gated=False)
         self.assertTrue(np.all(graph["node_mask"] > 0))
@@ -231,6 +255,7 @@ class ControlledReadoutTest(unittest.TestCase):
         "edge_mask",
         "edge_type",
         "controlled_node_mask",
+        "energized_node_mask",
     }
 
     def setUp(self):
@@ -308,11 +333,37 @@ class ControlledReadoutTest(unittest.TestCase):
         readout = self.encoder("controlled_max")(self.graph([1, 1, 1, 1, 1, 1]))
         self.assertTrue(bool(th.isfinite(readout).all()))
 
+    def test_energized_mean_is_the_mean_over_energized_rows(self):
+        encoder = self.encoder("energized_mean")
+        graph = self.graph([1, 1, 1, 1, 1, 1])
+        readout, nodes = encoder.forward_with_nodes(graph)
+        energized = graph["energized_node_mask"].bool()
+        expected = encoder.readout(nodes[energized].mean(dim=0, keepdim=True))
+        self.assertTrue(th.allclose(readout, expected.squeeze(0), atol=1e-5))
+
+    def test_controlled_energized_mean_uses_the_mask_intersection(self):
+        encoder = self.encoder("controlled_energized_mean")
+        graph = self.graph([1, 1, 1, 1, 1, 1])
+        readout, nodes = encoder.forward_with_nodes(graph)
+        pooled = (
+            graph["node_mask"].bool()
+            & graph["controlled_node_mask"].bool()
+            & graph["energized_node_mask"].bool()
+        )
+        expected = encoder.readout(nodes[pooled].mean(dim=0, keepdim=True))
+        self.assertTrue(th.allclose(readout, expected.squeeze(0), atol=1e-5))
+
     def test_missing_controlled_mask_is_rejected(self):
         graph = self.graph([1, 1, 1, 1, 1, 1])
         graph.pop("controlled_node_mask")
         with self.assertRaisesRegex(ValueError, "controlled_node_mask"):
             self.encoder("controlled_mean")(graph)
+
+    def test_missing_energized_mask_is_rejected(self):
+        graph = self.graph([1, 1, 1, 1, 1, 1])
+        graph.pop("energized_node_mask")
+        with self.assertRaisesRegex(ValueError, "energized_node_mask"):
+            self.encoder("energized_mean")(graph)
 
     def test_gradients_reach_the_contextual_nodes(self):
         encoder = self.encoder("controlled_mean")

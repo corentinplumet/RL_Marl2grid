@@ -186,6 +186,8 @@ episode.
 ```text
 gnn_readout_aggr = "mean"              # every visible node, size varies
 gnn_readout_aggr = "controlled_mean"   # action domain only, size fixed
+gnn_readout_aggr = "energized_mean"    # visible nodes on active electrical relations
+gnn_readout_aggr = "controlled_energized_mean" # controlled intersection
 ```
 
 `controlled_mean`, `controlled_sum` and `controlled_max` are now accepted by the
@@ -194,6 +196,12 @@ implementation carries `controlled_node_mask` through `_to_pyg_batch` and
 `_append_hierarchy_nodes` into `GraphEncoder._pool_nodes`, which multiplies it
 into the active mask when the readout name starts with `controlled`. A missing
 mask raises rather than silently pooling everything.
+
+The energized variants additionally multiply by `energized_node_mask`, which
+marks both endpoints of every active non-structural relation. Self and
+same-substation edges do not energize nodes. The mask affects pooling only;
+the visibility and edge masks continue to define message passing and the
+cross-agent information boundary.
 
 Measured on the three-substation chain, with the agent controlling the middle
 substation:
@@ -208,9 +216,10 @@ which is the property that matters: the pool is fixed, but the context is not
 ignored. `tests/test_context_visibility.py::ControlledReadoutTest` asserts both
 halves, including that gradients still reach contextual node features.
 
-## Not addressed
+## Energized-only readout
 
-Pooling only nodes that are currently energised is a separate question. It would
-also change what an agent sees of *its own* controlled region, not just of its
-context, so it is a modelling choice rather than a leak fix and needs its own
-decision and its own experiment.
+Energized-only pooling is implemented as a modelling option, not as a leakage
+fix. It changes the weight given to the agent's own disconnected equipment and
+should therefore be compared experimentally against `mean` and
+`controlled_mean`. If no node is energized, the pooled vector is zero before
+the readout projection.

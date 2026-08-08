@@ -6,6 +6,23 @@ on \texttt{bus14} with three seeds per cell, and all ask the same kind of
 question: does a specific choice in the actor of Chapter~\ref{ch:methods}
 change how well a decentralized MAPPO policy survives on held-out chronics?
 
+\begin{tcolorbox}[
+  colframe=darkred,
+  colback=red!4!white,
+  title=Information-boundary status of the reported screens
+]
+These runs predate the corrected local-graph construction of
+Section~\ref{subsec:graph-local-global}. Their fixed candidate graphs marked
+all rows of a neighboring substation as visible, including unattached busbars
+and, in heterogeneous graphs, neighboring private assets. Those isolated rows
+could enter graph readout even when no live boundary line connected them to the
+agent. The results in this chapter therefore characterize the
+\emph{legacy, information-leaking observation} and must not be presented as
+strictly comparable to checkpoints trained with the corrected boundary.
+Screening conclusions must be rerun or at least confirmed under the
+leakage-free construction before being carried forward.
+\end{tcolorbox}
+
 \begin{itemize}
   \item \textbf{Screen A} varies the depth and width of the actor encoder,
   which applies to every graph schema: a $3\times4$ grid, 36 runs.
@@ -63,7 +80,7 @@ comparison against its own baseline cell.
     Component & Fixed setting \\
     \midrule
     Environment & \texttt{bus14}, difficulty 0, topology actions, decentralized agents, normalized observations and rewards, 80/20 train/test chronic split with split seed 0 \\
-    Actor & One GNN encoder shared by all agents; LayerNorm; node pre-encoder; two 128-unit action-head layers; one-hop neighbor context \\
+    Actor & One GNN encoder shared by all agents; LayerNorm; node pre-encoder; two 128-unit action-head layers; legacy whole-substation one-hop context (information-leaking) \\
     Critic & Centralized MLP with three 256-unit hidden layers \\
     Graph preprocessing & None: neither deterministic physical scaling nor running standardization \\
     Training budget & \(15{,}000{,}000\) environment steps, 72 parallel environments, 576 rollout steps \\

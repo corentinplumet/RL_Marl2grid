@@ -426,6 +426,17 @@ class GraphScreeningConfigTests(unittest.TestCase):
             }
         )
 
+    def test_energized_mean_readouts_are_accepted(self):
+        common = {
+            "n_envs": 4,
+            "n_steps": 8,
+            "eval_freq": 16,
+            "gnn_type": "gine",
+        }
+        for readout in ("energized_mean", "controlled_energized_mean"):
+            with self.subTest(readout=readout):
+                validate_args({**common, "gnn_readout_aggr": readout})
+
     def test_invalid_relation_direction_is_rejected_early(self):
         with self.assertRaises(SystemExit):
             validate_args(
