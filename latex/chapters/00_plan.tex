@@ -1,217 +1,111 @@
 \chapter{Thesis Plan}
 
-\section{Plan Inspiration}
-
-This plan follows the structure of the reference thesis in
-\texttt{mAI2024deMolB.pdf}: start from the power-grid motivation and research
-questions, introduce the scientific background, describe the environment before
-the algorithms, then separate methods from results and close by answering the
-research questions. The adapted structure below is tuned to this repository:
-Grid2Op topology control, decentralized MAPPO, graph encoders, rerun ablations,
-and sparse intervention mechanisms.
-
 \section{Working Title}
+\label{sec:plan-title}
 
-\textbf{Decentralized Multi-Agent Reinforcement Learning for Sparse Power Grid
-Topology Control}
+\textbf{Graph Neural Networks for Decentralized Multi-Agent Reinforcement
+Learning in Power-Grid Topology Control}
 
 \section{Central Thesis Question}
+\label{sec:plan-question}
 
-How can decentralized multi-agent reinforcement learning agents learn reliable
-power-grid topology control policies that preserve survival performance while
-scaling to combinatorial action spaces and avoiding unnecessary interventions?
+\textbf{How can graph neural networks help decentralized
+reinforcement learning agents learn reliable power-grid topology control
+policies that preserve survival performance while scaling to combinatorial
+action spaces?}
+\\
+\\
+Three terms fix what the thesis has to measure:
+
+\begin{itemize}
+  \item \textbf{Reliable} is episodic survival on held-out chronics, always
+  reported from the checkpoint with the best test survival and re-evaluated on
+  the full test split.
+  \item \textbf{Decentralized} means each agent owns a fixed group of
+  substations, observes a local subgraph, and acts on its own discrete topology
+  actions without having any information about the other agent actions; only the critic is centralized.
+  \item \textbf{Scaling} means larger grids, which a graph encoder addresses because its
+  parameters are independent of grid size.
+\end{itemize}
 
 \section{Research Questions}
+\label{sec:plan-research-questions}
 
 \begin{enumerate}
-  \item How should the Grid2Op topology-control problem be formulated as a
-  decentralized multi-agent decision problem?
-  \item Which architectural choices improve survival and generalization:
-  flat MLP policies, graph neural network encoders, shared actor weights,
-  critic design, or optimized critic updates?
-  \item How do initialization and training choices, especially the initial
-  do-nothing bias and reward normalization, affect exploration and learned
-  behavior?
-  \item Can sparse-control mechanisms, such as rho-based overrides,
-  intervention gates, fixed penalties, or adaptive intervention budgets,
-  reduce unnecessary topology actions without sacrificing episodic survival?
+  \item \textbf{Can a graph actor replace a flat one without paying for it?}
+  A decentralized MAPPO agent has first to be trained to stable, high survival
+  on \texttt{bus14}; only then is it meaningful to swap the flat MLP actor for a
+  graph encoder. An MLP's input width is tied to one grid, so nothing transfers;
+  a graph encoder is size-independent, but that is worth nothing if it does not
+  match the tuned MLP first. (Chapter~\ref{ch:baseline}.)
+
+  \item \textbf{How should the grid be represented as a graph for a local
+  actor?} Node granularity (busbars, or busbars with separate generator, load
+  and line nodes), which relations exist and what they carry, the optional
+  substation-level augmentations, and the graph readout are all free choices.
+  (Chapter~\ref{ch:methods} defines them; Chapter~\ref{ch:experiments} measures
+  which ones move survival.)
+
+  \item \textbf{What is a local agent entitled to observe, and does enforcing
+  that boundary matter?} A local graph carries contextual nodes from
+  neighboring substations. Making a contextual node visible only while a live
+  line connects it to the agent's own region, and choosing whether pooling
+  covers the whole visible graph or only the agent's controlled domain, changes
+  what the policy conditions on. The distinction is between context and
+  leakage. (Sections~\ref{subsec:graph-local-global}
+  and~\ref{sec:graph-pooling}.)
+
+  {\color{blue}
+  \item \textbf{Can the agents intervene sparsely without losing survival?}
+  Evaluation-time rho overrides, an intervention-gated actor, fixed non-idle
+  penalties, and adaptive Lagrangian intervention budgets are evaluated on two
+  axes at once, survival and intervention rate, since improving either alone is
+  not a result. (Chapter~\ref{ch:sparse-control}.)
+  }
+
+  \item \textbf{Does any of this transfer to a larger grid?} Moving from
+  \texttt{bus14} to the 36-substation WCCI grid tests whether a graph encoder is
+  portable in practice and not only in parameter shape, and what has to be
+  corrected: mainly feature scaling and the size of the action
+  space.
+  (Chapter~\ref{ch:wcci-transfer}.)
 \end{enumerate}
 
 \section{Expected Contributions}
+\label{sec:plan-contributions}
 
 \begin{itemize}
-  \item A clear decentralized formulation of topology optimization in Grid2Op.
-  \item A controlled comparison of MAPPO baselines, GNN encoders, critic
-  variants, and initialization choices.
-  \item An ablation study of sparse intervention mechanisms for more
-  operator-like control.
-  \item A reproducible experiment and analysis pipeline based on W\&B histories,
-  cached metrics, notebooks, and final evaluation scripts.
+  \item \textbf{A tuned decentralized MAPPO baseline on \texttt{bus14}, and
+  evidence that a graph actor matches it.} The original framework trained
+  unstably; the training and initialization changes that fix it are isolated one
+  at a time, so the GINE actor is compared against a strong MLP rather than a
+  weak one.
+
+  \item \textbf{The local actor graph, specified and then screened.} Three
+  representations sharing a fixed candidate graph with a dynamic edge mask, so
+  tensor shapes stay constant while the topology varies, each with an explicit
+  information boundary --- the three are \emph{not} information-equivalent, so
+  comparing them is never a pure comparison of architectures. Encoder depth and
+  width, message-passing operator, readout, and the structural augmentations of
+  the busbar graph are then screened as balanced full factorials, three seeds
+  per cell, each scored by full-test evaluation of the best checkpoint.
+
+  \item \textbf{A size invariant mechanism for combinatorial action spaces.} A
+  candidate-action head that scores each action from the encoded nodes it
+  modifies, replacing the fixed-width layer over an action index
+
+  \item \textbf{An ablation of sparse intervention mechanisms} reported jointly
+  on survival and intervention frequency, connecting the learned behavior to
+  what a control room would accept: act rarely, act locally, act when the grid
+  is unsafe.
+
+  \item \textbf{A measurement of what actually breaks under transfer.} Encoder
+  parameters cross grids unchanged; the input distribution they were calibrated
+  on does not. Two findings generalize beyond power grids: per-feature
+  standardization is harmful when a channel is a mixture dominated by structural
+  zeros, and for gauge-dependent quantities such as voltage angle, changing the
+  representation beats any choice of normalization.
 \end{itemize}
-
-\section{Chapter Outline}
-
-\subsection*{Chapter 1: Introduction}
-
-\textbf{Goal.} Motivate topology control as a low-cost but difficult operational
-tool for power-grid reliability.
-
-\textbf{Planned content.}
-\begin{itemize}
-  \item Energy-transition context: higher demand, renewable uncertainty, and
-  stressed transmission networks.
-  \item Topology control as an alternative or complement to redispatching and
-  grid expansion.
-  \item Why the problem is hard: sequential control, physical constraints,
-  rare failures, and combinatorial topology actions.
-  \item Why decentralized MARL is a natural fit: local substations, regional
-  decision making, reduced per-agent action spaces, and scalability.
-  \item Research questions, contributions, and thesis outline.
-\end{itemize}
-
-\subsection*{Chapter 2: Background and Related Work}
-
-\textbf{Goal.} Give the reader enough power-systems and RL background to
-understand the design choices.
-
-\textbf{Planned content.}
-\begin{itemize}
-  \item Power-grid operation: substations, busbars, line loading, overloads,
-  contingencies, and remedial actions.
-  \item Grid2Op and the Learning to Run a Power Network setting.
-  \item Reinforcement learning basics: MDPs, policy gradients, PPO, and MAPPO.
-  \item Multi-agent reinforcement learning: decentralized execution,
-  centralized training, credit assignment, and non-stationarity.
-  \item Graph neural networks for grid-structured observations.
-  \item Safe, sparse, and constrained RL ideas relevant to intervention budgets.
-\end{itemize}
-
-\subsection*{Chapter 3: Environment and Problem Formulation}
-
-\textbf{Goal.} Define exactly what the agents observe, choose, optimize, and are
-evaluated on.
-
-\textbf{Planned content.}
-\begin{itemize}
-  \item Grid2Op environment used in the repository and the selected chronics.
-  \item Multi-agent decomposition: agent-region or agent-substation assignment.
-  \item Observation spaces: local grid state, line loadings, topology state, and
-  optional graph observations.
-  \item Action spaces: local topology actions, action 0 as do nothing, legal
-  action constraints, and action-space reduction.
-  \item Reward and evaluation metrics: episodic survival, illegal action rate,
-  action-0 fraction, non-idle fraction, and train/test chronic split.
-  \item Reproducibility setup: seeds, W\&B logging, cached histories, and
-  deterministic evaluation.
-\end{itemize}
-
-\subsection*{Chapter 4: Methods}
-
-\textbf{Goal.} Present the implemented learning systems and the ablations.
-
-\textbf{Planned content.}
-\begin{itemize}
-  \item MAPPO baseline: actor, critic, rollout collection, PPO objective, and
-  centralized training assumptions.
-  \item Baseline MLP agents and the MLP baseline family of reruns.
-  \item Graph-encoder agents: bus graph construction, GINE/GAT/GCN variants,
-  node and edge pre-encoders, graph readout, and flat-feature concatenation.
-  \item Action heads: the action-index MLP head and the candidate-action head
-  that scores each action from the explicit-line graph nodes it touches.
-  \item Critic variants: GNN critic versus MLP critic, legacy versus optimized
-  critic updates.
-  \item Initialization and exploration choices: entropy coefficient, entropy
-  decay, and initial do-nothing probability.
-  \item Sparse-control mechanisms: evaluation-time rho heuristic, intervention
-  gate, fixed sparse-action penalties, and adaptive intervention budgets.
-  \item Experimental protocol for ablations: controlled seeds, fixed evaluation
-  cadence, and fair baseline comparisons.
-\end{itemize}
-
-\subsection*{Chapter 5: Experiments and Results}
-
-\textbf{Goal.} Show which design choices matter and what behaviors the agents
-learn.
-
-\textbf{Planned content.}
-\begin{itemize}
-  \item Main baseline performance: training stability and test survival.
-  \item GNN architecture ablations: concat-flat, actor sharing, GINE versus GAT
-  or weighted GCN, light versus full encoders, and critic design.
-  \item Action-head ablation: candidate-action scoring versus the action-index
-  head on the explicit-line graph, on \texttt{bus14} first and then on the
-  reduced WCCI action space.
-  \item MLP baseline rerun ablations: optimized critic updates, smaller MLP, reward
-  normalization, and do-nothing initialization bias.
-  \item Sparse-control ablations: fixed penalty, global-safe weighting,
-  local-safe adaptive budget, rho-threshold sensitivity, and budget target
-  sensitivity.
-  \item Behavioral analysis: how often agents act, whether interventions are
-  local, and whether high survival comes with excessive topology churn.
-  \item Generalization: seen versus unseen chronics and robustness across seeds.
-\end{itemize}
-
-\textbf{Figures and tables to prepare.}
-\begin{itemize}
-  \item Table of run families and what each ablation changes.
-  \item Survival curves for paper baseline, GNN, MLP baseline, and sparse-control comparisons.
-  \item Action-frequency plots: action 0 fraction, any non-idle action, and
-  multi-agent simultaneous interventions.
-  \item Summary table with final survival, peak survival, and action sparsity.
-\end{itemize}
-
-\subsection*{Chapter 6: Discussion}
-
-\textbf{Goal.} Interpret the results rather than just restating them.
-
-\textbf{Planned content.}
-\begin{itemize}
-  \item Answer each research question directly.
-  \item Explain which components appear essential, useful, or unnecessary.
-  \item Discuss the tradeoff between survival and sparse interventions.
-  \item Relate learned behavior to operator-like control: act rarely, act
-  locally, and act when the grid is unsafe.
-  \item Discuss limits: simulator scope, incomplete operational constraints,
-  seed variance, training cost, and dependency on chosen chronics.
-\end{itemize}
-
-\subsection*{Chapter 7: Conclusion and Future Work}
-
-\textbf{Goal.} Close with the main thesis claim and next research directions.
-
-\textbf{Planned content.}
-\begin{itemize}
-  \item Short summary of the problem, approach, and core findings.
-  \item Final conclusion about decentralized MARL for topology control.
-  \item Future work: richer graph representations, larger grids, outage
-  contingencies, constrained RL tuning, better coordination mechanisms, and
-  operational validation.
-\end{itemize}
-
-\section{Appendix Plan}
-
-\begin{itemize}
-  \item Appendix A: Environment details and action-space construction.
-  \item Appendix B: Hyperparameters and training configuration tables.
-  \item Appendix C: Full ablation run registry.
-  \item Appendix D: Additional survival and behavior plots.
-  \item Appendix E: Reproducibility notes for notebooks, cached W\&B histories,
-  and evaluation scripts.
-\end{itemize}
-
-\section{Immediate Writing Order}
-
-\begin{enumerate}
-  \item Write Chapter 3 first, because it fixes notation and the experiment
-  vocabulary.
-  \item Write Chapter 4 next, using the existing configuration READMEs as source
-  notes for method variants.
-  \item Draft the Chapter 5 table of ablations before prose, so the results
-  chapter has a stable spine.
-  \item Write Chapter 1 once the main conclusion is clearer.
-  \item Finish Chapters 6 and 7 after the final plots and summary metrics are
-  frozen.
-\end{enumerate}
 
 \section{Open Decisions}
 

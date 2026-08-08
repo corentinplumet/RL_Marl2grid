@@ -1275,14 +1275,6 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
         include_legacy_self_relation_feature: bool = False,
         context_requires_connection: bool = True,
     ) -> None:
-        if _validate_angle_representation(angle_representation) != "node":
-            # This builder puts each line on its own node, so an angle drop is
-            # a node attribute here rather than an edge one. Supporting it
-            # needs a different placement than the two graph types above.
-            raise ValueError(
-                "angle_representation='edge_diff' is not implemented for the "
-                "heterogeneous line-node graph."
-            )
         super().__init__(
             g2op_env,
             observation_domains,
@@ -1304,6 +1296,15 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
             "line-node edge direction",
         )
         self.node_features = list(self.BASE_LINE_NODE_FEATURES)
+        if self.angle_representation == "edge_diff":
+            # The other two schemas move the angle onto the physical line edge.
+            # Here each line is already a node and the attachment edges carry
+            # no physical channel at all, so the drop replaces the absolute
+            # angle in place: same column, same width, and the name the
+            # normalization layer already scales as an angle.
+            self.node_features[
+                self.node_features.index("theta")
+            ] = EDGE_ANGLE_FEATURE
         if include_maintenance:
             insert_at = self.node_features.index("time_before_cooldown_sub")
             self.node_features[insert_at:insert_at] = self.MAINTENANCE_EDGE_FEATURES
@@ -1771,9 +1772,8 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
 
         line_ids = spec["line_ids"]
         if len(line_rows) > 0:
-            features[line_rows, col["connected"]] = (
-                cache["line_status"][line_ids] > 0
-            ).astype(np.float32)
+            live = cache["line_status"][line_ids] > 0
+            features[line_rows, col["connected"]] = live.astype(np.float32)
             for name in [
                 "line_status",
                 "rho",
@@ -1787,6 +1787,20 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
                 values = self._obs_array(obs, name, expected=self.n_line)
                 if values is not None:
                     features[line_rows, col[name]] = values[line_ids]
+
+            if EDGE_ANGLE_FEATURE in col:
+                # ``_put_entity_node_features`` has already skipped the
+                # absolute generator and load angles, because the column they
+                # wrote to no longer exists under this representation.
+                drop = self._line_theta_difference(obs)
+                if drop is not None:
+                    # A line that is out keeps its last solved endpoint angles,
+                    # unlike rho which the simulator zeroes itself, so the drop
+                    # has to be masked by line status to stay consistent with
+                    # every other channel on the same row.
+                    features[line_rows, col[EDGE_ANGLE_FEATURE]] = np.where(
+                        live, drop[line_ids], 0.0
+                    )
 
         return np.nan_to_num(features, nan=0.0, posinf=0.0, neginf=0.0)
 

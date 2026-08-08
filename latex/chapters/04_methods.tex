@@ -1644,3 +1644,131 @@ large WCCI action space is made tractable.
 are separate design choices. This chapter defines them; the following chapters
 evaluate the resulting policies.
 \end{tcolorbox}
+
+
+\section{Voltage Angles in the Explicit-Line Representation}
+\label{sec:line-node-angle}
+
+\emph{New section, not yet placed. Its content belongs either beside the
+feature scaling of Section~\ref{subsec:graph-feature-normalization} or inside
+the explicit-line representation of Section~\ref{sec:heterogeneous-line-graph}.}
+
+An absolute voltage angle is measured against whichever bus is chosen as slack,
+so its level describes that reference rather than the grid state; only
+differences between angles carry physical meaning, and line flow depends on the
+difference across the line. Section~\ref{sec:wcci-angle-representation}
+develops this for cross-grid transfer, where the two grids place their slack
+differently and the resulting displacement survives any choice of scaling. The
+correction is to put the drop
+\[
+  \Delta\theta_\ell = \theta_\ell^{\mathrm{or}} - \theta_\ell^{\mathrm{ex}}
+\]
+on each line in place of the per-asset absolute angle, which is what
+\texttt{gnn\_angle\_representation = "edge\_diff"} selects.
+
+\subsection{Why the line-node graph was the exception}
+
+In the busbar and disaggregated representations a transmission line is an edge,
+so the drop has an obvious home and the correction moves it from the node
+features onto that edge. The explicit-line representation of
+Section~\ref{sec:heterogeneous-line-graph} inverts the arrangement: each line is
+a node carrying its own loading, status, overflow and cooldown, and the
+remaining edges are busbar-to-line attachments that carry no physical channel at
+all, only a relation type. There was no edge for the drop to move onto, and the
+option was refused rather than silently ignored.
+
+That refusal mattered, because the failure would otherwise have been silent. The
+correction removes the absolute angle from the node features and adds the drop
+to the edge features; in a schema whose edge block is empty, the first half
+applies and the second half has nowhere to land, leaving an observation with no
+angle information at all and no error raised.
+
+\subsection{The angle drop as a line-node feature}
+
+The drop is now written on the line node itself, in the column the absolute
+angle previously occupied, renamed so that the scaling layer treats it as an
+angle. This keeps the line node's description of its own line complete: loading,
+status, cooldown, and now the angle across it, which is the quantity that drives
+the flow the loading measures.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Where the voltage angle enters each representation.}
+  \label{tab:angle-placement}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{L{0.26\textwidth}L{0.30\textwidth}L{0.34\textwidth}}
+    \toprule
+    Representation & \texttt{node} & \texttt{edge\_diff} \\
+    \midrule
+    Busbar & \texttt{theta} on busbar nodes, averaged over attached assets &
+    \texttt{theta\_diff} on the physical line edge \\
+    Disaggregated & \texttt{theta} on generator and load nodes &
+    \texttt{theta\_diff} on the physical line edge \\
+    Disaggregated with line nodes & \texttt{theta} on generator and load nodes &
+    \texttt{theta\_diff} on the \emph{line node} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Two properties follow, and both were verified on \texttt{bus14} under the
+leakage-free construction with the three-agent partition.
+
+\paragraph{The channel becomes gauge-invariant.}
+Shifting every angle in the grid by a constant leaves every drop unchanged,
+while it moves every absolute angle by that constant. This matters beyond
+transfer: in a decentralized setting the slack reference is global, so an event
+on the far side of the grid that does not affect an agent still moves all of its
+angle inputs. The drop is a property of one line.
+
+\paragraph{The channel becomes dense where the physics is.}
+Under \texttt{node}, angles reach an actor only through the generators and loads
+it owns, and the line nodes -- which carry loading, status and cooldown -- carry
+no angle. Agent 1 sees three angle values in total, two of which are duplicates,
+because a generator and a load on the same busbar read the same bus angle.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Local-graph rows carrying an angle on \texttt{bus14}, explicit-line
+  representation without one-hop context.}
+  \label{tab:angle-coverage}
+  \setlength{\tabcolsep}{6pt}
+  \begin{tabular}{lccc}
+    \toprule
+    Agent & Nodes & \texttt{node} & \texttt{edge\_diff} \\
+    \midrule
+    0 & 22 & 5 \; (23\,\%) & 8 \; (36\,\%) \\
+    1 & 20 & 3 \; (15\,\%) & 8 \; (40\,\%) \\
+    2 & 29 & 8 \; (28\,\%) & 9 \; (31\,\%) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Every row counted in the \texttt{edge\_diff} column is a line node, so each
+agent holds the drop across every line it touches, including the boundary lines
+whose far endpoint the leakage-free construction deliberately omits. That is new
+information relative to \texttt{node}, and it is of the same kind as the loading
+already carried by those line nodes: a measurement of a line the agent is
+attached to, not a state of equipment it cannot see.
+
+\subsection{Masking on outage}
+
+The drop has to be zeroed when a line is out. The simulator zeroes the loading
+of a disconnected line but leaves its endpoint angles at their last solved
+values, so an unmasked drop reports a confident number on a dead line while
+every other channel on the same row reports that it is dead. Measured on
+\texttt{bus14}, a line taken out of service kept endpoint angles of $-1.06$ and
+$-7.62$ degrees, a spurious drop of $6.56$, alongside a loading of exactly zero.
+The line-node channel is therefore masked by line status explicitly. The busbar
+and disaggregated representations need no equivalent step, because an inactive
+edge is zeroed in full before message passing.
+
+\subsection{What is unchanged}
+
+The drop replaces the absolute angle rather than joining it, so the node feature
+width, the column position, and the encoder input dimension are all identical to
+\texttt{node}. Attachment edges remain free of physical channels. Message
+passing, graph readout, and candidate-action scoring are untouched. Selecting
+\texttt{node} reproduces the previous observation exactly, so runs predating
+this change remain a valid control.

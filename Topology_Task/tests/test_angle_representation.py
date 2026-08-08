@@ -164,22 +164,123 @@ class HeterogeneousGraphAngleRepresentationTest(unittest.TestCase):
 
 
 class LineNodeGraphAngleRepresentationTest(unittest.TestCase):
-    def test_edge_mode_is_refused_rather_than_ignored(self):
-        with self.assertRaises(ValueError) as ctx:
-            HeterogeneousLineGraphBuilder(
-                MockGridEnv(), {"agent_0": [0]}, angle_representation="edge_diff"
-            )
-        self.assertIn("line-node graph", str(ctx.exception))
+    """The line is a node here, so the drop replaces the angle on that node.
+
+    Attachment edges in this schema carry no physical channel at all, so there
+    is no edge for ``theta_diff`` to move to as there is in the other two
+    representations.
+    """
+
+    def build(self, representation, **kwargs):
+        builder = HeterogeneousLineGraphBuilder(
+            MockGridEnv(),
+            {"agent_0": [0]},
+            angle_representation=representation,
+            **kwargs,
+        )
+        return builder, builder.specs["state"]
+
+    def rows_of_type(self, builder, spec, node_type):
+        return np.nonzero(
+            np.asarray(spec["node_type"])
+            == builder.NODE_TYPE_NAMES[node_type]
+        )[0]
+
+    def column(self, builder, name):
+        return builder.node_features.index(name)
 
     def test_node_mode_still_works(self):
-        builder = HeterogeneousLineGraphBuilder(
-            MockGridEnv(), {"agent_0": [0]}, angle_representation="node"
-        )
+        builder, _ = self.build("node")
         self.assertIn("theta", builder.node_features)
+        self.assertNotIn("theta_diff", builder.node_features)
+
+    def test_the_drop_replaces_the_absolute_angle_in_place(self):
+        node_builder, _ = self.build("node")
+        diff_builder, _ = self.build("edge_diff")
+        self.assertNotIn("theta", diff_builder.node_features)
+        self.assertIn("theta_diff", diff_builder.node_features)
+        # Same width and same position, so the encoder input does not move.
+        self.assertEqual(node_builder.node_dim, diff_builder.node_dim)
+        self.assertEqual(
+            self.column(node_builder, "theta"),
+            self.column(diff_builder, "theta_diff"),
+        )
+
+    def test_edges_stay_free_of_physical_channels(self):
+        node_builder, _ = self.build("node")
+        diff_builder, _ = self.build("edge_diff")
+        self.assertEqual(diff_builder.physical_edge_features, [])
+        self.assertNotIn("theta_diff", diff_builder.edge_features)
+        self.assertEqual(node_builder.edge_features, diff_builder.edge_features)
+
+    def test_line_nodes_carry_the_drop(self):
+        builder, spec = self.build("edge_diff")
+        graph = builder.build(make_obs())["state"]
+        line_rows = self.rows_of_type(builder, spec, "transmission_line")
+        values = graph["node_features"][
+            line_rows, self.column(builder, "theta_diff")
+        ]
+        # theta_or - theta_ex = 12.5 - 4.5
+        np.testing.assert_allclose(values, [8.0], rtol=1e-6)
+
+    def test_absolute_asset_angles_are_gone(self):
+        builder, spec = self.build("edge_diff")
+        graph = builder.build(make_obs())["state"]
+        column = self.column(builder, "theta_diff")
+        for node_type in ("generator", "load", "busbar"):
+            rows = self.rows_of_type(builder, spec, node_type)
+            np.testing.assert_allclose(
+                graph["node_features"][rows, column],
+                np.zeros(len(rows)),
+                atol=0.0,
+            )
+
+    def test_the_drop_is_gauge_invariant(self):
+        builder, spec = self.build("edge_diff")
+        column = self.column(builder, "theta_diff")
+        line_rows = self.rows_of_type(builder, spec, "transmission_line")
+
+        def drop(shift):
+            obs = make_obs(
+                theta_or=np.asarray([12.5 + shift], dtype=np.float32),
+                theta_ex=np.asarray([4.5 + shift], dtype=np.float32),
+                gen_theta=np.asarray([0.1 + shift], dtype=np.float32),
+                load_theta=np.asarray([-0.2 + shift], dtype=np.float32),
+            )
+            return builder.build(obs)["state"]["node_features"][line_rows, column]
+
+        np.testing.assert_allclose(drop(0.0), drop(30.0), rtol=1e-6)
+
+    def test_a_line_that_is_out_reports_no_drop(self):
+        # The simulator zeroes rho on a dead line but keeps its last solved
+        # endpoint angles, so an unmasked drop would look like live physics.
+        builder, spec = self.build("edge_diff")
+        obs = make_obs(line_status=np.asarray([0], dtype=np.float32))
+        graph = builder.build(obs)["state"]
+        line_rows = self.rows_of_type(builder, spec, "transmission_line")
+        values = graph["node_features"][
+            line_rows, self.column(builder, "theta_diff")
+        ]
+        np.testing.assert_allclose(values, np.zeros(len(line_rows)), atol=0.0)
+
+    def test_node_mode_output_is_unchanged(self):
+        builder, spec = self.build("node")
+        graph = builder.build(make_obs())["state"]
+        column = self.column(builder, "theta")
+        gen_rows = self.rows_of_type(builder, spec, "generator")
+        line_rows = self.rows_of_type(builder, spec, "transmission_line")
+        np.testing.assert_allclose(
+            graph["node_features"][gen_rows, column], [0.1], rtol=1e-6
+        )
+        np.testing.assert_allclose(
+            graph["node_features"][line_rows, column],
+            np.zeros(len(line_rows)),
+            atol=0.0,
+        )
 
 
 class FactoryTest(unittest.TestCase):
-    def test_option_reaches_each_supported_builder(self):
+    def test_option_reaches_each_edge_carrying_builder(self):
         for graph_type, expected in (("bus", 5), ("heterogeneous", 11)):
             builder = make_grid_graph_builder(
                 graph_type,
@@ -189,6 +290,16 @@ class FactoryTest(unittest.TestCase):
             )
             self.assertIn("theta_diff", builder.edge_features)
             self.assertEqual(builder.edge_dim, expected)
+
+    def test_option_reaches_the_line_node_builder_as_a_node_feature(self):
+        builder = make_grid_graph_builder(
+            "heterogeneous_line",
+            MockGridEnv(),
+            {"agent_0": [0]},
+            angle_representation="edge_diff",
+        )
+        self.assertIn("theta_diff", builder.node_features)
+        self.assertNotIn("theta_diff", builder.edge_features)
 
 
 if __name__ == "__main__":
