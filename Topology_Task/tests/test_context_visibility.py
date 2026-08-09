@@ -203,6 +203,178 @@ class ContextVisibilityTest(unittest.TestCase):
         _, graph = self.build(GridGraphBuilder, [1, 1, 1, 1, 1, 1], gated=False)
         self.assertTrue(np.all(graph["node_mask"] > 0))
 
+    def test_summary_node_parameters_are_grid_independent(self):
+        """Every learned tensor must keep its shape on a larger grid.
+
+        A per-substation embedding would be shaped by the number of
+        substations, which makes a checkpoint unusable on any other network.
+        """
+
+        class LongerChain(ChainEnv):
+            n_sub, n_line = 6, 5
+            n_busbar_per_sub = np.asarray([2] * 6, dtype=np.int64)
+            line_or_to_subid = np.asarray([0, 1, 2, 3, 4], dtype=np.int64)
+            line_ex_to_subid = np.asarray([1, 2, 3, 4, 5], dtype=np.int64)
+            gen_to_subid = np.asarray([0], dtype=np.int64)
+            load_to_subid = np.asarray([5], dtype=np.int64)
+            line_or_pos_topo_vect = np.asarray([0, 2, 4, 6, 8], dtype=np.int64)
+            line_ex_pos_topo_vect = np.asarray([1, 3, 5, 7, 9], dtype=np.int64)
+            gen_pos_topo_vect = np.asarray([10], dtype=np.int64)
+            load_pos_topo_vect = np.asarray([11], dtype=np.int64)
+
+        shapes = []
+        for env in (ChainEnv(), LongerChain()):
+            builder = GridGraphBuilder(env, {"a": [1]}, include_neighbors=True)
+            encoder = GraphEncoder(
+                builder.specs["a"], hidden_dim=8, out_dim=6, n_layers=2,
+                conv_type="gine", add_substation_nodes=True,
+                readout_aggr="virtual_node",
+            )
+            shapes.append(
+                {name: tuple(tensor.shape)
+                 for name, tensor in encoder.state_dict().items()}
+            )
+        small, large = shapes
+        shared = set(small) & set(large)
+        differing = {
+            name for name in shared if small[name] != large[name]
+        }
+        # Only the buffers describing the graph itself may differ.
+        self.assertEqual(
+            differing, {"edge_index", "node_ids", "edge_type"} & differing
+        )
+        self.assertNotIn("substation_features", small)
+
+    def test_summary_node_reads_its_substation_structure(self):
+        # The descriptor must actually distinguish substations, otherwise the
+        # projection degenerates to one shared vector.
+        builder = GridGraphBuilder(ChainEnv(), {"a": [1]}, include_neighbors=True)
+        features = np.asarray(builder.specs["a"]["substation_features"])
+        names = builder.specs["a"]["substation_feature_names"]
+        self.assertEqual(names[1], "line_count")
+        # The middle substation carries two lines, the outer ones carry one.
+        self.assertGreater(features[1, 1], features[0, 1])
+        self.assertEqual(features[0, 1], features[2, 1])
+        # And the generator and load sit at opposite ends.
+        self.assertGreater(features[0, 2], features[2, 2])
+        self.assertGreater(features[2, 3], features[0, 3])
+
+    def test_same_substation_edges_stay_inside_the_controlled_domain(self):
+        # The relation says an element can be moved between two busbars, which
+        # outside the controlled domain is another agent's action. Two busbars
+        # of a neighbouring substation must not be related by it.
+        spec, _ = self.build(
+            GridGraphBuilder, [1, 1, 1, 1, 1, 1], add_substation_edges=True
+        )
+        controlled = np.asarray(spec["controlled_node_mask"], dtype=bool)
+        edge_type = np.asarray(spec["edge_type"])
+        structural = edge_type == spec["edge_type_names"]["same_substation_busbar"]
+        self.assertTrue(structural.any())
+        src, dst = np.asarray(spec["edge_index"])[:, structural]
+        self.assertTrue(np.all(controlled[src] & controlled[dst]))
+
+    def test_legacy_flag_restores_contextual_same_substation_edges(self):
+        builder = GridGraphBuilder(
+            ChainEnv(),
+            {"agent_0": [1]},
+            include_neighbors=True,
+            add_substation_edges=True,
+            structural_relations_controlled_only=False,
+        )
+        spec = builder.specs["agent_0"]
+        controlled = np.asarray(spec["controlled_node_mask"], dtype=bool)
+        edge_type = np.asarray(spec["edge_type"])
+        structural = edge_type == spec["edge_type_names"]["same_substation_busbar"]
+        src, dst = np.asarray(spec["edge_index"])[:, structural]
+        self.assertFalse(np.all(controlled[src] & controlled[dst]))
+
+    def test_summary_nodes_gather_only_controlled_busbars(self):
+        # The same relation reached through a summary node: a contextual busbar
+        # must not connect to one, or two neighbouring busbars would exchange
+        # through it even with the direct edge removed.
+        spec, graph = self.build(GridGraphBuilder, [1, 1, 1, 1, 1, 1])
+        tensors = {
+            key: th.tensor(np.asarray(value))
+            for key, value in graph.items()
+            if key in {
+                "node_features", "edge_features", "node_mask",
+                "edge_mask", "edge_type", "controlled_node_mask",
+                "energized_node_mask",
+            }
+        }
+        encoder = GraphEncoder(
+            spec, hidden_dim=8, out_dim=6, n_layers=2, conv_type="gine",
+            add_substation_nodes=True,
+        )
+        x, edge_index, edge_attr, batch, node_mask, ids, controlled, _ = (
+            encoder._to_pyg_batch(tensors)
+        )
+        x = encoder.node_pre_encoder(encoder._append_node_id_embeddings(x, ids))
+        n_real = x.shape[0]
+        _, edge_index = encoder._append_hierarchy_nodes(
+            x, edge_index, edge_attr, batch, ids,
+            node_mask=node_mask, controlled_node_mask=controlled,
+        )[:2]
+        is_controlled = np.asarray(spec["controlled_node_mask"], dtype=bool)
+        for src, dst in zip(*edge_index.tolist()):
+            if src < n_real and dst >= n_real:
+                self.assertTrue(is_controlled[src])
+            if dst < n_real and src >= n_real:
+                self.assertTrue(is_controlled[dst])
+
+    def test_substation_nodes_do_not_wire_an_invisible_busbar(self):
+        # Substation summary nodes are appended by the encoder, after the
+        # builder has decided visibility, so the visibility rule cannot gate
+        # them. They must aggregate only visible busbars, or an unreachable
+        # contextual busbar would reach the agent through its own substation's
+        # summary node.
+        spec, graph = self.build(GridGraphBuilder, [1, 1, 1, 1, 1, 1])
+        tensors = {
+            key: th.tensor(np.asarray(value))
+            for key, value in graph.items()
+            if key in {
+                "node_features",
+                "edge_features",
+                "node_mask",
+                "edge_mask",
+                "edge_type",
+                "controlled_node_mask",
+                "energized_node_mask",
+            }
+        }
+        encoder = GraphEncoder(
+            spec,
+            hidden_dim=8,
+            out_dim=6,
+            n_layers=2,
+            conv_type="gine",
+            add_substation_nodes=True,
+        )
+        x, edge_index, edge_attr, batch, node_mask, ids, controlled, _ = (
+            encoder._to_pyg_batch(tensors)
+        )
+        x = encoder.node_pre_encoder(encoder._append_node_id_embeddings(x, ids))
+        _, edge_index = encoder._append_hierarchy_nodes(
+            x,
+            edge_index,
+            edge_attr,
+            batch,
+            ids,
+            node_mask=node_mask,
+            controlled_node_mask=controlled,
+            substation_edge_type=spec["edge_type_names"].get(
+                "same_substation_busbar"
+            ),
+        )[:2]
+        hidden = np.nonzero(~(np.asarray(graph["node_mask"]) > 0))[0]
+        self.assertGreater(len(hidden), 0)
+        for row in hidden:
+            incident = int(
+                (edge_index[0] == int(row)).sum()
+                + (edge_index[1] == int(row)).sum()
+            )
+            self.assertEqual(incident, 0)
+
     def test_heterogeneous_context_contains_no_neighbor_assets(self):
         # The generator at substation 0 and load at substation 2 belong to
         # neighboring agents. Only their boundary busbars may enter this local
@@ -352,6 +524,45 @@ class ControlledReadoutTest(unittest.TestCase):
         )
         expected = encoder.readout(nodes[pooled].mean(dim=0, keepdim=True))
         self.assertTrue(th.allclose(readout, expected.squeeze(0), atol=1e-5))
+
+    def test_every_declared_readout_composes(self):
+        """``[controlled_][energized_]{mean,sum,max}`` must all be runnable.
+
+        The two restrictions are independent, so the name set is generated
+        rather than listed. This checks the generator and the pooling code
+        agree, which is what stops a declared option failing only at launch.
+        """
+        from common.gnn import POOLING_AGGREGATIONS
+
+        graph = self.graph([1, 1, 1, 1, 1, 1])
+        for readout in POOLING_AGGREGATIONS:
+            if readout == "virtual_node":
+                continue
+            with self.subTest(readout=readout):
+                output = self.encoder(readout)(graph)
+                self.assertTrue(bool(th.isfinite(output).all()))
+
+    def test_every_gate_accepts_every_declared_readout(self):
+        """The parser and both config validators must admit the same names.
+
+        A readout accepted by the encoder but rejected by a launcher fails only
+        when a job starts, after it has queued. That happened once: the guard in
+        ``run_from_config`` carried its own hand-written copy of the list.
+        """
+        import inspect
+        import alg.mappo.config as config_module
+        import run_from_config
+        from common.readouts import POOLING_AGGREGATIONS
+
+        offered = inspect.getsource(config_module.get_alg_args)
+        offered = offered.split("--gnn-readout-aggr", 1)[1].split("]", 1)[0]
+        for readout in POOLING_AGGREGATIONS:
+            with self.subTest(readout=readout, gate="argument parser"):
+                self.assertIn(f'"{readout}"', offered)
+
+        # The launcher guard must consult the shared set, not a copy of it.
+        guard = inspect.getsource(run_from_config)
+        self.assertIn("POOLING_AGGREGATIONS", guard)
 
     def test_missing_controlled_mask_is_rejected(self):
         graph = self.graph([1, 1, 1, 1, 1, 1])

@@ -324,7 +324,7 @@ class HeterogeneousGridGraphBuilderTest(unittest.TestCase):
         self.assertTrue(bool(th.isfinite(substation_only_embedding).all()))
         substation_only_embedding.sum().backward()
         self.assertIsNotNone(
-            substation_only_encoder.substation_node_embedding.weight.grad
+            substation_only_encoder.substation_node_encoder.weight.grad
         )
 
         sparse_encoder = SparseGraphTransformerEncoder(
@@ -667,7 +667,7 @@ class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
                 self.assertTrue(bool(th.isfinite(embedding).all()))
                 embedding.sum().backward()
                 self.assertIsNotNone(encoder.virtual_node_embedding.grad)
-                self.assertIsNotNone(encoder.substation_node_embedding.weight.grad)
+                self.assertIsNotNone(encoder.substation_node_encoder.weight.grad)
 
         sparse_tensor_graph = {
             key: th.stack([th.tensor(value), th.tensor(value)])
@@ -702,7 +702,7 @@ class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
         sparse_embedding.sum().backward()
         self.assertIsNotNone(sparse_encoder.virtual_node_embedding.grad)
         self.assertIsNotNone(
-            sparse_encoder.substation_node_embedding.weight.grad
+            sparse_encoder.substation_node_encoder.weight.grad
         )
 
     def test_substation_nodes_connect_only_to_their_busbars(self):

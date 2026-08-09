@@ -567,7 +567,11 @@ def get_alg_args() -> Namespace:
             "controlled_max",
             "controlled_attention",
             "energized_mean",
+            "energized_sum",
+            "energized_max",
             "controlled_energized_mean",
+            "controlled_energized_sum",
+            "controlled_energized_max",
             "virtual_node",
         ],
         help=(
@@ -593,7 +597,11 @@ def get_alg_args() -> Namespace:
             "controlled_mean",
             "controlled_attention",
             "energized_mean",
+            "energized_sum",
+            "energized_max",
             "controlled_energized_mean",
+            "controlled_energized_sum",
+            "controlled_energized_max",
             "virtual_node",
         ],
         help=(

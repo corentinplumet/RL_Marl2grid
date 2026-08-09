@@ -7,12 +7,20 @@ experiments. The presentation separates four design choices: feature scaling,
 the base graph representation, substation-level augmentations, and graph
 pooling.
 
-\section{Scaling and Normalization}
+\section{Input Scaling and Angle Representation}
 \label{subsec:graph-feature-normalization}
 
-Two independent transformations can be applied to the continuous node and edge
-features of every graph schema: deterministic physical scaling followed by
-optional running standardization. Let $x_{i,f,t}$ be feature $f$ of node or edge
+This section collects everything that determines the numerical form of what the
+encoder reads: two transformations applied to the continuous channels, and one
+choice about how voltage angles are expressed in the first place. All three are
+independent of the graph schema and of the grid.
+Chapter~\ref{ch:wcci-transfer} measures their effect across two grids and
+decides which of them to use; the mechanisms themselves are defined here.
+
+\subsection{The two transformations}
+
+Deterministic physical scaling is applied first, followed by optional running
+standardization. Let $x_{i,f,t}$ be feature $f$ of node or edge
 $i$ at time $t$. The complete pipeline is
 \begin{align}
   x^{\mathrm{scale}}_{i,f,t}
@@ -47,6 +55,19 @@ therefore preserves physical zero. Table~\ref{tab:graph-physical-scales} gives
 the exact constants. The power base may be specified explicitly; otherwise the
 largest installed generator rating is used,
 with a 100~MW fallback when the environment does not expose generator ratings.
+\\
+\\
+It is worth being explicit that this discards nothing within a grid. Division by
+a fixed constant is invertible, so the mapping from megawatts to scaled units is
+a bijection: the first linear layer can recover any function of the absolute
+value it needs, and a load of $0.5$ on \texttt{bus14} is $70$~MW unambiguously.
+The operation is a change of units, the same per-unit convention power systems
+uses, adopted for the same reason. What it removes is the ability to compare
+magnitudes \emph{across} grids, which is the intent: a transferable encoder
+should respond to a load being half the largest unit's capacity rather than to
+the number $200$. It is also the right target for the task, since whether a flow
+is safe is set by its ratio to a thermal limit rather than by its absolute size
+-- which is why the loading ratio needs no scaling at all.
 
 \begin{table}[H]
   \centering
@@ -93,14 +114,171 @@ Table~\ref{tab:graph-physical-scales} enter the running statistics.
 The running moments are frozen during evaluation.
 \\
 \\
-Both transformations are available to every experiment, but neither is used in
-the screening protocol of Chapter~\ref{ch:experiments} or the sparse-control
-experiments of Chapter~\ref{ch:sparse-control}, which read raw features. The
-transfer study of Chapter~\ref{ch:wcci-transfer} enables physical scaling alone:
-Section~\ref{sec:wcci-running-norm} measures running standardization on a
-cross-grid comparison and finds it counterproductive for features whose support
-is sparse, because standardizing a channel that is mostly structural zeros
-relocates that point mass to a grid-dependent value.
+\subsection{Angle representation}
+\label{sec:line-node-angle}
+
+Scaling cannot repair everything, because one channel is not well posed to begin
+with. An absolute voltage angle is measured against whichever bus is chosen as
+slack, so its level is a property of that reference rather than of the grid
+state, and only differences between angles carry physical meaning. Line flow
+depends on the difference across the line. Dividing by a constant moves both
+grids together and leaves any displacement between them untouched, so no choice
+of scale addresses it.
+\\
+\\
+The alternative is to carry the angle as the drop along each line,
+\[
+  \Delta\theta_{\ell} \;=\; \theta^{\,\mathrm{or}}_{\ell} - \theta^{\,\mathrm{ex}}_{\ell},
+\]
+which is what \texttt{gnn\_angle\_representation = "edge\_diff"} selects. It is
+gauge-invariant by construction, since adding a constant to every angle leaves
+it unchanged, and it is dense, since every line has two ends whereas a busbar
+carries an angle only when an asset is attached to it. The absolute per-asset
+channels are removed when it is enabled, because keeping them would preserve
+exactly the reference dependence the change exists to remove.
+\\
+\\
+Gauge invariance matters beyond comparing grids. In a decentralized setting the
+slack reference is global, so under absolute angles an event on the far side of
+the grid that does not affect an agent still moves all of its angle inputs. The
+drop is a property of one line.
+\\
+\\
+Where the channel lives depends on how the representation models a line.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Where the voltage angle enters each representation, under the two
+  ways of expressing it.}
+  \label{tab:angle-placement}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{L{0.26\textwidth}L{0.30\textwidth}L{0.34\textwidth}}
+    \toprule
+    Representation & Absolute angle & Angle drop \\
+    \midrule
+    Busbar & On busbar nodes, averaged over the attached assets &
+    On the physical line edge \\
+    Disaggregated & On generator and load nodes &
+    On the physical line edge \\
+    Disaggregated with line nodes & On generator and load nodes &
+    On the \emph{line node} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsubsection{The explicit-line graph}
+
+In the busbar and disaggregated representations a line is an edge, so the drop
+has an obvious home and simply moves from the node features onto that edge. The
+explicit-line representation of Section~\ref{sec:heterogeneous-line-graph}
+inverts the arrangement: each line is a node carrying its own loading, status,
+overflow and cooldown, and the remaining edges are busbar-to-line attachments
+that carry no physical channel at all, only a relation type. There is no edge
+for the drop to move onto.
+\\
+\\
+It is therefore written on the line node itself, in the column the absolute
+angle previously occupied. This keeps the line node's description of its own
+line complete: loading, status, cooldown, and now the angle across it, which is
+the quantity that drives the flow the loading measures. Handling this case
+explicitly matters because the failure would otherwise be silent -- the generic
+correction removes the absolute angle from the node features and adds the drop
+to the edge features, and in a schema whose edge block is empty the first half
+applies while the second has nowhere to land, leaving an observation with no
+angle information at all.
+\\
+\\
+The gain is largest exactly where the absolute channel was thinnest. Under
+absolute angles an actor reads them only through the generators and loads it
+owns, while the line nodes -- which carry loading, status and cooldown -- carry
+no angle. On \texttt{bus14}, agent 1 sees three angle values in total, two of
+which are duplicates, because a generator and a load on the same busbar read the
+same bus angle.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Local-graph rows carrying an angle on \texttt{bus14}, explicit-line
+  representation without one-hop context.}
+  \label{tab:angle-coverage}
+  \setlength{\tabcolsep}{6pt}
+  \begin{tabular}{lccc}
+    \toprule
+    Agent & Nodes & Absolute angle & Angle drop \\
+    \midrule
+    0 & 22 & 5 \; (23\,\%) & 8 \; (36\,\%) \\
+    1 & 20 & 3 \; (15\,\%) & 8 \; (40\,\%) \\
+    2 & 29 & 8 \; (28\,\%) & 9 \; (31\,\%) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Every row counted in the angle-drop column is a line node, so each agent holds
+the drop across every line it touches, including the boundary lines whose far
+endpoint the leakage-free construction deliberately omits. That is new
+information relative to the absolute angle, and it is of the same kind as the
+loading already carried by those line nodes: a measurement of a line the agent
+is attached to, not a state of equipment it cannot see.
+
+\subsubsection{Masking on outage}
+
+The drop has to be zeroed when a line is out. The simulator zeroes the loading
+of a disconnected line but leaves its endpoint angles at their last solved
+values, so an unmasked drop reports a confident number on a dead line while
+every other channel on the same row reports that it is dead. Measured on
+\texttt{bus14}, a line taken out of service kept endpoint angles of $-1.06$ and
+$-7.62$ degrees, a spurious drop of $6.56$, alongside a loading of exactly zero.
+The line-node channel is therefore masked by line status explicitly. The busbar
+and disaggregated representations need no equivalent step, because an inactive
+edge is zeroed in full before message passing.
+
+\subsubsection{What is unchanged}
+
+In the explicit-line graph the drop replaces the absolute angle rather than
+joining it, so the node feature width, the column position, and the encoder
+input dimension are all unchanged; attachment edges remain free of physical
+channels. In the other two representations the node block loses the angle
+columns and the physical line edge gains one
+(Table~\ref{tab:angle-feature-dims}). In every case message passing, graph
+readout, and candidate-action scoring are untouched, and keeping the absolute
+angle reproduces the previous observation exactly, so runs predating this option
+remain a valid control.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Feature dimensions under the two ways of expressing the angle, at the
+  default edge-feature schema version. The explicit-line graph keeps both widths
+  because the drop replaces the absolute angle in the same node column rather
+  than moving to an edge.}
+  \label{tab:angle-feature-dims}
+  \setlength{\tabcolsep}{8pt}
+  \begin{tabular}{llrr}
+    \toprule
+    Graph type & Angle carried as & Node width & Edge width \\
+    \midrule
+    \texttt{bus} & Absolute & 6 & 4 \\
+    \texttt{bus} & Drop & 4 & 5 \\
+    \texttt{heterogeneous} & Absolute & 8 & 10 \\
+    \texttt{heterogeneous} & Drop & 7 & 11 \\
+    \texttt{heterogeneous\_line} & Absolute & 13 & 9 \\
+    \texttt{heterogeneous\_line} & Drop & 13 & 9 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Use across the experiments}
+
+All three choices are available to every experiment. The screening protocol of
+Chapter~\ref{ch:experiments} and the sparse-control experiments of
+Chapter~\ref{ch:sparse-control} use none of them and read raw features. The
+transfer study of Chapter~\ref{ch:wcci-transfer} enables physical scaling and
+the angle drop, and deliberately leaves running standardization off:
+Section~\ref{sec:wcci-running-norm} measures it on a cross-grid comparison and
+finds it counterproductive for features whose support is sparse, because
+standardizing a channel that is mostly structural zeros relocates that point
+mass to a grid-dependent value.
 
 
 \section{Graph Representations}
@@ -213,6 +391,44 @@ Section~\ref{sec:heterogeneous-graph-representation} and the line-node
 attachments of Section~\ref{sec:heterogeneous-line-graph};
 Appendix~\ref{app:graph-construction} gives the resulting sizes and the
 masking conventions.
+
+{\color{clarif}
+\paragraph{Why a fixed shape rather than rebuilding the graph.}
+Rebuilding the graph after every topology action would be the more obvious
+implementation, and it is rejected for four reasons, the last of which is the
+substantive one.
+\begin{enumerate}
+  \item \textbf{The interface requires it.} Each agent's observation is declared
+  once as a fixed-size space, and rollouts are collected from many environments
+  stepping in parallel. The rollout buffer is allocated once, from the shape of
+  the first observation, and written into at every step; an observation whose
+  node or edge count changed mid-episode could neither be stacked across
+  environments nor stored in that buffer.
+  \item \textbf{Batching stays trivial.} A fixed layout means node and edge
+  tensors for different environments, agents and time steps are stacked by
+  concatenation, and the message-passing index is built once and reused, rather
+  than a variable-size graph being assembled and re-indexed on every forward
+  pass.
+  \item \textbf{Row identity is stable.} Row $i$ always denotes the same
+  physical busbar, line or asset. The candidate-action head of
+  Section~\ref{sec:candidate-action-scoring} depends on this directly: it maps
+  each discrete action to the graph rows it modifies once, before training. If
+  the node set were rebuilt per step, that mapping would have to be recomputed
+  at every step and would refer to different objects at different times.
+  \item \textbf{Absent connections stay visible.} A rebuilt graph would contain
+  only the connections that currently exist, which hides the ones an action
+  could create: the empty busbar an element would be moved onto would simply not
+  be in the graph, so no encoder reading it could evaluate that action. Keeping
+  the candidate set fixed means the reachable topologies are present as masked
+  structure, and the mask makes the current topology an explicit input rather
+  than something inferable only from which messages happen to exist. This is the
+  busbar information asymmetry identified by~\textcite{dejong2025gnntopo}.
+\end{enumerate}
+The cost is memory. With $B=2$ a line reserves eight directed candidates of
+which at most two are ever active, so the edge tensor is roughly four times
+larger than the active topology requires. On the grids used here that is
+affordable, and Appendix~\ref{app:graph-construction} gives the exact sizes.
+}
 \\
 \\
 The following subsections define the three schemas.
@@ -394,8 +610,8 @@ eight-dimensional feature vector
   \end{split}
   \label{eq:heterogeneous-common-node-vector}
 \end{equation}
-The width, column order, and meaning of this vector are identical for all node
-types; node type does not select a smaller feature vector. Table~\ref{tab:heterogeneous-node-features}
+The width and meaning of this vector are identical for all node
+types. Table~\ref{tab:heterogeneous-node-features}
 shows the value placed in every shared column. A zero in the table means that
 the column is still present for that node type but is explicitly zero-filled.
 
@@ -422,6 +638,97 @@ the column is still present for that node type but is explicitly zero-filled.
     \bottomrule
   \end{tabular}
 \end{table}
+
+{\color{clarif}
+\paragraph{Why \texttt{connected} exists here and not in the busbar graph.}
+The two disaggregated schemas give every generator and load its own node, and
+that node stays in the fixed candidate graph for the whole episode whether or
+not the asset is attached. When it detaches, its attachment candidates are all
+masked and its measured channels are zeroed, so its row becomes
+$p=0$, $\theta=0$. A generator that is attached but injecting nothing produces
+the same numbers. The flag is the only channel that separates ``this asset is
+not on the grid'' from ``this asset is on the grid and currently at zero''.
+\\
+\\
+The busbar graph has no such row to disambiguate. There, a detached asset simply
+stops contributing to the sum aggregated onto its busbar, and the busbar node
+itself is switchgear that is never connected or disconnected. Since that schema
+has a single node type, a column that would be constant for every node would
+carry no information at all, whereas the disaggregated schemas share one feature
+vector across all node types and a column need only be meaningful for some of
+them.
+\\
+\\
+Two consequences of that sharing are worth stating plainly. On busbar rows the
+flag is written as a constant $1$ and is therefore uninformative, and on
+transmission-line rows in the explicit-line schema it holds exactly the same
+value as \texttt{line\_status}. The busbar graph also keeps an ambiguity the
+disaggregated ones resolve: a busbar reading zero generation may have no
+generator attached or an attached generator producing zero, and nothing in that
+representation distinguishes the two. This is one of the information differences
+between schemas discussed in Section~\ref{subsec:graph-local-global}.
+
+\paragraph{\texttt{connected} is not the same as energized.}
+The name invites a reading it does not have. \texttt{connected} is a property of
+an \emph{element}, read directly from the topology vector: it says whether that
+generator, load or line is currently switched onto one of its substation's
+busbars. It says nothing about whether the busbar in question carries any
+current. Three distinct notions are used in this work and only the last is
+electrical.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Three notions that are easy to conflate. Only the last describes
+  whether a node is electrically live.}
+  \label{tab:connected-vs-energized}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{L{0.20\textwidth}L{0.16\textwidth}L{0.26\textwidth}L{0.28\textwidth}}
+    \toprule
+    Quantity & Kind & Read from & Question it answers \\
+    \midrule
+    \texttt{connected} & Node feature & The element's entry in the topology
+    vector & Is this element switched onto a busbar? \\
+    Visibility mask & Per-node mask & Active non-structural relations reaching
+    the controlled region & May this agent observe this node at all? \\
+    Energized mask & Per-node mask & Incidence to at least one active
+    electrical relation & Is this node electrically live? \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+For a generator or load the first and the last coincide, because a detached
+asset has no active attachment relation and is therefore also de-energized. For
+a busbar they come apart completely: every busbar is always \texttt{connected}
+by construction, while an empty busbar carries nothing. On agent~$0$ of
+\texttt{bus14} under the nominal topology, all eight busbar rows read
+\texttt{connected}~$=1$ while only four are energized -- the second busbar of
+each substation is idle, which is precisely the busbar a splitting action would
+move an element onto. The energized mask, and the readouts that use it, are
+defined in Section~\ref{sec:graph-pooling}.
+
+\paragraph{The flag is nevertheless inert in these experiments.}
+The distinction it encodes is real, but the state it distinguishes never arises
+here. The agents act through \texttt{change\_bus} and
+\texttt{change\_line\_status}, and a change action toggles an element between
+busbars without ever detaching it; separately, a substation split that isolated
+a load or generator ends the episode, so no such observation is ever acted on.
+In $600$ random topology actions on \texttt{bus14}, spanning $180$ episode ends,
+no generator or load row was observed detached, against $150$ observed line
+disconnections. Where the column does vary it duplicates something already
+present: on transmission-line rows it equals \texttt{line\_status}, and on a
+contextual row that loses visibility it falls to zero with the rest of that row,
+which the visibility mask already reports.
+\\
+\\
+It is therefore best read as a channel the construction supports rather than one
+the reported experiments exercise. It would carry information under an action
+space including \texttt{set\_bus}, which can disconnect an element, or in an
+environment where assets themselves trip. Being constant, it is absorbed by the
+first linear layer and costs one weight per output unit, so it is retained
+rather than removed, which also keeps the input layout comparable with the runs
+already completed.
+}
 
 \subsubsection{Relations and edge features}
 \label{subsec:heterogeneous-relations}
@@ -499,6 +806,64 @@ exactly one column of \(\mathbf{r}_{uv}\) is one and the other five are zero.\\
 Table~\ref{tab:heterogeneous-edge-features} shows the values placed in these
 common blocks for every relation.
 
+{\color{clarif}
+\paragraph{Why \texttt{rho}$=1$ on a relation that carries no current.}
+The value is not a loading measurement, and it is an artifact of an encoder this
+work does not report. Only the weighted GCN variant reads the \texttt{rho}
+column as a scalar message weight, and for that consumer zero is the value that
+\emph{deletes} a message: a structural or attachment relation weighted zero
+would silently vanish from message passing. One is the multiplicative identity
+that lets it pass through unscaled. The block is neutral in the sense of a
+weight, not of a measurement.
+\\
+\\
+Every result reported here uses GINE or GAT, which consume the edge vector as an
+attribute through an MLP and never touch the weight path. For those encoders the
+convention buys nothing, and zero -- the value already taken by every other
+column of the neutral block -- would have been the consistent choice.
+\\
+\\
+It does not destroy information. Any active physical-line edge has
+\texttt{line\_status}$=1$ while the neutral block sets it to $0$; a disconnected
+line's candidate edge is masked, its row zeroed and removed before message
+passing, so an active row with \texttt{line\_status}$=0$ can only be structural;
+and in the disaggregated schemas the relation one-hot states this explicitly.
+The cost is that separating a neutral row from a loaded line becomes something
+the network must learn rather than something the encoding gives it. Measured
+over $6{,}000$ live-line samples on \texttt{bus14}, \texttt{rho} has mean $0.42$
+and never reaches $1$ under a do-nothing policy, so the neutral value at least
+sits outside the range real loadings occupy.
+\\
+\\
+The exposure is limited and worth stating exactly. Structural relations exist
+only where the schema creates them, so on agent~$0$ of \texttt{bus14} the share
+of active edges carrying the neutral value is:
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Active edges carrying the neutral \texttt{rho} value, agent $0$ of
+  \texttt{bus14} under the nominal topology.}
+  \label{tab:neutral-rho-exposure}
+  \setlength{\tabcolsep}{6pt}
+  \begin{tabular}{L{0.42\textwidth}L{0.30\textwidth}}
+    \toprule
+    Schema & Active edges affected \\
+    \midrule
+    Busbar, no structural augmentation & $0$ of $16$ \\
+    Busbar with same-substation edges & $8$ of $24$ \\
+    Disaggregated & $12$ of $28$ \\
+    Disaggregated with line nodes & none; edges hold no physical block \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\noindent The candidate-action experiments are therefore untouched, as are the
+busbar screens that leave the structural augmentations off. The convention is
+retained rather than corrected because changing it would alter the observation
+and break comparability with every completed run.
+}
+
 \begin{table}[H]
   \centering
   \scriptsize
@@ -537,6 +902,50 @@ is connected to the visible neighboring busbar. Neighboring private power and
 angle therefore cannot enter message passing or graph readout. Inactive
 far-end busbar candidates are masked in the same way as in the \texttt{bus}
 schema.
+
+{\color{clarif}
+\paragraph{The consequence: a contextual busbar here carries no measurement.}
+This is worth stating plainly because it is easy to read the far-end busbar as
+carrying the neighbor's state, as it does in the busbar schema. It does not.
+Power and angle live on asset nodes in this representation, and neighboring
+assets are never constructed, so the far-end busbar row reduces to its type and
+role indicators. Built on agent~$0$ of \texttt{bus14} under the nominal
+topology, the two visible contextual rows are
+\[
+  \underbrace{[\,0,\;0,\;44.3,\;-5.51,\;0,\;0\,]}_{\texttt{bus}}
+  \qquad\text{against}\qquad
+  \underbrace{[\,1,\;0,\;0,\;0,\;0,\;0,\;1,\;0\,]}_{\texttt{heterogeneous}},
+\]
+that is $44.3$~MW of neighboring load and its angle in one schema, and exactly
+zero in every measured channel in the other. The two contextual rows of the
+disaggregated graph are also identical to each other, so they are not even
+distinguishable as different substations.
+\\
+\\
+Whether this is the right choice depends on which question is being asked, and
+the two answers point in opposite directions.
+\begin{itemize}
+  \item \textbf{As an information boundary it is the defensible one.} A
+  neighboring substation's generation and load are another region's private
+  state. A regional operator sees the flow on the tie line, not the neighbor's
+  dispatch. On that reading the busbar schema is the leaky one, and this schema
+  is closer to the decentralized setting the thesis claims to model.
+  \item \textbf{As a graph design it is incoherent.} Having decided to withhold
+  the neighbor's power, keeping its busbar as a node buys little: it is a
+  constant, anonymous, dead-end node, since edges are only created for lines
+  touching the controlled domain and a contextual node therefore never connects
+  to another contextual node. What the agent learns about the neighbor arrives
+  through the \emph{edge} attributes of the tie line, chiefly its loading. The
+  node contributes a nonlinear round trip, not new information.
+\end{itemize}
+The explicit-line schema resolves this by not constructing the far-end busbar at
+all and placing the shared-line state on the line node instead. The three
+schemas are therefore not a clean ladder of decreasing context; the
+disaggregated one occupies an awkward middle position. This also makes a
+\texttt{bus} against \texttt{heterogeneous} comparison something other than a
+pure comparison of architectures, which is the point developed in
+Section~\ref{subsec:graph-local-global}.
+}
 
 
 % {\color{blue}\subsubsection{Message-passing path}
@@ -620,8 +1029,36 @@ Every node type uses the same ordered feature vector:
   \end{cases}
   \end{split}
   \label{eq:heterogeneous-line-common-node-vector}
+  % Placement of the optional block is explained in the note below: the vector
+  % is grouped by which object owns each quantity, and maintenance is a
+  % per-line quantity.
 \end{equation}
-The width and column order are identical for busbar, generator, load, and
+{\color{clarif}
+\noindent The optional block sits in the middle of the vector rather than at its
+end because the ordering groups columns by the object each quantity belongs to:
+type indicators, then asset measurements, then line measurements, then the
+substation measurement, then the role flags. Maintenance countdowns are per-line
+quantities, so appending them would place a line measurement after the
+substation measurement and the role flags and split the line block in two. The
+ordering is a readability convention and nothing more, since the first linear
+layer is applied to the whole vector and a permutation of input columns is
+absorbed by a permutation of its weight columns.
+\\
+\\
+It has one practical cost. Appending the optional block would make the
+thirteen-column layout a prefix of the fifteen-column one, so a checkpoint
+trained under one setting could be loaded into the other by padding. With the
+block inserted, three columns change meaning between the layouts and no such
+correspondence exists. This is not hypothetical in general -- the transfer
+loader already contains a routine that splices an obsolete relation column out
+of an older checkpoint so that it fits the current edge vector -- but it does
+not arise here, because \texttt{bus14} carries no maintenance and the transfer
+study removes it from WCCI as well (Section~\ref{sec:wcci-nomaint}), leaving
+both sides at thirteen columns.
+}
+\\
+\\
+The width and meaning of this vector are identical for busbar, generator, load, and
 transmission-line nodes. Table~\ref{tab:heterogeneous-line-node-features}
 specifies every entry; \(0\) denotes an explicitly zero-filled column, not an
 omitted feature. For generators and loads, power and angle are set to zero when
@@ -631,8 +1068,12 @@ the asset is disconnected.
   \centering
   \scriptsize
   \caption{Values placed in the common node-feature vector of the
-  explicit-line heterogeneous graph. The two maintenance rows are included
-  only when maintenance observations are enabled.}
+  explicit-line heterogeneous graph, when voltage angles are carried as
+  absolute per-asset values. The two maintenance rows are included only when
+  maintenance observations are enabled. When the angle is instead carried as
+  the drop along each line, the angle row changes owner: the generator and load
+  entries become $0$ and the transmission line holds the drop across it, set to
+  $0$ while the line is out (Section~\ref{sec:line-node-angle}).}
   \label{tab:heterogeneous-line-node-features}
   \setlength{\tabcolsep}{3pt}
   \begin{tabular}{L{0.30\textwidth}L{0.10\textwidth}L{0.14\textwidth}L{0.14\textwidth}L{0.20\textwidth}}
@@ -775,9 +1216,90 @@ This construction is unchanged by the neighbor-inclusion option.
 \label{subsec:graph-local-global}
 
 Each agent $a$ controls a set of substations $\mathcal{C}_a$. A
-\emph{boundary line} connects $\mathcal{C}_a$ to another agent's domain, and
+boundary line connects $\mathcal{C}_a$ to another agent's domain, and
 its far-end busbar is the only possible neighboring busbar. The local graph
 exposes only the boundary information required by its representation.
+
+{\color{clarif}
+\paragraph{Why one hop, and why not more.}
+The one-hop cut is a modelling decision and it is worth separating from two
+arguments that do not support it. The first is that an agent cannot act on a
+neighboring substation, so it need not observe one. Controllability and
+observability are independent: a regional control room does not operate its
+neighbor's substations but does observe them, through state estimation on an
+extended model, tie-line telemetry, and inter-operator data exchange. On
+realism alone, the local graphs used here are more restrictive than a real
+control room, not less.
+\\
+\\
+The second is that one hop is the natural amount of exterior to keep. Power flow
+has no one-hop boundary. The established treatment in power systems is an
+external network equivalent, which reduces everything outside the area to a
+small model preserving \emph{boundary} behaviour, and which deliberately
+discards the neighbor's internal dispatch while retaining the boundary
+injections and the stiffness seen from the boundary. Read that way, the
+neighbor's own generation and load is the least useful part of the exterior: it
+is a single bus of an unbounded remainder. What determines whether a switching
+action is safe inside $\mathcal{C}_a$ is the post-action flow there, and the
+exterior enters that calculation only through the boundary condition -- the
+loading of the tie line and the angle across it, both of which the schemas
+already carry on the line itself
+(Section~\ref{sec:line-node-angle}).
+\\
+\\
+The argument that does support keeping the actor local is not physical but
+methodological. An actor that observes everything is a centralized controller
+with extra steps, and the question this thesis asks is how far a policy
+conditioned on a regional view can go. The centralized critic already reads the
+global state, so the value estimate is not blind; only the policy is. That
+compensates in part, but not completely: where the optimal action depends on
+exterior state the actor cannot see, the policy can only learn an average over
+it, which is the standard limitation of a decentralized partially observed
+setting and is exactly the regime in which a remote contingency decides whether
+a local action was correct.
+\\
+\\
+The honest position is therefore that context depth is an ablation rather than a
+justified constant, and it is treated as one: \texttt{gnn\_include\_neighbors}
+switches it, and the two settings are compared under otherwise identical
+configurations.
+
+\paragraph{In what sense the earlier construction was defective.}
+Since observing a neighbor is not in itself improper, it is worth being precise
+about what was wrong with the construction this section replaces, because it was
+not simply that it revealed more.
+\\
+\\
+The earlier rule expanded every substation of the region into all of its
+busbars and marked them permanently valid. In effect an agent could see anything
+that shared a substation label with something it touched. That is a convention
+of the data model, not an electrical relation: two busbars of one substation are
+separate electrical nodes whenever the substation is split. Built on agent~$0$
+of \texttt{bus14}, with contextual substation~$3$ split so that its $44.3$~MW
+load sits on the second busbar while the agent's lines attach to the first, the
+earlier construction placed that load in the observation on a node with
+\emph{no active edge at all}. Electrically it was as remote from the agent as any
+other bus in the grid.
+\\
+\\
+Two things follow, and the second matters more than the first. Such a node is
+isolated, so it receives and sends no messages: the value never entered message
+passing and instead contributed its raw feature row directly to the mean
+readout. The information was therefore not usable context but an unstructured
+additive term in the pooled vector. And because the split is an action of the
+\emph{neighboring} agent, that agent's decisions moved quantities inside this
+agent's observation without any change in this agent's electrical situation,
+adding an observation-level non-stationarity on top of the one decentralized
+training already has.
+\\
+\\
+The correction is therefore about the criterion and the delivery path rather
+than about volume. Requiring a live electrical connection replaces a naming
+convention with a physical one, and removes rows that the graph could not
+process in any case. It does not follow that the resulting boundary is the
+correct amount of exterior; as argued above, it is a conservative one, and an
+explicit exterior equivalent would be the principled alternative.
+}
 
 \subsubsection{Visibility and masking}
 
@@ -786,7 +1308,7 @@ is visible only while a live boundary line connects it to the controlled
 region. Otherwise its entire feature row is zeroed, every incident edge is
 deactivated and removed before message passing, and the row is excluded from
 pooling---including the denominator of a mean. It therefore affects neither
-message passing nor the readout. Self and same-substation edges cannot restore
+message passing nor the readout. Same-substation edges cannot restore
 visibility.
 \\
 \\
@@ -828,15 +1350,17 @@ actor information sets.
 
 \subsubsection{Legacy compatibility and centralized state}
 
+{\color{red}
 The legacy construction kept all neighboring busbars, and in heterogeneous
 graphs their private assets, visible even without a live boundary connection.
 Such rows could enter pooling even when isolated from message passing.
 Setting \texttt{gnn\_context\_requires\_connection=false} restores this legacy
 visibility for A/B tests; legacy and leakage-free checkpoints are therefore
-not strictly comparable.
-
-This boundary applies only to decentralized actor graphs. The centralized
-critic may still use the full-grid \texttt{state} graph during training, while
+not strictly comparable.}
+\\
+\\
+This boundaries apply only to decentralized actor graphs. The centralized
+critic still uses the full-grid state graph during training, while
 execution uses each actor's local graph, as required by MAPPO's centralized-
 training, decentralized-execution setup~\cite{yu2022mappo}.
 
@@ -943,6 +1467,96 @@ values of the added edges. The neutral value \texttt{rho}$=1$ is used whenever
 the schema contains physical edge attributes; every other physical attribute is
 zero.
 
+{\color{clarif}
+\paragraph{These edges are added inside neighboring substations too.}
+The augmentation runs over every substation of the region, contextual ones
+included, so a neighboring substation's busbars are joined to each other exactly
+as controlled ones are. That interacts with the information boundary of
+Section~\ref{subsec:graph-local-global} in a way worth making explicit.
+\\
+\\
+A same-substation relation does \emph{not} carry visibility. Grid2Op has no bus
+coupler: busbar assignment is the topology, and two busbars of one substation
+are separate electrical nodes. The relation is a computational device encoding
+that an element can be moved between them, which is a statement about an action
+space rather than about conductivity -- and, for a contextual substation, about
+\emph{another} agent's action space. The visibility rule therefore excludes it,
+together with self relations, when deciding whether a contextual node is
+connected to the controlled region.
+\\
+\\
+The effect is measurable. Take agent~$0$ of \texttt{bus14} with contextual
+substation~$3$ split so that its $44.3$~MW load sits on the busbar the agent's
+lines do \emph{not} attach to:
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Status of the contextual busbar carrying $44.3$~MW, under the two
+  constructions and the two settings of this augmentation.}
+  \label{tab:same-substation-visibility}
+  \setlength{\tabcolsep}{6pt}
+  \begin{tabular}{llccc}
+    \toprule
+    Construction & Same-substation edges & Visible & Active degree & Load seen \\
+    \midrule
+    Earlier & off & yes & $0$ & $44.3$ \\
+    Earlier & on  & yes & $2$ & $44.3$ \\
+    Current & off & no  & $0$ & $0$ \\
+    Current & on  & no  & $0$ & $0$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\noindent The second row is the important one. Under the earlier construction this
+augmentation upgraded the leak: without it the unreachable busbar was an
+isolated node contributing only to the readout, whereas with it the busbar
+became connected to its sibling and its load propagated into the agent's own
+region through message passing. The cells of Screen~C that enable this factor
+are therefore the most affected by the construction they were run under. Under
+the current rule the node is invisible and its structural edges are inactive in
+both settings, so the augmentation changes message passing only among nodes the
+agent is entitled to see.
+
+\paragraph{Being entitled to see two nodes is not a reason to relate them.}
+One case survives the correction. When a contextual substation is split so that
+both of its busbars are attached to the agent by live lines, both are visible
+and the same-substation relation between them is active: on agent~$0$ of
+\texttt{bus14} with substation~$3$ split in this way, the pair of directed edges
+between its two busbars carries messages. This is not a boundary violation,
+since each endpoint is legitimately observable, but it is questionable on two
+other grounds.
+\\
+\\
+The relation asserts that an element can be moved between the two busbars. That
+is a statement about an action space, and for a contextual substation it is a
+statement about \emph{another agent's} action space, which this agent can
+neither exercise nor anticipate. The same reasoning already excludes structural
+relations from carrying visibility, so allowing them to carry messages between
+two contextual nodes is inconsistent with a decision already taken elsewhere in
+the construction.
+\\
+\\
+The physical objection is stronger. Two busbars of one substation are separate
+electrical nodes, and the relation is justified inside the controlled domain
+only because the agent can join them by acting. Between two contextual busbars
+it is neither electrical nor reachable by any action available here, and it
+creates a message path that crosses the boundary twice: information leaving the
+agent on one line can return on another through a coupling that does not exist,
+where the true path runs through the agent's own internal topology.
+\\
+\\
+Both structural augmentations are therefore restricted to controlled
+substations. The fixed candidate shape does not prevent this, since the
+controlled substations are themselves a static set, and it also separates a
+factor that would otherwise be confounded: enabling the augmentation now changes
+relations inside the controlled domain only, rather than changing them there and
+between contextual nodes at the same time. On agent~$0$ of \texttt{bus14} with
+substation~$3$ split as above, the number of active same-substation edges falls
+from ten to eight, and the two that related the neighbor's busbars to each other
+are gone.
+}
+
 \begin{table}[H]
   \centering
   \small
@@ -1012,6 +1626,37 @@ intra-substation communication role as the direct relation in
 Figure~\ref{fig:same-substation-busbar-edge}. Only busbars connect directly to
 $u_s$; other node types reach it through their busbar attachments.
 Figure~\ref{fig:substation-summary-node} shows this construction.
+
+{\color{clarif}
+\paragraph{Summary nodes exist only for controlled substations.}
+The augmentation is restricted to the agent's own substations, for the reason
+given in Section~\ref{subsec:graph-relation-edges}: a summary node relates every
+busbar it gathers, and outside the controlled domain that relation is one the
+agent can neither act on nor make sense of. Without the restriction a
+neighboring substation would receive a summary node as well, and two of its
+busbars could exchange through it even with the direct relation removed, so both
+augmentations have to be restricted together for either restriction to mean
+anything.
+\\
+\\
+The earlier behaviour was also close to inert. On agent~$0$ of \texttt{bus14}
+under the nominal topology, each controlled substation's summary node gathers
+both of its busbars, whereas a contextual one gathered exactly one. Summarizing
+a single node is an identity up to the learned transform: the round trip
+$i(s,b)\rightarrow u_s\rightarrow i(s,b)$ returns to its origin while consuming
+two message-passing steps, the entire depth at the two-layer setting used
+throughout, and adds a learned constant row to an ordinary mean readout.
+\\
+\\
+Two consequences are worth recording. Summary nodes are appended by the encoder
+after visibility has been decided, and they gather only busbars that are both
+controlled and currently visible, so no contextual state reaches the agent by
+this route under either setting. And because the virtual-node readout attaches
+to summary nodes where they exist, contextual busbars no longer reach the graph
+summary directly; they influence it through the controlled busbars they are
+connected to, consistent with reading the graph embedding as a description of
+the region the agent controls.
+}
 \\
 \begin{figure}[htbp]
   \centering
@@ -1040,14 +1685,48 @@ Figure~\ref{fig:substation-summary-node} shows this construction.
 \end{figure}
 
 \noindent After the raw node projection in
-Figure~\ref{fig:graph-actor-pipeline}, the model initializes $u_s$ with
-$\mathbf q_s$, row $s$ of a trainable matrix
-$\mathbf Q\in\mathbb R^{S\times d_h}$. The same $\mathbf q_s$ is used whenever
-substation $s$ appears and contains no current grid measurement. Messages from
-the busbars then produce an observation-dependent state for $u_s$, while PPO
-learns $\mathbf Q$ together with the other network parameters.
-Table~\ref{tab:summary-node-augmentation-features} specifies this initial state
-and the edge features, which are identical in both directions.
+Figure~\ref{fig:graph-actor-pipeline}, the model initializes $u_s$ from a
+\emph{structural descriptor} of substation $s$ rather than from its identity.
+Let $\boldsymbol\phi_s\in\mathbb R^{4}$ collect the number of busbars, incident
+lines, attached generators, and attached loads of that substation, each divided
+by a constant that is the same on every grid. The summary node starts at
+\begin{equation}
+  u_s^{(0)} = \mathbf W_{\mathrm{sub}}\,\boldsymbol\phi_s + \mathbf b_{\mathrm{sub}},
+  \qquad
+  \mathbf W_{\mathrm{sub}}\in\mathbb R^{d_h\times 4},\;
+  \mathbf b_{\mathrm{sub}}\in\mathbb R^{d_h},
+  \label{eq:substation-summary-init}
+\end{equation}
+and carries no current grid measurement. Messages from the busbars then produce
+an observation-dependent state for $u_s$, while PPO learns
+$\mathbf W_{\mathrm{sub}}$ and $\mathbf b_{\mathrm{sub}}$ with the other
+parameters.
+\\
+\\
+{\color{clarif}
+The descriptor replaces what would be the obvious construction, a trainable
+matrix $\mathbf Q\in\mathbb R^{S\times d_h}$ whose row $s$ is selected by
+substation identifier. That version cannot cross grids: its first dimension is
+the number of substations, so a checkpoint trained on a $14$-substation network
+carries a $14\times d_h$ matrix that no $36$-substation model can accept.
+Transfer does not degrade quietly in that case, it stops -- the loader treats
+the mismatch as an architecture difference and refuses, since the shape is not
+one of the graph-describing buffers it is allowed to rebuild. The augmentation
+would therefore have been unusable in exactly the setting
+Chapter~\ref{ch:wcci-transfer} is about, and a design screened on
+\texttt{bus14} could not have been carried to the larger grid.
+\\
+\\
+Equation~\ref{eq:substation-summary-init} removes that, because both learned
+tensors are shaped by the descriptor and not by the network. It also keeps what
+the identity version was useful for. The bias $\mathbf b_{\mathrm{sub}}$ is a
+single vector shared by every substation, which is what an identity-free design
+would give on its own; the weight $\mathbf W_{\mathrm{sub}}$ adds a modulation
+by what the substation is made of, so a busy junction and a radial end point do
+not start from the same state. The quantities involved are counts rather than
+physical magnitudes, so the same descriptor means the same thing on any network,
+which is what makes the projection transferable at all.
+}
 
 \begin{table}[H]
   \centering
@@ -1061,9 +1740,9 @@ and the edge features, which are identical in both directions.
     \toprule
     Graph schema & Added summary-node state & Feature values on $i\leftrightarrow u_s$ \\
     \midrule
-    Busbar & Trainable vector $\mathbf{q}_s\in\mathbb{R}^{d_h}$, selected by substation identifier; no measured feature. & \texttt{rho}$=1$; all other physical-line features are $0$. \\
-    Disaggregated & Same trainable vector $\mathbf{q}_s$; no measured feature. & \texttt{rho}$=1$; all physical and relation entries are otherwise $0$. \\
-    Disaggregated with line nodes & Same trainable vector $\mathbf{q}_s$; no measured feature. & All nine relation entries are $0$. \\
+    Busbar & $\mathbf W_{\mathrm{sub}}\boldsymbol\phi_s+\mathbf b_{\mathrm{sub}}\in\mathbb{R}^{d_h}$, from the substation's structural descriptor; no measured feature. & \texttt{rho}$=1$; all other physical-line features are $0$. \\
+    Disaggregated & Same structural projection; no measured feature. & \texttt{rho}$=1$; all physical and relation entries are otherwise $0$. \\
+    Disaggregated with line nodes & Same structural projection; no measured feature. & All nine relation entries are $0$. \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -1159,6 +1838,60 @@ this dynamic mask with the controlled-node mask. These masks affect only the
 terminal mean and its denominator, not message passing. They are therefore
 pooling ablations, not leakage fixes. Virtual-node runs do not use terminal
 pooling and are described in Section~\ref{sec:virtual-node-readout}.
+
+{\color{clarif}
+\paragraph{Which of the four is the defensible default.}
+The readout produces the single vector the action head reads, and in the
+candidate-scoring head it is the global context concatenated to every action.
+It should therefore answer one question: what is the state of the region this
+agent is deciding about? That region is the action domain, which makes
+\texttt{controlled\_mean} the appropriate default. Excluding context from the
+average does not discard it, because it arrives through message passing, which
+is what the graph is for: on a three-substation fixture the
+\texttt{controlled\_mean} embedding differs across topologies that differ only
+in their context. The choice is not whether context informs the summary but
+whether it does so as structure or as an addend, and structure is the answer
+that uses the model rather than bypassing it.
+\\
+\\
+The mechanical argument is the stronger one. A fixed pooled set makes any
+systematic offset -- including the zeros contributed by empty controlled
+busbars -- a constant that the readout projection absorbs during training. A
+pooled set whose size moves turns that offset into a quantity varying with
+topology, which the network must then separate from genuine signal. On agent
+$0$ of \texttt{bus14} the visible set holds ten nodes under the nominal
+topology, eleven once a contextual substation splits, and nine after a boundary
+line trips, so an ordinary mean rescales every node it keeps when a
+\emph{neighbouring} agent acts.
+\\
+\\
+The energised variants are the least defensible of the four, because they
+remove precisely what actions target. Four of agent $0$'s eight busbars are
+de-energised under the nominal topology: the empty second busbar of each
+substation, which is the busbar a splitting action moves an element onto. A
+readout that drops them cannot represent the availability of a free busbar,
+which is the most directly actionable fact in the observation, and its
+denominator moves with every switch.
+\\
+\\
+Two qualifications. When one-hop context is disabled the controlled and visible
+sets coincide, so the distinction is vacuous and the ordinary readout is already
+the controlled one. And maximum pooling is less exposed throughout: it does not
+depend on the size of the pooled set, and a de-energised row of zeros seldom
+wins a maximum, so the energised variants matter far less there. Its own risk is
+different -- with context included, a neighbour under greater stress dominates
+the channel maxima, so the graph summary reports the neighbour's worst channel
+rather than the agent's, which is an argument for \texttt{controlled\_max} on the
+same grounds.
+\\
+\\
+This also sharpens the reason sum pooling is set aside. The objection above is
+that its magnitude follows the number of pooled nodes, and under a controlled
+readout that number is fixed for the episode, so the objection would dissolve.
+What remains is that the controlled sets differ \emph{between} agents -- eight,
+eight and twelve busbars on \texttt{bus14} -- while the encoder is shared, so a
+sum would hand different agents systematically different magnitudes.
+}
 
 \subsection{Virtual-node graph readout}
 \label{sec:virtual-node-readout}
@@ -1484,8 +2217,8 @@ ways of combining these.
 \begin{table}[H]
   \centering
   \small
-  \caption{Pooling modes. Only the first two are implemented; \texttt{typed\_mean}
-  is the default.}
+  \caption{Pooling modes. All three are implemented; \texttt{typed\_mean} is the
+  default.}
   \label{tab:candidate-pool-modes}
   \setlength{\tabcolsep}{5pt}
   \begin{tabular}{L{0.17\textwidth}L{0.36\textwidth}L{0.10\textwidth}L{0.27\textwidth}}
@@ -1494,14 +2227,20 @@ ways of combining these.
     \midrule
     \texttt{mean} & One masked mean over all touched rows, whatever their type & $d_h$ & The smaller control; mixes roles together \\
     \texttt{typed\_mean} & The four typed means of Equation~\ref{eq:candidate-typed-mean}, concatenated & $4d_h$ & The scorer can tell a stressed line from the load beside it \\
-    \texttt{attention} & The action queries its own touched rows and weights them & $d_h$ & Could focus on the one endpoint that matters; not implemented \\
+    \texttt{typed\_attention} & The action queries the eligible rows and weights them, typed as above & $4d_h$ & Can focus on the one endpoint that matters instead of averaging it away \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-\noindent Attention pooling is left for after the typed-mean baseline has been measured,
-because it adds parameters and a second failure mode to a head whose value is
-not yet established.
+\noindent Learned attention replaces the flat average by weights the action computes for
+itself, and \texttt{candidate\_action\_attention\_scope} decides which rows
+compete for that weight: \texttt{affected} keeps the touched rows of the two
+means above, \texttt{all} opens the attention to every node of the local graph,
+and \texttt{soft\_prior} opens it to every node but biases the touched ones,
+so the head can look beyond what the action modifies without being forced to.
+The uniform modes are still the controls, because attention adds parameters and
+a second failure mode to a head whose value is being established at the same
+time.
 
 \subsection{Scoring, including the idle action}
 \label{subsec:candidate-scorer}
@@ -1546,12 +2285,14 @@ logits, so the action-$0$ frequency has to be compared against the action-index
 baseline rather than assumed comparable.
 \\
 \\
-The head currently requires the explicit-line graph, does not yet combine with
-the intervention gate, and implements only the first two pooling modes of
-Table~\ref{tab:candidate-pool-modes}. The neighbor-inclusion setting does not
-add far-end equipment to this representation: shared-line state is supplied by
-the line node itself. Auxiliary heads over the same node embeddings, such as
-predicting which lines are about to overload, are a possible later addition.
+The head currently requires the explicit-line graph and does not combine with
+the intervention gate, which is refused at construction rather than silently
+ignored. One-hop context is not required, and the experiments of
+Section~\ref{sec:line-node-angle} run without it: the neighbor-inclusion setting
+adds no far-end equipment to this representation, because the shared-line state
+is supplied by the line node itself. Auxiliary heads over the same node
+embeddings, such as predicting which lines are about to overload, are a possible
+later addition.
 }
 \section{Action-Space Reduction for Large Grids}
 \label{sec:wcci-action-space-reduction}
@@ -1632,8 +2373,9 @@ large WCCI action space is made tractable.
   action descriptors. The idle action has a separate score. The PPO objective
   and categorical policy are unchanged.
   \item \textbf{Current scope:} Candidate scoring requires the explicit-line
-  graph and one-hop context, and its memory cost still grows with the number of
-  candidate actions.
+  graph, and its memory cost still grows with the number of candidate actions.
+  One-hop context is optional, since the line node already carries the shared
+  measurements.
   \item \textbf{WCCI reduction:} Actions are ranked offline by how often they
   reduce loading in simulated stressed states. Action 0 is always retained, and
   the reduced sets are checked with a one-step simulator-greedy controller
@@ -1644,131 +2386,3 @@ large WCCI action space is made tractable.
 are separate design choices. This chapter defines them; the following chapters
 evaluate the resulting policies.
 \end{tcolorbox}
-
-
-\section{Voltage Angles in the Explicit-Line Representation}
-\label{sec:line-node-angle}
-
-\emph{New section, not yet placed. Its content belongs either beside the
-feature scaling of Section~\ref{subsec:graph-feature-normalization} or inside
-the explicit-line representation of Section~\ref{sec:heterogeneous-line-graph}.}
-
-An absolute voltage angle is measured against whichever bus is chosen as slack,
-so its level describes that reference rather than the grid state; only
-differences between angles carry physical meaning, and line flow depends on the
-difference across the line. Section~\ref{sec:wcci-angle-representation}
-develops this for cross-grid transfer, where the two grids place their slack
-differently and the resulting displacement survives any choice of scaling. The
-correction is to put the drop
-\[
-  \Delta\theta_\ell = \theta_\ell^{\mathrm{or}} - \theta_\ell^{\mathrm{ex}}
-\]
-on each line in place of the per-asset absolute angle, which is what
-\texttt{gnn\_angle\_representation = "edge\_diff"} selects.
-
-\subsection{Why the line-node graph was the exception}
-
-In the busbar and disaggregated representations a transmission line is an edge,
-so the drop has an obvious home and the correction moves it from the node
-features onto that edge. The explicit-line representation of
-Section~\ref{sec:heterogeneous-line-graph} inverts the arrangement: each line is
-a node carrying its own loading, status, overflow and cooldown, and the
-remaining edges are busbar-to-line attachments that carry no physical channel at
-all, only a relation type. There was no edge for the drop to move onto, and the
-option was refused rather than silently ignored.
-
-That refusal mattered, because the failure would otherwise have been silent. The
-correction removes the absolute angle from the node features and adds the drop
-to the edge features; in a schema whose edge block is empty, the first half
-applies and the second half has nowhere to land, leaving an observation with no
-angle information at all and no error raised.
-
-\subsection{The angle drop as a line-node feature}
-
-The drop is now written on the line node itself, in the column the absolute
-angle previously occupied, renamed so that the scaling layer treats it as an
-angle. This keeps the line node's description of its own line complete: loading,
-status, cooldown, and now the angle across it, which is the quantity that drives
-the flow the loading measures.
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Where the voltage angle enters each representation.}
-  \label{tab:angle-placement}
-  \setlength{\tabcolsep}{4pt}
-  \begin{tabular}{L{0.26\textwidth}L{0.30\textwidth}L{0.34\textwidth}}
-    \toprule
-    Representation & \texttt{node} & \texttt{edge\_diff} \\
-    \midrule
-    Busbar & \texttt{theta} on busbar nodes, averaged over attached assets &
-    \texttt{theta\_diff} on the physical line edge \\
-    Disaggregated & \texttt{theta} on generator and load nodes &
-    \texttt{theta\_diff} on the physical line edge \\
-    Disaggregated with line nodes & \texttt{theta} on generator and load nodes &
-    \texttt{theta\_diff} on the \emph{line node} \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-Two properties follow, and both were verified on \texttt{bus14} under the
-leakage-free construction with the three-agent partition.
-
-\paragraph{The channel becomes gauge-invariant.}
-Shifting every angle in the grid by a constant leaves every drop unchanged,
-while it moves every absolute angle by that constant. This matters beyond
-transfer: in a decentralized setting the slack reference is global, so an event
-on the far side of the grid that does not affect an agent still moves all of its
-angle inputs. The drop is a property of one line.
-
-\paragraph{The channel becomes dense where the physics is.}
-Under \texttt{node}, angles reach an actor only through the generators and loads
-it owns, and the line nodes -- which carry loading, status and cooldown -- carry
-no angle. Agent 1 sees three angle values in total, two of which are duplicates,
-because a generator and a load on the same busbar read the same bus angle.
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Local-graph rows carrying an angle on \texttt{bus14}, explicit-line
-  representation without one-hop context.}
-  \label{tab:angle-coverage}
-  \setlength{\tabcolsep}{6pt}
-  \begin{tabular}{lccc}
-    \toprule
-    Agent & Nodes & \texttt{node} & \texttt{edge\_diff} \\
-    \midrule
-    0 & 22 & 5 \; (23\,\%) & 8 \; (36\,\%) \\
-    1 & 20 & 3 \; (15\,\%) & 8 \; (40\,\%) \\
-    2 & 29 & 8 \; (28\,\%) & 9 \; (31\,\%) \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-Every row counted in the \texttt{edge\_diff} column is a line node, so each
-agent holds the drop across every line it touches, including the boundary lines
-whose far endpoint the leakage-free construction deliberately omits. That is new
-information relative to \texttt{node}, and it is of the same kind as the loading
-already carried by those line nodes: a measurement of a line the agent is
-attached to, not a state of equipment it cannot see.
-
-\subsection{Masking on outage}
-
-The drop has to be zeroed when a line is out. The simulator zeroes the loading
-of a disconnected line but leaves its endpoint angles at their last solved
-values, so an unmasked drop reports a confident number on a dead line while
-every other channel on the same row reports that it is dead. Measured on
-\texttt{bus14}, a line taken out of service kept endpoint angles of $-1.06$ and
-$-7.62$ degrees, a spurious drop of $6.56$, alongside a loading of exactly zero.
-The line-node channel is therefore masked by line status explicitly. The busbar
-and disaggregated representations need no equivalent step, because an inactive
-edge is zeroed in full before message passing.
-
-\subsection{What is unchanged}
-
-The drop replaces the absolute angle rather than joining it, so the node feature
-width, the column position, and the encoder input dimension are all identical to
-\texttt{node}. Attachment edges remain free of physical channels. Message
-passing, graph readout, and candidate-action scoring are untouched. Selecting
-\texttt{node} reproduces the previous observation exactly, so runs predating
-this change remain a valid control.

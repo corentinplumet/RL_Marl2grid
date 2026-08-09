@@ -210,8 +210,12 @@ distribution and is comparatively insensitive to tails, which $W_1$ does weigh.
 \section{What the encoder reads}
 \label{sec:wcci-features}
 
-The \texttt{bus} graph represents each busbar as a node and each transmission
-line as an edge. Table~\ref{tab:wcci-graph-features} lists the ten channels.
+The measurements below are taken on the \texttt{bus} graph, whose ten channels
+are specified in Tables~\ref{tab:graph-node-features}
+and~\ref{tab:graph-edge-features}. What matters here is not their definition but
+how often each one is zero, since that is what the following sections turn on.
+Table~\ref{tab:wcci-graph-features} repeats the channel list with that fraction
+measured on each grid.
 
 \begin{table}[H]
   \centering
@@ -504,24 +508,12 @@ step.
 \subsection{Physical scaling for the power channels}
 \label{sec:wcci-physical-scaling}
 
-Physical scaling divides the power channels by each environment's own maximum
-generator capacity. Being multiplicative it leaves zeros at zero, so the point
-mass stays aligned on both grids, and it is known at construction rather than
-estimated online.
-\\
-\\
-It is worth being explicit that this discards nothing within a grid. Division by
-a fixed constant is invertible, so the mapping from megawatts to scaled units is
-a bijection: the first linear layer can recover any function of the absolute
-value it needs, and a load of $0.5$ on \texttt{bus14} is $70$~MW unambiguously.
-The operation is a change of units, the same per-unit convention power systems
-uses, adopted for the same reason. What it removes is the ability to compare
-magnitudes \emph{across} grids, which is the intent: a transferable encoder
-should respond to a load being half the largest unit's capacity, not to it
-reading $200$. This is also the correct target for the task, since whether a
-flow is safe is determined by its ratio to a thermal limit rather than by its
-absolute size, which is precisely why \texttt{rho} was the one channel that
-needed no correction at all.
+Physical scaling, defined in Section~\ref{subsec:graph-feature-normalization},
+divides the power channels by each environment's own maximum generator capacity.
+Two of its properties answer the failure diagnosed above: being multiplicative it
+leaves zeros at zero, so the point mass stays aligned on both grids, and being
+fixed at construction it does not drift during training the way estimated moments
+do.
 \\
 \\
 The divisor is a single generator's nameplate rating, a crude proxy for grid
@@ -549,7 +541,7 @@ that would equalize the two spreads exactly.
   \end{tabular}
 \end{table}
 
-\subsection{Angles belong on the edges}
+\subsection{The angle displacement is a gauge artifact}
 \label{sec:wcci-angle-representation}
 
 Scaling cannot repair the angle displacement, and the implementation does not
@@ -557,48 +549,19 @@ attempt it: angle channels are divided by a constant $180$, identical on both
 grids, so both sides move together and the relative displacement is untouched.
 \\
 \\
-The more useful observation is that an absolute voltage angle is not a
-well-posed quantity to feed a network at all. It is measured against whichever
-bus is chosen as slack, so its level is a property of that reference rather than
-of the grid state, and only differences between angles carry physical meaning.
-Line flow depends on the difference across the line. The $5$ to
-$7^{\circ}$ displacement visible in Figure~\ref{fig:wcci-angles} is therefore
-largely gauge rather than physics.
+The measurement itself explains why. An absolute voltage angle is referenced to
+whichever bus is slack, and the two grids do not place theirs alike, so the $5$
+to $7^{\circ}$ displacement visible in Figure~\ref{fig:wcci-angles} is largely
+gauge rather than physics. Nothing that rescales or recentres a
+reference-dependent quantity can fix that; the quantity has to be replaced.
 \\
 \\
-This chapter accordingly replaces the two node angle channels with a single edge
-channel, the angle drop along each line,
-\[
-  \Delta\theta_{\ell} \;=\; \theta^{\,\mathrm{or}}_{\ell} - \theta^{\,\mathrm{ex}}_{\ell},
-\]
-which is gauge-invariant by construction: adding a constant to every angle
-leaves it unchanged. It is also dense, since every line has two ends, whereas a
-busbar carries an angle only when an asset is attached to it. The change
-therefore removes the mixture structure from the angle channels outright rather
-than working around it, which is what made standardization fail on them.
-Table~\ref{tab:wcci-feature-dims} gives the resulting dimensions. The behaviour
-is opt-in and the default reproduces the layout used in
-Chapters~\ref{ch:methods} to \ref{ch:sparse-control}, so no earlier result is
-affected.
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Feature dimensions under the two settings of
-  \texttt{gnn\_angle\_representation}.}
-  \label{tab:wcci-feature-dims}
-  \setlength{\tabcolsep}{8pt}
-  \begin{tabular}{llrr}
-    \toprule
-    Graph type & Setting & \texttt{node\_dim} & \texttt{edge\_dim} \\
-    \midrule
-    \texttt{bus} & \texttt{node} (default) & 6 & 4 \\
-    \texttt{bus} & \texttt{edge\_diff} & 4 & 5 \\
-    \texttt{heterogeneous} & \texttt{node} (default) & 8 & 11 \\
-    \texttt{heterogeneous} & \texttt{edge\_diff} & 7 & 12 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+The replacement is the angle drop along each line, defined and placed in
+Section~\ref{sec:line-node-angle}. Being a difference it is gauge-invariant, and
+being defined per line it is dense, so it removes the mixture structure from the
+angle channels outright rather than working around it -- which is what made
+standardization fail on them. This study therefore enables it, alongside
+physical scaling, in both the source and target environments.
 
 \subsection{The corrected distribution}
 \label{sec:wcci-corrected}

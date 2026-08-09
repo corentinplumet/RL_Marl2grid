@@ -39,6 +39,14 @@ def _resolve_virtual_edge_direction(value: str, summary_direction: str) -> str:
     return direction
 
 
+# Readout names live in a dependency-free module so launchers can validate
+# a config without importing torch. Re-exported here for existing callers.
+from common.readouts import (  # noqa: E402
+    POOLING_AGGREGATIONS,
+    SPARSE_TRANSFORMER_ONLY_AGGREGATIONS,
+)
+
+
 class _VirtualNodeEncoderBase(nn.Module):
     """Shared runtime construction for virtual-node graph readout."""
 
@@ -53,6 +61,12 @@ class _VirtualNodeEncoderBase(nn.Module):
     ) -> None:
         self.use_virtual_node = bool(use_virtual_node)
         self.add_substation_nodes = bool(add_substation_nodes)
+        # Summary and virtual nodes relate every busbar they gather. Outside the
+        # controlled domain that relation is not one the agent can act on, and
+        # it would let two contextual busbars exchange through the summary.
+        self.structural_relations_controlled_only = bool(
+            graph_spec.get("structural_relations_controlled_only", False)
+        )
         self.summary_edge_direction = _validate_summary_edge_direction(
             summary_edge_direction
         )
@@ -62,6 +76,23 @@ class _VirtualNodeEncoderBase(nn.Module):
         )
         node_ids = np.asarray(graph_spec["node_ids"], dtype=np.int64)
         busbar_mask = (node_ids % self.node_id_stride) < self.n_busbar
+        # Which substations may host a summary node. This is a property of the
+        # partition, fixed for the episode, so it is resolved once here rather
+        # than read from the per-step observation.
+        controlled = np.asarray(
+            graph_spec.get(
+                "controlled_node_mask", np.ones(len(node_ids), dtype=np.float32)
+            ),
+            dtype=np.float32,
+        ) > 0
+        self.register_buffer(
+            "controlled_substation_ids",
+            th.tensor(
+                np.unique(node_ids[busbar_mask & controlled] // self.node_id_stride),
+                dtype=th.long,
+            ),
+            persistent=False,
+        )
         self.register_buffer(
             "virtual_busbar_mask",
             th.tensor(busbar_mask, dtype=th.bool),
@@ -75,13 +106,33 @@ class _VirtualNodeEncoderBase(nn.Module):
             else None
         )
         if self.add_substation_nodes:
-            self.substation_node_embedding = nn.Embedding(
-                max(1, int(graph_spec.get("n_sub", 1))),
-                int(feature_dim),
+            # A summary node is initialised from what its substation is made of,
+            # not from which substation it is. An index embedding would be
+            # shaped by the number of substations and could not cross grids;
+            # this projection is shaped by the descriptor, so it can. Its bias
+            # is the vector every substation shares, and its weight is the
+            # structural modulation on top of it.
+            substation_features = np.asarray(
+                graph_spec.get(
+                    "substation_features",
+                    np.zeros((max(1, int(graph_spec.get("n_sub", 1))), 1)),
+                ),
+                dtype=np.float32,
             )
-            nn.init.normal_(self.substation_node_embedding.weight, mean=0.0, std=0.02)
+            self.register_buffer(
+                "substation_features",
+                th.tensor(substation_features, dtype=th.float32),
+                persistent=False,
+            )
+            self.substation_node_encoder = nn.Linear(
+                substation_features.shape[1], int(feature_dim)
+            )
+            nn.init.normal_(
+                self.substation_node_encoder.weight, mean=0.0, std=0.02
+            )
+            nn.init.normal_(self.substation_node_encoder.bias, mean=0.0, std=0.02)
         else:
-            self.substation_node_embedding = None
+            self.substation_node_encoder = None
         if self.use_virtual_node:
             self.virtual_node_embedding = nn.Parameter(
                 th.empty(1, int(feature_dim))
@@ -127,6 +178,15 @@ class _VirtualNodeEncoderBase(nn.Module):
             th.remainder(flat_node_ids, self.node_id_stride) < self.n_busbar,
             as_tuple=False,
         ).flatten()
+        if self.structural_relations_controlled_only:
+            busbar_substations = th.div(
+                flat_node_ids[busbar_ids],
+                self.node_id_stride,
+                rounding_mode="floor",
+            ).long()
+            busbar_ids = busbar_ids[
+                th.isin(busbar_substations, self.controlled_substation_ids)
+            ]
         active_busbar_ids = busbar_ids
         if node_mask is not None:
             active_busbar_ids = busbar_ids[node_mask[busbar_ids] > 0]
@@ -199,8 +259,8 @@ class _VirtualNodeEncoderBase(nn.Module):
                 batch_size * n_included_substations,
                 device=x.device,
             )
-            substation_x = self.substation_node_embedding(
-                repeated_substation_ids
+            substation_x = self.substation_node_encoder(
+                self.substation_features[repeated_substation_ids]
             ).to(dtype=x.dtype)
             x = th.cat([x, substation_x], dim=0)
             batch = th.cat([batch, substation_graph_ids], dim=0)
@@ -356,17 +416,7 @@ class GraphEncoder(_VirtualNodeEncoderBase):
         self.node_out_dim = int(hidden_dim)
         self.uses_edge_attr = self.conv_type in {"gat", "gine"}
         self.readout_aggr = readout_aggr.lower()
-        if self.readout_aggr not in {
-            "mean",
-            "sum",
-            "max",
-            "controlled_mean",
-            "controlled_sum",
-            "controlled_max",
-            "energized_mean",
-            "controlled_energized_mean",
-            "virtual_node",
-        }:
+        if self.readout_aggr not in POOLING_AGGREGATIONS:
             raise ValueError(f"Unsupported GNN readout aggregation: {readout_aggr}")
         self.edge_dim = int(graph_spec["edge_dim"])
         self.edge_feature_names = list(graph_spec.get("edge_feature_names", []))
@@ -908,17 +958,9 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
 
         self.readout_aggr = str(readout_aggr).lower()
         self.node_out_dim = int(hidden_dim)
-        if self.readout_aggr not in {
-            "mean",
-            "sum",
-            "max",
-            "attention",
-            "controlled_mean",
-            "controlled_attention",
-            "energized_mean",
-            "controlled_energized_mean",
-            "virtual_node",
-        }:
+        if self.readout_aggr not in (
+            POOLING_AGGREGATIONS + SPARSE_TRANSFORMER_ONLY_AGGREGATIONS
+        ):
             raise ValueError(
                 f"Unsupported sparse graph transformer readout: {readout_aggr}"
             )

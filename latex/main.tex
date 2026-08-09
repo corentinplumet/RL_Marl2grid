@@ -13,6 +13,9 @@
 \usepackage{graphicx}
 \usepackage{xcolor}
 \definecolor{darkred}{rgb}{0.55,0.05,0.05}
+% Clarifications added in answer to review questions. Distinct from the
+% blue/red/green/orange review markup and from darkred.
+\definecolor{clarif}{rgb}{0.00,0.42,0.42}
 \usepackage{subcaption}
 \usepackage{pdflscape}
 \usepackage{amsmath}
@@ -299,7 +302,13 @@ from readout.
 \begin{table}[H]
   \centering
   \scriptsize
-  \caption{Node types and nonzero input features received by GINE and GAT.}
+  \caption{Node types and nonzero input features received by GINE and GAT,
+  under the default \texttt{gnn\_angle\_representation = node}. Under
+  \texttt{edge\_diff} the \texttt{gen\_theta}, \texttt{load\_theta} and
+  \texttt{theta} entries leave the node rows in every representation; the
+  busbar and disaggregated graphs move the angle drop onto the physical line
+  edge, while the explicit-line graph writes it on the transmission-line row
+  as \texttt{theta\_diff} (Section~\ref{sec:line-node-angle}).}
   \label{tab:gine-gat-node-inventory}
   \setlength{\tabcolsep}{3pt}
   \begin{tabular}{L{0.18\textwidth}L{0.17\textwidth}L{0.56\textwidth}}
@@ -317,7 +326,7 @@ from readout.
      & Load & \texttt{is\_load}, \texttt{p}=\texttt{load\_p}, \texttt{theta}=\texttt{load\_theta}, \texttt{connected}, \texttt{domain\_mask} \\
      & Transmission line & \texttt{is\_transmission\_line}, \texttt{line\_status}, \texttt{rho}, \texttt{timestep\_overflow}, \texttt{time\_before\_cooldown\_line}, optional maintenance times, \texttt{connected}, \texttt{domain\_mask} \\
     \midrule
-    Any augmented schema & Substation summary & Learned substation-indexed vector; no raw physical feature row \\
+    Any augmented schema & Substation summary & Learned projection of the substation structural descriptor; no raw physical feature row \\
      & Virtual node & One learned vector shared across graphs; no raw physical feature row \\
     \bottomrule
   \end{tabular}
@@ -334,7 +343,12 @@ Table~\ref{tab:gine-gat-edge-inventory} reach a convolution.
   \centering
   \scriptsize
   \caption{Directed edge relations and edge-feature vectors received by GINE
-  and GAT. ``Relation'' denotes one active relation-one-hot column.}
+  and GAT, under the default \texttt{gnn\_angle\_representation = node}.
+  ``Relation'' denotes one active relation-one-hot column. Under
+  \texttt{edge\_diff} the physical-line block of the busbar and disaggregated
+  graphs gains a \texttt{theta\_diff} column; the explicit-line rows are
+  unchanged, because there the drop is a line-node feature and the attachment
+  edges stay free of physical channels.}
   \label{tab:gine-gat-edge-inventory}
   \setlength{\tabcolsep}{3pt}
   \begin{tabular}{L{0.18\textwidth}L{0.28\textwidth}L{0.45\textwidth}}

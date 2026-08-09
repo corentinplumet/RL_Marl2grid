@@ -198,6 +198,20 @@ def get_env_args(argv: Optional[List[str]] = None) -> Namespace:
             "reproduce the legacy always-visible neighboring-node behavior."
         ),
     )
+    parser.add_argument(
+        "--gnn-structural-relations-controlled-only",
+        type=str2bool,
+        default=True,
+        help=(
+            "Build same-substation edges and substation summary nodes only "
+            "inside the agent's controlled substations. A same-substation "
+            "relation says an element can be moved between two busbars, which "
+            "outside the controlled domain is another agent's action and joins "
+            "two nodes this agent cannot relate. Disable to reproduce the "
+            "legacy behavior, where neighboring busbars of one substation "
+            "exchanged messages directly and through their summary node."
+        ),
+    )
 
     # Parse the arguments
     params, _ = parser.parse_known_args(argv)

@@ -11,6 +11,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from common.readouts import POOLING_AGGREGATIONS
+
 try:
     import tomllib
 except ModuleNotFoundError:  # pragma: no cover - Python < 3.11 guard
@@ -137,23 +139,12 @@ def validate_args(config_args: dict[str, Any]) -> None:
     readout = str(config_args.get("gnn_readout_aggr", "mean")).lower()
     if gnn_type == "sparse_transformer":
         readout = str(config_args.get("sparse_gt_pooling", "") or readout).lower()
-    elif readout not in {
-        "mean",
-        "sum",
-        "max",
-        "controlled_mean",
-        "controlled_sum",
-        "controlled_max",
-        "energized_mean",
-        "controlled_energized_mean",
-        "virtual_node",
-    }:
+    elif readout not in POOLING_AGGREGATIONS:
         raise SystemExit(
             "Invalid config: readout "
             f"'{readout}' is only implemented for gnn_type=sparse_transformer. "
-            "Use mean, sum, max, controlled_mean, controlled_sum, "
-            "controlled_max, energized_mean, controlled_energized_mean, "
-            "or virtual_node with ordinary GNN encoders."
+            "Ordinary GNN encoders accept "
+            f"{', '.join(POOLING_AGGREGATIONS)}."
         )
 
     direction_choices = {

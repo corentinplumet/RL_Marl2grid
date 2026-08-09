@@ -1069,6 +1069,9 @@ class MAEnvWrapper(Env):
                 angle_representation=getattr(
                     args, "gnn_angle_representation", "node"
                 ),
+                structural_relations_controlled_only=getattr(
+                    args, "gnn_structural_relations_controlled_only", True
+                ),
                 include_legacy_self_relation_feature=(
                     int(getattr(args, "gnn_edge_feature_schema_version", 1)) < 2
                 ),

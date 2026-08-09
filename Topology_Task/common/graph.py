@@ -87,6 +87,7 @@ class GridGraphBuilder:
         add_substation_edges: bool = False,
         angle_representation: str = "node",
         context_requires_connection: bool = True,
+        structural_relations_controlled_only: bool = True,
     ) -> None:
         self.g2op_env = g2op_env
         self.observation_domains = {
@@ -100,6 +101,13 @@ class GridGraphBuilder:
         # ties it to the region the agent controls. Set to False to restore the
         # older behaviour, where every node of the local graph was always valid.
         self.context_requires_connection = bool(context_requires_connection)
+        # A same-substation relation says an element can be moved between two
+        # busbars. That is a statement about an action space, so outside the
+        # controlled domain it is a statement about another agent's actions and
+        # relates two nodes this agent can neither join nor observe jointly.
+        self.structural_relations_controlled_only = bool(
+            structural_relations_controlled_only
+        )
         self.angle_representation = _validate_angle_representation(
             angle_representation
         )
@@ -133,10 +141,55 @@ class GridGraphBuilder:
         self.gen_pos = self._topo_pos_array("gen_pos_topo_vect", getattr(g2op_env, "n_gen", 0))
         self.load_pos = self._topo_pos_array("load_pos_topo_vect", getattr(g2op_env, "n_load", 0))
 
+        self.substation_features = self._substation_structural_features()
+
         self.specs = {"state": self._make_spec(np.arange(self.n_sub), np.arange(self.n_line))}
         for agent, domain_nodes in self.observation_domains.items():
             sub_ids, line_ids = self._local_ids(domain_nodes)
             self.specs[agent] = self._make_spec(sub_ids, line_ids, controlled_nodes=domain_nodes)
+
+    #: Fixed divisor for the substation element counts. It is identical on
+    #: every grid, so the descriptor a substation receives depends on that
+    #: substation and not on the size of the network it belongs to.
+    SUBSTATION_COUNT_SCALE = 4.0
+
+    SUBSTATION_FEATURE_NAMES = (
+        "busbar_count",
+        "line_count",
+        "generator_count",
+        "load_count",
+    )
+
+    def _substation_structural_features(self) -> np.ndarray:
+        """Describe each substation by what it is made of, not by which it is.
+
+        A learned per-substation vector cannot cross grids, because its first
+        dimension is the number of substations. These counts are properties of
+        a substation itself, so the same descriptor means the same thing on any
+        network and a projection of it transfers unchanged.
+        """
+        features = np.zeros(
+            (self.n_sub, len(self.SUBSTATION_FEATURE_NAMES)), dtype=np.float32
+        )
+        busbars = np.asarray(
+            getattr(self, "n_busbar_per_sub", None)
+            if getattr(self, "n_busbar_per_sub", None) is not None
+            else np.full(self.n_sub, self.n_busbar),
+            dtype=np.float32,
+        ).reshape(-1)
+        features[:, 0] = busbars[: self.n_sub] / max(float(self.n_busbar), 1.0)
+        for column, mapping in (
+            (1, np.concatenate([self.line_or, self.line_ex])),
+            (2, self.gen_to_sub),
+            (3, self.load_to_sub),
+        ):
+            if len(mapping) == 0:
+                continue
+            counts = np.bincount(
+                np.asarray(mapping, dtype=np.int64), minlength=self.n_sub
+            )[: self.n_sub]
+            features[:, column] = counts / self.SUBSTATION_COUNT_SCALE
+        return features
 
     @property
     def node_dim(self) -> int:
@@ -212,7 +265,12 @@ class GridGraphBuilder:
                     )
 
         if self.add_substation_edges:
-            for sub_id in sub_ids:
+            augmented_sub_ids = (
+                controlled_nodes
+                if self.structural_relations_controlled_only
+                else sub_ids
+            )
+            for sub_id in augmented_sub_ids:
                 sub_node_ids = self._bus_node_ids([sub_id])
                 local_sub_nodes = [
                     local_index[int(node_id)]
@@ -244,6 +302,11 @@ class GridGraphBuilder:
 
         return {
             "graph_type": "bus",
+            "structural_relations_controlled_only": (
+                self.structural_relations_controlled_only
+            ),
+            "substation_features": self.substation_features,
+            "substation_feature_names": list(self.SUBSTATION_FEATURE_NAMES),
             "node_ids": node_ids,
             "line_ids": line_ids,
             "controlled_nodes": controlled_nodes,
@@ -694,6 +757,7 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
         angle_representation: str = "node",
         include_legacy_self_relation_feature: bool = False,
         context_requires_connection: bool = True,
+        structural_relations_controlled_only: bool = True,
     ) -> None:
         # Initialize the shared Grid2Op metadata and helper methods first. The
         # bus-only specs produced by the parent are immediately replaced below.
@@ -706,6 +770,9 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
             add_substation_edges=add_substation_edges,
             angle_representation=angle_representation,
             context_requires_connection=context_requires_connection,
+            structural_relations_controlled_only=(
+                structural_relations_controlled_only
+            ),
         )
         self.n_gen = int(getattr(g2op_env, "n_gen", len(self.gen_to_sub)))
         self.n_load = int(getattr(g2op_env, "n_load", len(self.load_to_sub)))
@@ -904,7 +971,12 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
                     )
 
         if self.add_substation_edges:
-            for sub_id in sub_ids:
+            augmented_sub_ids = (
+                controlled_nodes
+                if self.structural_relations_controlled_only
+                else sub_ids
+            )
+            for sub_id in augmented_sub_ids:
                 bus_entities = self._bus_node_ids([sub_id])
                 for src_entity in bus_entities:
                     for dst_entity in bus_entities:
@@ -982,6 +1054,11 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
 
         return {
             "graph_type": "heterogeneous",
+            "structural_relations_controlled_only": (
+                self.structural_relations_controlled_only
+            ),
+            "substation_features": self.substation_features,
+            "substation_feature_names": list(self.SUBSTATION_FEATURE_NAMES),
             "node_ids": node_ids.astype(np.int64, copy=False),
             "entity_ids": entity_ids,
             "node_type": node_type,
@@ -1274,6 +1351,7 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
         angle_representation: str = "node",
         include_legacy_self_relation_feature: bool = False,
         context_requires_connection: bool = True,
+        structural_relations_controlled_only: bool = True,
     ) -> None:
         super().__init__(
             g2op_env,
@@ -1289,6 +1367,9 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
                 include_legacy_self_relation_feature
             ),
             context_requires_connection=context_requires_connection,
+            structural_relations_controlled_only=(
+                structural_relations_controlled_only
+            ),
         )
         self.line_node_edge_direction = _validate_edge_direction(
             line_node_edge_direction,
@@ -1538,7 +1619,12 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
                         )
 
         if self.add_substation_edges:
-            for sub_id in sub_ids:
+            augmented_sub_ids = (
+                controlled_nodes
+                if self.structural_relations_controlled_only
+                else sub_ids
+            )
+            for sub_id in augmented_sub_ids:
                 bus_entities = self._bus_node_ids([sub_id])
                 for src_entity in bus_entities:
                     for dst_entity in bus_entities:
@@ -1645,6 +1731,11 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
 
         return {
             "graph_type": "heterogeneous_line",
+            "structural_relations_controlled_only": (
+                self.structural_relations_controlled_only
+            ),
+            "substation_features": self.substation_features,
+            "substation_feature_names": list(self.SUBSTATION_FEATURE_NAMES),
             "node_ids": node_ids.astype(np.int64, copy=False),
             "entity_ids": entity_ids,
             "node_type": node_type,
