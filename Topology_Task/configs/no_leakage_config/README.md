@@ -94,8 +94,9 @@ overruns both JED and Izar.
 A 15M-step run does not finish in one Izar allocation. Resume with
 `scripts/prepare_resume_runs.py`, or relaunch from the last checkpoint.
 
-To use a fuller JED allocation instead, override the internal guard at
-submission time:
+The JED launchers use the fuller allocation by default, setting the internal
+guard to 4980 minutes. Override `TIME_LIMIT` before the launcher if needed.
+For a single manual submission, use:
 
 ```bash
 TIME_LIMIT=4980 sbatch --time=3-12:00:00 job_jed.sh <config>
@@ -107,6 +108,7 @@ From the repository root:
 
 ```bash
 DRY_RUN=true bash Topology_Task/configs/no_leakage_config/launch_all_izar.sh
+DRY_RUN=true bash Topology_Task/configs/no_leakage_config/launch_all_jed.sh
 ```
 
 Must report 12, 15, 8 and 9.
@@ -117,18 +119,21 @@ All four screens, 44 jobs:
 
 ```bash
 bash Topology_Task/configs/no_leakage_config/launch_all_izar.sh
+bash Topology_Task/configs/no_leakage_config/launch_all_jed.sh
 ```
 
 One screen:
 
 ```bash
 bash Topology_Task/configs/no_leakage_config/screen_c_structure/launch_izar.sh
+bash Topology_Task/configs/no_leakage_config/screen_c_structure/launch_jed.sh
 ```
 
 The launchers take substring filters, and every filter must match:
 
 ```bash
 bash Topology_Task/configs/no_leakage_config/screen_a_depth_width/launch_izar.sh mp2
+bash Topology_Task/configs/no_leakage_config/screen_a_depth_width/launch_jed.sh mp2
 ```
 
 ## Requirements
