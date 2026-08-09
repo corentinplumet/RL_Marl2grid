@@ -1,0 +1,392 @@
+{
+  "gine_best_search2_baseline_comparisons.png": [
+    {
+      "name": "MLP Baseline",
+      "axis": 1,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "Historical GINE Baseline",
+      "axis": 1,
+      "final_step_m": 11.92,
+      "final_survival": 59.182539682539684,
+      "peak_survival": 93.86507936507937
+    },
+    {
+      "name": "MLP Baseline",
+      "axis": 2,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "000_no_concat_flat",
+      "axis": 2,
+      "final_step_m": 13.68,
+      "final_survival": 91.14136904761905,
+      "peak_survival": 91.14136904761905
+    },
+    {
+      "name": "MLP Baseline",
+      "axis": 3,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "01_optimized_critic_update",
+      "axis": 3,
+      "final_step_m": 14.48,
+      "final_survival": 80.5560515873016,
+      "peak_survival": 92.63624338624338
+    },
+    {
+      "name": "MLP Baseline",
+      "axis": 4,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "02_MLP_critic",
+      "axis": 4,
+      "final_step_m": 14.96,
+      "final_survival": 87.1966765873016,
+      "peak_survival": 92.97569444444444
+    },
+    {
+      "name": "MLP Baseline",
+      "axis": 5,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "03_nonshared_actor_GNN",
+      "axis": 5,
+      "final_step_m": 12.24,
+      "final_survival": 80.94097222222223,
+      "peak_survival": 98.2777777777778
+    },
+    {
+      "name": "MLP Baseline",
+      "axis": 6,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "04_light_GINE",
+      "axis": 6,
+      "final_step_m": 14.96,
+      "final_survival": 57.7405753968254,
+      "peak_survival": 84.16493055555556
+    },
+    {
+      "name": "MLP Baseline",
+      "axis": 7,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "05_entropy_decay",
+      "axis": 7,
+      "final_step_m": 11.2,
+      "final_survival": 82.8328373015873,
+      "peak_survival": 96.48131613756613
+    },
+    {
+      "name": "MLP Baseline",
+      "axis": 8,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "06_no_node_ID",
+      "axis": 8,
+      "final_step_m": 14.64,
+      "final_survival": 93.43998015873017,
+      "peak_survival": 94.6577380952381
+    },
+    {
+      "name": "MLP Baseline",
+      "axis": 9,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "07_GAT",
+      "axis": 9,
+      "final_step_m": 10.56,
+      "final_survival": 64.46130952380952,
+      "peak_survival": 81.97495039682539
+    },
+    {
+      "name": "MLP Baseline",
+      "axis": 10,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "08_weighted_GCN",
+      "axis": 10,
+      "final_step_m": 14.16,
+      "final_survival": 71.91517857142857,
+      "peak_survival": 82.18898809523809
+    },
+    {
+      "name": "MLP Baseline",
+      "axis": 11,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "09_light_no_concat_MLP_critic",
+      "axis": 11,
+      "final_step_m": 14.96,
+      "final_survival": 84.5513392857143,
+      "peak_survival": 90.5124007936508
+    },
+    {
+      "name": "MLP Baseline",
+      "axis": 12,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "10_light_concat_MLP_critic",
+      "axis": 12,
+      "final_step_m": 14.96,
+      "final_survival": 78.91104497354497,
+      "peak_survival": 90.37450396825398
+    }
+  ],
+  "rerun_gine_best00_vs_best10_14.png": [
+    {
+      "name": "Optimized MLP Baseline",
+      "axis": 1,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "Historical GINE Baseline",
+      "axis": 1,
+      "final_step_m": 11.92,
+      "final_survival": 59.182539682539684,
+      "peak_survival": 93.86507936507937
+    },
+    {
+      "name": "Optimized MLP Baseline",
+      "axis": 2,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "Light GINE with MLP critic",
+      "axis": 2,
+      "final_step_m": 14.96,
+      "final_survival": 78.91104497354497,
+      "peak_survival": 90.37450396825398
+    },
+    {
+      "name": "Optimized MLP Baseline",
+      "axis": 3,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "Historical GINE (Bias 0.0)",
+      "axis": 3,
+      "final_step_m": 10.96,
+      "final_survival": 53.65277777777777,
+      "peak_survival": 83.895667989418
+    },
+    {
+      "name": "Optimized MLP Baseline",
+      "axis": 4,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "Optimized critic and Bias 0.0",
+      "axis": 4,
+      "final_step_m": 10.56,
+      "final_survival": 82.4890873015873,
+      "peak_survival": 85.74603174603175
+    },
+    {
+      "name": "Optimized MLP Baseline",
+      "axis": 5,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "A0-style heavy GINE",
+      "axis": 5,
+      "final_step_m": 11.6,
+      "final_survival": 59.294642857142854,
+      "peak_survival": 84.32614087301587
+    },
+    {
+      "name": "Optimized MLP Baseline",
+      "axis": 6,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "Light A0-style GINE with MLP critic",
+      "axis": 6,
+      "final_step_m": 12.64,
+      "final_survival": 95.69196428571429,
+      "peak_survival": 97.42757936507938
+    }
+  ],
+  "rerun_a0_core_all_curves.png": [
+    {
+      "name": "Paper MAPPO baseline",
+      "axis": 1,
+      "final_step_m": 24.96,
+      "final_survival": 22.671875,
+      "peak_survival": 27.645833333333336
+    },
+    {
+      "name": "Optimized MLP Baseline",
+      "axis": 1,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "Disable optimized critic update",
+      "axis": 1,
+      "final_step_m": 14.96,
+      "final_survival": 85.59040178571429,
+      "peak_survival": 95.77579365079364
+    },
+    {
+      "name": "Smaller MLP actor/critic",
+      "axis": 1,
+      "final_step_m": 14.16,
+      "final_survival": 93.73958333333334,
+      "peak_survival": 100.0
+    },
+    {
+      "name": "Disable reward normalization",
+      "axis": 1,
+      "final_step_m": 14.96,
+      "final_survival": 89.2579365079365,
+      "peak_survival": 94.44452711640211
+    }
+  ],
+  "paper_mappo_discrete_baseline_vs_a0_baselines.png": [
+    {
+      "name": "Paper MAPPO baseline",
+      "axis": 1,
+      "final_step_m": 24.96,
+      "final_survival": 22.671875,
+      "peak_survival": 27.645833333333336
+    },
+    {
+      "name": "Optimized MLP Baseline",
+      "axis": 1,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "Optimized MLP Baseline (Bias 50%)",
+      "axis": 1,
+      "final_step_m": 20.0,
+      "final_survival": 50.84176587301587,
+      "peak_survival": 70.22247023809524
+    },
+    {
+      "name": "Optimized MLP Baseline (Bias 70%)",
+      "axis": 1,
+      "final_step_m": 19.92,
+      "final_survival": 99.27108134920634,
+      "peak_survival": 100.0
+    }
+  ],
+  "rerun_a0_core_pairwise_comparisons.png": [
+    {
+      "name": "Optimized MLP Baseline",
+      "axis": 1,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "Disable optimized critic update",
+      "axis": 1,
+      "final_step_m": 14.96,
+      "final_survival": 85.59040178571429,
+      "peak_survival": 95.77579365079364
+    },
+    {
+      "name": "Optimized MLP Baseline",
+      "axis": 2,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "Smaller MLP actor/critic",
+      "axis": 2,
+      "final_step_m": 14.16,
+      "final_survival": 93.73958333333334,
+      "peak_survival": 100.0
+    },
+    {
+      "name": "Optimized MLP Baseline",
+      "axis": 3,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "Disable reward normalization",
+      "axis": 3,
+      "final_step_m": 14.96,
+      "final_survival": 89.2579365079365,
+      "peak_survival": 94.44452711640211
+    }
+  ],
+  "rerun_a0_bias_comparison.png": [
+    {
+      "name": "Optimized MLP Baseline",
+      "axis": 1,
+      "final_step_m": 14.32,
+      "final_survival": 93.40699404761907,
+      "peak_survival": 98.55944113756614
+    },
+    {
+      "name": "Initial Bias 50%",
+      "axis": 1,
+      "final_step_m": 14.96,
+      "final_survival": 63.0625,
+      "peak_survival": 70.22247023809524
+    },
+    {
+      "name": "Initial Bias 70%",
+      "axis": 1,
+      "final_step_m": 14.96,
+      "final_survival": 95.60466269841271,
+      "peak_survival": 100.0
+    }
+  ]
+}

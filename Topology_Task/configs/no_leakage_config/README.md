@@ -59,8 +59,9 @@ out so the configs record the construction rather than depending on a default.
 
 ## What the corrected construction changes
 
-Three defects that all affected these screens, none of which was a screened
-factor:
+[`CODE_CHANGES.md`](CODE_CHANGES.md) documents every change, its flag and its
+measurement. In brief, three defects affected these screens, none of which was
+a screened factor:
 
 1. **Contextual visibility.** A contextual node is now valid only while an
    active, non-structural relation connects it to the controlled region.

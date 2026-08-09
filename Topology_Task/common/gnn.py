@@ -100,11 +100,6 @@ class _VirtualNodeEncoderBase(nn.Module):
         )
 
         edge_feature_names = list(graph_spec.get("edge_feature_names", []))
-        self.virtual_neutral_edge_idx = (
-            edge_feature_names.index("rho")
-            if "rho" in edge_feature_names
-            else None
-        )
         if self.add_substation_nodes:
             # A summary node is initialised from what its substation is made of,
             # not from which substation it is. An index embedding would be
@@ -215,8 +210,6 @@ class _VirtualNodeEncoderBase(nn.Module):
                 dtype=edge_attr.dtype,
                 device=edge_attr.device,
             )
-            if self.virtual_neutral_edge_idx is not None:
-                structural_edge_attr[:, self.virtual_neutral_edge_idx] = 1.0
             edge_attr = th.cat([edge_attr, structural_edge_attr], dim=0)
             if edge_type is not None:
                 if relation_type is None:
@@ -422,6 +415,16 @@ class GraphEncoder(_VirtualNodeEncoderBase):
         self.edge_feature_names = list(graph_spec.get("edge_feature_names", []))
         self.gcn_edge_weight_feature = str(gcn_edge_weight_feature).lower()
         self.gcn_edge_weight_idx = self._resolve_gcn_edge_weight_idx(graph_spec)
+        edge_names = list(graph_spec.get("edge_feature_names", []))
+        self.physical_edge_indicator_idx = (
+            edge_names.index("relation_physical_line")
+            if "relation_physical_line" in edge_names
+            else (
+                edge_names.index("line_status")
+                if "line_status" in edge_names
+                else None
+            )
+        )
         self.register_buffer("edge_index", th.tensor(graph_spec["edge_index"], dtype=th.long))
         self.register_buffer("node_ids", th.tensor(graph_spec["node_ids"], dtype=th.long))
 
@@ -443,7 +446,24 @@ class GraphEncoder(_VirtualNodeEncoderBase):
                     int(self.node_ids.max().item() // self.node_id_stride) + 1,
                 )
             )
-            self.sub_id_embedding = nn.Embedding(n_sub, node_id_emb_dim)
+            # Same reasoning as the summary node: an index embedding is shaped
+            # by the number of substations and cannot cross grids. Project the
+            # structural descriptor instead, so the learned tensor is shaped by
+            # the descriptor and a checkpoint stays loadable on any network.
+            substation_features = np.asarray(
+                graph_spec.get(
+                    "substation_features", np.zeros((max(1, n_sub), 1))
+                ),
+                dtype=np.float32,
+            )
+            self.register_buffer(
+                "node_id_substation_features",
+                th.tensor(substation_features, dtype=th.float32),
+                persistent=False,
+            )
+            self.sub_id_embedding = nn.Linear(
+                substation_features.shape[1], node_id_emb_dim
+            )
             self.bus_id_embedding = nn.Embedding(
                 self.n_bus_id_embeddings, node_id_emb_dim
             )
@@ -576,7 +596,7 @@ class GraphEncoder(_VirtualNodeEncoderBase):
                 x = conv(
                     x,
                     edge_index,
-                    edge_weight=edge_attr[:, self.gcn_edge_weight_idx],
+                    edge_weight=self._gcn_edge_weight(edge_attr),
                 )
             else:
                 x = conv(x, edge_index)
@@ -739,7 +759,13 @@ class GraphEncoder(_VirtualNodeEncoderBase):
         ).long()
         bus_ids = th.remainder(node_ids, self.node_id_stride).long()
         return th.cat(
-            [x, self.sub_id_embedding(sub_ids), self.bus_id_embedding(bus_ids)],
+            [
+                x,
+                self.sub_id_embedding(
+                    self.node_id_substation_features[sub_ids]
+                ),
+                self.bus_id_embedding(bus_ids),
+            ],
             dim=-1,
         )
 
@@ -773,6 +799,21 @@ class GraphEncoder(_VirtualNodeEncoderBase):
             sage_aggr = "add" if graphsage_aggr == "sum" else graphsage_aggr
             return SAGEConv(in_dim, hidden_dim, aggr=sage_aggr)
         raise ValueError(f"Unsupported GNN type: {conv_type}")
+
+    def _gcn_edge_weight(self, edge_attr: th.Tensor) -> th.Tensor:
+        """Loading as a message weight, with unit weight on non-physical edges.
+
+        Zero would delete a message, so a structural or attachment relation
+        cannot simply take the loading of a line it does not represent. The
+        substitution is made here rather than written into the edge attribute,
+        which keeps the attribute an honest measurement for the encoders that
+        read it as one.
+        """
+        weight = edge_attr[:, self.gcn_edge_weight_idx]
+        if self.physical_edge_indicator_idx is None:
+            return weight
+        physical = edge_attr[:, self.physical_edge_indicator_idx] > 0
+        return th.where(physical, weight, th.ones_like(weight))
 
     def _resolve_gcn_edge_weight_idx(self, graph_spec: Dict[str, Any]) -> Optional[int]:
         if self.gcn_edge_weight_feature in {"", "none", "false"}:
@@ -1022,7 +1063,24 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
                     int(self.node_ids.max().item() // self.node_id_stride) + 1,
                 )
             )
-            self.sub_id_embedding = nn.Embedding(n_sub, node_id_emb_dim)
+            # Same reasoning as the summary node: an index embedding is shaped
+            # by the number of substations and cannot cross grids. Project the
+            # structural descriptor instead, so the learned tensor is shaped by
+            # the descriptor and a checkpoint stays loadable on any network.
+            substation_features = np.asarray(
+                graph_spec.get(
+                    "substation_features", np.zeros((max(1, n_sub), 1))
+                ),
+                dtype=np.float32,
+            )
+            self.register_buffer(
+                "node_id_substation_features",
+                th.tensor(substation_features, dtype=th.float32),
+                persistent=False,
+            )
+            self.sub_id_embedding = nn.Linear(
+                substation_features.shape[1], node_id_emb_dim
+            )
             self.bus_id_embedding = nn.Embedding(
                 self.n_bus_id_embeddings, node_id_emb_dim
             )
@@ -1278,7 +1336,13 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
         ).long()
         bus_ids = th.remainder(node_ids, self.node_id_stride).long()
         return th.cat(
-            [x, self.sub_id_embedding(sub_ids), self.bus_id_embedding(bus_ids)],
+            [
+                x,
+                self.sub_id_embedding(
+                    self.node_id_substation_features[sub_ids]
+                ),
+                self.bus_id_embedding(bus_ids),
+            ],
             dim=-1,
         )
 

@@ -191,8 +191,8 @@ the value vector $\mathbf{W}_{r}\mathbf{h}_u$. This is the central difference
 from GINE.
 
 GAT internally adds a self-loop for every node. That computational self-loop
-is separate from the optional explicit \texttt{relation\_self} edge in the
-graph schema.
+is separate from any explicit self edge in the graph schema, which these
+representations do not create.
 
 \begin{table}[H]
   \centering
@@ -317,14 +317,14 @@ from readout.
     \midrule
     \texttt{bus} & Busbar & \texttt{gen\_p}, \texttt{gen\_theta}, \texttt{load\_p}, \texttt{load\_theta}, \texttt{time\_before\_cooldown\_sub}, \texttt{domain\_mask} \\
     \midrule
-    \texttt{heterogeneous} & Busbar & \texttt{is\_busbar}, \texttt{time\_before\_cooldown\_sub}, \texttt{connected}, \texttt{domain\_mask} \\
-     & Generator & \texttt{is\_generator}, \texttt{p}=\texttt{gen\_p}, \texttt{theta}=\texttt{gen\_theta}, \texttt{connected}, \texttt{domain\_mask} \\
-     & Load & \texttt{is\_load}, \texttt{p}=\texttt{load\_p}, \texttt{theta}=\texttt{load\_theta}, \texttt{connected}, \texttt{domain\_mask} \\
+    \texttt{heterogeneous} & Busbar & \texttt{is\_busbar}, \texttt{time\_before\_cooldown\_sub}, \texttt{domain\_mask} \\
+     & Generator & \texttt{is\_generator}, \texttt{p}=\texttt{gen\_p}, \texttt{theta}=\texttt{gen\_theta}, \texttt{domain\_mask} \\
+     & Load & \texttt{is\_load}, \texttt{p}=\texttt{load\_p}, \texttt{theta}=\texttt{load\_theta}, \texttt{domain\_mask} \\
     \midrule
-    \texttt{heterogeneous\_line} & Busbar & \texttt{is\_busbar}, \texttt{time\_before\_cooldown\_sub}, \texttt{connected}, \texttt{domain\_mask} \\
-     & Generator & \texttt{is\_generator}, \texttt{p}=\texttt{gen\_p}, \texttt{theta}=\texttt{gen\_theta}, \texttt{connected}, \texttt{domain\_mask} \\
-     & Load & \texttt{is\_load}, \texttt{p}=\texttt{load\_p}, \texttt{theta}=\texttt{load\_theta}, \texttt{connected}, \texttt{domain\_mask} \\
-     & Transmission line & \texttt{is\_transmission\_line}, \texttt{line\_status}, \texttt{rho}, \texttt{timestep\_overflow}, \texttt{time\_before\_cooldown\_line}, optional maintenance times, \texttt{connected}, \texttt{domain\_mask} \\
+    \texttt{heterogeneous\_line} & Busbar & \texttt{is\_busbar}, \texttt{time\_before\_cooldown\_sub}, \texttt{domain\_mask} \\
+     & Generator & \texttt{is\_generator}, \texttt{p}=\texttt{gen\_p}, \texttt{theta}=\texttt{gen\_theta}, \texttt{domain\_mask} \\
+     & Load & \texttt{is\_load}, \texttt{p}=\texttt{load\_p}, \texttt{theta}=\texttt{load\_theta}, \texttt{domain\_mask} \\
+     & Transmission line & \texttt{is\_transmission\_line}, \texttt{line\_status}, \texttt{rho}, \texttt{timestep\_overflow}, \texttt{time\_before\_cooldown\_line}, optional maintenance times, \texttt{domain\_mask} \\
     \midrule
     Any augmented schema & Substation summary & Learned projection of the substation structural descriptor; no raw physical feature row \\
      & Virtual node & One learned vector shared across graphs; no raw physical feature row \\
@@ -356,7 +356,7 @@ Table~\ref{tab:gine-gat-edge-inventory} reach a convolution.
     Representation & Directed relation & Edge features \\
     \midrule
     \texttt{bus} & Physical busbar $\leftrightarrow$ busbar & \texttt{line\_status}, \texttt{rho}, \texttt{timestep\_overflow}, \texttt{time\_before\_cooldown\_line}, optional maintenance times; no relation one-hot \\
-     & Optional self or same-substation & Same width; physical values zero and \texttt{rho}$=1$; no relation one-hot \\
+     & Optional self or same-substation & Same width; all physical values zero; no relation one-hot \\
     \midrule
     \texttt{heterogeneous} & Physical busbar $\leftrightarrow$ busbar & Complete measured physical-line block plus \texttt{relation\_physical\_line} \\
      & Generator $\leftrightarrow$ busbar & Neutral physical block plus direction-specific generator relation \\
@@ -368,7 +368,7 @@ Table~\ref{tab:gine-gat-edge-inventory} reach a convolution.
      & Load $\leftrightarrow$ busbar & One direction-specific load relation \\
      & Optional self or same-substation & One corresponding relation \\
     \midrule
-    Any augmented schema & Busbar $\rightarrow$ summary/virtual, with optional reverse & Zero edge vector except neutral \texttt{rho}$=1$ when present; no dedicated relation one-hot in the ordinary GINE/GAT encoder \\
+    Any augmented schema & Busbar $\rightarrow$ summary/virtual, with optional reverse & Zero edge vector; the relation carries no flow \\
     \bottomrule
   \end{tabular}
 \end{table}

@@ -1,0 +1,120 @@
+\chapter{Thesis Plan}
+
+\section{Working Title}
+\label{sec:plan-title}
+
+\textbf{Graph Neural Networks for Decentralized Multi-Agent Reinforcement
+Learning in Power-Grid Topology Control}
+
+\section{Central Thesis Question}
+\label{sec:plan-question}
+
+\textbf{How can graph neural networks help decentralized
+reinforcement learning agents learn reliable power-grid topology control
+policies that preserve survival performance while scaling to combinatorial
+action spaces?}
+\\
+\\
+Three terms fix what the thesis has to measure:
+
+\begin{itemize}
+  \item \textbf{Reliable} is episodic survival on held-out chronics, always
+  reported from the checkpoint with the best test survival and re-evaluated on
+  the full test split.
+  \item \textbf{Decentralized} means each agent owns a fixed group of
+  substations, observes a local subgraph, and acts on its own discrete topology
+  actions without having any information about the other agent actions; only the critic is centralized.
+  \item \textbf{Scaling} means larger grids, which a graph encoder addresses because its
+  parameters are independent of grid size.
+\end{itemize}
+
+\section{Research Questions}
+\label{sec:plan-research-questions}
+
+\begin{enumerate}
+  \item \textbf{Can a graph actor replace a flat one without paying for it?}
+  A decentralized MAPPO agent has first to be trained to stable, high survival
+  on \texttt{bus14}; only then is it meaningful to swap the flat MLP actor for a
+  graph encoder. An MLP's input width is tied to one grid, so nothing transfers;
+  a graph encoder is size-independent, but that is worth nothing if it does not
+  match the tuned MLP first. (Chapter~\ref{ch:baseline}.)
+
+  \item \textbf{How should the grid be represented as a graph for a local
+  actor?} Node granularity (busbars, or busbars with separate generator, load
+  and line nodes), which relations exist and what they carry, the optional
+  substation-level augmentations, and the graph readout are all free choices.
+  (Chapter~\ref{ch:methods} defines them; Chapter~\ref{ch:experiments} measures
+  which ones move survival.)
+
+  \item \textbf{What is a local agent entitled to observe, and does enforcing
+  that boundary matter?} A local graph carries contextual nodes from
+  neighboring substations. Making a contextual node visible only while a live
+  line connects it to the agent's own region, and choosing whether pooling
+  covers the whole visible graph or only the agent's controlled domain, changes
+  what the policy conditions on. The distinction is between context and
+  leakage. (Sections~\ref{subsec:graph-local-global}
+  and~\ref{sec:graph-pooling}.)
+
+  {\color{blue}
+  \item \textbf{Can the agents intervene sparsely without losing survival?}
+  Evaluation-time rho overrides, an intervention-gated actor, fixed non-idle
+  penalties, and adaptive Lagrangian intervention budgets are evaluated on two
+  axes at once, survival and intervention rate, since improving either alone is
+  not a result. (Chapter~\ref{ch:sparse-control}.)
+  }
+
+  \item \textbf{Does any of this transfer to a larger grid?} Moving from
+  \texttt{bus14} to the 36-substation WCCI grid tests whether a graph encoder is
+  portable in practice and not only in parameter shape, and what has to be
+  corrected: mainly feature scaling and the size of the action
+  space.
+  (Chapter~\ref{ch:wcci-transfer}.)
+\end{enumerate}
+
+\section{Expected Contributions}
+\label{sec:plan-contributions}
+
+\begin{itemize}
+  \item \textbf{A tuned decentralized MAPPO baseline on \texttt{bus14}, and
+  evidence that a graph actor matches it.} The original framework trained
+  unstably; the training and initialization changes that fix it are isolated one
+  at a time, so the GINE actor is compared against a strong MLP rather than a
+  weak one.
+
+  \item \textbf{The local actor graph, specified and then screened.} Three
+  representations sharing a fixed candidate graph with a dynamic edge mask, so
+  tensor shapes stay constant while the topology varies, each with an explicit
+  information boundary --- the three are \emph{not} information-equivalent, so
+  comparing them is never a pure comparison of architectures. Encoder depth and
+  width, message-passing operator, readout, and the structural augmentations of
+  the busbar graph are then screened as balanced full factorials, three seeds
+  per cell, each scored by full-test evaluation of the best checkpoint.
+
+  \item \textbf{A size invariant mechanism for combinatorial action spaces.} A
+  candidate-action head that scores each action from the encoded nodes it
+  modifies, replacing the fixed-width layer over an action index
+
+  \item \textbf{An ablation of sparse intervention mechanisms} reported jointly
+  on survival and intervention frequency, connecting the learned behavior to
+  what a control room would accept: act rarely, act locally, act when the grid
+  is unsafe.
+
+  \item \textbf{A measurement of what actually breaks under transfer.} Encoder
+  parameters cross grids unchanged; the input distribution they were calibrated
+  on does not. Two findings generalize beyond power grids: per-feature
+  standardization is harmful when a channel is a mixture dominated by structural
+  zeros, and for gauge-dependent quantities such as voltage angle, changing the
+  representation beats any choice of normalization.
+\end{itemize}
+
+\section{Open Decisions}
+
+\begin{itemize}
+  \item Confirm the final thesis title and whether to emphasize GNNs,
+  sparse-control, or decentralized MARL most strongly.
+  \item Decide which experiment families are final and which are only
+  exploratory.
+  \item Decide whether the main claim is performance improvement, improved
+  sparsity at equal survival, or reproducible ablation insight.
+  \item Choose the final bibliography style required by the university.
+\end{itemize}

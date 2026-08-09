@@ -93,7 +93,6 @@ gnn_virtual_edge_direction = "toward_virtual"
 # Structural factors (held off in stage 1)
 gnn_add_substation_edges = false
 gnn_add_substation_nodes = false
-sparse_gt_add_self_edges = true
 sparse_gt_add_substation_edges = false
 sparse_gt_use_edge_attr = true
 sparse_gt_use_edge_type_embeddings = true

@@ -7,67 +7,27 @@ experiments. The presentation separates four design choices: feature scaling,
 the base graph representation, substation-level augmentations, and graph
 pooling.
 
-\section{Input Scaling and Angle Representation}
+\section{Physical Scaling and Voltage-Angle Representation}
 \label{subsec:graph-feature-normalization}
 
-This section collects everything that determines the numerical form of what the
-encoder reads: two transformations applied to the continuous channels, and one
-choice about how voltage angles are expressed in the first place. All three are
-independent of the graph schema and of the grid.
-Chapter~\ref{ch:wcci-transfer} measures their effect across two grids and
-decides which of them to use; the mechanisms themselves are defined here.
+Two input choices are used to make observations more comparable across grids:
+fixed physical scaling and a reference-independent representation of voltage
+angles. Both operate before the graph encoder and are independent of the graph
+schema.
 
-\subsection{The two transformations}
+\subsection{Physical scaling}
 
-Deterministic physical scaling is applied first, followed by optional running
-standardization. Let $x_{i,f,t}$ be feature $f$ of node or edge
-$i$ at time $t$. The complete pipeline is
-\begin{align}
-  x^{\mathrm{scale}}_{i,f,t}
-  &=
-  \begin{cases}
-    x_{i,f,t}/s_f, & \text{if physical scaling is enabled},\\
-    x_{i,f,t}, & \text{otherwise},
-  \end{cases}
-  \label{eq:graph-physical-scaling}\\
-  \widehat{x}_{i,f,t}
-  &=
-  \begin{cases}
-    \operatorname{clip}\!\left(
-      \dfrac{x^{\mathrm{scale}}_{i,f,t}-\mu_{f,t}}
-            {\sqrt{\sigma_{f,t}^{2}+\epsilon}},
-      -c,c
-    \right), & \text{if running normalization is enabled},\\
-    x^{\mathrm{scale}}_{i,f,t}, & \text{otherwise}.
-  \end{cases}
-  \label{eq:graph-feature-normalization}
-\end{align}
-Here $s_f$ is a fixed physical reference and $\mu_{f,t}$ and
-$\sigma_{f,t}^{2}$ are running moments estimated during training. When both
-transformations are enabled, the moments describe $x/s_f$. Clipping applies
-only to running standardization; $c=10$ by default and a non-positive value
-disables clipping.
-
-\subsection{Deterministic physical scaling}
-
-Physical scaling divides each quantity by a constant with the same unit and
-therefore preserves physical zero. Table~\ref{tab:graph-physical-scales} gives
-the exact constants. The power base may be specified explicitly; otherwise the
-largest installed generator rating is used,
-with a 100~MW fallback when the environment does not expose generator ratings.
-\\
-\\
-It is worth being explicit that this discards nothing within a grid. Division by
-a fixed constant is invertible, so the mapping from megawatts to scaled units is
-a bijection: the first linear layer can recover any function of the absolute
-value it needs, and a load of $0.5$ on \texttt{bus14} is $70$~MW unambiguously.
-The operation is a change of units, the same per-unit convention power systems
-uses, adopted for the same reason. What it removes is the ability to compare
-magnitudes \emph{across} grids, which is the intent: a transferable encoder
-should respond to a load being half the largest unit's capacity rather than to
-the number $200$. It is also the right target for the task, since whether a flow
-is safe is set by its ratio to a thermal limit rather than by its absolute size
--- which is why the loading ratio needs no scaling at all.
+Each scaled continuous feature $x_f$ is divided by a fixed reference with the
+same unit,
+\[
+  x'_f = \frac{x_f}{s_f}.
+\]
+This changes the unit of the feature without changing the information it
+contains and, importantly for sparse graph features, keeps zero at zero. The
+references are listed in Table~\ref{tab:graph-physical-scales}. In all reported
+experiments that use scaling, the power reference is the rating of the largest
+installed generator in the corresponding grid,
+$s_P=\max_g P_g^{\max}$.
 
 \begin{table}[H]
   \centering
@@ -80,8 +40,8 @@ is safe is set by its ratio to a thermal limit rather than by its absolute size
     Features & Scale $s_f$ & Source \\
     \midrule
     \texttt{gen\_p}, \texttt{load\_p}, \texttt{p}
-      & Power base in MW & Configured value or maximum generator rating. \\
-    \texttt{gen\_theta}, \texttt{load\_theta}, \texttt{theta}
+      & Power base in MW & Largest installed generator rating. \\
+    \texttt{gen\_theta}, \texttt{load\_theta}, \texttt{theta}, \texttt{theta\_diff}
       & $180$ degrees & Fixed angular scale. \\
     \texttt{time\_before\_cooldown\_sub}
       & Maximum substation cooldown & Grid2Op environment parameter. \\
@@ -95,56 +55,31 @@ is safe is set by its ratio to a thermal limit rather than by its absolute size
   \end{tabular}
 \end{table}
 
-\subsection{Running standardization}
+\noindent The dimensionless loading ratio \texttt{rho} and all binary, mask, type, and
+relation indicators are left unchanged.
 
-Running moments are estimated with Welford's online algorithm. One normalizer
-is shared across agents and updated from the full state graph once per
-environment step. Heterogeneous graphs maintain separate node statistics for
-each node type. Edge statistics include only active physical-line relations;
-inactive candidates and structural, asset-attachment, same-substation, and
-virtual relations do not contribute.
-\\
-\\
-The loading ratio \texttt{rho} is already dimensionless and is neither rescaled
-nor standardized. Preserving it is also necessary when GCN uses \texttt{rho}
-directly as a non-negative message weight. Binary connection states, node and
-edge masks, domain masks, type indicators, and relation one-hot attributes are
-also left unchanged. Only the continuous channels listed in
-Table~\ref{tab:graph-physical-scales} enter the running statistics.
-The running moments are frozen during evaluation.
-\\
-\\
 \subsection{Angle representation}
 \label{sec:line-node-angle}
 
-Scaling cannot repair everything, because one channel is not well posed to begin
-with. An absolute voltage angle is measured against whichever bus is chosen as
-slack, so its level is a property of that reference rather than of the grid
-state, and only differences between angles carry physical meaning. Line flow
-depends on the difference across the line. Dividing by a constant moves both
-grids together and leaves any displacement between them untouched, so no choice
-of scale addresses it.
-\\
-\\
-The alternative is to carry the angle as the drop along each line,
+An absolute voltage angle requires an arbitrary zero, normally fixed by the
+slack bus. Adding the same constant to every bus angle therefore describes the
+same physical state. Absolute angles depend on this choice of reference, whereas
+the angle difference across a line does not. For transfer, the graph instead uses
 \[
-  \Delta\theta_{\ell} \;=\; \theta^{\,\mathrm{or}}_{\ell} - \theta^{\,\mathrm{ex}}_{\ell},
+  \Delta\theta_{\ell} \;=\; \theta^{\,\mathrm{or}}_{\ell} - \theta^{\,\mathrm{ex}}_{\ell}
 \]
-which is what \texttt{gnn\_angle\_representation = "edge\_diff"} selects. It is
-gauge-invariant by construction, since adding a constant to every angle leaves
-it unchanged, and it is dense, since every line has two ends whereas a busbar
-carries an angle only when an asset is attached to it. The absolute per-asset
-channels are removed when it is enabled, because keeping them would preserve
-exactly the reference dependence the change exists to remove.
+This quantity
+is \emph{gauge-invariant}, meaning that it is unchanged when the angle reference
+is shifted. It also provides one angle value per line instead of only at nodes
+with an attached generator or load. The reference-dependent absolute-angle
+channels are removed when the angle drop is enabled.
 \\
 \\
-Gauge invariance matters beyond comparing grids. In a decentralized setting the
-slack reference is global, so under absolute angles an event on the far side of
-the grid that does not affect an agent still moves all of its angle inputs. The
-drop is a property of one line.
-\\
-\\
-Where the channel lives depends on how the representation models a line.
+Chapter~\ref{ch:wcci-transfer} shows why this special treatment is necessary in
+practice: the source and target grids exhibit a $5$--$7^{\circ}$ offset in
+absolute angles due largely to their different reference choices. Fixed scaling
+cannot remove such an offset, whereas the line-angle difference is independent
+of the reference.
 
 \begin{table}[H]
   \centering
@@ -167,118 +102,24 @@ Where the channel lives depends on how the representation models a line.
   \end{tabular}
 \end{table}
 
-\subsubsection{The explicit-line graph}
-
-In the busbar and disaggregated representations a line is an edge, so the drop
-has an obvious home and simply moves from the node features onto that edge. The
-explicit-line representation of Section~\ref{sec:heterogeneous-line-graph}
-inverts the arrangement: each line is a node carrying its own loading, status,
-overflow and cooldown, and the remaining edges are busbar-to-line attachments
-that carry no physical channel at all, only a relation type. There is no edge
-for the drop to move onto.
-\\
-\\
-It is therefore written on the line node itself, in the column the absolute
-angle previously occupied. This keeps the line node's description of its own
-line complete: loading, status, cooldown, and now the angle across it, which is
-the quantity that drives the flow the loading measures. Handling this case
-explicitly matters because the failure would otherwise be silent -- the generic
-correction removes the absolute angle from the node features and adds the drop
-to the edge features, and in a schema whose edge block is empty the first half
-applies while the second has nowhere to land, leaving an observation with no
-angle information at all.
-\\
-\\
-The gain is largest exactly where the absolute channel was thinnest. Under
-absolute angles an actor reads them only through the generators and loads it
-owns, while the line nodes -- which carry loading, status and cooldown -- carry
-no angle. On \texttt{bus14}, agent 1 sees three angle values in total, two of
-which are duplicates, because a generator and a load on the same busbar read the
-same bus angle.
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Local-graph rows carrying an angle on \texttt{bus14}, explicit-line
-  representation without one-hop context.}
-  \label{tab:angle-coverage}
-  \setlength{\tabcolsep}{6pt}
-  \begin{tabular}{lccc}
-    \toprule
-    Agent & Nodes & Absolute angle & Angle drop \\
-    \midrule
-    0 & 22 & 5 \; (23\,\%) & 8 \; (36\,\%) \\
-    1 & 20 & 3 \; (15\,\%) & 8 \; (40\,\%) \\
-    2 & 29 & 8 \; (28\,\%) & 9 \; (31\,\%) \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-Every row counted in the angle-drop column is a line node, so each agent holds
-the drop across every line it touches, including the boundary lines whose far
-endpoint the leakage-free construction deliberately omits. That is new
-information relative to the absolute angle, and it is of the same kind as the
-loading already carried by those line nodes: a measurement of a line the agent
-is attached to, not a state of equipment it cannot see.
-
-\subsubsection{Masking on outage}
-
-The drop has to be zeroed when a line is out. The simulator zeroes the loading
-of a disconnected line but leaves its endpoint angles at their last solved
-values, so an unmasked drop reports a confident number on a dead line while
-every other channel on the same row reports that it is dead. Measured on
-\texttt{bus14}, a line taken out of service kept endpoint angles of $-1.06$ and
-$-7.62$ degrees, a spurious drop of $6.56$, alongside a loading of exactly zero.
-The line-node channel is therefore masked by line status explicitly. The busbar
-and disaggregated representations need no equivalent step, because an inactive
-edge is zeroed in full before message passing.
-
-\subsubsection{What is unchanged}
-
-In the explicit-line graph the drop replaces the absolute angle rather than
-joining it, so the node feature width, the column position, and the encoder
-input dimension are all unchanged; attachment edges remain free of physical
-channels. In the other two representations the node block loses the angle
-columns and the physical line edge gains one
-(Table~\ref{tab:angle-feature-dims}). In every case message passing, graph
-readout, and candidate-action scoring are untouched, and keeping the absolute
-angle reproduces the previous observation exactly, so runs predating this option
-remain a valid control.
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Feature dimensions under the two ways of expressing the angle, at the
-  default edge-feature schema version. The explicit-line graph keeps both widths
-  because the drop replaces the absolute angle in the same node column rather
-  than moving to an edge.}
-  \label{tab:angle-feature-dims}
-  \setlength{\tabcolsep}{8pt}
-  \begin{tabular}{llrr}
-    \toprule
-    Graph type & Angle carried as & Node width & Edge width \\
-    \midrule
-    \texttt{bus} & Absolute & 6 & 4 \\
-    \texttt{bus} & Drop & 4 & 5 \\
-    \texttt{heterogeneous} & Absolute & 8 & 10 \\
-    \texttt{heterogeneous} & Drop & 7 & 11 \\
-    \texttt{heterogeneous\_line} & Absolute & 13 & 9 \\
-    \texttt{heterogeneous\_line} & Drop & 13 & 9 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+\noindent In the busbar and disaggregated schemas, physical lines are edges, so the angle
+drop is stored on those edges. In the explicit-line schema, each line is a node
+and its attachment edges contain no physical measurements; the drop is
+therefore stored on the line node. This also gives each local actor the angle
+drop for every line it observes, including boundary lines. A disconnected line
+is assigned a zero drop because the simulator may retain stale endpoint angles
+after an outage. These placements are the only schema-specific part of the
+transformation; the encoder and graph readout are unchanged.
 
 \subsection{Use across the experiments}
 
-All three choices are available to every experiment. The screening protocol of
-Chapter~\ref{ch:experiments} and the sparse-control experiments of
-Chapter~\ref{ch:sparse-control} use none of them and read raw features. The
-transfer study of Chapter~\ref{ch:wcci-transfer} enables physical scaling and
-the angle drop, and deliberately leaves running standardization off:
-Section~\ref{sec:wcci-running-norm} measures it on a cross-grid comparison and
-finds it counterproductive for features whose support is sparse, because
-standardizing a channel that is mostly structural zeros relocates that point
-mass to a grid-dependent value.
+The screening experiments of Chapter~\ref{ch:experiments} and the sparse-control
+experiments of Chapter~\ref{ch:sparse-control} use the original raw features and
+absolute angles. The cross-grid transfer study of
+Chapter~\ref{ch:wcci-transfer} uses physical scaling and angle drops on both
+grids. The code also supports running standardization, but no reported policy
+run uses it. Section~\ref{sec:wcci-running-norm} analyzes it offline as a
+rejected alternative and finds that it increases the mismatch between grids.
 
 
 \section{Graph Representations}
@@ -526,7 +367,7 @@ only for environments with scheduled maintenance.
 \noindent The edge embedding of a busbar-to-busbar transmission edge is
 exactly the row of Table~\ref{tab:graph-edge-features}. \hl{Optional
 same-substation edges use the same feature width: all physical channels are
-zero except \texttt{rho}$=1$, which is a neutral structural value. The
+zero throughout. The
 homogeneous schema does not append relation one-hots, so these optional
 relations are distinguished only by their endpoints and neutral physical
 attributes.}
@@ -604,9 +445,8 @@ eight-dimensional feature vector
   \texttt{p},\
   \texttt{theta},\\
   &\texttt{time\_before\_cooldown\_sub},\
-  \hl{\texttt{connected}},\
   \texttt{domain\_mask}
-  \,]^{\mathsf T}\in\mathbb{R}^{8}.
+  \,]^{\mathsf T}\in\mathbb{R}^{7}.
   \end{split}
   \label{eq:heterogeneous-common-node-vector}
 \end{equation}
@@ -633,101 +473,33 @@ the column is still present for that node type but is explicitly zero-filled.
     \texttt{p} & $0$ & \texttt{gen\_p} if connected; $0$ otherwise & \texttt{load\_p} if connected; $0$ otherwise \\
     \texttt{theta} & $0$ & \texttt{gen\_theta} if connected; $0$ otherwise & \texttt{load\_theta} if connected; $0$ otherwise \\
     \texttt{time\_before\_cooldown\_sub} & Substation value & $0$ & $0$ \\
-    \hl{\texttt{connected}} & $1$ & $1$ connected; $0$ disconnected & $1$ connected; $0$ disconnected \\
     \texttt{domain\_mask} & $1$ controlled; $0$ contextual & $1$ controlled; $0$ contextual & $1$ controlled; $0$ contextual \\
     \bottomrule
   \end{tabular}
 \end{table}
 
 {\color{clarif}
-\paragraph{Why \texttt{connected} exists here and not in the busbar graph.}
-The two disaggregated schemas give every generator and load its own node, and
-that node stays in the fixed candidate graph for the whole episode whether or
-not the asset is attached. When it detaches, its attachment candidates are all
-masked and its measured channels are zeroed, so its row becomes
-$p=0$, $\theta=0$. A generator that is attached but injecting nothing produces
-the same numbers. The flag is the only channel that separates ``this asset is
-not on the grid'' from ``this asset is on the grid and currently at zero''.
+\paragraph{There is no per-asset connection flag.}
+An earlier version of this schema carried a \texttt{connected} column, written
+as a constant on busbar rows, as a copy of \texttt{line\_status} on line rows,
+and as the attachment state on generator and load rows. Only the last of those
+carried information, and it never varied: a \emph{change} action toggles an
+element between busbars and cannot detach it, and a substation split that
+isolated a load or generator ends the episode. Measured over $600$ random
+topology actions on \texttt{bus14} spanning $180$ episode ends, and over $400$
+on the WCCI grid, no generator or load was ever observed detached, against
+$150$ and $493$ line disconnections respectively. The column was therefore
+removed rather than carried.
 \\
 \\
-The busbar graph has no such row to disambiguate. There, a detached asset simply
-stops contributing to the sum aggregated onto its busbar, and the busbar node
-itself is switchgear that is never connected or disconnected. Since that schema
-has a single node type, a column that would be constant for every node would
-carry no information at all, whereas the disaggregated schemas share one feature
-vector across all node types and a column need only be meaningful for some of
-them.
-\\
-\\
-Two consequences of that sharing are worth stating plainly. On busbar rows the
-flag is written as a constant $1$ and is therefore uninformative, and on
-transmission-line rows in the explicit-line schema it holds exactly the same
-value as \texttt{line\_status}. The busbar graph also keeps an ambiguity the
-disaggregated ones resolve: a busbar reading zero generation may have no
-generator attached or an attached generator producing zero, and nothing in that
-representation distinguishes the two. This is one of the information differences
-between schemas discussed in Section~\ref{subsec:graph-local-global}.
-
-\paragraph{\texttt{connected} is not the same as energized.}
-The name invites a reading it does not have. \texttt{connected} is a property of
-an \emph{element}, read directly from the topology vector: it says whether that
-generator, load or line is currently switched onto one of its substation's
-busbars. It says nothing about whether the busbar in question carries any
-current. Three distinct notions are used in this work and only the last is
-electrical.
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Three notions that are easy to conflate. Only the last describes
-  whether a node is electrically live.}
-  \label{tab:connected-vs-energized}
-  \setlength{\tabcolsep}{5pt}
-  \begin{tabular}{L{0.20\textwidth}L{0.16\textwidth}L{0.26\textwidth}L{0.28\textwidth}}
-    \toprule
-    Quantity & Kind & Read from & Question it answers \\
-    \midrule
-    \texttt{connected} & Node feature & The element's entry in the topology
-    vector & Is this element switched onto a busbar? \\
-    Visibility mask & Per-node mask & Active non-structural relations reaching
-    the controlled region & May this agent observe this node at all? \\
-    Energized mask & Per-node mask & Incidence to at least one active
-    electrical relation & Is this node electrically live? \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-For a generator or load the first and the last coincide, because a detached
-asset has no active attachment relation and is therefore also de-energized. For
-a busbar they come apart completely: every busbar is always \texttt{connected}
-by construction, while an empty busbar carries nothing. On agent~$0$ of
-\texttt{bus14} under the nominal topology, all eight busbar rows read
-\texttt{connected}~$=1$ while only four are energized -- the second busbar of
-each substation is idle, which is precisely the busbar a splitting action would
-move an element onto. The energized mask, and the readouts that use it, are
-defined in Section~\ref{sec:graph-pooling}.
-
-\paragraph{The flag is nevertheless inert in these experiments.}
-The distinction it encodes is real, but the state it distinguishes never arises
-here. The agents act through \texttt{change\_bus} and
-\texttt{change\_line\_status}, and a change action toggles an element between
-busbars without ever detaching it; separately, a substation split that isolated
-a load or generator ends the episode, so no such observation is ever acted on.
-In $600$ random topology actions on \texttt{bus14}, spanning $180$ episode ends,
-no generator or load row was observed detached, against $150$ observed line
-disconnections. Where the column does vary it duplicates something already
-present: on transmission-line rows it equals \texttt{line\_status}, and on a
-contextual row that loses visibility it falls to zero with the rest of that row,
-which the visibility mask already reports.
-\\
-\\
-It is therefore best read as a channel the construction supports rather than one
-the reported experiments exercise. It would carry information under an action
-space including \texttt{set\_bus}, which can disconnect an element, or in an
-environment where assets themselves trip. Being constant, it is absorbed by the
-first linear layer and costs one weight per output unit, so it is retained
-rather than removed, which also keeps the input layout comparable with the runs
-already completed.
+A detached asset would still be identifiable: its measured channels are zeroed
+while its type indicator stays set. What is lost is only the distinction
+between that state and an attached asset reading zero, which would matter under
+an action space exposing \texttt{set\_bus}. Note also that connection in this
+sense was never the same thing as energization, which is reported separately by
+the energized mask of Section~\ref{sec:graph-pooling}: on agent~$0$ of
+\texttt{bus14} four of eight busbars carry no current under the nominal
+topology.
 }
 
 \subsubsection{Relations and edge features}
@@ -797,71 +569,32 @@ active physical-line edge fills \(\mathbf{p}_{uv}\) with its measured line
 state. Every active structural or asset-attachment edge instead uses
 \begin{equation}
   \mathbf{p}_{\mathrm{neutral}}
-  = [\,0,1,0,0,(0,0)_{\mathrm{optional}}\,]^{\mathsf T},
+  = \mathbf{0},
   \label{eq:heterogeneous-neutral-edge-physical-block}
 \end{equation}
-so only the shared \texttt{rho} column is nonzero. In every active edge row,
+so a relation carrying no flow reports none. In every active edge row,
 exactly one column of \(\mathbf{r}_{uv}\) is one and the other five are zero.\\
 \\
 Table~\ref{tab:heterogeneous-edge-features} shows the values placed in these
 common blocks for every relation.
 
 {\color{clarif}
-\paragraph{Why \texttt{rho}$=1$ on a relation that carries no current.}
-The value is not a loading measurement, and it is an artifact of an encoder this
-work does not report. Only the weighted GCN variant reads the \texttt{rho}
-column as a scalar message weight, and for that consumer zero is the value that
-\emph{deletes} a message: a structural or attachment relation weighted zero
-would silently vanish from message passing. One is the multiplicative identity
-that lets it pass through unscaled. The block is neutral in the sense of a
-weight, not of a measurement.
+\paragraph{A relation carrying no flow reports no loading.}
+An earlier version set \texttt{rho}$=1$ on structural and attachment
+relations. That value was a multiplicative identity for the weighted-GCN
+variant, which reads the \texttt{rho} column directly as a scalar message
+weight and would delete any message it weighted by zero. It was not a
+measurement, and for the GINE and GAT encoders used throughout -- which consume
+the edge vector as an attribute through a multilayer perceptron and never touch
+the weight path -- it made a relation carrying no current read as a line at its
+thermal limit.
 \\
 \\
-Every result reported here uses GINE or GAT, which consume the edge vector as an
-attribute through an MLP and never touch the weight path. For those encoders the
-convention buys nothing, and zero -- the value already taken by every other
-column of the neutral block -- would have been the consistent choice.
-\\
-\\
-It does not destroy information. Any active physical-line edge has
-\texttt{line\_status}$=1$ while the neutral block sets it to $0$; a disconnected
-line's candidate edge is masked, its row zeroed and removed before message
-passing, so an active row with \texttt{line\_status}$=0$ can only be structural;
-and in the disaggregated schemas the relation one-hot states this explicitly.
-The cost is that separating a neutral row from a loaded line becomes something
-the network must learn rather than something the encoding gives it. Measured
-over $6{,}000$ live-line samples on \texttt{bus14}, \texttt{rho} has mean $0.42$
-and never reaches $1$ under a do-nothing policy, so the neutral value at least
-sits outside the range real loadings occupy.
-\\
-\\
-The exposure is limited and worth stating exactly. Structural relations exist
-only where the schema creates them, so on agent~$0$ of \texttt{bus14} the share
-of active edges carrying the neutral value is:
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Active edges carrying the neutral \texttt{rho} value, agent $0$ of
-  \texttt{bus14} under the nominal topology.}
-  \label{tab:neutral-rho-exposure}
-  \setlength{\tabcolsep}{6pt}
-  \begin{tabular}{L{0.42\textwidth}L{0.30\textwidth}}
-    \toprule
-    Schema & Active edges affected \\
-    \midrule
-    Busbar, no structural augmentation & $0$ of $16$ \\
-    Busbar with same-substation edges & $8$ of $24$ \\
-    Disaggregated & $12$ of $28$ \\
-    Disaggregated with line nodes & none; edges hold no physical block \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\noindent The candidate-action experiments are therefore untouched, as are the
-busbar screens that leave the structural augmentations off. The convention is
-retained rather than corrected because changing it would alter the observation
-and break comparability with every completed run.
+The attribute is now zero, like every other physical channel of the neutral
+block, and the substitution moved to the encoder: the weighted variant takes the
+measured loading on physical lines and unit weight on everything else. The
+attribute stays an honest measurement for the encoders that read it as one, and
+the weighted variant still behaves as intended.
 }
 
 \begin{table}[H]
@@ -1019,13 +752,12 @@ Every node type uses the same ordered feature vector:
   &(\texttt{time\_next\_maintenance},\
   \texttt{duration\_next\_maintenance})_{\mathrm{optional}},\\
   &\texttt{time\_before\_cooldown\_sub},\
-  \texttt{connected},\
   \texttt{domain\_mask}
   \,]^{\mathsf T},\\
   &\mathbf{x}_v \in
   \begin{cases}
-    \mathbb{R}^{13}, & \text{without maintenance columns},\\
-    \mathbb{R}^{15}, & \text{with maintenance columns}.
+    \mathbb{R}^{12}, & \text{without maintenance columns},\\
+    \mathbb{R}^{14}, & \text{with maintenance columns}.
   \end{cases}
   \end{split}
   \label{eq:heterogeneous-line-common-node-vector}
@@ -1093,7 +825,6 @@ the asset is disconnected.
     \texttt{time\_next\_maintenance} & $0$ & $0$ & $0$ & Observed line value \\
     \texttt{duration\_next\_maintenance} & $0$ & $0$ & $0$ & Observed line value \\
     \texttt{time\_before\_cooldown\_sub} & Substation value & $0$ & $0$ & $0$ \\
-    \texttt{connected} & $1$ & $1$ connected; $0$ disconnected & $1$ connected; $0$ disconnected & $1$ online; $0$ offline \\
     \texttt{domain\_mask} & $1$ controlled; $0$ contextual & $1$ controlled; $0$ contextual & $1$ controlled; $0$ contextual & $1$ if either endpoint is controlled; $0$ otherwise \\
     \bottomrule
   \end{tabular}
@@ -1463,9 +1194,8 @@ relation for the busbar and disaggregated schemas.
 \\
 \\
 Table~\ref{tab:same-substation-augmentation-features} gives the exact feature
-values of the added edges. The neutral value \texttt{rho}$=1$ is used whenever
-the schema contains physical edge attributes; every other physical attribute is
-zero.
+values of the added edges. Every physical attribute is zero: a relation that carries no flow reports
+none.
 
 {\color{clarif}
 \paragraph{These edges are added inside neighboring substations too.}
@@ -1569,8 +1299,8 @@ are gone.
     \toprule
     Graph schema & Added node features & Feature values on each added directed edge \\
     \midrule
-    Busbar & None & \texttt{rho}$=1$; all other physical-line features are $0$. \\
-    Disaggregated & None & \texttt{rho}$=1$ and \texttt{relation\_same\_substation\_busbar}$=1$; all other entries are $0$. \\
+    Busbar & None & All physical-line features are $0$. \\
+    Disaggregated & None & \texttt{relation\_same\_substation\_busbar}$=1$; all other entries are $0$. \\
     Disaggregated with line nodes & None & \texttt{relation\_same\_substation\_busbar}$=1$; the other eight relation entries are $0$. \\
     \bottomrule
   \end{tabular}
@@ -1740,8 +1470,8 @@ which is what makes the projection transferable at all.
     \toprule
     Graph schema & Added summary-node state & Feature values on $i\leftrightarrow u_s$ \\
     \midrule
-    Busbar & $\mathbf W_{\mathrm{sub}}\boldsymbol\phi_s+\mathbf b_{\mathrm{sub}}\in\mathbb{R}^{d_h}$, from the substation's structural descriptor; no measured feature. & \texttt{rho}$=1$; all other physical-line features are $0$. \\
-    Disaggregated & Same structural projection; no measured feature. & \texttt{rho}$=1$; all physical and relation entries are otherwise $0$. \\
+    Busbar & $\mathbf W_{\mathrm{sub}}\boldsymbol\phi_s+\mathbf b_{\mathrm{sub}}\in\mathbb{R}^{d_h}$, from the substation's structural descriptor; no measured feature. & All physical-line features are $0$. \\
+    Disaggregated & Same structural projection; no measured feature. & All physical and relation entries are otherwise $0$. \\
     Disaggregated with line nodes & Same structural projection; no measured feature. & All nine relation entries are $0$. \\
     \bottomrule
   \end{tabular}
@@ -2287,8 +2017,8 @@ baseline rather than assumed comparable.
 \\
 The head currently requires the explicit-line graph and does not combine with
 the intervention gate, which is refused at construction rather than silently
-ignored. One-hop context is not required, and the experiments of
-Section~\ref{sec:line-node-angle} run without it: the neighbor-inclusion setting
+ignored. One-hop context is not required when using the angle-drop
+representation: the neighbor-inclusion setting
 adds no far-end equipment to this representation, because the shared-line state
 is supplied by the line node itself. Auxiliary heads over the same node
 embeddings, such as predicting which lines are about to overload, are a possible

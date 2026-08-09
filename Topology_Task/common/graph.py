@@ -442,9 +442,9 @@ class GridGraphBuilder:
                 & (or_bus == spec["edge_or_bus_ids"][physical])
                 & (ex_bus == spec["edge_ex_bus_ids"][physical])
             )
-        if "rho" in self.edge_features:
-            rho_idx = self.edge_features.index("rho")
-            edge_features[~physical, rho_idx] = 1.0
+        # Non-physical relations carry no flow, so their loading is zero. The
+        # weighted-GCN variant needs unit weight on them instead, and derives
+        # that at the encoder rather than having it written into the attribute.
         edge_features[~active] = 0.0
         return np.nan_to_num(edge_features, nan=0.0, posinf=0.0, neginf=0.0), active.astype(np.float32)
 
@@ -740,7 +740,6 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
         "p",
         "theta",
         "time_before_cooldown_sub",
-        "connected",
         "domain_mask",
     ]
 
@@ -755,7 +754,6 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
         generator_edge_direction: str = "bidirectional",
         load_edge_direction: str = "bidirectional",
         angle_representation: str = "node",
-        include_legacy_self_relation_feature: bool = False,
         context_requires_connection: bool = True,
         structural_relations_controlled_only: bool = True,
     ) -> None:
@@ -786,13 +784,6 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
             ASSET_EDGE_DIRECTIONS,
             "load edge direction",
         )
-        # Explicit self edges are not part of the GINE graph schemas used by
-        # the experiments. Older checkpoints nevertheless allocated an
-        # always-zero ``relation_self`` input column. Keep that obsolete width
-        # only when reconstructing one of those checkpoints.
-        self.include_legacy_self_relation_feature = bool(
-            include_legacy_self_relation_feature
-        )
         self.node_features = list(self.HETERO_NODE_FEATURES)
         if self.angle_representation == "edge_diff":
             self.node_features = [
@@ -806,7 +797,8 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
         self.relation_edge_types = {
             edge_type: name
             for name, edge_type in self.EDGE_TYPE_NAMES.items()
-            if name != "self" or self.include_legacy_self_relation_feature
+            # A self relation never receives a one-hot column.
+            if name != "self"
         }
         self.relation_edge_features = [
             f"relation_{name}" for name in self.relation_edge_types.values()
@@ -1154,7 +1146,6 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
         features[bus_rows, col["is_busbar"]] = 1.0
         features[gen_rows, col["is_generator"]] = 1.0
         features[load_rows, col["is_load"]] = 1.0
-        features[bus_rows, col["connected"]] = 1.0
         features[:, col["domain_mask"]] = spec["controlled_node_mask"]
 
         sub_cooldown = self._obs_array(
@@ -1201,7 +1192,6 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
             (asset_bus[asset_ids] >= 0)
             & (asset_bus[asset_ids] < self.n_busbar)
         )
-        features[rows, col["connected"]] = connected.astype(np.float32)
         if p_values is not None:
             features[rows[connected], col["p"]] = p_values[asset_ids[connected]]
         if theta_values is not None and "theta" in col:
@@ -1253,12 +1243,6 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
                 cache["load_bus"][load_ids]
                 == spec["edge_asset_bus_ids"][load_edges]
             )
-
-        # If rho is selected as a GCN message weight, structural relations need
-        # unit weight so generator/load and optional relation messages survive.
-        if "rho" in self.physical_edge_features:
-            rho_idx = self.physical_edge_features.index("rho")
-            edge_features[~physical, rho_idx] = 1.0
 
         edge_features[~active] = 0.0
         return (
@@ -1333,7 +1317,6 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
         "timestep_overflow",
         "time_before_cooldown_line",
         "time_before_cooldown_sub",
-        "connected",
         "domain_mask",
     ]
 
@@ -1349,7 +1332,6 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
         load_edge_direction: str = "bidirectional",
         line_node_edge_direction: str = "bidirectional",
         angle_representation: str = "node",
-        include_legacy_self_relation_feature: bool = False,
         context_requires_connection: bool = True,
         structural_relations_controlled_only: bool = True,
     ) -> None:
@@ -1363,9 +1345,6 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
             generator_edge_direction=generator_edge_direction,
             load_edge_direction=load_edge_direction,
             angle_representation=angle_representation,
-            include_legacy_self_relation_feature=(
-                include_legacy_self_relation_feature
-            ),
             context_requires_connection=context_requires_connection,
             structural_relations_controlled_only=(
                 structural_relations_controlled_only
@@ -1831,7 +1810,6 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
         features[gen_rows, col["is_generator"]] = 1.0
         features[load_rows, col["is_load"]] = 1.0
         features[line_rows, col["is_transmission_line"]] = 1.0
-        features[bus_rows, col["connected"]] = 1.0
         features[:, col["domain_mask"]] = spec["controlled_node_mask"]
 
         sub_cooldown = self._obs_array(
@@ -1864,7 +1842,6 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
         line_ids = spec["line_ids"]
         if len(line_rows) > 0:
             live = cache["line_status"][line_ids] > 0
-            features[line_rows, col["connected"]] = live.astype(np.float32)
             for name in [
                 "line_status",
                 "rho",
@@ -1956,7 +1933,6 @@ def make_grid_graph_builder(
         kwargs.pop("generator_edge_direction", None)
         kwargs.pop("load_edge_direction", None)
         kwargs.pop("line_node_edge_direction", None)
-        kwargs.pop("include_legacy_self_relation_feature", None)
     elif graph_type in {"heterogeneous", "hetero"}:
         builder_cls = HeterogeneousGridGraphBuilder
         kwargs.pop("line_node_edge_direction", None)

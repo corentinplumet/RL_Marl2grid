@@ -63,7 +63,7 @@ class HeterogeneousGridGraphBuilderTest(unittest.TestCase):
         self.assertEqual(spec["graph_type"], "heterogeneous")
         self.assertEqual(len(spec["node_ids"]), 6)
         self.assertEqual(spec["edge_index"].shape, (2, 16))
-        self.assertEqual(spec["node_dim"], 8)
+        self.assertEqual(spec["node_dim"], 7)
         self.assertEqual(spec["edge_dim"], 10)
         self.assertNotIn("relation_self", spec["edge_feature_names"])
         np.testing.assert_array_equal(
@@ -95,7 +95,7 @@ class HeterogeneousGridGraphBuilderTest(unittest.TestCase):
         self.assertEqual(graph["node_features"][gen_row, node_cols["p"]], 10.0)
         self.assertEqual(graph["node_features"][load_row, node_cols["p"]], 8.0)
         self.assertEqual(
-            graph["node_features"][gen_row, node_cols["connected"]], 1.0
+            graph["node_features"][gen_row, node_cols["p"]], 10.0
         )
 
         relation_offset = len(self.builder.physical_edge_features)
@@ -111,16 +111,13 @@ class HeterogeneousGridGraphBuilderTest(unittest.TestCase):
             np.all(graph["edge_features"][graph["edge_mask"] == 0] == 0.0)
         )
 
-    def test_legacy_schema_only_restores_the_old_checkpoint_width(self):
-        builder = HeterogeneousGridGraphBuilder(
-            MockGridEnv(),
-            {"agent_0": [0]},
-            include_neighbors=True,
-            include_legacy_self_relation_feature=True,
-        )
-        spec = builder.specs["state"]
-        self.assertEqual(spec["edge_dim"], 11)
-        self.assertIn("relation_self", spec["edge_feature_names"])
+    def test_self_relations_have_no_input_column(self):
+        # Self edges are never used by these experiments, so the always-zero
+        # relation_self column that older checkpoints allocated is gone. The
+        # transfer loader still splices it out of such a checkpoint.
+        spec = self.builder.specs["state"]
+        self.assertNotIn("relation_self", spec["edge_feature_names"])
+        self.assertEqual(spec["edge_dim"], 10)
 
     def test_topology_change_updates_masks_without_changing_shapes(self):
         original = self.builder.build(make_obs())["state"]
@@ -142,9 +139,7 @@ class HeterogeneousGridGraphBuilderTest(unittest.TestCase):
         gen_row = int(
             np.nonzero(spec["node_type"] == self.builder.NODE_TYPE_GENERATOR)[0][0]
         )
-        self.assertEqual(
-            changed["node_features"][gen_row, node_cols["connected"]], 0.0
-        )
+        # A detached asset keeps its row but every measurement is zeroed.
         self.assertEqual(changed["node_features"][gen_row, node_cols["p"]], 0.0)
 
     def test_generator_and_load_directions_are_configurable_independently(self):
@@ -236,9 +231,11 @@ class HeterogeneousGridGraphBuilderTest(unittest.TestCase):
                 int(spec["node_type"][dst]), builder.NODE_TYPE_BUSBAR
             )
 
+        # A same-substation relation carries no flow, so its loading is zero.
+        # The weighted-GCN variant substitutes unit weight at the encoder.
         rho_idx = spec["edge_feature_names"].index("rho")
         self.assertTrue(
-            bool(np.all(graph["edge_features"][relation_rows, rho_idx] == 1.0))
+            bool(np.all(graph["edge_features"][relation_rows, rho_idx] == 0.0))
         )
         disconnected = builder.build(
             make_obs(
@@ -271,7 +268,7 @@ class HeterogeneousGridGraphBuilderTest(unittest.TestCase):
             bool(
                 np.all(
                     bus_graph["edge_features"][bus_relation_rows, bus_rho_idx]
-                    == 1.0
+                    == 0.0
                 )
             )
         )
@@ -395,7 +392,7 @@ class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
         self.assertEqual(spec["graph_type"], "heterogeneous_line")
         self.assertEqual(len(spec["node_ids"]), 7)
         self.assertEqual(spec["edge_index"].shape, (2, 16))
-        self.assertEqual(spec["node_dim"], 13)
+        self.assertEqual(spec["node_dim"], 12)
         self.assertEqual(spec["edge_dim"], 9)
         self.assertNotIn("rho", spec["edge_feature_names"])
         self.assertNotIn("relation_self", spec["edge_feature_names"])
@@ -433,7 +430,6 @@ class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
             "rho": 0.75,
             "timestep_overflow": 2.0,
             "time_before_cooldown_line": 3.0,
-            "connected": 1.0,
         }
         for feature, value in expected_line_features.items():
             self.assertEqual(
@@ -523,7 +519,7 @@ class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
             np.nonzero(spec["node_type"] == self.builder.NODE_TYPE_GENERATOR)[0][0]
         )
         self.assertEqual(
-            changed["node_features"][line_row, node_cols["connected"]], 0.0
+            changed["node_features"][line_row, node_cols["line_status"]], 0.0
         )
         self.assertEqual(
             changed["node_features"][line_row, node_cols["line_status"]], 0.0
@@ -532,9 +528,8 @@ class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
             changed["node_features"][line_row, node_cols["time_before_cooldown_line"]],
             3.0,
         )
-        self.assertEqual(
-            changed["node_features"][gen_row, node_cols["connected"]], 0.0
-        )
+        # A detached asset keeps its row but every measurement is zeroed.
+        self.assertEqual(changed["node_features"][gen_row, node_cols["p"]], 0.0)
         self.assertEqual(changed["energized_node_mask"][line_row], 0.0)
         self.assertEqual(int(changed["energized_node_mask"].sum()), 2)
 
