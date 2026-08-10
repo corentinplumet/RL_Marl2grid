@@ -1072,6 +1072,9 @@ class MAEnvWrapper(Env):
                 structural_relations_controlled_only=getattr(
                     args, "gnn_structural_relations_controlled_only", True
                 ),
+                include_legacy_connected_feature=getattr(
+                    args, "gnn_include_legacy_connected_feature", False
+                ),
             )
             self.graph_specs = self.graph_builder.specs
             self.graph_feature_processor = GraphFeatureProcessor(

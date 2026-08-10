@@ -754,6 +754,7 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
         generator_edge_direction: str = "bidirectional",
         load_edge_direction: str = "bidirectional",
         angle_representation: str = "node",
+        include_legacy_connected_feature: bool = False,
         context_requires_connection: bool = True,
         structural_relations_controlled_only: bool = True,
     ) -> None:
@@ -784,7 +785,14 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
             ASSET_EDGE_DIRECTIONS,
             "load edge direction",
         )
+        self.include_legacy_connected_feature = bool(
+            include_legacy_connected_feature
+        )
         self.node_features = list(self.HETERO_NODE_FEATURES)
+        if self.include_legacy_connected_feature:
+            self.node_features.insert(
+                self.node_features.index("domain_mask"), "connected"
+            )
         if self.angle_representation == "edge_diff":
             self.node_features = [
                 name
@@ -1146,6 +1154,8 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
         features[bus_rows, col["is_busbar"]] = 1.0
         features[gen_rows, col["is_generator"]] = 1.0
         features[load_rows, col["is_load"]] = 1.0
+        if "connected" in col:
+            features[bus_rows, col["connected"]] = 1.0
         features[:, col["domain_mask"]] = spec["controlled_node_mask"]
 
         sub_cooldown = self._obs_array(
@@ -1192,6 +1202,8 @@ class HeterogeneousGridGraphBuilder(GridGraphBuilder):
             (asset_bus[asset_ids] >= 0)
             & (asset_bus[asset_ids] < self.n_busbar)
         )
+        if "connected" in col:
+            features[rows, col["connected"]] = connected.astype(np.float32)
         if p_values is not None:
             features[rows[connected], col["p"]] = p_values[asset_ids[connected]]
         if theta_values is not None and "theta" in col:
@@ -1332,6 +1344,7 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
         load_edge_direction: str = "bidirectional",
         line_node_edge_direction: str = "bidirectional",
         angle_representation: str = "node",
+        include_legacy_connected_feature: bool = False,
         context_requires_connection: bool = True,
         structural_relations_controlled_only: bool = True,
     ) -> None:
@@ -1345,6 +1358,7 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
             generator_edge_direction=generator_edge_direction,
             load_edge_direction=load_edge_direction,
             angle_representation=angle_representation,
+            include_legacy_connected_feature=include_legacy_connected_feature,
             context_requires_connection=context_requires_connection,
             structural_relations_controlled_only=(
                 structural_relations_controlled_only
@@ -1356,6 +1370,10 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
             "line-node edge direction",
         )
         self.node_features = list(self.BASE_LINE_NODE_FEATURES)
+        if self.include_legacy_connected_feature:
+            self.node_features.insert(
+                self.node_features.index("domain_mask"), "connected"
+            )
         if self.angle_representation == "edge_diff":
             # The other two schemas move the angle onto the physical line edge.
             # Here each line is already a node and the attachment edges carry
@@ -1810,6 +1828,8 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
         features[gen_rows, col["is_generator"]] = 1.0
         features[load_rows, col["is_load"]] = 1.0
         features[line_rows, col["is_transmission_line"]] = 1.0
+        if "connected" in col:
+            features[bus_rows, col["connected"]] = 1.0
         features[:, col["domain_mask"]] = spec["controlled_node_mask"]
 
         sub_cooldown = self._obs_array(
@@ -1842,6 +1862,8 @@ class HeterogeneousLineGraphBuilder(HeterogeneousGridGraphBuilder):
         line_ids = spec["line_ids"]
         if len(line_rows) > 0:
             live = cache["line_status"][line_ids] > 0
+            if "connected" in col:
+                features[line_rows, col["connected"]] = live.astype(np.float32)
             for name in [
                 "line_status",
                 "rho",
@@ -1933,6 +1955,7 @@ def make_grid_graph_builder(
         kwargs.pop("generator_edge_direction", None)
         kwargs.pop("load_edge_direction", None)
         kwargs.pop("line_node_edge_direction", None)
+        kwargs.pop("include_legacy_connected_feature", None)
     elif graph_type in {"heterogeneous", "hetero"}:
         builder_cls = HeterogeneousGridGraphBuilder
         kwargs.pop("line_node_edge_direction", None)

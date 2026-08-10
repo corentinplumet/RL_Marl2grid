@@ -235,40 +235,16 @@ masking conventions.
 
 {\color{clarif}
 \paragraph{Why a fixed shape rather than rebuilding the graph.}
-Rebuilding the graph after every topology action would be the more obvious
-implementation, and it is rejected for four reasons, the last of which is the
-substantive one.
-\begin{enumerate}
-  \item \textbf{The interface requires it.} Each agent's observation is declared
-  once as a fixed-size space, and rollouts are collected from many environments
-  stepping in parallel. The rollout buffer is allocated once, from the shape of
-  the first observation, and written into at every step; an observation whose
-  node or edge count changed mid-episode could neither be stacked across
-  environments nor stored in that buffer.
-  \item \textbf{Batching stays trivial.} A fixed layout means node and edge
-  tensors for different environments, agents and time steps are stacked by
-  concatenation, and the message-passing index is built once and reused, rather
-  than a variable-size graph being assembled and re-indexed on every forward
-  pass.
-  \item \textbf{Row identity is stable.} Row $i$ always denotes the same
-  physical busbar, line or asset. The candidate-action head of
-  Section~\ref{sec:candidate-action-scoring} depends on this directly: it maps
-  each discrete action to the graph rows it modifies once, before training. If
-  the node set were rebuilt per step, that mapping would have to be recomputed
-  at every step and would refer to different objects at different times.
-  \item \textbf{Absent connections stay visible.} A rebuilt graph would contain
-  only the connections that currently exist, which hides the ones an action
-  could create: the empty busbar an element would be moved onto would simply not
-  be in the graph, so no encoder reading it could evaluate that action. Keeping
-  the candidate set fixed means the reachable topologies are present as masked
-  structure, and the mask makes the current topology an explicit input rather
-  than something inferable only from which messages happen to exist. This is the
-  busbar information asymmetry identified by~\textcite{dejong2025gnntopo}.
-\end{enumerate}
-The cost is memory. With $B=2$ a line reserves eight directed candidates of
-which at most two are ever active, so the edge tensor is roughly four times
-larger than the active topology requires. On the grids used here that is
-affordable, and Appendix~\ref{app:graph-construction} gives the exact sizes.
+A fixed candidate graph keeps every observation at the same tensor shape, so
+parallel rollouts can be stacked and stored without rebuilding or re-indexing
+the graph. Stable rows also allow each action to be mapped to the physical
+assets it modifies once, before training. Most importantly, masked candidates
+retain connections that an action could create; rebuilding only the active
+topology would omit empty destination busbars and hide feasible alternatives,
+which is the busbar information asymmetry identified
+by~\textcite{dejong2025gnntopo}. The trade-off is a larger edge tensor: with
+$B=2$, each line reserves eight directed candidates although at most two are
+active.
 }
 \\
 \\
@@ -478,30 +454,6 @@ the column is still present for that node type but is explicitly zero-filled.
   \end{tabular}
 \end{table}
 
-{\color{clarif}
-\paragraph{There is no per-asset connection flag.}
-An earlier version of this schema carried a \texttt{connected} column, written
-as a constant on busbar rows, as a copy of \texttt{line\_status} on line rows,
-and as the attachment state on generator and load rows. Only the last of those
-carried information, and it never varied: a \emph{change} action toggles an
-element between busbars and cannot detach it, and a substation split that
-isolated a load or generator ends the episode. Measured over $600$ random
-topology actions on \texttt{bus14} spanning $180$ episode ends, and over $400$
-on the WCCI grid, no generator or load was ever observed detached, against
-$150$ and $493$ line disconnections respectively. The column was therefore
-removed rather than carried.
-\\
-\\
-A detached asset would still be identifiable: its measured channels are zeroed
-while its type indicator stays set. What is lost is only the distinction
-between that state and an attached asset reading zero, which would matter under
-an action space exposing \texttt{set\_bus}. Note also that connection in this
-sense was never the same thing as energization, which is reported separately by
-the energized mask of Section~\ref{sec:graph-pooling}: on agent~$0$ of
-\texttt{bus14} four of eight busbars carry no current under the nominal
-topology.
-}
-
 \subsubsection{Relations and edge features}
 \label{subsec:heterogeneous-relations}
 
@@ -578,25 +530,6 @@ exactly one column of \(\mathbf{r}_{uv}\) is one and the other five are zero.\\
 Table~\ref{tab:heterogeneous-edge-features} shows the values placed in these
 common blocks for every relation.
 
-{\color{clarif}
-\paragraph{A relation carrying no flow reports no loading.}
-An earlier version set \texttt{rho}$=1$ on structural and attachment
-relations. That value was a multiplicative identity for the weighted-GCN
-variant, which reads the \texttt{rho} column directly as a scalar message
-weight and would delete any message it weighted by zero. It was not a
-measurement, and for the GINE and GAT encoders used throughout -- which consume
-the edge vector as an attribute through a multilayer perceptron and never touch
-the weight path -- it made a relation carrying no current read as a line at its
-thermal limit.
-\\
-\\
-The attribute is now zero, like every other physical channel of the neutral
-block, and the substitution moved to the encoder: the weighted variant takes the
-measured loading on physical lines and unit weight on everything else. The
-attribute stays an honest measurement for the encoders that read it as one, and
-the weighted variant still behaves as intended.
-}
-
 \begin{table}[H]
   \centering
   \scriptsize
@@ -638,46 +571,15 @@ schema.
 
 {\color{clarif}
 \paragraph{The consequence: a contextual busbar here carries no measurement.}
-This is worth stating plainly because it is easy to read the far-end busbar as
-carrying the neighbor's state, as it does in the busbar schema. It does not.
-Power and angle live on asset nodes in this representation, and neighboring
-assets are never constructed, so the far-end busbar row reduces to its type and
-role indicators. Built on agent~$0$ of \texttt{bus14} under the nominal
-topology, the two visible contextual rows are
-\[
-  \underbrace{[\,0,\;0,\;44.3,\;-5.51,\;0,\;0\,]}_{\texttt{bus}}
-  \qquad\text{against}\qquad
-  \underbrace{[\,1,\;0,\;0,\;0,\;0,\;0,\;1,\;0\,]}_{\texttt{heterogeneous}},
-\]
-that is $44.3$~MW of neighboring load and its angle in one schema, and exactly
-zero in every measured channel in the other. The two contextual rows of the
-disaggregated graph are also identical to each other, so they are not even
-distinguishable as different substations.
-\\
-\\
-Whether this is the right choice depends on which question is being asked, and
-the two answers point in opposite directions.
-\begin{itemize}
-  \item \textbf{As an information boundary it is the defensible one.} A
-  neighboring substation's generation and load are another region's private
-  state. A regional operator sees the flow on the tie line, not the neighbor's
-  dispatch. On that reading the busbar schema is the leaky one, and this schema
-  is closer to the decentralized setting the thesis claims to model.
-  \item \textbf{As a graph design it is incoherent.} Having decided to withhold
-  the neighbor's power, keeping its busbar as a node buys little: it is a
-  constant, anonymous, dead-end node, since edges are only created for lines
-  touching the controlled domain and a contextual node therefore never connects
-  to another contextual node. What the agent learns about the neighbor arrives
-  through the \emph{edge} attributes of the tie line, chiefly its loading. The
-  node contributes a nonlinear round trip, not new information.
-\end{itemize}
-The explicit-line schema resolves this by not constructing the far-end busbar at
-all and placing the shared-line state on the line node instead. The three
-schemas are therefore not a clean ladder of decreasing context; the
-disaggregated one occupies an awkward middle position. This also makes a
-\texttt{bus} against \texttt{heterogeneous} comparison something other than a
-pure comparison of architectures, which is the point developed in
-Section~\ref{subsec:graph-local-global}.
+Unlike in the \texttt{bus} schema, a contextual busbar in the
+\texttt{heterogeneous} graph contains only type and role indicators. Power and
+angle are stored on asset nodes, and neighboring assets are omitted, so all
+neighboring measurements arrive through the boundary-line edge instead. This
+preserves the decentralized information boundary but leaves the contextual
+busbar largely structural. The explicit-line schema removes that busbar and
+places the shared measurements on the line node. Thus, comparing the
+\texttt{bus} and \texttt{heterogeneous} schemas also changes the available
+context, as discussed in Section~\ref{subsec:graph-local-global}.
 }
 
 
@@ -765,29 +667,6 @@ Every node type uses the same ordered feature vector:
   % is grouped by which object owns each quantity, and maintenance is a
   % per-line quantity.
 \end{equation}
-{\color{clarif}
-\noindent The optional block sits in the middle of the vector rather than at its
-end because the ordering groups columns by the object each quantity belongs to:
-type indicators, then asset measurements, then line measurements, then the
-substation measurement, then the role flags. Maintenance countdowns are per-line
-quantities, so appending them would place a line measurement after the
-substation measurement and the role flags and split the line block in two. The
-ordering is a readability convention and nothing more, since the first linear
-layer is applied to the whole vector and a permutation of input columns is
-absorbed by a permutation of its weight columns.
-\\
-\\
-It has one practical cost. Appending the optional block would make the
-thirteen-column layout a prefix of the fifteen-column one, so a checkpoint
-trained under one setting could be loaded into the other by padding. With the
-block inserted, three columns change meaning between the layouts and no such
-correspondence exists. This is not hypothetical in general -- the transfer
-loader already contains a routine that splices an obsolete relation column out
-of an older checkpoint so that it fits the current edge vector -- but it does
-not arise here, because \texttt{bus14} carries no maintenance and the transfer
-study removes it from WCCI as well (Section~\ref{sec:wcci-nomaint}), leaving
-both sides at thirteen columns.
-}
 \\
 \\
 The width and meaning of this vector are identical for busbar, generator, load, and
@@ -953,84 +832,47 @@ exposes only the boundary information required by its representation.
 
 {\color{clarif}
 \paragraph{Why one hop, and why not more.}
-The one-hop cut is a modelling decision and it is worth separating from two
-arguments that do not support it. The first is that an agent cannot act on a
-neighboring substation, so it need not observe one. Controllability and
-observability are independent: a regional control room does not operate its
-neighbor's substations but does observe them, through state estimation on an
-extended model, tie-line telemetry, and inter-operator data exchange. On
-realism alone, the local graphs used here are more restrictive than a real
-control room, not less.
-\\
-\\
-The second is that one hop is the natural amount of exterior to keep. Power flow
-has no one-hop boundary. The established treatment in power systems is an
-external network equivalent, which reduces everything outside the area to a
-small model preserving \emph{boundary} behaviour, and which deliberately
-discards the neighbor's internal dispatch while retaining the boundary
-injections and the stiffness seen from the boundary. Read that way, the
-neighbor's own generation and load is the least useful part of the exterior: it
-is a single bus of an unbounded remainder. What determines whether a switching
-action is safe inside $\mathcal{C}_a$ is the post-action flow there, and the
-exterior enters that calculation only through the boundary condition -- the
-loading of the tie line and the angle across it, both of which the schemas
-already carry on the line itself
-(Section~\ref{sec:line-node-angle}).
-\\
-\\
-The argument that does support keeping the actor local is not physical but
-methodological. An actor that observes everything is a centralized controller
-with extra steps, and the question this thesis asks is how far a policy
-conditioned on a regional view can go. The centralized critic already reads the
-global state, so the value estimate is not blind; only the policy is. That
-compensates in part, but not completely: where the optimal action depends on
-exterior state the actor cannot see, the policy can only learn an average over
-it, which is the standard limitation of a decentralized partially observed
-setting and is exactly the regime in which a remote contingency decides whether
-a local action was correct.
-\\
-\\
-The honest position is therefore that context depth is an ablation rather than a
-justified constant, and it is treated as one: \texttt{gnn\_include\_neighbors}
-switches it, and the two settings are compared under otherwise identical
-configurations.
+The one-hop boundary is a methodological choice: it keeps each actor regional
+while the centralized critic still observes the global state. Power flow has no
+natural one-hop cutoff, but the loading and angle drop of boundary lines provide
+the immediate interaction with the exterior without exposing neighboring asset
+states. One hop is therefore not claimed to be optimal.}
 
-\paragraph{In what sense the earlier construction was defective.}
-Since observing a neighbor is not in itself improper, it is worth being precise
-about what was wrong with the construction this section replaces, because it was
-not simply that it revealed more.
-\\
-\\
-The earlier rule expanded every substation of the region into all of its
-busbars and marked them permanently valid. In effect an agent could see anything
-that shared a substation label with something it touched. That is a convention
-of the data model, not an electrical relation: two busbars of one substation are
-separate electrical nodes whenever the substation is split. Built on agent~$0$
-of \texttt{bus14}, with contextual substation~$3$ split so that its $44.3$~MW
-load sits on the second busbar while the agent's lines attach to the first, the
-earlier construction placed that load in the observation on a node with
-\emph{no active edge at all}. Electrically it was as remote from the agent as any
-other bus in the grid.
-\\
-\\
-Two things follow, and the second matters more than the first. Such a node is
-isolated, so it receives and sends no messages: the value never entered message
-passing and instead contributed its raw feature row directly to the mean
-readout. The information was therefore not usable context but an unstructured
-additive term in the pooled vector. And because the split is an action of the
-\emph{neighboring} agent, that agent's decisions moved quantities inside this
-agent's observation without any change in this agent's electrical situation,
-adding an observation-level non-stationarity on top of the one decentralized
-training already has.
-\\
-\\
-The correction is therefore about the criterion and the delivery path rather
-than about volume. Requiring a live electrical connection replaces a naming
-convention with a physical one, and removes rows that the graph could not
-process in any case. It does not follow that the resulting boundary is the
-correct amount of exterior; as argued above, it is a conservative one, and an
-explicit exterior equivalent would be the principled alternative.
-}
+% \paragraph{In what sense the earlier construction was defective.}
+% Since observing a neighbor is not in itself improper, it is worth being precise
+% about what was wrong with the construction this section replaces, because it was
+% not simply that it revealed more.
+% \\
+% \\
+% The earlier rule expanded every substation of the region into all of its
+% busbars and marked them permanently valid. In effect an agent could see anything
+% that shared a substation label with something it touched. That is a convention
+% of the data model, not an electrical relation: two busbars of one substation are
+% separate electrical nodes whenever the substation is split. Built on agent~$0$
+% of \texttt{bus14}, with contextual substation~$3$ split so that its $44.3$~MW
+% load sits on the second busbar while the agent's lines attach to the first, the
+% earlier construction placed that load in the observation on a node with
+% \emph{no active edge at all}. Electrically it was as remote from the agent as any
+% other bus in the grid.
+% \\
+% \\
+% Two things follow, and the second matters more than the first. Such a node is
+% isolated, so it receives and sends no messages: the value never entered message
+% passing and instead contributed its raw feature row directly to the mean
+% readout. The information was therefore not usable context but an unstructured
+% additive term in the pooled vector. And because the split is an action of the
+% \emph{neighboring} agent, that agent's decisions moved quantities inside this
+% agent's observation without any change in this agent's electrical situation,
+% adding an observation-level non-stationarity on top of the one decentralized
+% training already has.
+% \\
+% \\
+% The correction is therefore about the criterion and the delivery path rather
+% than about volume. Requiring a live electrical connection replaces a naming
+% convention with a physical one, and removes rows that the graph could not
+% process in any case. It does not follow that the resulting boundary is the
+% correct amount of exterior; as argued above, it is a conservative one, and an
+% explicit exterior equivalent would be the principled alternative.
 
 \subsubsection{Visibility and masking}
 
@@ -1052,12 +894,44 @@ endpoints. Neighboring generators and loads are never constructed, and the
 explicit-line representation creates no far-end attachment. Pooling is thus a
 summary operation, not the information-security boundary.
 
+Figure~\ref{fig:dynamic-neighbor-visibility} summarizes the dynamic visibility
+mask and the explicit-line exception.
+
+\begin{figure}[H]
+  \centering
+  \resizebox{0.94\linewidth}{!}{%
+    \input{figures/graph_dynamic_neighbor_mask.tex}%
+  }
+  \caption{Dynamic visibility with a fixed candidate graph. In the direct-edge
+  schemas, reassignment changes the active pair and visible far-end busbar;
+  disconnection masks all contextual busbars. In
+  \texttt{heterogeneous\_line}, the shared line node remains visible while its
+  attachments are masked. Gray dashed elements have zero masks.}
+  \label{fig:dynamic-neighbor-visibility}
+\end{figure}
+
 \subsubsection{Representation-dependent information}
 
 The representations are not information-equivalent. The busbar schema exposes
 the most neighboring information because it aggregates assets at the far-end
 busbar; the heterogeneous schema exposes only that busbar; and the
 explicit-line schema exposes only the shared line.
+
+\begin{figure}[H]
+  \centering
+  \resizebox{\linewidth}{!}{%
+    \input{figures/graph_neighbor_context.tex}%
+  }
+  \caption{The same live boundary line for an agent controlling two
+  substations, $s_1$ and $s_2$. The blue dashed region is the complete
+  controlled zone; the solid inner boxes identify its substations. The busbar
+  graph exposes aggregated measurements at the far end, the disaggregated
+  graph exposes only the far-end busbar, and the explicit-line graph exposes
+  only the shared line node. If the boundary line disconnects, the contextual
+  busbar is masked in the first two graphs; in the last graph the line node
+  remains visible but its attachment edge becomes inactive.}
+  \label{fig:representation-dependent-neighbors}
+\end{figure}
 
 \begin{table}[H]
   \centering
@@ -1182,6 +1056,34 @@ Figure~\ref{fig:graph-actor-pipeline}; their nodes and edges therefore enter the
 same node projection, edge filtering, and message-passing pipeline as the base
 graph.
 
+\begin{figure}[H]
+  \centering
+  \resizebox{0.94\linewidth}{!}{%
+    \input{figures/graph_substation_augmentations.tex}%
+  }
+  \caption{The four combinations of the independent substation factors $e$ and
+  $n$. The hollow node $b_2$ is controlled but non-energized. Factor $e$ adds a
+  bidirectional relation between the controlled busbars, while factor $n$
+  connects a summary node $u_s$ to both. Neither augmentation extends to the
+  contextual busbar $b_N$, which retains only its physical relation.}
+  \label{fig:substation-augmentation-combinations}
+\end{figure}
+
+Figure~\ref{fig:substation-augmentation-by-representation} places the combined
+augmentation in each graph representation.
+
+\begin{figure}[H]
+  \centering
+  \resizebox{0.98\linewidth}{!}{%
+    \input{figures/graph_augmentation_by_representation.tex}%
+  }
+  \caption{Placement of the two augmentations when $e=n=1$. In every graph
+  representation, the direct relation and summary node attach only to
+  controlled busbars. Equipment and explicit line nodes retain their ordinary
+  busbar relations, and no augmentation is added in the contextual domain.}
+  \label{fig:substation-augmentation-by-representation}
+\end{figure}
+
 \subsection{Direct same-substation edges (e)}
 \label{subsec:graph-relation-edges}
 
@@ -1189,8 +1091,11 @@ In addition to physical-line relations, the augmentation inserts
 $i(s,b)\rightarrow i(s,b')$ for every ordered pair $b\neq b'$ of busbars in the
 same included substation. The edges are therefore bidirectional between each
 pair of busbars, remain active throughout the episode, and do not represent an
-electrical connection. Figure~\ref{fig:same-substation-busbar-edge} shows this
-relation for the busbar and disaggregated schemas.
+electrical connection. Consequently, a non-energized controlled busbar remains
+connected to the other busbar of its substation through this structural
+relation, without being considered electrically energized.
+Figure~\ref{fig:same-substation-busbar-edge} shows this relation for the busbar
+and disaggregated schemas.
 \\
 \\
 Table~\ref{tab:same-substation-augmentation-features} gives the exact feature
@@ -1198,93 +1103,13 @@ values of the added edges. Every physical attribute is zero: a relation that car
 none.
 
 {\color{clarif}
-\paragraph{These edges are added inside neighboring substations too.}
-The augmentation runs over every substation of the region, contextual ones
-included, so a neighboring substation's busbars are joined to each other exactly
-as controlled ones are. That interacts with the information boundary of
-Section~\ref{subsec:graph-local-global} in a way worth making explicit.
-\\
-\\
-A same-substation relation does \emph{not} carry visibility. Grid2Op has no bus
-coupler: busbar assignment is the topology, and two busbars of one substation
-are separate electrical nodes. The relation is a computational device encoding
-that an element can be moved between them, which is a statement about an action
-space rather than about conductivity -- and, for a contextual substation, about
-\emph{another} agent's action space. The visibility rule therefore excludes it,
-together with self relations, when deciding whether a contextual node is
-connected to the controlled region.
-\\
-\\
-The effect is measurable. Take agent~$0$ of \texttt{bus14} with contextual
-substation~$3$ split so that its $44.3$~MW load sits on the busbar the agent's
-lines do \emph{not} attach to:
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Status of the contextual busbar carrying $44.3$~MW, under the two
-  constructions and the two settings of this augmentation.}
-  \label{tab:same-substation-visibility}
-  \setlength{\tabcolsep}{6pt}
-  \begin{tabular}{llccc}
-    \toprule
-    Construction & Same-substation edges & Visible & Active degree & Load seen \\
-    \midrule
-    Earlier & off & yes & $0$ & $44.3$ \\
-    Earlier & on  & yes & $2$ & $44.3$ \\
-    Current & off & no  & $0$ & $0$ \\
-    Current & on  & no  & $0$ & $0$ \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\noindent The second row is the important one. Under the earlier construction this
-augmentation upgraded the leak: without it the unreachable busbar was an
-isolated node contributing only to the readout, whereas with it the busbar
-became connected to its sibling and its load propagated into the agent's own
-region through message passing. The cells of Screen~C that enable this factor
-are therefore the most affected by the construction they were run under. Under
-the current rule the node is invisible and its structural edges are inactive in
-both settings, so the augmentation changes message passing only among nodes the
-agent is entitled to see.
-
-\paragraph{Being entitled to see two nodes is not a reason to relate them.}
-One case survives the correction. When a contextual substation is split so that
-both of its busbars are attached to the agent by live lines, both are visible
-and the same-substation relation between them is active: on agent~$0$ of
-\texttt{bus14} with substation~$3$ split in this way, the pair of directed edges
-between its two busbars carries messages. This is not a boundary violation,
-since each endpoint is legitimately observable, but it is questionable on two
-other grounds.
-\\
-\\
-The relation asserts that an element can be moved between the two busbars. That
-is a statement about an action space, and for a contextual substation it is a
-statement about \emph{another agent's} action space, which this agent can
-neither exercise nor anticipate. The same reasoning already excludes structural
-relations from carrying visibility, so allowing them to carry messages between
-two contextual nodes is inconsistent with a decision already taken elsewhere in
-the construction.
-\\
-\\
-The physical objection is stronger. Two busbars of one substation are separate
-electrical nodes, and the relation is justified inside the controlled domain
-only because the agent can join them by acting. Between two contextual busbars
-it is neither electrical nor reachable by any action available here, and it
-creates a message path that crosses the boundary twice: information leaving the
-agent on one line can return on another through a coupling that does not exist,
-where the true path runs through the agent's own internal topology.
-\\
-\\
-Both structural augmentations are therefore restricted to controlled
-substations. The fixed candidate shape does not prevent this, since the
-controlled substations are themselves a static set, and it also separates a
-factor that would otherwise be confounded: enabling the augmentation now changes
-relations inside the controlled domain only, rather than changing them there and
-between contextual nodes at the same time. On agent~$0$ of \texttt{bus14} with
-substation~$3$ split as above, the number of active same-substation edges falls
-from ten to eight, and the two that related the neighbor's busbars to each other
-are gone.
+\paragraph{These edges are restricted to controlled substations.}
+The relation represents the actor's ability to move elements between busbars,
+not an electrical connection. Adding it inside a neighboring substation would
+therefore encode another agent's action space and create a nonphysical message
+path. The current construction applies the augmentation only within the actor's
+controlled domain, and these structural edges do not make contextual nodes
+visible.
 }
 
 \begin{table}[H]
@@ -1359,33 +1184,13 @@ Figure~\ref{fig:substation-summary-node} shows this construction.
 
 {\color{clarif}
 \paragraph{Summary nodes exist only for controlled substations.}
-The augmentation is restricted to the agent's own substations, for the reason
-given in Section~\ref{subsec:graph-relation-edges}: a summary node relates every
-busbar it gathers, and outside the controlled domain that relation is one the
-agent can neither act on nor make sense of. Without the restriction a
-neighboring substation would receive a summary node as well, and two of its
-busbars could exchange through it even with the direct relation removed, so both
-augmentations have to be restricted together for either restriction to mean
-anything.
-\\
-\\
-The earlier behaviour was also close to inert. On agent~$0$ of \texttt{bus14}
-under the nominal topology, each controlled substation's summary node gathers
-both of its busbars, whereas a contextual one gathered exactly one. Summarizing
-a single node is an identity up to the learned transform: the round trip
-$i(s,b)\rightarrow u_s\rightarrow i(s,b)$ returns to its origin while consuming
-two message-passing steps, the entire depth at the two-layer setting used
-throughout, and adds a learned constant row to an ordinary mean readout.
-\\
-\\
-Two consequences are worth recording. Summary nodes are appended by the encoder
-after visibility has been decided, and they gather only busbars that are both
-controlled and currently visible, so no contextual state reaches the agent by
-this route under either setting. And because the virtual-node readout attaches
-to summary nodes where they exist, contextual busbars no longer reach the graph
-summary directly; they influence it through the controlled busbars they are
-connected to, consistent with reading the graph embedding as a description of
-the region the agent controls.
+Like the direct edges of Section~\ref{subsec:graph-relation-edges}, summary nodes
+serve for communication within a substation and are therefore created only in the
+actor's controlled domain. Adding them to neighboring substations would let
+contextual busbars exchange through the summary node and bypass that restriction.
+Each summary gathers only visible controlled busbars, so it introduces no
+contextual state directly; external information can affect it only through
+messages that first reach the controlled region.
 }
 \\
 \begin{figure}[htbp]
@@ -1434,28 +1239,13 @@ parameters.
 \\
 \\
 {\color{clarif}
-The descriptor replaces what would be the obvious construction, a trainable
-matrix $\mathbf Q\in\mathbb R^{S\times d_h}$ whose row $s$ is selected by
-substation identifier. That version cannot cross grids: its first dimension is
-the number of substations, so a checkpoint trained on a $14$-substation network
-carries a $14\times d_h$ matrix that no $36$-substation model can accept.
-Transfer does not degrade quietly in that case, it stops -- the loader treats
-the mismatch as an architecture difference and refuses, since the shape is not
-one of the graph-describing buffers it is allowed to rebuild. The augmentation
-would therefore have been unusable in exactly the setting
-Chapter~\ref{ch:wcci-transfer} is about, and a design screened on
-\texttt{bus14} could not have been carried to the larger grid.
-\\
-\\
-Equation~\ref{eq:substation-summary-init} removes that, because both learned
-tensors are shaped by the descriptor and not by the network. It also keeps what
-the identity version was useful for. The bias $\mathbf b_{\mathrm{sub}}$ is a
-single vector shared by every substation, which is what an identity-free design
-would give on its own; the weight $\mathbf W_{\mathrm{sub}}$ adds a modulation
-by what the substation is made of, so a busy junction and a radial end point do
-not start from the same state. The quantities involved are counts rather than
-physical magnitudes, so the same descriptor means the same thing on any network,
-which is what makes the projection transferable at all.
+An embedding table indexed by substation identity would have shape
+$S\times d_h$ and could not transfer between grids with different values of
+$S$. Equation~\ref{eq:substation-summary-init} instead applies one shared
+projection to four normalized structural counts. Its parameter shapes are
+independent of grid size, while substations with different structures still
+receive different initial states. This makes the augmentation compatible with
+the cross-grid transfer of Chapter~\ref{ch:wcci-transfer}.
 }
 
 \begin{table}[H]
@@ -1570,57 +1360,60 @@ pooling ablations, not leakage fixes. Virtual-node runs do not use terminal
 pooling and are described in Section~\ref{sec:virtual-node-readout}.
 
 {\color{clarif}
-\paragraph{Which of the four is the defensible default.}
-The readout produces the single vector the action head reads, and in the
-candidate-scoring head it is the global context concatenated to every action.
-It should therefore answer one question: what is the state of the region this
-agent is deciding about? That region is the action domain, which makes
-\texttt{controlled\_mean} the appropriate default. Excluding context from the
-average does not discard it, because it arrives through message passing, which
-is what the graph is for: on a three-substation fixture the
-\texttt{controlled\_mean} embedding differs across topologies that differ only
-in their context. The choice is not whether context informs the summary but
-whether it does so as structure or as an addend, and structure is the answer
-that uses the model rather than bypassing it.
-\\
-\\
-The mechanical argument is the stronger one. A fixed pooled set makes any
-systematic offset -- including the zeros contributed by empty controlled
-busbars -- a constant that the readout projection absorbs during training. A
-pooled set whose size moves turns that offset into a quantity varying with
-topology, which the network must then separate from genuine signal. On agent
-$0$ of \texttt{bus14} the visible set holds ten nodes under the nominal
-topology, eleven once a contextual substation splits, and nine after a boundary
-line trips, so an ordinary mean rescales every node it keeps when a
-\emph{neighbouring} agent acts.
-\\
-\\
-The energised variants are the least defensible of the four, because they
-remove precisely what actions target. Four of agent $0$'s eight busbars are
-de-energised under the nominal topology: the empty second busbar of each
-substation, which is the busbar a splitting action moves an element onto. A
-readout that drops them cannot represent the availability of a free busbar,
-which is the most directly actionable fact in the observation, and its
-denominator moves with every switch.
-\\
-\\
-Two qualifications. When one-hop context is disabled the controlled and visible
-sets coincide, so the distinction is vacuous and the ordinary readout is already
-the controlled one. And maximum pooling is less exposed throughout: it does not
-depend on the size of the pooled set, and a de-energised row of zeros seldom
-wins a maximum, so the energised variants matter far less there. Its own risk is
-different -- with context included, a neighbour under greater stress dominates
-the channel maxima, so the graph summary reports the neighbour's worst channel
-rather than the agent's, which is an argument for \texttt{controlled\_max} on the
-same grounds.
-\\
-\\
-This also sharpens the reason sum pooling is set aside. The objection above is
-that its magnitude follows the number of pooled nodes, and under a controlled
-readout that number is fixed for the episode, so the objection would dissolve.
-What remains is that the controlled sets differ \emph{between} agents -- eight,
-eight and twelve busbars on \texttt{bus14} -- while the encoder is shared, so a
-sum would hand different agents systematically different magnitudes.
+\paragraph{Comparison of pooling choices.}
+The aggregation rule, pooled population, and contextual scope address distinct
+questions. Table~\ref{tab:pooling-design-comparison} summarizes their main
+trade-offs before empirical comparison.
+
+\begin{table}[H]
+  \color{clarif}
+  \centering
+  \small
+  \caption{Theoretical advantages and limitations of the pooling choices.}
+  \label{tab:pooling-design-comparison}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{L{0.20\textwidth}L{0.34\textwidth}L{0.36\textwidth}}
+    \toprule
+    Choice & Main advantage & Main limitation \\
+    \midrule
+    Mean
+      & Smoothly summarizes the regional state and gives gradients to every pooled node.
+      & A rare but critical activation may be diluted. \\
+    Maximum
+      & Preserves the strongest activation and is insensitive to the number of pooled nodes.
+      & Discards multiplicity, gives sparse gradients, and may combine channel maxima from unrelated nodes. \\
+    Controlled nodes
+      & Aligns the readout with the action domain and keeps its population stable; context still enters through message passing.
+      & Relies on message passing to transmit all useful boundary information. \\
+    All visible nodes
+      & Inserts contextual information directly into the readout.
+      & Context can dilute a mean or dominate a maximum, and the pooled set may change with boundary topology. \\
+    All controlled nodes, including non-energized
+      & Retains empty busbars and disconnected equipment that remain relevant action targets.
+      & Inactive nodes may dilute a mean, although their embeddings are not necessarily zero after message passing. \\
+    Energized controlled nodes only
+      & Focuses the readout on the network currently carrying power.
+      & Removes available action targets and makes the pooled set change after switching or disconnection. \\
+    Include one-hop context
+      & Supplies boundary conditions that affect flows in the controlled region.
+      & Adds external information that the agent cannot directly control. \\
+    Exclude one-hop context
+      & Gives a simpler, strictly local, and more stable observation.
+      & Increases partial observability of boundary conditions. \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Theoretical default.}
+Pending ablation results, the most defensible choice is
+\texttt{controlled\_mean} over all controlled nodes, with one-hop context used
+for message passing but excluded from terminal pooling. This representation is
+stable, aligned with the action domain, and retains empty busbars that actions
+may use. \texttt{controlled\_max} is a plausible risk-sensitive alternative
+when decisions are expected to depend on one critical condition. Without
+one-hop context, the controlled and visible sets coincide; in the explicit-line
+schema, the context option has little effect because boundary line nodes are
+already present.
 }
 
 \subsection{Virtual-node graph readout}
@@ -1634,9 +1427,9 @@ three graph schemas.
 \label{subsec:virtual-node-augmented-graph}
 
 Let $v_{\star}$ denote the virtual node. Define the summary set
-$\mathcal{V}_{\mathrm{sum}}$ as the included substation nodes when the
+$\mathcal{V}_{\mathrm{sum}}$ as the controlled substation nodes when the
 augmentation from Section~\ref{sec:substation-summary-nodes} is enabled, and as
-the included busbar nodes otherwise. The augmented graph is
+the visible controlled busbar nodes otherwise. The augmented graph is
 \begin{align}
   \mathcal{V}^{+} &= \mathcal{V}\cup\{v_{\star}\}, \\
   \mathcal{E}^{+} &= \mathcal{E}\cup
@@ -1647,41 +1440,26 @@ the included busbar nodes otherwise. The augmented graph is
   \right\}.
   \label{eq:virtual-node-augmentation}
 \end{align}
-All reported experiments use a toward-summary direction: every added edge
+All reported experiments use a toward-virtual direction: every added edge
 points from a node in $\mathcal{V}_{\mathrm{sum}}$ to $v_{\star}$. The virtual
 node therefore receives information but never sends messages back. It connects
-to all visible busbars, or to all visible substation-summary nodes when that
-augmentation is enabled, and has no direct edge to generator, load, or
-transmission-line nodes. Candidate virtual edges incident to an inactive
-contextual row are masked, so the virtual readout cannot bypass the local
-information boundary.
+to visible controlled busbars, or to the controlled substation-summary nodes
+when that augmentation is enabled. It has no direct edge to contextual
+busbars, generators, loads, or transmission-line nodes; those nodes can affect
+the readout only through ordinary message-passing paths into the controlled
+region.
 
-\begin{figure}[htbp]
+\begin{figure}[H]
   \centering
-  \begin{subfigure}[b]{0.49\linewidth}
-    \centering
-    \includegraphics[width=\linewidth]{figures/graph_virtual_node_readout_bus.png}
-    \caption{With substation-summary nodes.}
-    \label{fig:virtual-node-readout-summary}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[b]{0.49\linewidth}
-    \centering
-    \includegraphics[width=\linewidth]{figures/graph_virtual_node_readout.png}
-    \caption{Without substation-summary nodes.}
-    \label{fig:virtual-node-readout-busbar}
-  \end{subfigure}
-  \caption{Virtual-node graph readout, shown for both definitions of the
-  summary set $\mathcal{V}_{\mathrm{sum}}$ in
-  Equation~\ref{eq:virtual-node-augmentation}. The purple node aggregates that
-  set and its final embedding replaces terminal node pooling. Every purple edge
-  is directed toward the virtual node, which sends no message back. In~(a) the substation-summary augmentation of
-  Section~\ref{sec:substation-summary-nodes} is enabled, so the virtual node
-  attaches to the orange substation nodes and reaches the busbars only through
-  them, which gives a two-level hierarchy busbar $\rightarrow$ substation
-  $\rightarrow$ virtual node. In~(b) the augmentation is disabled and the
-  virtual node attaches directly to every included busbar. In neither case does
-  it connect to generator, load, or transmission-line nodes.}
+  \resizebox{0.98\linewidth}{!}{%
+    \input{figures/graph_virtual_readout.tex}%
+  }
+  \caption{Virtual-node readout in the reported one-way setting. Without
+  substation nodes, every controlled busbar---including non-energized
+  $b_{32}$---sends directly to $v_\star$. With augmentation $n$, the same
+  busbars communicate through $u_s$, and only the substation nodes send to
+  $v_\star$. The final state
+  $\mathbf h_\star^{(K)}$ replaces terminal pooling.}
   \label{fig:virtual-node-readout}
 \end{figure}
 
@@ -1725,11 +1503,12 @@ except for a neutral unit value in the
 \texttt{rho} position when that feature exists.
 \\
 \\
-Without substation nodes, a graph containing $N_{\mathrm{bus}}$ included
-busbars receives one virtual node and $N_{\mathrm{bus}}$ directed edges. With
-the hierarchy enabled, the virtual-node stage instead adds $S$ edges from the
-$S$ substation-summary nodes. After one layer the virtual node has aggregated
-its immediate busbar or substation neighbors.
+Without substation nodes, a graph containing $N_{\mathrm{bus}}^{\mathrm{ctrl}}$
+visible controlled busbars receives one virtual node and
+$N_{\mathrm{bus}}^{\mathrm{ctrl}}$ directed edges. With the hierarchy enabled,
+the virtual-node stage instead adds $S$ edges from the $S$ controlled
+substation-summary nodes. After one layer the virtual node has aggregated its
+immediate busbar or substation neighbors.
 
 \begin{tcolorbox}[
   colframe=red!75!black,
@@ -1798,29 +1577,75 @@ be learned separately for every index, and the head grows with
 $|\mathcal{A}_a|$.
 \\
 \\
-Candidate scoring replaces that by one shared scalar-valued network applied to
-every action in turn:
+Candidate scoring replaces that by one scalar-valued network shared across all
+non-idle actions. The idle action may use the same network or a dedicated one:
 \begin{equation}
   \ell_{a,j} =
   \operatorname{score}
   \left(
     \underbrace{\mathbf{z}_a}_{\text{whole graph}},\
     \underbrace{\mathbf{c}_j}_{\text{nodes action }j\text{ touches}},\
-    \underbrace{\boldsymbol{\phi}_j}_{\text{what action }j\text{ does}}
-  \right).
+    \underbrace{\boldsymbol{\phi}_j}_{\text{optional action descriptor}}
+  \right),
+  \qquad j\geq 1.
   \label{eq:candidate-scoring-head}
 \end{equation}
-The same parameters score all actions, so the head no longer grows with
+The same parameters score all non-idle actions, so the head no longer grows with
 $|\mathcal{A}_a|$, and two actions are ranked by the difference between their
 touched-node contexts rather than by two independent output rows. This is what
 makes the explicit line nodes usable: an action next to a loaded line is scored
 from that line's own embedding.
 \\
 \\
-Two ingredients are needed: a static table saying which nodes each action
-touches (Section~\ref{subsec:candidate-action-metadata}), and a rule for
-turning those nodes into the context vector $\mathbf{c}_j$
-(Section~\ref{subsec:candidate-pooling}).
+The implementation separates three choices, summarized in
+Table~\ref{tab:candidate-scoring-choices}. They can be combined independently,
+so the two uniform pooling rules give eight variants. Learned attention adds a
+third pooling family, described after the uniform controls.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Independent choices in the candidate-action scorer.}
+  \label{tab:candidate-scoring-choices}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{L{0.20\textwidth}L{0.35\textwidth}L{0.35\textwidth}}
+    \toprule
+    Component & First choice & Alternative \\
+    \midrule
+    Touched-node context
+      & Average all touched nodes together into one vector.
+      & Average busbars, lines, loads, and generators separately, then concatenate the four vectors. \\\addlinespace[2pt]
+    Static action descriptor
+      & Omit it and score from the graph state and touched nodes alone.
+      & Append the action indicators and counts listed in Table~\ref{tab:candidate-action-features}. \\\addlinespace[2pt]
+    Idle action
+      & Use the shared scorer with an empty touched-node context.
+      & Use a dedicated scorer that reads only the global graph embedding. \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Figure~\ref{fig:candidate-action-scoring-pipeline} shows how these independent
+choices enter one candidate score.
+
+\begin{figure}[H]
+  \centering
+  \resizebox{0.99\linewidth}{!}{%
+    \input{figures/candidate_action_scoring_pipeline.tex}%
+  }
+  \caption[Candidate-action scoring pipeline]{Candidate-action scoring for an
+  endpoint-move candidate. The encoder provides the global graph embedding
+  $\mathbf z_a$ and physical node states $\mathbf H$. Violet outlines mark the
+  only rows gathered for the local context: both busbars of the modified
+  substation and the touched explicit-line node. One pooling construction then
+  produces $\mathbf c_j$. The static descriptor
+  $\boldsymbol\phi_j$ may be appended before the shared non-idle scorer. The
+  idle action uses either zero local context in that scorer or a dedicated
+  scorer.}
+  \label{fig:candidate-action-scoring-pipeline}
+\end{figure}
+
+The following subsections define these inputs and explain their consequences.
 
 \subsection{What each action touches}
 \label{subsec:candidate-action-metadata}
@@ -1912,6 +1737,12 @@ both touch the same nodes.
   \end{tabular}
 \end{table}
 
+\noindent The descriptor is optional in the final scorer. Including it tells the
+model what operation is proposed and can distinguish actions that touch similar
+nodes; omitting it isolates what can be learned from the graph state and the
+touched-node context alone. This choice is independent of the pooling rule and
+of the idle-action treatment.
+
 \subsection{Pooling the touched nodes}
 \label{subsec:candidate-pooling}
 
@@ -1933,7 +1764,8 @@ substation-summary and virtual nodes are excluded, since an action touches
 equipment and not a learned hub.
 \\
 \\
-The basic operation is a masked mean over the rows of one object type,
+For each object type $t\in\{\mathrm{bus},\mathrm{line},\mathrm{load},
+\mathrm{gen}\}$, the masked mean is
 \begin{equation}
   \mathbf{c}^{(t)}_j =
   \frac{1}{\max\left(1,|\mathcal{N}_t(j)|\right)}
@@ -1941,61 +1773,134 @@ The basic operation is a masked mean over the rows of one object type,
   \label{eq:candidate-typed-mean}
 \end{equation}
 where the clamped denominator makes an untouched type give the zero vector
-instead of a division by zero. Table~\ref{tab:candidate-pool-modes} lists the
-ways of combining these.
+instead of a division by zero. Uniform pooling can either average all touched
+nodes jointly,
+\begin{equation}
+  \mathbf{c}^{\mathrm{joint}}_j =
+  \frac{\sum_t\sum_{v\in\mathcal{N}_t(j)}\mathbf{h}^{(K)}_v}
+       {\max\left(1,\sum_t|\mathcal{N}_t(j)|\right)},
+  \label{eq:candidate-joint-mean}
+\end{equation}
+or preserve node roles by concatenating the four type-specific means,
+\begin{equation}
+  \mathbf{c}^{\mathrm{sep}}_j =
+  \left[\mathbf{c}^{(\mathrm{bus})}_j;
+        \mathbf{c}^{(\mathrm{line})}_j;
+        \mathbf{c}^{(\mathrm{load})}_j;
+        \mathbf{c}^{(\mathrm{gen})}_j\right].
+  \label{eq:candidate-separated-mean}
+\end{equation}
+The available local-context constructions are summarized in
+Table~\ref{tab:candidate-pool-modes}.
 
 \begin{table}[H]
   \centering
   \small
-  \caption{Pooling modes. All three are implemented; \texttt{typed\_mean} is the
-  default.}
+  \caption{Implemented constructions of the action-specific node context.}
   \label{tab:candidate-pool-modes}
-  \setlength{\tabcolsep}{5pt}
-  \begin{tabular}{L{0.17\textwidth}L{0.36\textwidth}L{0.10\textwidth}L{0.27\textwidth}}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{L{0.22\textwidth}L{0.28\textwidth}L{0.30\textwidth}L{0.10\textwidth}}
     \toprule
-    Mode & Context $\mathbf{c}_j$ & Width & What it buys \\
+    Construction & Eligible rows & Aggregation & Width \\
     \midrule
-    \texttt{mean} & One masked mean over all touched rows, whatever their type & $d_h$ & The smaller control; mixes roles together \\
-    \texttt{typed\_mean} & The four typed means of Equation~\ref{eq:candidate-typed-mean}, concatenated & $4d_h$ & The scorer can tell a stressed line from the load beside it \\
-    \texttt{typed\_attention} & The action queries the eligible rows and weights them, typed as above & $4d_h$ & Can focus on the one endpoint that matters instead of averaging it away \\
+    Joint uniform mean
+      & All nodes touched by the action
+      & One equal-weight mean; node roles are mixed
+      & $d_h$ \\\addlinespace[2pt]
+    Type-separated uniform mean
+      & All nodes touched by the action
+      & One equal-weight mean per type, then concatenation
+      & $4d_h$ \\\addlinespace[2pt]
+    Type-separated learned attention
+      & Determined by the attention scope
+      & One action-conditioned weighted sum per type, then concatenation
+      & $4d_h$ \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-\noindent Learned attention replaces the flat average by weights the action computes for
-itself, and \texttt{candidate\_action\_attention\_scope} decides which rows
-compete for that weight: \texttt{affected} keeps the touched rows of the two
-means above, \texttt{all} opens the attention to every node of the local graph,
-and \texttt{soft\_prior} opens it to every node but biases the touched ones,
-so the head can look beyond what the action modifies without being forced to.
-The uniform modes are still the controls, because attention adds parameters and
-a second failure mode to a head whose value is being established at the same
-time.
+\noindent With learned attention, an action-specific query assigns normalized
+weights within each node type:
+\begin{equation}
+  \mathbf{c}^{(t)}_j =
+  \sum_{v\in\mathcal{E}_t(j)}
+  \alpha^{(t)}_{jv}\,\mathbf{V}\mathbf{h}^{(K)}_v,
+  \qquad
+  \sum_{v\in\mathcal{E}_t(j)}\alpha^{(t)}_{jv}
+  = \mathbb{1}\!\left[|\mathcal{E}_t(j)|>0\right].
+  \label{eq:candidate-typed-attention}
+\end{equation}
+Here $\mathcal{E}_t(j)$ is the eligible set; an empty set returns the zero
+vector. The implemented choices are shown in
+Table~\ref{tab:candidate-attention-scopes}. The action query is formed from the
+global graph state and the static action descriptor in the reported attention
+comparisons. This is separate from whether the descriptor is also appended to
+the final scorer.
 
-\subsection{Scoring, including the idle action}
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Possible eligibility rules for learned action-specific attention.}
+  \label{tab:candidate-attention-scopes}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{L{0.24\textwidth}L{0.31\textwidth}L{0.35\textwidth}}
+    \toprule
+    Eligibility rule & Nodes allowed to receive weight & Purpose \\
+    \midrule
+    Fixed physical support
+      & Only nodes identified as touched by the action
+      & Learn their relative importance without changing the physical mapping. \\\addlinespace[2pt]
+    Physical support as a prior
+      & Every local node of the same type, with a score bonus for touched nodes
+      & Allow attention to extend the physical mapping while favoring it initially. \\\addlinespace[2pt]
+    Fully learned support
+      & Every local node of the same type, without a score bonus
+      & Test whether the model can discover the relevant nodes without the mapping as a prior. \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\noindent The two uniform means are parameter-free controls. Learned attention
+can retain a critical node that a mean would dilute, but adds parameters and
+must also learn a sensible weighting.
+
+\subsection{Scoring and the idle action}
 \label{subsec:candidate-scorer}
 
-All non-idle actions are scored by one network with a single output unit:
+All non-idle actions are scored by one network with a single output unit. Its
+input depends on whether the static action descriptor is included:
 \begin{equation}
-  \ell_{a,j} =
-  \operatorname{MLP}_{\mathrm{score}}
-  \left(
-    \left[\mathbf{z}_a;\mathbf{c}_j;\boldsymbol{\phi}_j\right]
-  \right),
-  \qquad j\geq 1.
+  \mathbf{x}_{a,j} =
+  \begin{cases}
+    [\mathbf{z}_a;\mathbf{c}_j;\boldsymbol{\phi}_j],
+      & \text{with the descriptor},\\
+    [\mathbf{z}_a;\mathbf{c}_j],
+      & \text{without it},
+  \end{cases}
+  \qquad
+  \ell_{a,j}=\operatorname{MLP}_{\mathrm{score}}(\mathbf{x}_{a,j}),
+  \quad j\geq 1.
   \label{eq:candidate-shared-scorer}
 \end{equation}
-The idle action touches nothing, so its pooled context is identically zero and
-would otherwise be scored by a network trained on non-zero contexts. It
-therefore gets its own head over the graph embedding alone:
+The idle action touches no node, so its local context is the zero vector. It can
+either use the same scorer as the non-idle actions,
+\begin{equation}
+  \ell_{a,0} =
+  \operatorname{MLP}_{\mathrm{score}}(\mathbf{x}_{a,0}) + b_{\varnothing},
+  \qquad \mathbf{c}_0=\mathbf{0},
+  \label{eq:candidate-shared-do-nothing}
+\end{equation}
+or use a dedicated scorer over the global graph embedding:
 \begin{equation}
   \ell_{a,0} =
   \operatorname{MLP}_{\varnothing}(\mathbf{z}_a) + b_{\varnothing},
   \label{eq:candidate-do-nothing-head}
 \end{equation}
-with $b_{\varnothing}$ a learned scalar applied to action $0$ alone. This makes
-the idle logit an explicit judgment of whether the local grid state is safe
-enough not to intervene.
+In both cases $b_{\varnothing}$ is a learned scalar applied only to the idle
+action. Sharing the scorer preserves parameter sharing across the full action
+set, but presents it with an empty context not seen for non-idle actions. A
+dedicated scorer instead treats ``do nothing'' as a global safety decision, at
+the cost of extra parameters and a different scoring mechanism.
 
 {\color{blue}
 \subsection{Cost and current limits}
@@ -2007,12 +1912,12 @@ of the action space. This is the reason to start on \texttt{bus14} and on
 reduced action spaces before the full WCCI one.
 \\
 \\
-Two properties matter when comparing this head against the default. The head no
-longer scales with $|\mathcal{A}_a|$, so the two actors do not have the same
-parameter count even at identical graph settings, and both counts should be
-reported. The idle logit also comes from a different mechanism than the other
-logits, so the action-$0$ frequency has to be compared against the action-index
-baseline rather than assumed comparable.
+The compared variants do not have identical parameter counts: separating node
+types widens the scorer input, static descriptors add input columns, learned
+attention adds projections, and a dedicated idle scorer adds another network.
+These counts should therefore be reported. When the dedicated idle scorer is
+used, its different mechanism also makes the action-$0$ frequency an explicit
+comparison metric rather than something assumed comparable.
 \\
 \\
 The head currently requires the explicit-line graph and does not combine with

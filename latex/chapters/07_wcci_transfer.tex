@@ -45,9 +45,8 @@ controls five.
 \begin{table}[H]
   \centering
   \small
-  \caption{Source and target environments. Both use difficulty 0, topology
-  actions, decentralized agents and an 80/20 train/test chronic split with split
-  seed 0.}
+  \caption{Source and target environments. Both use topology actions,
+  decentralized agents and an 80/20 train/test chronic split with split seed 0.}
   \label{tab:wcci-env-comparison}
   \setlength{\tabcolsep}{6pt}
   \begin{tabular}{L{0.30\textwidth}L{0.28\textwidth}L{0.30\textwidth}}
@@ -83,12 +82,31 @@ than inventing a schedule for \texttt{bus14}, for which Grid2Op provides no
 specification.
 \\
 \\
-The effect is large. On a fixed sample of fifty held-out chronics, evaluated by
-name so that both settings see the same episodes, a do-nothing policy survives
-21.7\% of the horizon with maintenance and 56.0\% without, and completes 6\% of
-episodes with maintenance against 52\% without. Maintenance was responsible for
-most of the failures on this grid.
-\hl{make a table to show the result and use actually the full test eval on maintenance and off maintenance to show the effect of not using maintenance.}
+The effect is measured on the complete held-out test split using the same 576
+chronics and a do-nothing policy in both settings.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Do-nothing performance on the full WCCI test split. The chronics and
+  policy are identical; only scheduled maintenance differs.}
+  \label{tab:wcci-maintenance-effect}
+  \setlength{\tabcolsep}{7pt}
+  \begin{tabular}{lrrr}
+    \toprule
+    Setting & Mean survival & Median survival & Complete episodes \\
+    \midrule
+    Maintenance enabled  & 27.3\% & 12.1\%  & 39/576 (6.8\%) \\
+    Maintenance disabled & 57.3\% & 100.0\% & 303/576 (52.6\%) \\
+    \midrule
+    Difference            & +30.0 pp & +87.9 pp & +264 (+45.8 pp) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\noindent Removing maintenance increases mean survival by 30.0 percentage points and
+episode completion by 45.8 points, confirming that maintenance substantially
+changes the baseline difficulty of the target grid.
 
 
 \subsection{Action space}
@@ -163,20 +181,22 @@ strong reference.
 \section{Why the input distribution matters}
 \label{sec:wcci-why-distribution}
 
-Only the graph encoder can cross grids \hl{yet because with the heterogenous + line and adaptative pooling allows to have a transferable head}. The per-agent action heads cannot: the
-partitions differ in size and count, so no weight in a head has a counterpart on
-the other grid. The centralized critic reads a flat, grid-sized observation and
-is likewise grid-specific. What transfers is the encoder, and what the encoder
-reads is the node and edge feature vectors.
+The graph encoder is grid-size independent and can therefore be transferred
+across grids. A conventional action head has one output per action index, so its
+shape changes with the agent partitions and action sets. With the explicit-line
+representation, however, the candidate scorer of
+Section~\ref{sec:candidate-action-scoring} applies shared weights and
+action-conditioned pooling to a variable set of actions. This makes the action
+head transferable as well. The flat centralized critic remains grid-specific
+because its input dimension depends on the grid.
 \\
 \\
-{\color{red} Attention critic is fed the normalized values}
-Those vectors are unnormalized.
-\\
-\\
-A frozen \texttt{bus14} encoder therefore receives WCCI's raw physical
-quantities. Whether that is a problem is an empirical question about how similar
-the two distributions are.
+The two input paths must also be distinguished. The critic receives the
+normalized flat observation. The transferred actor encoder, however, uses only
+graph node and edge features, for which physical scaling and running
+standardization are disabled here. A frozen \texttt{bus14} encoder therefore
+receives WCCI's raw graph quantities; whether this matters depends on how
+closely the two distributions match.
 
 
 \section{Measurement protocol}
@@ -235,7 +255,7 @@ measured on each grid.
     \multicolumn{5}{l}{\textit{Node features}} \\
     \texttt{gen\_p} & Active power injected by attached generators & MW & 84.0 & 88.0 \\
     \texttt{gen\_theta} & Voltage angle at the generator connection & deg & 84.8 & 80.3 \\
-    \texttt{load\_p} & Active power drawn by attached loads & MW & 56.5 & 56.4 \\
+    \texttt{load\_p} & Net active power of attached load objects (positive withdrawal) & MW & 56.5 & 56.4 \\
     \texttt{load\_theta} & Voltage angle at the load connection & deg & 56.5 & 58.0 \\
     \texttt{time\_before\_cooldown\_sub} & Steps until this substation may be reconfigured & steps & 100 & 100 \\
     \texttt{domain\_mask} & 1 for the agent's own substations, 0 for legacy whole-substation context & --- & 39.1 & 35.7 \\
@@ -243,24 +263,34 @@ measured on each grid.
     \multicolumn{5}{l}{\textit{Edge features}} \\
     \texttt{line\_status} & 1 connected, 0 disconnected & --- & 0 & 0 \\
     \texttt{rho} & Current flow divided by thermal limit & p.u. & 0 & 0 \\
-    \texttt{timestep\_overflow} & Consecutive steps above the thermal limit & steps & 100 & 100 \\
+    \texttt{timestep\_overflow} & Consecutive steps above the thermal limit & steps & $>99.99$ & $>99.99$ \\
     \texttt{time\_before\_cooldown\_line} & Steps until this line may be switched & steps & 100 & 100 \\
     \bottomrule
   \end{tabular}
 \end{table}
-\hl{What is the zeros column why is there sometines 0 soemtimes 100 what does it tell us ??}
+
+\noindent The zero fraction is a sparsity diagnostic, not an information score: 100\%
+means that every sampled value is zero, whereas 0\% only means that zero was
+never observed. Thus, \texttt{line\_status} is constant at one because the
+measurement retains only active physical edges, while \texttt{rho} varies but
+is nonzero on every retained edge. The overflow channel is not constant: its
+zero rate exceeds 99.99\% but rounds to 100\% at the original precision (12
+nonzero entries out of 312{,}000 on \texttt{bus14}, and 2 out of 400{,}000 on
+WCCI).
+\\
+\\
+The two cooldown channels are exactly zero because the measurement uses a
+do-nothing policy. A legal non-idle WCCI rollout confirms that this is
+policy-dependent: a topology change sets the affected substation cooldown to
+3, and reconnecting a line sets its line cooldown to 3. These channels can
+therefore vary during controlled execution even though they are constant in
+this diagnostic sample.
 \\
 \\
 One feature is dimensionless by construction. \texttt{rho} divides each line's
 current flow by that line's own thermal limit, so it is expressed in units the
 grid itself defines. Every other physical channel carries the units of the grid
 it came from.
-\\
-\\
-Three channels are constant across the whole sample and carry no information
-here. Under a do-nothing policy no cooldown is ever triggered, and only active
-physical edges are recorded, which makes \texttt{line\_status} identically one.
-They are reported for completeness and excluded from the discussion.
 
 
 \section{Results}
@@ -364,13 +394,18 @@ $79 \pm 135$~MW on WCCI.
   \caption{Power channels at nodes carrying the corresponding asset, on a linear
   density scale (top) and a logarithmic one (bottom). The logarithmic row is the
   informative one: WCCI carries a long right tail that \texttt{bus14} does not
-  have, reaching 399~MW of generation against a 92~MW ceiling, and
-  \texttt{load\_p} extends below zero on 3.5\% of WCCI load nodes while
+  have, reaching 399~MW of generation against a 92~MW ceiling. Among the
+  nonzero WCCI \texttt{load\_p} samples, 8.0\% are negative, whereas
   \texttt{bus14} never produces a negative value.}
   \label{fig:wcci-power}
 \end{figure}
 
-\hl{How is it that we haev negative load for wcci and not for bus14? One would expect either to say load are consumption so negative power consumption and have only negative values or a positive demand and only have positive values}
+\noindent The graph construction does not change the sign of \texttt{load\_p}:
+positive values denote withdrawal from the grid. WCCI additionally represents
+seven boundary interconnections as load objects. Their exchanges can have
+either sign, so a negative value denotes power injected into the modeled grid,
+not negative consumption. The \texttt{bus14} data contain only conventional
+demand loads and therefore remain positive.
 
 \begin{figure}[H]
   \centering

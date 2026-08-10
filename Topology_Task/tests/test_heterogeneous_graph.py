@@ -449,6 +449,32 @@ class HeterogeneousLineGraphBuilderTest(unittest.TestCase):
             np.all(graph["edge_features"][graph["edge_mask"] == 0] == 0.0)
         )
 
+    def test_legacy_connected_column_can_rebuild_old_checkpoints(self):
+        builder = HeterogeneousLineGraphBuilder(
+            MockGridEnv(),
+            {"agent_0": [0]},
+            include_neighbors=True,
+            include_legacy_connected_feature=True,
+        )
+        spec = builder.specs["state"]
+        connected_col = spec["node_feature_names"].index("connected")
+        line_row = int(spec["line_id_to_node_row"][0])
+        bus_rows = np.nonzero(
+            spec["node_type"] == builder.NODE_TYPE_BUSBAR
+        )[0]
+
+        live = builder.build(make_obs())["state"]
+        disconnected = builder.build(
+            make_obs(line_status=np.asarray([0], dtype=np.float32))
+        )["state"]
+
+        self.assertEqual(spec["node_dim"], 13)
+        self.assertTrue(np.all(live["node_features"][bus_rows, connected_col] == 1.0))
+        self.assertEqual(live["node_features"][line_row, connected_col], 1.0)
+        self.assertEqual(
+            disconnected["node_features"][line_row, connected_col], 0.0
+        )
+
     def test_local_graph_uses_shared_line_node_without_neighbor_equipment(self):
         for include_neighbors in (False, True):
             with self.subTest(include_neighbors=include_neighbors):
