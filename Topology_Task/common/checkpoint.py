@@ -140,6 +140,47 @@ def exact_resume_state(record: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     return state
 
 
+def _checkpoint_to_device(obj: Any, device: th.device) -> Any:
+    if isinstance(obj, th.Tensor):
+        return obj.to(device)
+    if isinstance(obj, dict):
+        return {key: _checkpoint_to_device(value, device) for key, value in obj.items()}
+    if isinstance(obj, list):
+        return [_checkpoint_to_device(value, device) for value in obj]
+    if isinstance(obj, tuple):
+        return tuple(_checkpoint_to_device(value, device) for value in obj)
+    return obj
+
+
+def initialize_resume_observation(
+    envs: Any,
+    *,
+    device: th.device,
+    loaded_exact_state: Optional[Dict[str, Any]],
+    reset_environments: bool,
+    normalization_enabled: bool,
+    saved_obs_stats: Dict[str, Any],
+) -> Tuple[Any, bool]:
+    """Restore exact workers or begin a non-exact continuation from fresh resets."""
+    restore_exact_environments = (
+        loaded_exact_state is not None and not reset_environments
+    )
+    if normalization_enabled and not restore_exact_environments and saved_obs_stats:
+        # Fresh workers must receive the accumulated training statistics before
+        # their first observation is produced.
+        envs.set_obs_stats(saved_obs_stats)
+
+    if restore_exact_environments:
+        envs.set_checkpoint_state(loaded_exact_state["environment_states"])
+        next_obs = _checkpoint_to_device(loaded_exact_state["next_obs"], device)
+    else:
+        from .utils import cast_np_to_tensors
+
+        next_obs, _ = envs.reset()
+        next_obs = cast_np_to_tensors(next_obs, device)
+    return next_obs, restore_exact_environments
+
+
 @dataclass
 class CheckpointSaver(ABC):
     """Abstract base class for saving and loading checkpoints.

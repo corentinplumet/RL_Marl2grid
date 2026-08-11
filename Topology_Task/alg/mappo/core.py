@@ -14,6 +14,7 @@ from common.checkpoint import (
     CheckpointSaver,
     capture_rng_state,
     exact_resume_state,
+    initialize_resume_observation,
     restore_rng_state,
 )
 from common.explainability import (
@@ -518,18 +519,6 @@ def _checkpoint_cpu_copy(obj: Any) -> Any:
     return obj
 
 
-def _checkpoint_to_device(obj: Any, device: th.device) -> Any:
-    if isinstance(obj, th.Tensor):
-        return obj.to(device)
-    if isinstance(obj, dict):
-        return {key: _checkpoint_to_device(value, device) for key, value in obj.items()}
-    if isinstance(obj, list):
-        return [_checkpoint_to_device(value, device) for value in obj]
-    if isinstance(obj, tuple):
-        return tuple(_checkpoint_to_device(value, device) for value in obj)
-    return obj
-
-
 class MAPPO:
     """Multi-agent Proximal Policy Optimization (PPO) implementation for training an agent in a given environment: https://arxiv.org/abs/2103.01955."""
 
@@ -580,8 +569,18 @@ class MAPPO:
         loaded_exact_state = (
             exact_resume_state(ckpt.loaded_run) if ckpt.resumed else None
         )
+        reset_environments_on_resume = bool(
+            ckpt.resumed
+            and getattr(args, "resume_reset_environments", False)
+        )
         if loaded_exact_state is not None:
             init_rollout = int(loaded_exact_state["next_rollout"])
+            if reset_environments_on_resume:
+                print(
+                    "Fast resume enabled: restoring learned and normalization "
+                    "state, but resetting all environment workers instead of "
+                    "replaying their saved trajectories."
+                )
         elif ckpt.resumed:
             init_rollout = int(ckpt.loaded_run["last_rollout"])
             if getattr(args, "resume_start_next_rollout", False):
@@ -675,10 +674,7 @@ class MAPPO:
             getattr(args, "norm_obs", False)
             or getattr(args, "gnn_running_norm", False)
         )
-        if ckpt.resumed and normalization_enabled and loaded_exact_state is None:
-            saved_obs_stats = loaded_training_state.get("obs_stats", {})
-            if saved_obs_stats:
-                envs.set_obs_stats(saved_obs_stats)
+        saved_obs_stats = loaded_training_state.get("obs_stats", {})
 
         if loaded_exact_state is not None:
             saved_global_step = int(loaded_exact_state["global_step"])
@@ -687,13 +683,14 @@ class MAPPO:
                     "Checkpoint boundary global_step does not match the model record: "
                     f"{saved_global_step} != {ckpt.loaded_run['global_step']}."
                 )
-            envs.set_checkpoint_state(loaded_exact_state["environment_states"])
-            next_obs = _checkpoint_to_device(
-                loaded_exact_state["next_obs"], device
-            )
-        else:
-            next_obs, _ = envs.reset()
-            next_obs = cast_np_to_tensors(next_obs, device)
+        next_obs, _ = initialize_resume_observation(
+            envs,
+            device=device,
+            loaded_exact_state=loaded_exact_state,
+            reset_environments=reset_environments_on_resume,
+            normalization_enabled=normalization_enabled,
+            saved_obs_stats=saved_obs_stats,
+        )
         joint_obs_template = get_joint_obs(
             next_obs, args.critic_encoder, args.decentralized
         )

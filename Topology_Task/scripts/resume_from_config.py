@@ -119,6 +119,7 @@ def build_command(
     wandb_run_name: str,
     wandb_run_id: str,
     allow_device_migration: bool,
+    reset_environments: bool = False,
 ) -> list[str]:
     command = [
         "sbatch",
@@ -137,6 +138,8 @@ def build_command(
         command.extend(["--resume-wandb-run-id", wandb_run_id])
     if allow_device_migration:
         command.extend(["--resume-allow-device-migration", "true"])
+    if reset_environments:
+        command.extend(["--resume-reset-environments", "true"])
     return command
 
 
@@ -198,6 +201,14 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--reset-environments",
+        action="store_true",
+        help=(
+            "Reset environment workers instead of replaying saved trajectories. "
+            "This is a faster, non-exact continuation."
+        ),
+    )
+    parser.add_argument(
         "--submit",
         action="store_true",
         help="Submit the sbatch command. By default the command is only printed.",
@@ -250,6 +261,7 @@ def main() -> int:
         ns.wandb_run_name,
         ns.wandb_run_id,
         ns.allow_device_migration,
+        ns.reset_environments,
     )
     printable = " ".join(shlex.quote(part) for part in command)
 

@@ -82,6 +82,7 @@ def main(args: Namespace) -> None:
     cli_resume_start_next_rollout = args.resume_start_next_rollout
     cli_resume_delete_checkpoint_after_load = args.resume_delete_checkpoint_after_load
     cli_resume_allow_device_migration = args.resume_allow_device_migration
+    cli_resume_reset_environments = args.resume_reset_environments
     cli_wandb_mode = args.wandb_mode
 
     if cli_resume_run_name:
@@ -113,6 +114,7 @@ def main(args: Namespace) -> None:
         args.resume_wandb_run_id = cli_resume_wandb_run_id
         args.resume_delete_checkpoint_after_load = cli_resume_delete_checkpoint_after_load
         args.resume_allow_device_migration = cli_resume_allow_device_migration
+        args.resume_reset_environments = cli_resume_reset_environments
         args.wandb_mode = cli_wandb_mode
         args.resume_start_next_rollout = (
             _is_completed_final_checkpoint(cli_resume_run_name)
@@ -211,6 +213,18 @@ if __name__ == "__main__":
             "accelerator RNG streams. This preserves model, optimizer, "
             "environment, CPU RNG, and rollout-boundary state, but a GPU/CPU "
             "device change is not bit-exact."
+        ),
+    )
+    parser.add_argument(
+        "--resume-reset-environments",
+        type=str2bool,
+        default=False,
+        help=(
+            "Skip exact simulator reconstruction when resuming and reset all "
+            "environment workers instead. Model, optimizer, training counters, "
+            "normalization statistics, and available RNG state are retained, "
+            "but the environment trajectories restart and continuation is not "
+            "bit-exact."
         ),
     )
 

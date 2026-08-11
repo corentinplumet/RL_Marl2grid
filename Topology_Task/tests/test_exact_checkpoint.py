@@ -15,6 +15,7 @@ from common.checkpoint import (
     MAPPOCheckpoint,
     capture_rng_state,
     exact_resume_state,
+    initialize_resume_observation,
     restore_rng_state,
 )
 from common.utils import ReturnNormalizer
@@ -86,6 +87,78 @@ def make_checkpoint_env():
 
 
 class ExactCheckpointTests(unittest.TestCase):
+    def test_fast_resume_resets_workers_after_restoring_observation_stats(self):
+        class FakeVectorEnv:
+            def __init__(self):
+                self.calls = []
+
+            def set_obs_stats(self, stats):
+                self.calls.append(("set_obs_stats", stats))
+
+            def set_checkpoint_state(self, state):
+                self.calls.append(("set_checkpoint_state", state))
+
+            def reset(self):
+                self.calls.append(("reset", None))
+                return {"agent_0": np.asarray([[3.0]], dtype=np.float32)}, {}
+
+        envs = FakeVectorEnv()
+        next_obs, restored_exact = initialize_resume_observation(
+            envs,
+            device=th.device("cpu"),
+            loaded_exact_state={
+                "environment_states": ["saved-worker"],
+                "next_obs": {"agent_0": th.tensor([[99.0]])},
+            },
+            reset_environments=True,
+            normalization_enabled=True,
+            saved_obs_stats={"agent_0": {"mean": 7.0}},
+        )
+
+        self.assertFalse(restored_exact)
+        self.assertEqual(
+            envs.calls,
+            [
+                ("set_obs_stats", {"agent_0": {"mean": 7.0}}),
+                ("reset", None),
+            ],
+        )
+        th.testing.assert_close(next_obs["agent_0"], th.tensor([[3.0]]))
+
+    def test_default_resume_still_restores_exact_environment_state(self):
+        class FakeVectorEnv:
+            def __init__(self):
+                self.calls = []
+
+            def set_obs_stats(self, stats):
+                self.calls.append(("set_obs_stats", stats))
+
+            def set_checkpoint_state(self, state):
+                self.calls.append(("set_checkpoint_state", state))
+
+            def reset(self):
+                raise AssertionError("exact resume must not reset workers")
+
+        envs = FakeVectorEnv()
+        next_obs, restored_exact = initialize_resume_observation(
+            envs,
+            device=th.device("cpu"),
+            loaded_exact_state={
+                "environment_states": ["saved-worker"],
+                "next_obs": {"agent_0": th.tensor([[99.0]])},
+            },
+            reset_environments=False,
+            normalization_enabled=True,
+            saved_obs_stats={"agent_0": {"mean": 7.0}},
+        )
+
+        self.assertTrue(restored_exact)
+        self.assertEqual(
+            envs.calls,
+            [("set_checkpoint_state", ["saved-worker"])],
+        )
+        th.testing.assert_close(next_obs["agent_0"], th.tensor([[99.0]]))
+
     def test_global_rng_state_round_trip(self):
         original_state = capture_rng_state()
         try:

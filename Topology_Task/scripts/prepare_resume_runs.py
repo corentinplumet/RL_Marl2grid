@@ -153,6 +153,7 @@ def build_resume_command(
     target_timesteps: int,
     time_limit: float,
     allow_device_migration: bool = False,
+    reset_environments: bool = False,
 ) -> str:
     args = [
         "sbatch",
@@ -167,6 +168,8 @@ def build_resume_command(
         args.extend(["--resume-time-limit", str(time_limit)])
     if allow_device_migration:
         args.extend(["--resume-allow-device-migration", "true"])
+    if reset_environments:
+        args.extend(["--resume-reset-environments", "true"])
     return " ".join(shlex.quote(str(part)) for part in args)
 
 
@@ -303,6 +306,14 @@ def main() -> int:
             "on the launcher's device."
         ),
     )
+    parser.add_argument(
+        "--reset-environments",
+        action="store_true",
+        help=(
+            "Reset environment workers instead of replaying saved trajectories. "
+            "This is a faster, non-exact continuation."
+        ),
+    )
     ns = parser.parse_args()
 
     task_dir = Path(ns.task_dir).expanduser().resolve()
@@ -329,6 +340,7 @@ def main() -> int:
             ns.target_timesteps,
             ns.time_limit,
             ns.allow_device_migration,
+            ns.reset_environments,
         )
         row["command"] = command
         commands.append(command)
