@@ -152,6 +152,7 @@ def build_resume_command(
     launcher: str,
     target_timesteps: int,
     time_limit: float,
+    allow_device_migration: bool = False,
 ) -> str:
     args = [
         "sbatch",
@@ -164,6 +165,8 @@ def build_resume_command(
     ]
     if time_limit > 0:
         args.extend(["--resume-time-limit", str(time_limit)])
+    if allow_device_migration:
+        args.extend(["--resume-allow-device-migration", "true"])
     return " ".join(shlex.quote(str(part)) for part in args)
 
 
@@ -292,6 +295,14 @@ def main() -> int:
         action="store_true",
         help="Include checkpoints already at or beyond --target-timesteps.",
     )
+    parser.add_argument(
+        "--allow-device-migration",
+        action="store_true",
+        help=(
+            "Permit checkpoints saved on an unavailable accelerator to resume "
+            "on the launcher's device."
+        ),
+    )
     ns = parser.parse_args()
 
     task_dir = Path(ns.task_dir).expanduser().resolve()
@@ -312,7 +323,13 @@ def main() -> int:
             row["status"] = "already_at_target"
             continue
         row["status"] = "ready"
-        command = build_resume_command(row, ns.launcher, ns.target_timesteps, ns.time_limit)
+        command = build_resume_command(
+            row,
+            ns.launcher,
+            ns.target_timesteps,
+            ns.time_limit,
+            ns.allow_device_migration,
+        )
         row["command"] = command
         commands.append(command)
 

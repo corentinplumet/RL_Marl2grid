@@ -1,5 +1,6 @@
 import os
 import re
+import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
@@ -32,7 +33,11 @@ def capture_rng_state() -> Dict[str, Any]:
     }
 
 
-def restore_rng_state(state: Dict[str, Any]) -> None:
+def restore_rng_state(
+    state: Dict[str, Any],
+    *,
+    allow_device_migration: bool = False,
+) -> None:
     """Restore a state produced by :func:`capture_rng_state`."""
     if not state:
         raise ValueError("The checkpoint does not contain an RNG state.")
@@ -42,10 +47,24 @@ def restore_rng_state(state: Dict[str, Any]) -> None:
     cuda_states = state.get("torch_cuda")
     if cuda_states is not None:
         if not th.cuda.is_available():
-            raise RuntimeError(
-                "The checkpoint contains CUDA RNG states, but CUDA is unavailable."
+            if not allow_device_migration:
+                raise RuntimeError(
+                    "The checkpoint contains CUDA RNG states, but CUDA is "
+                    "unavailable. Pass --resume-allow-device-migration true "
+                    "to continue non-bit-exactly on another device."
+                )
+            warnings.warn(
+                "Skipping saved CUDA RNG state because CUDA is unavailable. "
+                "Model, optimizer, environment, CPU RNG, and rollout-boundary "
+                "state are restored, but continuation is not bit-exact after "
+                "the device change.",
+                RuntimeWarning,
+                stacklevel=2,
             )
-        th.cuda.set_rng_state_all([cuda_state.cpu() for cuda_state in cuda_states])
+        else:
+            th.cuda.set_rng_state_all(
+                [cuda_state.cpu() for cuda_state in cuda_states]
+            )
     mps_state = state.get("torch_mps")
     if mps_state is not None:
         if (
@@ -54,10 +73,22 @@ def restore_rng_state(state: Dict[str, Any]) -> None:
             or not hasattr(th, "mps")
             or not hasattr(th.mps, "set_rng_state")
         ):
-            raise RuntimeError(
-                "The checkpoint contains an MPS RNG state, but MPS is unavailable."
+            if not allow_device_migration:
+                raise RuntimeError(
+                    "The checkpoint contains an MPS RNG state, but MPS is "
+                    "unavailable. Pass --resume-allow-device-migration true "
+                    "to continue non-bit-exactly on another device."
+                )
+            warnings.warn(
+                "Skipping saved MPS RNG state because MPS is unavailable. "
+                "Model, optimizer, environment, CPU RNG, and rollout-boundary "
+                "state are restored, but continuation is not bit-exact after "
+                "the device change.",
+                RuntimeWarning,
+                stacklevel=2,
             )
-        th.mps.set_rng_state(mps_state.cpu())
+        else:
+            th.mps.set_rng_state(mps_state.cpu())
 
 
 def exact_resume_state(record: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -138,7 +169,18 @@ class CheckpointSaver(ABC):
                     "or a path to a .tar checkpoint."
                 )
             self.loaded_checkpoint_path = checkpoint_name
-            self.loaded_run = th.load(checkpoint_name, weights_only=False)
+            map_location = (
+                "cpu"
+                if getattr(
+                    self.args, "resume_allow_device_migration", False
+                )
+                else None
+            )
+            self.loaded_run = th.load(
+                checkpoint_name,
+                map_location=map_location,
+                weights_only=False,
+            )
             if getattr(self.args, "resume_delete_checkpoint_after_load", False):
                 os.remove(checkpoint_name)
 

@@ -1,5 +1,9 @@
 import random
+import tempfile
 import unittest
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 import gymnasium as gym
 import numpy as np
@@ -8,6 +12,7 @@ import torch as th
 from common.checkpoint import (
     CHECKPOINT_FORMAT_VERSION,
     EXACT_BOUNDARY_PHASE,
+    MAPPOCheckpoint,
     capture_rng_state,
     exact_resume_state,
     restore_rng_state,
@@ -133,6 +138,40 @@ class ExactCheckpointTests(unittest.TestCase):
         del record["resume_state"]["next_obs"]
         with self.assertRaisesRegex(ValueError, "missing: next_obs"):
             exact_resume_state(record)
+
+    def test_device_migration_skips_only_unavailable_accelerator_rng(self):
+        state = capture_rng_state()
+        state["torch_cuda"] = [th.arange(8, dtype=th.uint8)]
+        with patch(
+            "common.checkpoint.th.cuda.is_available", return_value=False
+        ):
+            with self.assertRaisesRegex(
+                RuntimeError, "resume-allow-device-migration"
+            ):
+                restore_rng_state(state)
+            with self.assertWarnsRegex(
+                RuntimeWarning, "Skipping saved CUDA RNG state"
+            ):
+                restore_rng_state(state, allow_device_migration=True)
+
+    def test_device_migration_loads_checkpoint_storage_through_cpu(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "gpu_checkpoint.tar"
+            path.touch()
+            args = SimpleNamespace(
+                resume_run_name=str(path),
+                resume_allow_device_migration=True,
+                resume_delete_checkpoint_after_load=False,
+            )
+            with patch(
+                "common.checkpoint.th.load", return_value={"loaded": True}
+            ) as mocked_load:
+                checkpoint = MAPPOCheckpoint("resume", args)
+
+            mocked_load.assert_called_once_with(
+                str(path), map_location="cpu", weights_only=False
+            )
+            self.assertTrue(checkpoint.resumed)
 
     def test_reward_normalizer_round_trip(self):
         first = ReturnNormalizer(n_envs=3, gamma=0.97)

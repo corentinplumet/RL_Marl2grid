@@ -904,7 +904,12 @@ class MAPPO:
         if loaded_exact_state is not None:
             # Model/env/evaluator construction consumes randomness. The next draw
             # must instead be the one immediately following the saved boundary.
-            restore_rng_state(loaded_exact_state["rng_state"])
+            restore_rng_state(
+                loaded_exact_state["rng_state"],
+                allow_device_migration=bool(
+                    getattr(args, "resume_allow_device_migration", False)
+                ),
+            )
 
         sps_start_step = int(global_step)
         sps_start_time = time()

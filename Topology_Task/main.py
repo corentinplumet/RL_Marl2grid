@@ -4,6 +4,7 @@ from pathlib import Path
 from alg.mappo.config import get_alg_args
 from alg.mappo.core import MAPPO
 from common.checkpoint import MAPPOCheckpoint
+from common.checkpoint_compat import configure_legacy_connected_feature
 from common.imports import *
 from common.runtime_config import merge_runtime_args
 from common.utils import set_random_seed, set_torch, str2bool
@@ -80,6 +81,7 @@ def main(args: Namespace) -> None:
     cli_resume_wandb_run_id = args.resume_wandb_run_id
     cli_resume_start_next_rollout = args.resume_start_next_rollout
     cli_resume_delete_checkpoint_after_load = args.resume_delete_checkpoint_after_load
+    cli_resume_allow_device_migration = args.resume_allow_device_migration
     cli_wandb_mode = args.wandb_mode
 
     if cli_resume_run_name:
@@ -102,6 +104,7 @@ def main(args: Namespace) -> None:
     # Resume run if checkpoint was resumed
     if checkpoint.resumed:
         args = checkpoint.loaded_run["args"]
+        args = configure_legacy_connected_feature(args, checkpoint.loaded_run)
         current_global_step = int(checkpoint.loaded_run.get("global_step", 0))
         args.resume_run_name = cli_resume_run_name
         args.resume_total_timesteps = cli_resume_total_timesteps
@@ -109,6 +112,7 @@ def main(args: Namespace) -> None:
         args.resume_wandb_run_name = cli_resume_wandb_run_name
         args.resume_wandb_run_id = cli_resume_wandb_run_id
         args.resume_delete_checkpoint_after_load = cli_resume_delete_checkpoint_after_load
+        args.resume_allow_device_migration = cli_resume_allow_device_migration
         args.wandb_mode = cli_wandb_mode
         args.resume_start_next_rollout = (
             _is_completed_final_checkpoint(cli_resume_run_name)
@@ -197,6 +201,17 @@ if __name__ == "__main__":
         type=str2bool,
         default=False,
         help="Delete the loaded checkpoint after a successful load.",
+    )
+    parser.add_argument(
+        "--resume-allow-device-migration",
+        type=str2bool,
+        default=False,
+        help=(
+            "Load a resume checkpoint through CPU storage and permit missing "
+            "accelerator RNG streams. This preserves model, optimizer, "
+            "environment, CPU RNG, and rollout-boundary state, but a GPU/CPU "
+            "device change is not bit-exact."
+        ),
     )
 
     # Cross-environment transfer

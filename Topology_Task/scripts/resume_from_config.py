@@ -118,6 +118,7 @@ def build_command(
     time_limit: float,
     wandb_run_name: str,
     wandb_run_id: str,
+    allow_device_migration: bool,
 ) -> list[str]:
     command = [
         "sbatch",
@@ -134,6 +135,8 @@ def build_command(
         command.extend(["--resume-wandb-run-name", wandb_run_name])
     if wandb_run_id:
         command.extend(["--resume-wandb-run-id", wandb_run_id])
+    if allow_device_migration:
+        command.extend(["--resume-allow-device-migration", "true"])
     return command
 
 
@@ -187,6 +190,14 @@ def main() -> int:
         help="Allow submitting even if the checkpoint is already at target timesteps.",
     )
     parser.add_argument(
+        "--allow-device-migration",
+        action="store_true",
+        help=(
+            "Permit a checkpoint saved on an unavailable accelerator to resume "
+            "on the launcher's device."
+        ),
+    )
+    parser.add_argument(
         "--submit",
         action="store_true",
         help="Submit the sbatch command. By default the command is only printed.",
@@ -238,6 +249,7 @@ def main() -> int:
         ns.time_limit,
         ns.wandb_run_name,
         ns.wandb_run_id,
+        ns.allow_device_migration,
     )
     printable = " ".join(shlex.quote(part) for part in command)
 
