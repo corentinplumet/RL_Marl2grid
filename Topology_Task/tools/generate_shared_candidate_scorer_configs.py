@@ -106,6 +106,12 @@ def main() -> None:
         path.write_text(text)
         expected.add(path)
 
+        if preprocessing == "NLS":
+            izar_name = name.replace("cas_hl_NLS_", "cas_hl_NLS_izar_", 1)
+            izar_path = OUTPUT_DIR / f"{izar_name}.toml"
+            izar_path.write_text(text.replace(name, izar_name))
+            expected.add(izar_path)
+
     for stale in OUTPUT_DIR.glob("*.toml"):
         if stale not in expected:
             stale.unlink()

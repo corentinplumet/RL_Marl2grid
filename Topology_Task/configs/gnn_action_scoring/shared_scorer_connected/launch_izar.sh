@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Launch the paired 8 NL + 8 NLS shared-scorer bus14 runs on IZAR.
+# Launch shared-scorer bus14 runs on IZAR, optionally filtered by name.
 set -euo pipefail
 
 task_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
