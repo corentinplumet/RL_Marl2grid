@@ -1,7 +1,7 @@
 from collections import Counter
 from time import time
 
-from .agent import Actor, Critic
+from .agent import Actor, CandidateScorerComponents, Critic
 from .config import get_alg_args
 from common.action_trace import (
     build_action_trace_table,
@@ -438,6 +438,60 @@ def _build_shared_actor_graph_encoder(envs: gym.Env, args: Namespace, agent_ids:
     return build_graph_encoder(first_spec, args)
 
 
+def build_actor_modules(
+    envs: gym.Env,
+    args: Namespace,
+    agent_ids: List[str],
+    continuous_actions: bool,
+    device: Optional[th.device] = None,
+) -> Dict[str, Actor]:
+    """Construct actors with the requested cross-agent parameter sharing."""
+    shared_graph_encoder = _build_shared_actor_graph_encoder(envs, args, agent_ids)
+    share_candidate_scorer = bool(
+        getattr(args, "share_candidate_scorer", False)
+    )
+    if share_candidate_scorer and str(
+        getattr(args, "actor_action_head", "mlp")
+    ).lower() != "candidate_pool":
+        raise ValueError(
+            "share_candidate_scorer=True requires "
+            "actor_action_head='candidate_pool'."
+        )
+
+    if share_candidate_scorer and float(
+        getattr(args, "init_do_nothing_prob", 0.0)
+    ) > 0.0:
+        action_sizes = {
+            int(envs.action_space[agent_id].n) for agent_id in agent_ids
+        }
+        if len(action_sizes) > 1:
+            raise ValueError(
+                "A shared candidate scorer cannot initialize the same do-nothing "
+                "probability for agents with different action counts. Set "
+                "init_do_nothing_prob=0 or use equal action-space sizes."
+            )
+
+    actors: Dict[str, Actor] = {}
+    shared_components: Optional[CandidateScorerComponents] = None
+    for idx, agent_id in enumerate(agent_ids):
+        actor = Actor(
+            idx,
+            envs,
+            args,
+            continuous_actions,
+            shared_graph_encoder=shared_graph_encoder,
+            shared_candidate_scorer=(
+                shared_components if share_candidate_scorer else None
+            ),
+        )
+        if device is not None:
+            actor = actor.to(device)
+        if share_candidate_scorer and shared_components is None:
+            shared_components = actor.actor.shared_components()
+        actors[agent_id] = actor
+    return actors
+
+
 def _evaluate_preserving_training_rng(
     evaluator: Evaluator, global_step: int, actors: Dict
 ) -> float:
@@ -542,19 +596,13 @@ class MAPPO:
 
         # Determine action space type
         continuous_actions = True if args.action_type == "redispatch" else False
-        shared_actor_graph_encoder = _build_shared_actor_graph_encoder(
-            envs, args, agent_ids
+        actors = build_actor_modules(
+            envs,
+            args,
+            agent_ids,
+            continuous_actions,
+            device=device,
         )
-        actors = {
-            f"agent_{idx}": Actor(
-                idx,
-                envs,
-                args,
-                continuous_actions,
-                shared_graph_encoder=shared_actor_graph_encoder,
-            ).to(device)
-            for idx in range(len(agent_ids))
-        }
 
         critic = Critic(envs, args).to(device)
 
@@ -571,14 +619,29 @@ class MAPPO:
             getattr(args, "transfer_encoder_checkpoint", "") or ""
         ).strip()
         freeze_encoder = bool(getattr(args, "transfer_freeze_encoder", False))
+        transfer_action_head = bool(
+            getattr(args, "transfer_action_head", False)
+        )
+        freeze_action_head = bool(
+            getattr(args, "transfer_freeze_action_head", False)
+        )
         if transfer_checkpoint and not ckpt.resumed:
             transfer_report = load_encoder_from_checkpoint(
                 actors,
                 transfer_checkpoint,
                 freeze=freeze_encoder,
                 device=device,
+                load_action_head=transfer_action_head,
+                action_head_source_agent=str(
+                    getattr(
+                        args,
+                        "transfer_action_head_source_agent",
+                        "agent_0",
+                    )
+                ),
+                freeze_action_head=freeze_action_head,
             )
-            print(f"Transferred actor graph encoder: {transfer_report}")
+            print(f"Transferred graph actor components: {transfer_report}")
         elif freeze_encoder:
             transfer_report = freeze_graph_encoders(actors)
             print(f"Froze actor graph encoder: {transfer_report}")

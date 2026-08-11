@@ -206,9 +206,8 @@ if __name__ == "__main__":
         default="",
         help=(
             "Optional checkpoint stem or .tar path whose actor graph encoder is "
-            "loaded into this run. Only encoder.graph_encoder.* weights are "
-            "reused, so the source may come from a different grid; the action "
-            "heads and critic always start fresh. Ignored when resuming."
+            "loaded into this run. The source may come from a different grid. "
+            "The critic always starts fresh. Ignored when resuming."
         ),
     )
     parser.add_argument(
@@ -219,6 +218,30 @@ if __name__ == "__main__":
             "Freeze the actor graph encoder so only the heads train. Applies to "
             "a transferred encoder and is reapplied on resume."
         ),
+    )
+    parser.add_argument(
+        "--transfer-action-head",
+        type=str2bool,
+        default=False,
+        help=(
+            "Also transfer learned candidate-action scorer parameters while "
+            "retaining target-grid action metadata. Requires candidate_pool."
+        ),
+    )
+    parser.add_argument(
+        "--transfer-action-head-source-agent",
+        type=str,
+        default="agent_0",
+        help=(
+            "Source checkpoint actor whose candidate scorer is broadcast to "
+            "all target actors during complete-actor transfer."
+        ),
+    )
+    parser.add_argument(
+        "--transfer-freeze-action-head",
+        type=str2bool,
+        default=False,
+        help="Freeze a transferred candidate-action scorer.",
     )
 
     # Reproducibility [MAPPO, QPLEX, LAGRMAPPO]

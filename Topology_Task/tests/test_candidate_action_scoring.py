@@ -1,3 +1,4 @@
+import copy
 from types import SimpleNamespace
 import unittest
 
@@ -640,6 +641,78 @@ class CandidateActorIntegrationTest(unittest.TestCase):
                 actor._actor_logits(observation),
                 restored_actor._actor_logits(observation),
             )
+        )
+
+    def test_shared_candidate_scorer_keeps_agent_metadata_local(self):
+        args = SimpleNamespace(
+            actor_encoder="gnn",
+            actor_action_head="candidate_pool",
+            actor_layers=[8],
+            actor_act_fn="relu",
+            intervention_gate=False,
+            init_do_nothing_prob=0.0,
+            candidate_action_pool="typed_mean",
+            candidate_action_use_features=True,
+            candidate_action_do_nothing_head=True,
+            gnn_concat_flat=False,
+            gnn_type="gine",
+            gnn_hidden_dim=8,
+            gnn_out_dim=6,
+            gnn_layers=2,
+            gnn_heads=1,
+            gnn_layer_norm=True,
+            gnn_readout_aggr="mean",
+            gnn_node_pre_encoder=True,
+            gnn_edge_pre_encoder=True,
+            gnn_node_id_embeddings=False,
+            share_actor_gnn=True,
+            share_candidate_scorer=True,
+        )
+        second_spec = copy.deepcopy(self.spec)
+        env = SimpleNamespace(
+            observation_space={
+                agent_id: gym.spaces.Box(
+                    low=-np.inf,
+                    high=np.inf,
+                    shape=(1,),
+                    dtype=np.float32,
+                )
+                for agent_id in ("agent_0", "agent_1")
+            },
+            action_space={
+                agent_id: gym.spaces.Discrete(5)
+                for agent_id in ("agent_0", "agent_1")
+            },
+            graph_specs={"agent_0": self.spec, "agent_1": second_spec},
+        )
+
+        first = Actor(0, env, args, continuous_actions=False)
+        second = Actor(
+            1,
+            env,
+            args,
+            continuous_actions=False,
+            shared_graph_encoder=first.encoder.graph_encoder,
+            shared_candidate_scorer=first.actor.shared_components(),
+        )
+
+        self.assertIs(first.encoder.graph_encoder, second.encoder.graph_encoder)
+        self.assertIs(first.actor.scorer, second.actor.scorer)
+        self.assertIs(first.actor.do_nothing_actor, second.actor.do_nothing_actor)
+        self.assertIs(
+            first.actor.do_nothing_logit_bias,
+            second.actor.do_nothing_logit_bias,
+        )
+        self.assertIsNot(first.actor.pool, second.actor.pool)
+        self.assertNotEqual(
+            first.actor.action_features.data_ptr(),
+            second.actor.action_features.data_ptr(),
+        )
+
+        with th.no_grad():
+            first.actor.scorer[-1].bias.fill_(3.0)
+        self.assertTrue(
+            th.equal(first.actor.scorer[-1].bias, second.actor.scorer[-1].bias)
         )
 
 

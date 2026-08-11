@@ -812,7 +812,17 @@ def get_alg_args() -> Namespace:
         "--share-actor-gnn",
         type=str2bool,
         default=False,
-        help="Share one actor GNN encoder across all actor policies while keeping separate MLP action heads.",
+        help="Share one actor GNN encoder across all actor policies.",
+    )
+    parser.add_argument(
+        "--share-candidate-scorer",
+        type=str2bool,
+        default=False,
+        help=(
+            "Share the candidate_pool scalar scorer, optional do-nothing head, "
+            "and do-nothing bias across agents. Candidate metadata and pooling "
+            "remain agent-specific."
+        ),
     )
     parser.add_argument(
         "--gnn-graph-type",
@@ -859,9 +869,15 @@ def get_alg_args() -> Namespace:
             "per-asset angle on the nodes. 'edge_diff' drops those channels "
             "and adds the angle drop across each line, which is gauge "
             "invariant and defined on every line rather than only where an "
-            "asset is attached. Not supported by "
-            "--gnn-graph-type=heterogeneous_line."
+            "asset is attached. In the explicit-line graph, the line-node "
+            "angle channel is replaced in place by this difference."
         ),
+    )
+    parser.add_argument(
+        "--gnn-include-legacy-connected-feature",
+        type=str2bool,
+        default=False,
+        help=ap.SUPPRESS,
     )
     parser.add_argument(
         "--tokenizer-type",

@@ -1555,6 +1555,15 @@ selected with \texttt{actor\_action\_head=candidate\_pool}; the default remains
 the action-index head of Appendix~\ref{sec:gnn-action-head}. The PPO objective,
 the categorical policy, sampling, and deterministic evaluation are unchanged.
 
+{\color{red}
+\noindent\textbf{Checkpoint compatibility.}
+The \texttt{cas\_hl\_NL} and \texttt{cas\_hl\_NLS} checkpoints were trained
+with the former 13-column explicit-line node schema, which still included the
+redundant \texttt{connected} feature. The current schema has 12 columns;
+full-test evaluation detects these checkpoints and restores the legacy column,
+thereby preserving their original input representation.
+}
+
 \subsection{From action indices to candidate scoring}
 \label{subsec:candidate-motivation}
 

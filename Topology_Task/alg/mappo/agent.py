@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Sequence
 
 from torch.distributions import Categorical, Normal
@@ -30,6 +31,19 @@ def build_mlp_head(
     return nn.Sequential(*layers)
 
 
+@dataclass(frozen=True)
+class CandidateScorerComponents:
+    """Learned candidate-scoring parameters that may be shared by actors."""
+
+    scorer: nn.Sequential
+    do_nothing_actor: Optional[nn.Sequential]
+    do_nothing_logit_bias: nn.Parameter
+    scorer_input_dim: int
+    graph_dim: int
+    hidden_layers: tuple[int, ...]
+    act_fn_name: str
+
+
 class CandidateActionScorer(nn.Module):
     """Score every discrete action from global and touched-node context."""
 
@@ -53,6 +67,7 @@ class CandidateActionScorer(nn.Module):
         attention_chunk_size: int = 64,
         node_types: Optional[th.Tensor] = None,
         node_type_ids: Optional[Dict[str, int]] = None,
+        shared_components: Optional[CandidateScorerComponents] = None,
     ) -> None:
         super().__init__()
         metadata.validate()
@@ -109,23 +124,69 @@ class CandidateActionScorer(nn.Module):
         scorer_input_dim = int(graph_dim) + local_dim
         if self.use_action_features:
             scorer_input_dim += metadata.action_feature_dim
-        self.scorer = build_mlp_head(
+        expected_signature = (
             scorer_input_dim,
-            hidden_layers,
-            1,
-            act_fn_name,
+            int(graph_dim),
+            tuple(int(width) for width in hidden_layers),
+            str(act_fn_name),
         )
-        self.do_nothing_actor = (
-            build_mlp_head(
-                int(graph_dim),
+        if shared_components is None:
+            self.scorer = build_mlp_head(
+                scorer_input_dim,
                 hidden_layers,
                 1,
                 act_fn_name,
             )
-            if self.use_do_nothing_head
-            else None
+            self.do_nothing_actor = (
+                build_mlp_head(
+                    int(graph_dim),
+                    hidden_layers,
+                    1,
+                    act_fn_name,
+                )
+                if self.use_do_nothing_head
+                else None
+            )
+            self.do_nothing_logit_bias = nn.Parameter(th.zeros(()))
+        else:
+            shared_signature = (
+                shared_components.scorer_input_dim,
+                shared_components.graph_dim,
+                shared_components.hidden_layers,
+                shared_components.act_fn_name,
+            )
+            if shared_signature != expected_signature:
+                raise ValueError(
+                    "Shared candidate scorer requires identical graph, pooled-"
+                    "context, action-feature, and MLP dimensions across actors. "
+                    f"Expected {expected_signature}, got {shared_signature}."
+                )
+            shared_has_do_nothing = shared_components.do_nothing_actor is not None
+            if shared_has_do_nothing != self.use_do_nothing_head:
+                raise ValueError(
+                    "Shared candidate scorer requires the same "
+                    "candidate_action_do_nothing_head setting for every actor."
+                )
+            # Register the same modules and parameter under each actor head. The
+            # action metadata and pooling object above remain agent-specific.
+            self.scorer = shared_components.scorer
+            self.do_nothing_actor = shared_components.do_nothing_actor
+            self.do_nothing_logit_bias = shared_components.do_nothing_logit_bias
+
+        self._component_signature = expected_signature
+
+    def shared_components(self) -> CandidateScorerComponents:
+        """Return only the learned scalar-scoring components, never metadata."""
+        return CandidateScorerComponents(
+            scorer=self.scorer,
+            do_nothing_actor=self.do_nothing_actor,
+            do_nothing_logit_bias=self.do_nothing_logit_bias,
+            scorer_input_dim=self._component_signature[0],
+            graph_dim=self._component_signature[1],
+            hidden_layers=self._component_signature[2],
+            act_fn_name=self._component_signature[3],
         )
-        self.do_nothing_logit_bias = nn.Parameter(th.zeros(()))
+
 
     def _typed_metadata(self):
         return (
@@ -235,6 +296,7 @@ class Actor(nn.Module):
         args: Dict[str, Any],
         continuous_actions: bool,
         shared_graph_encoder: Optional[GraphEncoder] = None,
+        shared_candidate_scorer: Optional[CandidateScorerComponents] = None,
     ):
         super().__init__()
 
@@ -398,6 +460,7 @@ class Actor(nn.Module):
                     ),
                     node_types=graph_spec.get("node_type"),
                     node_type_ids=candidate_node_type_ids,
+                    shared_components=shared_candidate_scorer,
                 )
                 self.get_action = self.get_discrete_action
                 self.get_eval_action = self.get_eval_discrete_action

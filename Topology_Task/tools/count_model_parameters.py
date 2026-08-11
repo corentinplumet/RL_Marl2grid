@@ -36,7 +36,7 @@ if str(TASK_DIR) not in sys.path:
 
 from alg.mappo.agent import Actor, Critic  # noqa: E402
 from alg.mappo.config import get_alg_args  # noqa: E402
-from alg.mappo.core import _build_shared_actor_graph_encoder  # noqa: E402
+from alg.mappo.core import build_actor_modules  # noqa: E402
 from common.imports import ap, th  # noqa: E402
 from common.utils import set_random_seed, str2bool  # noqa: E402
 from env.config import get_env_args  # noqa: E402
@@ -158,17 +158,7 @@ def _build_models(args: argparse.Namespace) -> tuple[MAEnvWrapper, dict[str, Act
     env = MAEnvWrapper(args, idx=0)
     agent_ids = [f"agent_{idx}" for idx in range(len(env.observation_space.keys()))]
     continuous_actions = args.action_type == "redispatch"
-    shared_actor_graph_encoder = _build_shared_actor_graph_encoder(env, args, agent_ids)
-    actors = {
-        agent_id: Actor(
-            idx,
-            env,
-            args,
-            continuous_actions,
-            shared_graph_encoder=shared_actor_graph_encoder,
-        )
-        for idx, agent_id in enumerate(agent_ids)
-    }
+    actors = build_actor_modules(env, args, agent_ids, continuous_actions)
     critic = Critic(env, args)
     return env, actors, critic
 
@@ -185,6 +175,9 @@ def _summarize(args: argparse.Namespace, actors: dict[str, Actor], critic: Criti
         "critic_encoder": args.critic_encoder,
         "intervention_gate": bool(getattr(args, "intervention_gate", False)),
         "share_actor_gnn": bool(getattr(args, "share_actor_gnn", False)),
+        "share_candidate_scorer": bool(
+            getattr(args, "share_candidate_scorer", False)
+        ),
         "agent_ids": list(actors.keys()),
         "actors_by_agent": _count_named_modules(actors),
         "actors_unique": {
@@ -210,7 +203,8 @@ def _print_human(summary: dict[str, Any], config_path: Path) -> None:
         f"action_head={summary['actor_action_head']} | "
         f"critic={summary['critic_encoder']} | "
         f"intervention_gate={summary['intervention_gate']} | "
-        f"share_actor_gnn={summary['share_actor_gnn']}"
+        f"share_actor_gnn={summary['share_actor_gnn']} | "
+        f"share_candidate_scorer={summary['share_candidate_scorer']}"
     )
     print("")
     print("Per-agent actors:")

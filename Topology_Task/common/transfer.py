@@ -1,4 +1,4 @@
-"""Cross-environment transfer of a trained actor graph encoder.
+"""Cross-environment transfer of trained graph actors.
 
 The GNN actor encoder is grid-size independent: its parameters are shaped by
 node/edge feature widths and hidden sizes, never by the number of substations.
@@ -6,9 +6,11 @@ That makes it the one component of a bus14 policy that can be reused on a
 larger grid, where the per-agent action heads (and the agent partition itself)
 no longer line up.
 
-This module lifts `encoder.graph_encoder.*` out of a saved actor checkpoint and
-loads it into freshly built actors, optionally freezing it so only the heads
-train.
+The graph encoder is always transferable when its feature schema matches.  A
+candidate-action scorer is grid-size independent too: its learned scalar scorer
+does not depend on the number of target actions.  Its action metadata buffers
+do depend on the target grid, so full-actor transfer copies learned head
+parameters while retaining the freshly built target metadata.
 """
 
 import os
@@ -29,6 +31,7 @@ TOPOLOGY_BUFFER_NAMES = (
 )
 
 _ENCODER_PREFIX = "encoder.graph_encoder."
+_ACTION_HEAD_PREFIX = "actor."
 _CHECKPOINT_DIR = "checkpoint"
 
 
@@ -89,6 +92,94 @@ def _source_encoder_state(record: Dict[str, Any], path: str) -> Dict[str, th.Ten
             "encoder."
         )
     return state
+
+
+def _load_candidate_action_heads(
+    actors: Dict[str, nn.Module],
+    record: Dict[str, Any],
+    path: str,
+    source_agent: str,
+    freeze: bool,
+) -> Dict[str, Any]:
+    """Broadcast one learned candidate scorer to all target actors.
+
+    Only named parameters are copied.  Candidate indices, masks, action
+    descriptors, and other registered buffers remain those constructed from
+    each target agent's WCCI action space.
+    """
+    if source_agent not in record or not isinstance(record[source_agent], dict):
+        available = sorted(
+            key
+            for key, value in record.items()
+            if key.startswith("agent_") and isinstance(value, dict)
+        )
+        raise ValueError(
+            f"Transfer checkpoint '{path}' has no source actor {source_agent!r}; "
+            f"available actors are {available}."
+        )
+
+    source_actor_state = record[source_agent]
+    loaded_parameter_names: List[str] = []
+    for target_agent, target_actor in sorted(actors.items()):
+        if str(getattr(target_actor, "actor_action_head", "")) != "candidate_pool":
+            raise ValueError(
+                "Action-head transfer requires actor_action_head='candidate_pool'; "
+                f"{target_agent} uses {getattr(target_actor, 'actor_action_head', None)!r}."
+            )
+        target_head = getattr(target_actor, "actor", None)
+        if target_head is None:
+            raise ValueError(f"{target_agent} exposes no candidate action head.")
+
+        target_parameters = dict(target_head.named_parameters())
+        transferable: Dict[str, th.Tensor] = {}
+        missing: List[str] = []
+        mismatched: List[str] = []
+        for name, target_parameter in target_parameters.items():
+            source_name = _ACTION_HEAD_PREFIX + name
+            source_parameter = source_actor_state.get(source_name)
+            if source_parameter is None:
+                missing.append(name)
+                continue
+            if tuple(source_parameter.shape) != tuple(target_parameter.shape):
+                mismatched.append(
+                    f"{name}: checkpoint {tuple(source_parameter.shape)} vs model "
+                    f"{tuple(target_parameter.shape)}"
+                )
+                continue
+            transferable[name] = source_parameter
+
+        if missing or mismatched:
+            details = []
+            if missing:
+                details.append("missing " + ", ".join(missing[:8]))
+            if mismatched:
+                details.append("shape mismatch " + "; ".join(mismatched[:8]))
+            raise ValueError(
+                f"Candidate action-head mismatch between '{path}' "
+                f"({source_agent}) and {target_agent}: {'; '.join(details)}. "
+                "The source and target must use the same candidate pooling, "
+                "action-feature, do-nothing-head, and MLP settings."
+            )
+
+        target_head.load_state_dict(transferable, strict=False)
+        if freeze:
+            for parameter in target_head.parameters():
+                parameter.requires_grad_(False)
+        loaded_parameter_names = sorted(transferable)
+
+    frozen_count = sum(
+        parameter.numel()
+        for actor in actors.values()
+        for parameter in getattr(actor, "actor").parameters()
+        if not parameter.requires_grad
+    )
+    return {
+        "source_agent": source_agent,
+        "target_heads": len(actors),
+        "loaded_parameters": len(loaded_parameter_names),
+        "frozen": bool(freeze),
+        "frozen_parameter_count": int(frozen_count),
+    }
 
 
 def _drop_legacy_relation_self_column(
@@ -153,8 +244,11 @@ def load_encoder_from_checkpoint(
     checkpoint_name: str,
     freeze: bool = False,
     device: Optional[th.device] = None,
+    load_action_head: bool = False,
+    action_head_source_agent: str = "agent_0",
+    freeze_action_head: bool = False,
 ) -> Dict[str, Any]:
-    """Load a pretrained graph encoder into `actors` and optionally freeze it.
+    """Load a pretrained graph encoder and optional candidate action head.
 
     Args:
         actors: The freshly built actors, keyed by agent id.
@@ -162,6 +256,13 @@ def load_encoder_from_checkpoint(
             or an explicit .tar path.
         freeze: When True, the encoder parameters stop requiring gradients.
         device: Device the actors live on.
+        load_action_head: Also load learned candidate-scorer parameters.  Target
+            action metadata buffers are deliberately retained.
+        action_head_source_agent: Source scorer broadcast to every target actor.
+            This explicit rule is needed because bus14 and WCCI have different
+            numbers of independently parameterized actors.
+        freeze_action_head: Stop the transferred candidate heads from requiring
+            gradients.
 
     Returns:
         A summary dict for logging.
@@ -258,6 +359,16 @@ def load_encoder_from_checkpoint(
         for param in graph_encoder.parameters()
         if not param.requires_grad
     )
+    head_report = None
+    if load_action_head:
+        head_report = _load_candidate_action_heads(
+            actors,
+            record,
+            path,
+            action_head_source_agent,
+            freeze_action_head,
+        )
+
     return {
         "checkpoint": path,
         "encoders": len(targets),
@@ -269,4 +380,5 @@ def load_encoder_from_checkpoint(
         "frozen": bool(freeze),
         "frozen_parameter_count": int(n_frozen),
         "source_global_step": int(record.get("global_step", 0) or 0),
+        "action_head": head_report,
     }

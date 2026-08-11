@@ -44,11 +44,41 @@ class FakeActor(nn.Module):
         self.actor = nn.Linear(4, n_actions)
 
 
+class FakeCandidateHead(nn.Module):
+    def __init__(self, hidden: int, n_actions: int):
+        super().__init__()
+        self.scorer = nn.Linear(hidden, 1)
+        self.do_nothing_logit_bias = nn.Parameter(th.zeros(()))
+        self.register_buffer("action_features", th.zeros((n_actions, 3)))
+
+
+class FakeCandidateActor(nn.Module):
+    def __init__(self, graph_encoder: nn.Module, hidden: int, n_actions: int):
+        super().__init__()
+        self.encoder = FakeGraphAndFlatEncoder(graph_encoder)
+        self.actor_action_head = "candidate_pool"
+        self.actor = FakeCandidateHead(hidden, n_actions)
+
+
 def make_actors(n_nodes, n_edges, n_actions, n_agents=3, hidden=4, shared=True):
     encoder = FakeGraphEncoder(n_nodes, n_edges, hidden) if shared else None
     return {
         f"agent_{idx}": FakeActor(
             encoder if shared else FakeGraphEncoder(n_nodes, n_edges, hidden),
+            n_actions,
+        )
+        for idx in range(n_agents)
+    }
+
+
+def make_candidate_actors(
+    n_nodes, n_edges, n_actions, n_agents=3, hidden=4, shared=True
+):
+    encoder = FakeGraphEncoder(n_nodes, n_edges, hidden) if shared else None
+    return {
+        f"agent_{idx}": FakeCandidateActor(
+            encoder if shared else FakeGraphEncoder(n_nodes, n_edges, hidden),
+            hidden,
             n_actions,
         )
         for idx in range(n_agents)
@@ -109,6 +139,71 @@ class EncoderTransferTest(unittest.TestCase):
         load_encoder_from_checkpoint(actors, self.path)
 
         self.assertTrue(th.equal(before, actors["agent_0"].actor.weight))
+
+    def test_candidate_head_parameters_transfer_but_target_metadata_stays(self):
+        source = make_candidate_actors(28, 60, n_actions=50, n_agents=3)
+        with th.no_grad():
+            for idx, actor in enumerate(source.values()):
+                actor.actor.scorer.weight.fill_(idx + 1.0)
+                actor.actor.scorer.bias.fill_(idx + 1.0)
+                actor.actor.do_nothing_logit_bias.fill_(idx + 1.0)
+                actor.actor.action_features.fill_(idx + 10.0)
+        path = os.path.join(self.tmp.name, "candidate_source.tar")
+        save_checkpoint(source, path)
+
+        target = make_candidate_actors(72, 180, n_actions=140, n_agents=4)
+        target_metadata = {
+            agent: actor.actor.action_features.clone()
+            for agent, actor in target.items()
+        }
+        report = load_encoder_from_checkpoint(
+            target,
+            path,
+            load_action_head=True,
+            action_head_source_agent="agent_1",
+        )
+
+        for agent, actor in target.items():
+            self.assertTrue(
+                th.equal(
+                    actor.actor.scorer.weight,
+                    source["agent_1"].actor.scorer.weight,
+                )
+            )
+            self.assertTrue(
+                th.equal(
+                    actor.actor.do_nothing_logit_bias,
+                    source["agent_1"].actor.do_nothing_logit_bias,
+                )
+            )
+            self.assertTrue(
+                th.equal(actor.actor.action_features, target_metadata[agent])
+            )
+            self.assertEqual(tuple(actor.actor.action_features.shape), (140, 3))
+        self.assertEqual(report["action_head"]["source_agent"], "agent_1")
+        self.assertEqual(report["action_head"]["target_heads"], 4)
+
+    def test_candidate_head_can_be_frozen_after_transfer(self):
+        source = make_candidate_actors(28, 60, n_actions=50)
+        path = os.path.join(self.tmp.name, "candidate_source_frozen.tar")
+        save_checkpoint(source, path)
+        target = make_candidate_actors(72, 180, n_actions=140, n_agents=4)
+
+        report = load_encoder_from_checkpoint(
+            target,
+            path,
+            load_action_head=True,
+            freeze_action_head=True,
+        )
+
+        self.assertTrue(
+            all(
+                not parameter.requires_grad
+                for actor in target.values()
+                for parameter in actor.actor.parameters()
+            )
+        )
+        self.assertTrue(report["action_head"]["frozen"])
 
     def test_freeze_leaves_only_heads_trainable(self):
         actors = self.target()

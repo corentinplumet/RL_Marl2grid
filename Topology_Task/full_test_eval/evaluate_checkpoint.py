@@ -653,28 +653,23 @@ def _configure_obs_normalization(
 
 
 def _build_actors(record: Dict[str, Any], args: Namespace, evaluator: Any, device: th.device) -> Dict[str, Any]:
-    from alg.mappo.agent import Actor
-    from alg.mappo.core import _build_shared_actor_graph_encoder
+    from alg.mappo.core import build_actor_modules
 
     actor_env = evaluator.env.env
     agent_ids = [f"agent_{idx}" for idx in range(len(actor_env.observation_space.keys()))]
     continuous_actions = getattr(args, "action_type", "topology") == "redispatch"
-    shared_encoder = _build_shared_actor_graph_encoder(actor_env, args, agent_ids)
-
-    actors: Dict[str, Actor] = {}
-    for idx, agent_id in enumerate(agent_ids):
+    actors = build_actor_modules(
+        actor_env,
+        args,
+        agent_ids,
+        continuous_actions,
+        device=device,
+    )
+    for agent_id, actor in actors.items():
         if agent_id not in record:
             raise KeyError(f"Checkpoint is missing actor state for {agent_id}.")
-        actor = Actor(
-            idx,
-            actor_env,
-            args,
-            continuous_actions=continuous_actions,
-            shared_graph_encoder=shared_encoder,
-        ).to(device)
         actor.load_state_dict(record[agent_id])
         actor.eval()
-        actors[agent_id] = actor
     return actors
 
 
