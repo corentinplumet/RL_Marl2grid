@@ -1,0 +1,480 @@
+#!/usr/bin/env python3
+"""Publish offline continuation archives as separate W&B runs.
+
+The original run is left untouched.  Each continuation is uploaded under a new
+run ID, linked to its original run through explicit config fields, and placed in
+the same requested W&B group.  The command is dry-run by default.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import subprocess
+import sys
+import time
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+import wandb
+
+try:
+    from wandb.proto import wandb_internal_pb2
+    from wandb.sdk.internal.datastore import DataStore
+except ImportError as exc:  # pragma: no cover - depends on the active env
+    raise SystemExit(
+        "W&B internals are unavailable. Run this from the marl2grid environment."
+    ) from exc
+
+
+DEFAULT_ENTITY = "corentin-plumet-epfl"
+DEFAULT_PROJECT = "Grid2Op"
+DEFAULT_GROUP = "NLS_cas_hl"
+CORE_RUN_RE = re.compile(
+    r"^cas_hl_NLS_(?:mean|tmean)_f[01]_a0h[01]_s0$"
+)
+OFFLINE_DIR_RE = re.compile(
+    r"^offline-run-(?P<timestamp>\d{8}_\d{6})-(?P<run_name>.+)$"
+)
+JOB_ID_RE = re.compile(r"-(?P<job_id>\d+)$")
+
+
+@dataclass(frozen=True)
+class Archive:
+    run_name: str
+    run_file: Path
+    offline_dir: Path
+    timestamp: str
+    job_id: str
+    min_step: int
+    max_step: int
+    history_rows: int
+
+    @property
+    def suffix(self) -> str:
+        return self.job_id or self.timestamp.replace("_", "")
+
+    @property
+    def new_id(self) -> str:
+        return f"{self.run_name}-cont-{self.suffix}"
+
+    @property
+    def display_name(self) -> str:
+        return f"{self.run_name} [continuation {self.suffix}]"
+
+
+def expected_base_names() -> list[str]:
+    return [
+        f"cas_hl_NLS_{pool}_{features}_{head}_s0"
+        for pool in ("mean", "tmean")
+        for features in ("f0", "f1")
+        for head in ("a0h0", "a0h1")
+    ]
+
+
+def _parse_json(value: str) -> Any:
+    try:
+        return json.loads(value)
+    except Exception:
+        return value
+
+
+def _history_step(record: Any) -> int | None:
+    if record.history.step.num:
+        return int(record.history.step.num)
+    for item in record.history.item:
+        key = list(item.nested_key) or ([item.key] if item.key else [])
+        if key == ["_step"]:
+            value = _parse_json(item.value_json)
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                return None
+    return None
+
+
+def history_range(path: Path) -> tuple[int, int, int]:
+    min_step: int | None = None
+    max_step: int | None = None
+    rows = 0
+    store = DataStore()
+    store.open_for_scan(str(path))
+    try:
+        while True:
+            data = store.scan_data()
+            if data is None:
+                break
+            record = wandb_internal_pb2.Record()
+            record.ParseFromString(data)
+            if record.WhichOneof("record_type") != "history":
+                continue
+            step = _history_step(record)
+            if step is None:
+                continue
+            rows += 1
+            min_step = step if min_step is None else min(min_step, step)
+            max_step = step if max_step is None else max(max_step, step)
+    finally:
+        store.close()
+    if min_step is None or max_step is None:
+        raise ValueError(f"No stepped history records found in {path}")
+    return min_step, max_step, rows
+
+
+def _job_id(path: Path, stop: Path) -> str:
+    for parent in [path.parent, *path.parents]:
+        match = JOB_ID_RE.search(parent.name)
+        if match:
+            return match.group("job_id")
+        if parent == stop:
+            break
+    return ""
+
+
+def discover_archives(
+    roots: list[Path],
+    *,
+    min_start_step: int,
+    selected_job_ids: set[str],
+) -> list[Archive]:
+    archives: list[Archive] = []
+    seen_files: set[Path] = set()
+    for root in roots:
+        root = root.expanduser().resolve()
+        if not root.exists():
+            print(f"WARNING: archive root does not exist: {root}", file=sys.stderr)
+            continue
+        for offline_dir in sorted(root.rglob("offline-run-*")):
+            if not offline_dir.is_dir():
+                continue
+            match = OFFLINE_DIR_RE.match(offline_dir.name)
+            if not match:
+                continue
+            run_name = match.group("run_name")
+            if not CORE_RUN_RE.fullmatch(run_name):
+                continue
+            candidates = sorted(offline_dir.glob("run-*.wandb"))
+            if not candidates:
+                candidates = sorted(offline_dir.glob("run-*.wandb.synced"))
+            if len(candidates) != 1:
+                print(
+                    f"WARNING: expected one run file in {offline_dir}, found "
+                    f"{len(candidates)}; skipping.",
+                    file=sys.stderr,
+                )
+                continue
+            run_file = candidates[0].resolve()
+            if run_file in seen_files:
+                continue
+            seen_files.add(run_file)
+            job_id = _job_id(offline_dir, root)
+            if selected_job_ids and job_id not in selected_job_ids:
+                continue
+            try:
+                min_step, max_step, rows = history_range(run_file)
+            except Exception as exc:
+                print(f"WARNING: cannot inspect {run_file}: {exc}", file=sys.stderr)
+                continue
+            if min_step < min_start_step:
+                print(
+                    f"SKIP non-continuation archive {run_name}: first step "
+                    f"{min_step:,} < {min_start_step:,} ({offline_dir})"
+                )
+                continue
+            archives.append(
+                Archive(
+                    run_name=run_name,
+                    run_file=run_file,
+                    offline_dir=offline_dir,
+                    timestamp=match.group("timestamp"),
+                    job_id=job_id,
+                    min_step=min_step,
+                    max_step=max_step,
+                    history_rows=rows,
+                )
+            )
+    return sorted(archives, key=lambda item: (item.run_name, item.min_step, item.suffix))
+
+
+def _base_run(api: wandb.Api, entity: str, project: str, run_name: str):
+    try:
+        return api.run(f"{entity}/{project}/{run_name}")
+    except Exception:
+        matches = list(
+            api.runs(
+                f"{entity}/{project}",
+                filters={"display_name": run_name},
+            )
+        )
+        matches = [run for run in matches if not run.config.get("is_continuation")]
+        if len(matches) != 1:
+            raise RuntimeError(
+                f"Expected one original cloud run named {run_name}, found {len(matches)}"
+            )
+        return matches[0]
+
+
+def _set_metadata(
+    run: Any,
+    *,
+    group: str,
+    name: str | None = None,
+    tags: list[str] | None = None,
+    config: dict[str, Any] | None = None,
+) -> None:
+    if name is not None:
+        run.name = name
+    run.group = group
+    if tags:
+        run.tags = sorted(set(list(run.tags or []) + tags))
+    if config:
+        # Public-API config is a mutable mapping; mutating it in place works
+        # across W&B versions that expose no property setter.
+        run.config.update(config)
+    run.update()
+
+
+def _semantic_sync_error(output: str) -> bool:
+    lower = output.lower()
+    return any(
+        marker in lower
+        for marker in (
+            "wandb: error",
+            "error while calling w&b api",
+            "previously created and deleted",
+            "sync failed",
+        )
+    )
+
+
+def _continuation_config(archive: Archive, base: Any) -> dict[str, Any]:
+    return {
+        "is_continuation": True,
+        "continuation_of_run_id": str(base.id),
+        "continuation_of_run_name": str(base.name),
+        "continuation_archive_path": str(archive.offline_dir),
+        "continuation_archive_timestamp": archive.timestamp,
+        "continuation_job_id": archive.job_id or None,
+        "continuation_start_step": archive.min_step,
+        "continuation_end_step": archive.max_step,
+        "continuation_history_rows": archive.history_rows,
+    }
+
+
+def _create_target_run(
+    archive: Archive,
+    base: Any,
+    *,
+    entity: str,
+    project: str,
+    group: str,
+) -> None:
+    run = wandb.init(
+        entity=entity,
+        project=project,
+        id=archive.new_id,
+        name=archive.display_name,
+        group=group,
+        job_type="continuation",
+        tags=["NLS_cas_hl", "continuation"],
+        config=_continuation_config(archive, base),
+        resume="allow",
+        reinit=True,
+    )
+    run.finish()
+
+
+def _cloud_run_with_retry(
+    api: wandb.Api,
+    path: str,
+    *,
+    attempts: int = 12,
+    delay: float = 2.0,
+):
+    last_error: Exception | None = None
+    for _ in range(attempts):
+        try:
+            api.flush()
+            return api.run(path)
+        except Exception as exc:  # newly created runs can take a moment to appear
+            last_error = exc
+            time.sleep(delay)
+    raise RuntimeError(f"New W&B run did not become visible: {last_error}")
+
+
+def parse_args() -> argparse.Namespace:
+    task_dir = Path(__file__).resolve().parents[1]
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--archive-root",
+        type=Path,
+        action="append",
+        default=None,
+        help=(
+            "Root searched recursively for offline-run-* folders. Repeatable. "
+            "Default: <repository>/outputs."
+        ),
+    )
+    parser.add_argument("--entity", default=DEFAULT_ENTITY)
+    parser.add_argument("--project", default=DEFAULT_PROJECT)
+    parser.add_argument("--group", default=DEFAULT_GROUP)
+    parser.add_argument(
+        "--job-id",
+        action="append",
+        default=[],
+        help="Optional Slurm job ID filter. Repeatable.",
+    )
+    parser.add_argument(
+        "--min-start-step",
+        type=int,
+        default=1_000_000,
+        help="Archives beginning below this step are treated as normal runs and skipped.",
+    )
+    parser.add_argument("--api-timeout", type=int, default=120)
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Create/group/upload runs. Without this flag, only show the plan.",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Re-upload a continuation already marked continuation_sync_completed.",
+    )
+    args = parser.parse_args()
+    if args.archive_root is None:
+        args.archive_root = [task_dir.parent / "outputs"]
+    return args
+
+
+def main() -> int:
+    args = parse_args()
+    archives = discover_archives(
+        args.archive_root,
+        min_start_step=args.min_start_step,
+        selected_job_ids=set(args.job_id),
+    )
+    if not archives:
+        raise SystemExit("No continuation archives matched. Nothing to publish.")
+
+    duplicates: dict[str, int] = {}
+    for archive in archives:
+        duplicates[archive.new_id] = duplicates.get(archive.new_id, 0) + 1
+    repeated = [run_id for run_id, count in duplicates.items() if count > 1]
+    if repeated:
+        raise SystemExit(f"Duplicate generated continuation IDs: {repeated}")
+
+    print("========== NLS continuation publication plan ==========")
+    print(f"Entity/project: {args.entity}/{args.project}")
+    print(f"Group: {args.group}")
+    print(f"Mode: {'EXECUTE' if args.execute else 'DRY-RUN'}")
+    print(f"Archives: {len(archives)}")
+    for archive in archives:
+        print(
+            f"- {archive.run_name}: {archive.min_step:,}..{archive.max_step:,} "
+            f"({archive.history_rows:,} records)\n"
+            f"    source: {archive.run_file}\n"
+            f"    target: {archive.new_id} / {archive.display_name}"
+        )
+    print("=======================================================")
+
+    api = wandb.Api(timeout=args.api_timeout)
+    bases: dict[str, Any] = {}
+    failures = 0
+    for run_name in expected_base_names():
+        try:
+            base = _base_run(api, args.entity, args.project, run_name)
+            bases[run_name] = base
+            print(
+                f"BASE {run_name}: id={base.id}, group={base.group or '<none>'} "
+                f"-> {args.group}"
+            )
+            if args.execute:
+                _set_metadata(
+                    base,
+                    group=args.group,
+                    tags=["NLS_cas_hl", "base-segment"],
+                )
+        except Exception as exc:
+            print(f"FAILED base lookup/grouping for {run_name}: {exc}", file=sys.stderr)
+            failures += 1
+
+    for archive in archives:
+        base = bases.get(archive.run_name)
+        if base is None:
+            print(f"SKIP {archive.run_name}: original run unavailable", file=sys.stderr)
+            failures += 1
+            continue
+        target_path = f"{args.entity}/{args.project}/{archive.new_id}"
+        existing = None
+        try:
+            existing = api.run(target_path)
+        except Exception:
+            pass
+        if existing is not None and existing.config.get("continuation_sync_completed") and not args.force:
+            print(f"SKIP {archive.new_id}: already marked as completely synced")
+            continue
+        if not args.execute:
+            print(f"DRY-RUN publish {archive.run_name} -> {archive.new_id}")
+            continue
+
+        try:
+            _create_target_run(
+                archive,
+                base,
+                entity=args.entity,
+                project=args.project,
+                group=args.group,
+            )
+            command = [
+                "wandb",
+                "sync",
+                "--append",
+                "--include-synced",
+                "--no-mark-synced",
+                "--entity",
+                args.entity,
+                "--project",
+                args.project,
+                "--id",
+                archive.new_id,
+                str(archive.run_file),
+            ]
+            print(f"RUN {' '.join(command)}")
+            result = subprocess.run(
+                command,
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            output = result.stdout or ""
+            if output:
+                print(output, end="" if output.endswith("\n") else "\n")
+            if result.returncode != 0 or _semantic_sync_error(output):
+                raise RuntimeError(f"wandb sync failed with exit code {result.returncode}")
+
+            target = _cloud_run_with_retry(api, target_path)
+            final_config = _continuation_config(archive, base)
+            final_config["continuation_sync_completed"] = True
+            _set_metadata(
+                target,
+                group=args.group,
+                name=archive.display_name,
+                tags=["NLS_cas_hl", "continuation"],
+                config=final_config,
+            )
+            print(f"DONE https://wandb.ai/{args.entity}/{args.project}/runs/{archive.new_id}")
+        except Exception as exc:
+            print(f"FAILED {archive.new_id}: {exc}", file=sys.stderr)
+            failures += 1
+
+    if not args.execute:
+        print("Dry run only. Re-run with --execute after checking the archive list.")
+    return 1 if failures else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

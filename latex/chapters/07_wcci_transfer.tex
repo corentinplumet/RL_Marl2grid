@@ -1,19 +1,26 @@
 \chapter{Transfer to the 36-Substation WCCI Grid}
 \label{ch:wcci-transfer}
 
-Every result so far was obtained on \texttt{bus14}. That grid is small enough to
-iterate on but too small to claim anything about scale: fourteen substations,
-twenty lines, three agents. This chapter moves to the L2RPN WCCI 2020 grid, more
-than twice as many substations and three times as many lines, and asks the
-question that motivates a graph encoder in the first place. If the actor reads
-the grid as a graph rather than as a flat vector, its weights are independent of
-how many substations exist, and a representation learned on \texttt{bus14}
-should carry over.
+The controlled method comparisons so far were developed on \texttt{bus14}.
+That grid is small enough to iterate on but too small to claim anything about
+scale: fourteen substations, twenty lines, and three agents. The preliminary
+WCCI stress test of Section~\ref{sec:sparse-wcci-stress-test} reproduced several
+sparse-control mechanisms with an MLP actor on the larger grid, but even the
+matched baseline was weak. Because that pilot changed grid size, action space,
+and maintenance at once, it could not identify the source of failure.
 \\
 \\
-Before running that transfer, the two environments have to be made comparable
-and the encoder's inputs have to be checked. This chapter does both. The
-comparison turns out to matter more than expected: the graph features the
+This chapter turns that pilot into a controlled transfer study. It moves to the
+L2RPN WCCI 2020 grid, more than twice as many substations and three times as many
+lines, and asks the question that motivates a graph encoder in the first place.
+If the actor reads the grid as a graph rather than as a flat vector, its weights
+are independent of how many substations exist, and a representation learned on
+\texttt{bus14} should carry over.
+\\
+\\
+Before interpreting that transfer, the two environments have to be made
+comparable and the encoder's inputs have to be checked. This chapter does both.
+The comparison turns out to matter more than expected: the graph features the
 encoder consumes are raw physical quantities, and they do not follow the same
 distribution on the two grids.
 

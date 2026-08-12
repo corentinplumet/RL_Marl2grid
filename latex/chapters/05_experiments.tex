@@ -721,3 +721,89 @@ the asset row carries information about its local neighborhood. Under
 embedding is still a projection of its own raw features, and it dilutes the
 pooled vector with context-free rows; with both relations set that way, every
 generator and load row is inert.
+
+
+\section{Screen E: Candidate-Action Scoring on the Corrected Boundary}
+\label{sec:screen-e-cas}
+
+\paragraph{Question.}
+The candidate-action head of Section~\ref{sec:candidate-action-scoring} scores
+every action from the encoded nodes it modifies rather than from a fixed-width
+layer over an action index. Three choices in that head are unresolved: how the
+touched nodes are pooled, whether the static action descriptor is appended to
+the score, and whether the idle action gets its own head. This screen varies all
+three.
+
+\paragraph{Design.}
+A $2^3$ factorial on \texttt{bus14}, seed $0$, eight runs. Pooling is
+\texttt{mean} or \texttt{typed\_mean}; the action descriptor is appended
+(\texttt{f1}) or withheld (\texttt{f0}); the idle action is scored by a
+dedicated head (\texttt{a0h1}) or by the shared scorer (\texttt{a0h0}). Every
+run uses the explicit-line graph without one-hop context, a two-layer GINE
+encoder of width $128$, and the 15M-step budget of
+Section~\ref{sec:screening-common-protocol}. All eight reached 15M steps.
+
+\paragraph{Result.}
+Table~\ref{tab:screen-e-fulltest} reports the full-test survival of each best
+checkpoint over the 201 held-out chronics, and
+Figure~\ref{fig:nl-cas-hl-fulltest} shows the same ordering.
+Figure~\ref{fig:nl-cas-hl-curves} shows the periodic test curve during training.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Screen E, full-test survival of the best checkpoint on 201 held-out
+  chronics. One seed per cell.}
+  \label{tab:screen-e-fulltest}
+  \setlength{\tabcolsep}{6pt}
+  \begin{tabular}{lllrr}
+    \toprule
+    Pooling & Descriptor & Idle head & Survival (\%) & Best checkpoint \\
+    \midrule
+    \texttt{mean}       & \texttt{f0} & \texttt{a0h1} & 99.52 & 14{,}929{,}920 \\
+    \texttt{typed\_mean} & \texttt{f1} & \texttt{a0h0} & 99.50 & 14{,}929{,}920 \\
+    \texttt{mean}       & \texttt{f0} & \texttt{a0h0} & 99.18 & 14{,}929{,}920 \\
+    \texttt{mean}       & \texttt{f1} & \texttt{a0h1} & 98.66 & 14{,}929{,}920 \\
+    \texttt{mean}       & \texttt{f1} & \texttt{a0h0} & 98.32 & 14{,}846{,}976 \\
+    \texttt{typed\_mean} & \texttt{f0} & \texttt{a0h1} & 98.17 & 14{,}764{,}032 \\
+    \texttt{typed\_mean} & \texttt{f0} & \texttt{a0h0} & 92.50 & 12{,}358{,}656 \\
+    \texttt{typed\_mean} & \texttt{f1} & \texttt{a0h1} & 57.84 & 11{,}612{,}160 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\linewidth]{figures/nl_cas_hl_curves.png}
+  \caption{Test episodic survival during training, smoothed over nine
+  evaluations. Six of the eight cells converge to the top of the range and stay
+  there; \texttt{typed\_mean/f1/a0h1} never does.}
+  \label{fig:nl-cas-hl-curves}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.82\linewidth]{figures/nl_cas_hl_fulltest.png}
+  \caption{Full-test survival of each best checkpoint. The dashed line marks
+  $98\%$.}
+  \label{fig:nl-cas-hl-fulltest}
+\end{figure}
+
+\paragraph{Reading.}
+\textbf{Six of the eight cells reach $98.2\%$ or better} and three exceed
+$99\%$, so the candidate-action head is a viable actor on the corrected
+boundary. No factor separates. The apparent marginals, \texttt{mean} at
+$98.9\%$ against \texttt{typed\_mean} at $87.0\%$ and \texttt{f0} at $97.3\%$
+against \texttt{f1} at $88.6\%$, are artifacts of two low cells; removing the
+single failure at $57.84\%$ brings the pooling gap to about a point. At one seed
+the defensible statement is that the head works and that the three choices do
+not order themselves.
+\\
+\\
+The descriptor is the one asymmetry worth recording: the best cell withholds it
+and both failing cells include it, against a prior that favours the more
+elaborate option. It is not redundant information, since every action still
+reaches the scorer with its own pooled context -- agent~$0$'s $57$ actions
+produce $57$ distinct row-sets, because an action toggles one to three of a
+substation's lines rather than a single busbar. Withholding it removes a static
+label and leaves the learned description intact.

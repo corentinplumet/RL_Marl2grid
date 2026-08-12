@@ -485,3 +485,42 @@ most principled learned sparse-control candidate is
 does not rely on an evaluation-time override, learns the intervention penalty
 adaptively, and uses a local state-dependent safety weight.
 
+
+\section{Preliminary WCCI Stress Test}
+\label{sec:sparse-wcci-stress-test}
+
+As a preliminary scale test, representative mechanisms were retrained from
+scratch with an MLP actor on the maintenance-enabled WCCI grid; no \texttt{bus14}
+weights were transferred. All runs use the same reduced action space, three
+seeds, 60M training steps, and learning-rate schedule. The reported values are
+the final deterministic test evaluation, averaged over seeds and ten held-out
+episodes per seed; they are not full-test estimates.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Preliminary WCCI stress test with scheduled maintenance at the final
+  training-time test evaluation.}
+  \label{tab:sparse-wcci-stress-test}
+  \setlength{\tabcolsep}{7pt}
+  \begin{tabular}{L{0.50\textwidth}rr}
+    \toprule
+    Method & Survival (\%) & Action-0 fraction \\
+    \midrule
+    Matched MLP baseline & $23.75\pm7.70$ & 0.168 \\
+    Global rho heuristic, $\rho_{safe}=0.90$ & $28.35\pm11.06$ & 0.974 \\
+    Local rho heuristic, $\rho_{safe}=0.90$ & $9.46\pm3.54$ & 0.995 \\
+    Intervention gate, final-action MAP & $25.92\pm10.69$ & 0.400 \\
+    Flat Sparse16, $\lambda_{fixed}=0.010$ & $27.00\pm12.13$ & 0.489 \\
+    Flat local-safe AIB, $d=0.20$ & $21.65\pm2.21$ & 0.927 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The mechanisms change intervention frequency, but none reliably improves
+survival over the weak MLP baseline: the differences are small relative to the
+seed variation. The local rho heuristic and AIB are highly sparse but remain
+weak controllers, suggesting that sparsity transfers more readily than control
+quality. This failed pilot changes grid size, action space, and maintenance at
+once, so it cannot identify the cause. Chapter~\ref{ch:wcci-transfer} isolates
+these factors before studying cross-grid graph transfer.
