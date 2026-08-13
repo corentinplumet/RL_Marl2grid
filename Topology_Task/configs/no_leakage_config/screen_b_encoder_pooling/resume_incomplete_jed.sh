@@ -18,7 +18,7 @@ fi
 target_timesteps="${TARGET_TIMESTEPS:-15000000}"
 time_limit_minutes="${TIME_LIMIT_MINUTES:-1300}"
 launcher="${LAUNCHER:-job_jed.sh}"
-checkpoint_dir="${CHECKPOINT_DIR:-checkpoint}"
+checkpoint_dir="${CHECKPOINT_DIR:-checkpoint/no_leak/gs_se3p_NL}"
 reset_environments="${RESET_ENVIRONMENTS:-true}"
 config_dir="Topology_Task/configs/no_leakage_config/screen_b_encoder_pooling"
 
