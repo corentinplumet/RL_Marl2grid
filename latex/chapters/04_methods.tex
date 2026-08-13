@@ -2,10 +2,14 @@
 \label{ch:methods}
 
 
-This chapter describes the graph inputs and graph-actor variants used in the
-experiments. The presentation separates four design choices: feature scaling,
-the base graph representation, substation-level augmentations, and graph
-pooling.
+Chapter~\ref{ch:sparse-control} made the flat policy more operator-like on
+\texttt{bus14}, but its preliminary WCCI stress test remained weak. Sparse
+intervention control changes when the policy acts; it does not remove the
+fixed-width MLP representation that ties the actor to one grid. This chapter
+therefore introduces the size-independent graph inputs and graph-actor variants
+used in the remaining experiments. The presentation separates four design
+choices: feature scaling, the base graph representation, substation-level
+augmentations, and graph pooling.
 
 \section{Physical Scaling and Voltage-Angle Representation}
 \label{subsec:graph-feature-normalization}
@@ -259,7 +263,7 @@ load quantities are aggregated into their currently assigned busbars.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.94\linewidth]{figures/graph_busbar_baseline.png}
+  \resizebox{0.94\linewidth}{!}{\input{figures/graph_busbar_baseline.tex}}
   \caption{Busbar graph representation. Blue nodes denote busbars and black
   connections denote active transmission-line relations. Generator and load
   quantities are aggregated into the features of their associated busbars.}
@@ -389,7 +393,7 @@ therefore preserved individually.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.92\linewidth]{figures/graph_heterogeneous_equipment.png}
+  \resizebox{0.92\linewidth}{!}{\input{figures/graph_heterogeneous_equipment.tex}}
   \caption{Heterogeneous equipment representation. Busbars are blue, generators
   are red, and loads are green. Physical transmission lines remain direct
   relations between busbar nodes.}
@@ -618,7 +622,7 @@ with a transmission-line node between its endpoint busbars. Its node set is
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.92\linewidth]{figures/graph_heterogeneous_line_nodes.png}
+  \resizebox{0.92\linewidth}{!}{\input{figures/graph_heterogeneous_line_nodes.tex}}
   \caption{Heterogeneous representation with explicit transmission-line nodes.
   Yellow nodes represent physical lines and connect the blue busbars at their
   endpoints; generators and loads remain explicit terminal nodes.}
@@ -1094,8 +1098,8 @@ pair of busbars, remain active throughout the episode, and do not represent an
 electrical connection. Consequently, a non-energized controlled busbar remains
 connected to the other busbar of its substation through this structural
 relation, without being considered electrically energized.
-Figure~\ref{fig:same-substation-busbar-edge} shows this relation for the busbar
-and disaggregated schemas.
+Figure~\ref{fig:substation-augmentation-by-representation} shows this relation
+across the three graph representations.
 \\
 \\
 Table~\ref{tab:same-substation-augmentation-features} gives the exact feature
@@ -1131,33 +1135,6 @@ visible.
   \end{tabular}
 \end{table}
 
-\begin{figure}[htbp]
-  \centering
-  \begin{subfigure}[b]{0.49\linewidth}
-    \centering
-    \includegraphics[width=\linewidth]{figures/graph_same_substation_edge_bus.png}
-    \caption{Busbar graph.}
-    \label{fig:same-substation-edge-bus}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[b]{0.49\linewidth}
-    \centering
-    \includegraphics[width=\linewidth]{figures/graph_same_substation_edge.png}
-    \caption{Disaggregated graph.}
-    \label{fig:same-substation-edge-hetero}
-  \end{subfigure}
-  \caption{Direct same-substation busbar relation, shown in the two schemas of
-  Section~\ref{sec:graph-representation}. The highlighted orange edge allows two
-  busbars belonging to the same substation to exchange messages; it is a
-  computational relation and not a physical transmission line. In~(a) the
-  generator and load quantities are aggregated into the busbar features, whereas
-  in~(b) they are separate nodes. The relation is identical in both cases: it
-  connects two busbars of one substation and does not depend on the node types
-  attached to them.}
-  \label{fig:same-substation-busbar-edge}
-\end{figure}
-
-
 \subsection{Substation summary nodes (n)}
 \label{sec:substation-summary-nodes}
 
@@ -1177,10 +1154,11 @@ For $S$ included substations with $B$ busbars each, this adds $S$ nodes and
 $2SB$ directed edges. Each $u_s$ gathers information from its busbars and sends
 the result back, so two busbars in the same substation communicate in two steps:
 $i(s,b)\rightarrow u_s\rightarrow i(s,b')$. It therefore provides the same
-intra-substation communication role as the direct relation in
-Figure~\ref{fig:same-substation-busbar-edge}. Only busbars connect directly to
-$u_s$; other node types reach it through their busbar attachments.
-Figure~\ref{fig:substation-summary-node} shows this construction.
+intra-substation communication role as the direct relation, but over two
+message-passing steps. Only busbars connect directly to $u_s$; other node types
+reach it through their busbar attachments. Both augmentations are shown across
+the three graph representations in
+Figure~\ref{fig:substation-augmentation-by-representation}.
 
 {\color{clarif}
 \paragraph{Summary nodes exist only for controlled substations.}
@@ -1192,33 +1170,7 @@ Each summary gathers only visible controlled busbars, so it introduces no
 contextual state directly; external information can affect it only through
 messages that first reach the controlled region.
 }
-\\
-\begin{figure}[htbp]
-  \centering
-  \begin{subfigure}[b]{0.49\linewidth}
-    \centering
-    \includegraphics[width=\linewidth]{figures/graph_substation_summary_node_bus.png}
-    \caption{Busbar graph.}
-    \label{fig:substation-summary-node-bus}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[b]{0.49\linewidth}
-    \centering
-    \includegraphics[width=\linewidth]{figures/graph_substation_summary_node.png}
-    \caption{Disaggregated graph.}
-    \label{fig:substation-summary-node-hetero}
-  \end{subfigure}
-  \caption{Learned substation-summary augmentation, shown in the two schemas of
-  Section~\ref{sec:graph-representation}. The orange substation node receives
-  messages from each of its blue busbar nodes and redistributes the resulting
-  substation-level representation through the reverse edges. In~(a) the generator and load
-  quantities are aggregated into the busbar features, whereas in~(b) they are
-  separate nodes; in both cases the summary node attaches only to busbars, so
-  generators, loads, and transmission-line nodes reach it through their busbar
-  attachments.}
-  \label{fig:substation-summary-node}
-\end{figure}
-
+\par\medskip
 \noindent After the raw node projection in
 Figure~\ref{fig:graph-actor-pipeline}, the model initializes $u_s$ from a
 \emph{structural descriptor} of substation $s$ rather than from its identity.

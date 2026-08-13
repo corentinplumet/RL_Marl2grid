@@ -1239,6 +1239,9 @@ class MAEnvWrapper(Env):
                     line_ex_to_subid=self.g2op_env.line_ex_to_subid,
                     original_action_ids=original_action_ids,
                     strict=True,
+                    action_feature_scaling=getattr(
+                        args, "candidate_action_feature_scaling", "fixed"
+                    ),
                 )
             )
 

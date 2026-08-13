@@ -1,10 +1,12 @@
 \chapter{Establishing a Baseline}
 \label{ch:baseline}
 
-This chapter establishes a robust baseline for the IEEE 14-bus task. First, we tune a decentralized MLP-based MAPPO agent to achieve stable training and high survival rates. Second, we replace the flat MLP actor with a Graph Neural Network (GNN) encoder. 
-\\
-\\
-This architectural shift is essential for generalizability: an MLP's input size is strictly tied to a specific grid size, preventing transferability. In contrast, a shared GNN encoder processes graphs of arbitrary sizes, theoretically enabling zero-shot transfer across different power grids. If a GNN encoder proves viable and competitive with the optimized MLP, it justifies investigating the optimal graph representation of the power grid, which is addressed in Chapters~\ref{ch:methods} and~\ref{ch:experiments}.
+This chapter establishes a robust flat-actor baseline for the IEEE 14-bus task.
+It first tunes a decentralized MLP-based MAPPO agent for stable training and
+high survival, then tests whether an initial bias toward the do-nothing action
+improves exploration. This isolates the training choices before
+Chapter~\ref{ch:sparse-control} changes the operational objective and the later
+graph chapters change the actor representation.
 
 % \section{How to Read This Chapter}
 % \label{sec:results-structure}
@@ -53,12 +55,6 @@ The primary performance metric is test episodic survival (expressed as a percent
     and~\ref{fig:rerun-a0-all} \\
     Initial do-nothing bias & Does biasing initial exploration toward do-nothing help? &
     Table~\ref{tab:a0-bias-summary}, Figure~\ref{fig:rerun-a0-bias} \\
-    GINE reruns & Do graph encoders improve survival over the optimized MLP baseline? &
-    Tables~\ref{tab:gine-run-configurations} and~\ref{tab:gine-rerun-summary},
-    Figure~\ref{fig:rerun-gine-best00}\\
-    Heavy GINE & Does a larger GINE architecture help or overcomplicate
-    optimization? & Table~\ref{tab:heavy-gine-configurations},
-    Figure~\ref{fig:gine-best-search2} \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -243,78 +239,21 @@ The current conclusion is that adding an initialization bias is generally hurtfu
 % \hl{I might need to run a full test eval of these runs}
 % \hl{maybe i need to rerrun all these runs because they don't go/stop at 15M steps}
 
-\subsection{Actor GNN Encoder Viability and Architecture}
-\label{subsec:gnn-viability}
-
-\paragraph{Question.}
-Can a graph encoder perform as well as the MLP? This is a crucial question because if all agents share the same GNN encoder, the architecture becomes independent of the grid size and could maybe transfer to any grid topology. If each agent requires its own separate encoder or if the GNN cannot stabilize, this transferability is lost.
-
-\paragraph{Baseline and changes.}
-We conducted an exploratory study comparing several variations of the GINE architecture. We tested the encoder size (light vs. heavy GINE), actor sharing (shared vs. unshared encoder), the critic architecture (MLP vs. GNN), and the impact of the optimizations we established for the MLP baseline (optimized critic updates, reward normalization). 
-
-\paragraph{Protocol.}
-All GINE runs use \texttt{gnn\_type = gine}, \(15{,}000{,}000\) total timesteps, evaluation every \(80{,}000\) timesteps, \(2{,}000\) rollout steps, deterministic evaluation, and the same 80/20 chronic split used by the MLP experiments. We use GINE because it naturally incorporates edge features and has been shown to be powerful at distinguishing graph topologies \cite{xu2018how}. The complete graph-actor pipeline is described in Appendix~\ref{app:gine-architecture}, and Appendix~\ref{app:experiment-configurations} details the exhaustive parameter configurations used for these ablations in Tables~\ref{tab:gine-run-configurations} and~\ref{tab:heavy-gine-configurations}.
-
-\paragraph{Evidence.}
-Table~\ref{tab:gine-rerun-summary} and Figure~\ref{fig:rerun-gine-best00} compare the core architectural improvements against the \texttt{MLP Baseline}. Figure~\ref{fig:gine-best-search2} provides a broader search, showing how the baseline reacts to individual isolated changes.
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{GINE rerun survival summary.}
-  \label{tab:gine-rerun-summary}
-  \resizebox{\textwidth}{!}{%
-  \begin{tabular}{llrr}
-    \toprule
-    Run & Intended change & Final survival (\%) & Peak survival (\%) \\
-    \midrule
-    \texttt{Heavy GINE Baseline} & Historical GINE baseline & 59.2 & 93.9 \\
-    \texttt{Light GINE (Concat, MLP Critic)} & Light GINE with MLP critic & 78.9 & 90.4 \\
-    \texttt{No Bias, Opt Critic} & Optimized critic and bias 0.0 & 82.5 & 85.7 \\
-    \texttt{Optimized Light GINE} & Light optimized GINE with MLP critic & 95.7 & 97.4 \\
-    \bottomrule
-  \end{tabular}
-  }
-\end{table}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\textwidth]{figures/rerun_gine_best00_vs_best10_14.png}
-  \caption{Seed-aggregated test episodic survival comparing the \texttt{MLP Baseline} against high-performing GINE architectural modifications.}
-  \label{fig:rerun-gine-best00}
-\end{figure}
-
-\begin{figure}[p]
-  \centering
-  \includegraphics[width=\textwidth,height=0.9\textheight,keepaspectratio]{figures/gine_best_search2_baseline_comparisons.png}
-  \caption{GINE survival comparisons. Each subplot compares the \texttt{MLP Baseline} against a specific GINE variant from \texttt{configs/gine\_s0\_s1\_s2}. All runs are modifications of a baseline GINE model; full hyperparameters and architectural details are provided in Appendix~\ref{app:gine-architecture} and Appendix~\ref{app:experiment-configurations}.}
-  \label{fig:gine-best-search2}
-\end{figure}
-
-\paragraph{Interpretation.}
-The results from the broad search provide several critical takeaways regarding the GNN architecture:
-\begin{itemize}
-  \item \textbf{Shared Encoder Viability:} As shown in Figure~\ref{fig:gine-best-search2}, the \texttt{Unshared Actor} variant does not outperform the other runs. This proves that a single shared GNN encoder for all agents is achievable and does not bottleneck performance, which is exactly what is needed for transferability.
-  \item \textbf{Critic Architecture:} Attempting to use a GNN for the centralized critic proved unstable and degraded performance. The \texttt{MLP Critic} variants were significantly more stable. The best performance is clearly achieved by pairing the shared GNN actor with a standard MLP critic.
-  \item \textbf{Optimization Synergies:} The GNN architecture is heavily dependent on the same optimizations that stabilized our MLP baseline. Specifically, optimized critic updates, reward normalization, and removing the initial do-nothing bias (bias 0.0) were crucial for getting the GNN to learn reliably.
-\end{itemize}
-
-\noindent The strongest overall result is the \texttt{Optimized Light GINE}, which combines the shared light GINE actor, the MLP critic, and all the baseline optimizations to reach \(95.7\%\) final survival. This validates that a GNN encoder is highly competitive on the 14-bus task.
-\\
-\\
-
 \begin{tcolorbox}[colframe=red!75!black, colback=red!5!white, title=Chapter Summary]
-\textbf{Objective:} Establish a stable, high-performing MAPPO baseline and validate the viability of a GNN encoder.
+\textbf{Objective:} Establish a stable, high-performing flat MAPPO baseline.
 
 \textbf{Findings:}
 \begin{itemize}
-    \item \textbf{MLP Optimization:} Tuning hyperparameters, enabling reward normalization, and optimizing critic updates increased the flat MLP baseline survival to \(\sim\)93\%.
-    \item \textbf{GNN Viability:} Replacing the MLP actor with a GNN (GINE) is highly competitive. Combined with our baseline optimizations, the \texttt{Optimized Light GINE} achieved \(95.7\%\) survival.
-    \item \textbf{Transferability (Shared Actor):} A shared GNN encoder for all agents performs optimally. This is critical: because the encoder processes subgraphs of consistent dimensions regardless of the global grid size, a shared GNN actor theoretically enables zero-shot transferability to larger grids.
-    \item \textbf{Critic Architecture:} The centralized critic observes the entire global graph, inherently tying it to the training grid's specific size. Consequently, a GNN critic offers no transferability benefits and was empirically found to induce training instability. We therefore retain a standard MLP critic.
+    \item \textbf{MLP optimization:} Hyperparameter tuning, reward normalization,
+    and optimized critic updates raise the flat MLP baseline to roughly 93\%
+    survival.
+    \item \textbf{Do-nothing initialization:} The effect is large but
+    non-monotonic; it is not a reliable substitute for learning when to
+    intervene.
 \end{itemize}
 
-\textbf{Conclusion:} We have proven that a shared GNN encoder is viable, providing us with an architecture that is structurally transferable and performs excellently on the IEEE 14-bus grid. However, while the architecture allows for transferability in theory, we do not yet know how it will perform in practice when transferred to a different grid. To address this, the next logical step is to explore the optimal ways to represent and process the power grid as a graph, identify the best representation, and attempt transferring it to a larger environment. Chapter~\ref{ch:methods} defines these representational spaces, and Chapter~\ref{ch:experiments} evaluates them.
+\textbf{Conclusion:} The tuned flat actor is a strong survival baseline. The
+next step is to ask whether it can behave more like an operator by intervening
+less often without losing that survival, which is the subject of
+Chapter~\ref{ch:sparse-control}.
 \end{tcolorbox}
-
-

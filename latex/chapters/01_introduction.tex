@@ -219,19 +219,21 @@ was not.
 The baseline is that system with flat multilayer-perceptron actors and critic,
 trained on \texttt{bus14}. It is unstable at low survival out of the box, and it
 is tied to one grid: an MLP's input width is a function of the number of
-substations, so nothing it learns can be reused elsewhere. Fixing both --- first
-the training, then the representation --- is the subject of the chapters that
-follow.
+substations, so nothing it learns can be reused elsewhere. The chapters that
+follow address these limitations in the order they arose: first stabilize
+training, then make interventions more operator-like, and finally replace the
+fixed-width representation.
 
 \section{Outline}
 \label{sec:intro-outline}
 
-Chapter~\ref{ch:baseline} tunes that baseline until it trains stably, then
-replaces the flat actor with a graph encoder and checks that nothing is lost.
-Chapter~\ref{ch:methods} defines the graph inputs: feature scaling, three
-representations of the grid, the substation-level augmentations, the readout,
-and the candidate-action head. Chapter~\ref{ch:experiments} screens those
-choices experimentally. Chapter~\ref{ch:sparse-control} changes the objective
-and asks whether the agents can keep their survival while intervening rarely.
-Chapter~\ref{ch:wcci-transfer} moves to the 36-substation WCCI grid and tests
-what actually transfers.
+Chapter~\ref{ch:baseline} tunes the flat baseline until it trains stably.
+Chapter~\ref{ch:sparse-control} then changes the objective and asks whether the
+same agents can keep their survival while intervening rarely; its preliminary
+WCCI pilot exposes the limitations of retaining a fixed-width MLP actor.
+Chapter~\ref{ch:methods} consequently defines size-independent graph inputs:
+feature scaling, three grid representations, substation-level augmentations,
+the readout, and the candidate-action head. Chapter~\ref{ch:experiments} first
+checks that a shared graph encoder remains competitive, then screens those
+design choices. Chapter~\ref{ch:wcci-transfer} moves to the 36-substation WCCI
+grid and tests what actually transfers.

@@ -32,28 +32,10 @@ Three terms fix what the thesis has to measure:
 \label{sec:plan-research-questions}
 
 \begin{enumerate}
-  \item \textbf{Can a graph actor replace a flat one without paying for it?}
-  A decentralized MAPPO agent has first to be trained to stable, high survival
-  on \texttt{bus14}; only then is it meaningful to swap the flat MLP actor for a
-  graph encoder. An MLP's input width is tied to one grid, so nothing transfers;
-  a graph encoder is size-independent, but that is worth nothing if it does not
-  match the tuned MLP first. (Chapter~\ref{ch:baseline}.)
-
-  \item \textbf{How should the grid be represented as a graph for a local
-  actor?} Node granularity (busbars, or busbars with separate generator, load
-  and line nodes), which relations exist and what they carry, the optional
-  substation-level augmentations, and the graph readout are all free choices.
-  (Chapter~\ref{ch:methods} defines them; Chapter~\ref{ch:experiments} measures
-  which ones move survival.)
-
-  \item \textbf{What is a local agent entitled to observe, and does enforcing
-  that boundary matter?} A local graph carries contextual nodes from
-  neighboring substations. Making a contextual node visible only while a live
-  line connects it to the agent's own region, and choosing whether pooling
-  covers the whole visible graph or only the agent's controlled domain, changes
-  what the policy conditions on. The distinction is between context and
-  leakage. (Sections~\ref{subsec:graph-local-global}
-  and~\ref{sec:graph-pooling}.)
+  \item \textbf{Can decentralized MAPPO first learn a strong, stable
+  baseline?} The flat MLP actor must achieve reliable survival on
+  \texttt{bus14} before either its objective or its representation is changed.
+  (Chapter~\ref{ch:baseline}.)
 
   {\color{blue}
   \item \textbf{Can the agents intervene sparsely without losing survival?}
@@ -62,6 +44,24 @@ Three terms fix what the thesis has to measure:
   axes at once, survival and intervention rate, since improving either alone is
   not a result. (Chapter~\ref{ch:sparse-control}.)
   }
+
+  \item \textbf{Can a graph actor replace the flat one without paying for it?}
+  An MLP's input width is tied to one grid, whereas a shared graph encoder is
+  size-independent. That advantage matters only if the GNN first matches the
+  tuned MLP on \texttt{bus14}. (Chapter~\ref{ch:experiments}.)
+
+  \item \textbf{How should the grid be represented as a graph for a local
+  actor?} Node granularity, relations, substation-level augmentations, and graph
+  readout are all design choices. Chapter~\ref{ch:methods} defines them and
+  Chapter~\ref{ch:experiments} measures which ones move survival.
+
+  \item \textbf{What is a local agent entitled to observe, and does enforcing
+  that boundary matter?} A local graph carries contextual nodes from
+  neighboring substations. Making context visible only through a live boundary
+  connection, and choosing whether pooling covers the visible graph or only the
+  controlled domain, determine what the policy conditions on. The distinction
+  is between context and leakage. (Sections~\ref{subsec:graph-local-global}
+  and~\ref{sec:graph-pooling}.)
 
   \item \textbf{Does any of this transfer to a larger grid?} Moving from
   \texttt{bus14} to the 36-substation WCCI grid tests whether a graph encoder is
@@ -75,29 +75,24 @@ Three terms fix what the thesis has to measure:
 \label{sec:plan-contributions}
 
 \begin{itemize}
-  \item \textbf{A tuned decentralized MAPPO baseline on \texttt{bus14}, and
-  evidence that a graph actor matches it.} The original framework trained
-  unstably; the training and initialization changes that fix it are isolated one
-  at a time, so the GINE actor is compared against a strong MLP rather than a
-  weak one.
-
-  \item \textbf{The local actor graph, specified and then screened.} Three
-  representations sharing a fixed candidate graph with a dynamic edge mask, so
-  tensor shapes stay constant while the topology varies, each with an explicit
-  information boundary --- the three are \emph{not} information-equivalent, so
-  comparing them is never a pure comparison of architectures. Encoder depth and
-  width, message-passing operator, readout, and the structural augmentations of
-  the busbar graph are then screened as balanced full factorials, three seeds
-  per cell, each scored by full-test evaluation of the best checkpoint.
-
-  \item \textbf{A size invariant mechanism for combinatorial action spaces.} A
-  candidate-action head that scores each action from the encoded nodes it
-  modifies, replacing the fixed-width layer over an action index
+  \item \textbf{A tuned decentralized MAPPO baseline on \texttt{bus14}.} The
+  original framework trained unstably; the training and initialization changes
+  that fix it are isolated one at a time.
 
   \item \textbf{An ablation of sparse intervention mechanisms} reported jointly
   on survival and intervention frequency, connecting the learned behavior to
-  what a control room would accept: act rarely, act locally, act when the grid
-  is unsafe.
+  what a control room would accept: act rarely, act locally, and act when the
+  grid is unsafe.
+
+  \item \textbf{A shared GNN actor and a screened local graph design.} The GNN
+  first matches the tuned MLP, then three representations are compared using a
+  fixed candidate graph with a dynamic edge mask and an explicit information
+  boundary. Encoder depth and width, message-passing operator, readout, and
+  structural augmentations are screened with full-test evaluation.
+
+  \item \textbf{A size-invariant mechanism for combinatorial action spaces.} A
+  candidate-action head that scores each action from the encoded nodes it
+  modifies, replacing the fixed-width layer over an action index.
 
   \item \textbf{A measurement of what actually breaks under transfer.} Encoder
   parameters cross grids unchanged; the input distribution they were calibrated

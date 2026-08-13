@@ -127,6 +127,20 @@ def get_alg_args() -> Namespace:
         help="Number of candidate actions scored per dense-attention chunk.",
     )
     parser.add_argument(
+        "--candidate-action-feature-scaling",
+        type=str,
+        default="fixed",
+        choices=["fixed", "per_agent"],
+        help=(
+            "Divisor for the count columns of the static action descriptor. "
+            "'fixed' uses a constant, so the same action content maps to the "
+            "same number for every agent and every grid, which is what a "
+            "shared scorer needs. 'per_agent' reproduces the previous "
+            "behaviour, dividing by the largest value in that agent's own "
+            "action set."
+        ),
+    )
+    parser.add_argument(
         "--candidate-action-use-features",
         type=str2bool,
         default=True,

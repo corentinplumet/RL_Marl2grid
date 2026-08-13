@@ -1,0 +1,92 @@
+\section{Preliminary GNN Encoder Viability}
+\label{subsec:gnn-viability}
+
+Before screening individual graph-design choices, an exploratory study checks
+that a graph actor can match the tuned MLP baseline. This is a prerequisite for
+transfer: the agents must be able to share one size-independent encoder without
+sacrificing survival.
+
+\paragraph{Question.}
+Can a shared graph encoder perform as well as the MLP? If each agent requires a
+separate encoder, or if the GNN cannot train stably, its structural
+transferability is lost.
+
+\paragraph{Baseline and changes.}
+The study compares several GINE variants. It varies encoder size (light or
+heavy), actor sharing (shared or unshared encoder), critic architecture (MLP or
+GNN), and the training optimizations established for the MLP baseline,
+including optimized critic updates and reward normalization.
+
+\paragraph{Protocol.}
+All GINE runs use \texttt{gnn\_type = gine}, $15{,}000{,}000$ total
+timesteps, evaluation every $80{,}000$ timesteps, $2{,}000$ rollout steps,
+deterministic evaluation, and the same 80/20 chronic split used by the MLP
+experiments. GINE is used because it incorporates edge features and is
+expressive over graph structures~\cite{xu2018how}. The complete graph-actor
+pipeline is described in Appendix~\ref{app:gine-architecture};
+Appendix~\ref{app:experiment-configurations} gives the full configurations in
+Tables~\ref{tab:gine-run-configurations} and~\ref{tab:heavy-gine-configurations}.
+
+\paragraph{Evidence.}
+Table~\ref{tab:gine-rerun-summary} and Figure~\ref{fig:rerun-gine-best00}
+compare the main architectural improvements with the \texttt{MLP Baseline}.
+Figure~\ref{fig:gine-best-search2} shows the broader search over isolated
+changes.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{GINE rerun survival summary.}
+  \label{tab:gine-rerun-summary}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{llrr}
+    \toprule
+    Run & Intended change & Final survival (\%) & Peak survival (\%) \\
+    \midrule
+    \texttt{Heavy GINE Baseline} & Historical GINE baseline & 59.2 & 93.9 \\
+    \texttt{Light GINE (Concat, MLP Critic)} & Light GINE with MLP critic & 78.9 & 90.4 \\
+    \texttt{No Bias, Opt Critic} & Optimized critic and bias 0.0 & 82.5 & 85.7 \\
+    \texttt{Optimized Light GINE} & Light optimized GINE with MLP critic & 95.7 & 97.4 \\
+    \bottomrule
+  \end{tabular}
+  }
+\end{table}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figures/rerun_gine_best00_vs_best10_14.png}
+  \caption{Seed-aggregated test episodic survival comparing the
+  \texttt{MLP Baseline} with high-performing GINE architectural variants.}
+  \label{fig:rerun-gine-best00}
+\end{figure}
+
+\begin{figure}[p]
+  \centering
+  \includegraphics[width=\textwidth,height=0.9\textheight,keepaspectratio]{figures/gine_best_search2_baseline_comparisons.png}
+  \caption{GINE survival comparisons. Each subplot compares the
+  \texttt{MLP Baseline} with one variant from
+  \texttt{configs/gine\_s0\_s1\_s2}. Full hyperparameters and architectural
+  details are given in Appendices~\ref{app:gine-architecture}
+  and~\ref{app:experiment-configurations}.}
+  \label{fig:gine-best-search2}
+\end{figure}
+
+\paragraph{Interpretation.}
+The broad search gives three conclusions:
+\begin{itemize}
+  \item \textbf{Shared encoder viability.} The unshared-actor variant does not
+  outperform the shared variants, so one encoder can serve all agents without
+  becoming the performance bottleneck.
+  \item \textbf{Critic architecture.} A GNN centralized critic is unstable and
+  degrades performance. The strongest variants pair the shared GNN actor with
+  the standard MLP critic.
+  \item \textbf{Optimization dependence.} Optimized critic updates, reward
+  normalization, and removal of the initial do-nothing bias are also important
+  for stable GNN training.
+\end{itemize}
+
+\noindent The strongest result is the \texttt{Optimized Light GINE}, which
+combines the shared light GINE actor, the MLP critic, and the baseline
+optimizations to reach $95.7\%$ final survival. A shared GNN is therefore
+competitive on \texttt{bus14}, justifying the representation screens that
+follow.

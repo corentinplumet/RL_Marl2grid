@@ -718,3 +718,53 @@ class CandidateActorIntegrationTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ActionFeatureScalingTest(unittest.TestCase):
+    """The descriptor must mean the same thing for every agent and grid.
+
+    ``per_agent`` divides each count column by the largest value in that
+    agent's own action set, so an action changing three elements maps to a
+    different number depending on which action set it was normalised against.
+    A scorer shared across agents, or transferred to another grid, then reads
+    the same action content as different inputs.
+    """
+
+    def _features(self, decoded, scaling):
+        from common.action_metadata import _scaled_action_features
+
+        return _scaled_action_features(decoded, scaling).numpy()
+
+    def _decoded(self, counts):
+        from types import SimpleNamespace
+
+        return [
+            SimpleNamespace(
+                substations={0}, lines=set(), loads=set(), generators=set(),
+                n_topology_changes=c, n_line_status_changes=0,
+                n_line_endpoint_changes=0, n_generator_changes=0,
+                n_load_changes=0, n_other_changes=0,
+            )
+            for c in counts
+        ]
+
+    def test_fixed_scaling_is_independent_of_the_action_set(self):
+        column = 6  # n_topology_changes_scaled
+        small = self._features(self._decoded([1, 2, 3]), "fixed")
+        large = self._features(self._decoded([1, 2, 3, 6]), "fixed")
+        # Three changes reads the same whichever set it was scored with.
+        self.assertAlmostEqual(
+            float(small[2, column]), float(large[2, column]), places=6
+        )
+
+    def test_per_agent_scaling_depends_on_the_action_set(self):
+        column = 6
+        small = self._features(self._decoded([1, 2, 3]), "per_agent")
+        large = self._features(self._decoded([1, 2, 3, 6]), "per_agent")
+        self.assertNotAlmostEqual(
+            float(small[2, column]), float(large[2, column]), places=6
+        )
+
+    def test_unknown_scaling_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "action feature scaling"):
+            self._features(self._decoded([1]), "running_mean")

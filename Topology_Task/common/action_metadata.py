@@ -212,7 +212,32 @@ def _pad_rows(rows_by_action: Sequence[Sequence[int]]) -> Tuple[th.Tensor, th.Te
     return th.from_numpy(indices), th.from_numpy(mask)
 
 
-def _scaled_action_features(decoded_actions: Sequence[_DecodedAction]) -> th.Tensor:
+#: Fixed divisor for the action count descriptors. Identical on every grid and
+#: for every agent, so the same physical action content maps to the same number
+#: wherever it is scored. Chosen to put a typical action near unity.
+ACTION_COUNT_SCALE = 4.0
+
+ACTION_FEATURE_SCALINGS = ("fixed", "per_agent")
+
+
+def _scaled_action_features(
+    decoded_actions: Sequence[_DecodedAction],
+    scaling: str = "fixed",
+) -> th.Tensor:
+    """Static per-action descriptor.
+
+    The count columns need a divisor. ``per_agent`` uses the largest value in
+    that agent's own action set, which makes the descriptor incomparable
+    between agents sharing one scorer and between grids: the same action
+    content maps to a different number depending on which action set it was
+    normalised against. ``fixed`` divides by a constant instead, so the
+    descriptor means the same thing everywhere and a trained scorer transfers.
+    """
+    if scaling not in ACTION_FEATURE_SCALINGS:
+        raise ValueError(
+            f"Unsupported action feature scaling '{scaling}'. Use one of: "
+            + ", ".join(ACTION_FEATURE_SCALINGS)
+        )
     raw = np.zeros(
         (len(decoded_actions), len(ACTION_FEATURE_NAMES)), dtype=np.float32
     )
@@ -232,7 +257,11 @@ def _scaled_action_features(decoded_actions: Sequence[_DecodedAction]) -> th.Ten
             float(decoded.n_other_changes),
         )
     for column in range(5, raw.shape[1]):
-        scale = max(1.0, float(raw[:, column].max()))
+        scale = (
+            ACTION_COUNT_SCALE
+            if scaling == "fixed"
+            else max(1.0, float(raw[:, column].max()))
+        )
         raw[:, column] /= scale
     return th.from_numpy(raw)
 
@@ -245,6 +274,7 @@ def build_action_graph_metadata(
     line_ex_to_subid: Sequence[int],
     original_action_ids: Optional[Sequence[int]] = None,
     strict: bool = True,
+    action_feature_scaling: str = "fixed",
 ) -> ActionGraphMetadata:
     """Build one deterministic candidate-to-node mapping for an agent."""
 
@@ -369,7 +399,9 @@ def build_action_graph_metadata(
         )
 
     metadata = ActionGraphMetadata(
-        action_features=_scaled_action_features(decoded_actions),
+        action_features=_scaled_action_features(
+            decoded_actions, action_feature_scaling
+        ),
         busbar_indices=busbar_indices,
         busbar_mask=busbar_mask,
         line_indices=line_indices,

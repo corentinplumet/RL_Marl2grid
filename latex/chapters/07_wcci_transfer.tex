@@ -24,22 +24,6 @@ The comparison turns out to matter more than expected: the graph features the
 encoder consumes are raw physical quantities, and they do not follow the same
 distribution on the two grids.
 
-\begin{tcolorbox}[
-  colframe=darkred,
-  colback=red!4!white,
-  title=Legacy graph-observation qualifier
-]
-Unless a result is explicitly identified as a leakage-free rerun, the graph
-statistics and transferred checkpoints in this chapter were produced before
-the information-boundary correction of
-Section~\ref{subsec:graph-local-global}. They include the legacy neighboring
-candidate rows and are not strictly comparable to runs using the corrected
-node and edge masks. The distribution measurements remain a description of
-the inputs consumed by those historical encoders, not of the final local actor
-observation.
-\end{tcolorbox}
-
-
 \section{The target environment}
 \label{sec:wcci-environment}
 
@@ -185,472 +169,22 @@ since it queries the simulator at every decision step and is myopic, but it is a
 strong reference.
 
 
-\section{Why the input distribution matters}
-\label{sec:wcci-why-distribution}
+\section{Corrected inputs}
+\label{sec:wcci-corrected-inputs}
 
-The graph encoder is grid-size independent and can therefore be transferred
-across grids. A conventional action head has one output per action index, so its
-shape changes with the agent partitions and action sets. With the explicit-line
-representation, however, the candidate scorer of
-Section~\ref{sec:candidate-action-scoring} applies shared weights and
-action-conditioned pooling to a variable set of actions. This makes the action
-head transferable as well. The flat centralized critic remains grid-specific
-because its input dimension depends on the grid.
-\\
-\\
-The two input paths must also be distinguished. The critic receives the
-normalized flat observation. The transferred actor encoder, however, uses only
-graph node and edge features, for which physical scaling and running
-standardization are disabled here. A frozen \texttt{bus14} encoder therefore
-receives WCCI's raw graph quantities; whether this matters depends on how
-closely the two distributions match.
-
-
-\section{Measurement protocol}
-\label{sec:wcci-protocol}
-
-Both environments were rolled out under a do-nothing policy for 6{,}000
-environment steps, with a cap of 300 steps per chronic so the sample spreads
-over roughly twenty scenarios per grid rather than concentrating in one. At each
-step the per-agent local graphs were rebuilt and every node and active physical
-edge recorded, pooling agents together because a single encoder is shared across
-them. This yields 276{,}000 node observations for \texttt{bus14} and a capped
-400{,}000 for WCCI, and 312{,}000 and 400{,}000 edge observations respectively.
-\\
-\\
-Four statistics summarize each feature. Writing $F_A$ and $F_B$ for the two
-empirical distributions with means $\mu_A,\mu_B$ and standard deviations
-$\sigma_A,\sigma_B$, and $\sigma_p=\sqrt{(\sigma_A^2+\sigma_B^2)/2}$ for their
-pooled spread:
-\begin{align}
-  \text{offset} &= \frac{\mu_B-\mu_A}{\sigma_p},
-  &\text{scale ratio} &= \frac{\sigma_B}{\sigma_A}, \\
-  \mathrm{KS} &= \sup_x |F_A(x)-F_B(x)|,
-  &W_1/\sigma_p &= \frac{1}{\sigma_p}\int_0^1 |F_A^{-1}(q)-F_B^{-1}(q)|\,\mathrm{d}q .
-\end{align}
-The pairing is deliberate. The offset is blind to a change in spread and the
-scale ratio is blind to a displacement, so a feature is only unproblematic when
-both are near their neutral values. KS measures disagreement in the bulk of the
-distribution and is comparatively insensitive to tails, which $W_1$ does weigh.
-
-
-\section{What the encoder reads}
-\label{sec:wcci-features}
-
-The measurements below are taken on the \texttt{bus} graph, whose ten channels
-are specified in Tables~\ref{tab:graph-node-features}
-and~\ref{tab:graph-edge-features}. What matters here is not their definition but
-how often each one is zero, since that is what the following sections turn on.
-Table~\ref{tab:wcci-graph-features} repeats the channel list with that fraction
-measured on each grid.
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Node and edge features of the \texttt{bus} graph, with the fraction
-  of sampled entries equal to zero on each grid. A busbar only carries
-  generation or load when an asset is attached to it, which makes four of the
-  six node channels structurally sparse.}
-  \label{tab:wcci-graph-features}
-  \setlength{\tabcolsep}{5pt}
-  \begin{tabular}{L{0.31\textwidth}L{0.30\textwidth}lrr}
-    \toprule
-    Feature & Meaning & Unit & \multicolumn{2}{c}{Zeros (\%)} \\
-    \cmidrule(l){4-5}
-    & & & \texttt{bus14} & WCCI \\
-    \midrule
-    \multicolumn{5}{l}{\textit{Node features}} \\
-    \texttt{gen\_p} & Active power injected by attached generators & MW & 84.0 & 88.0 \\
-    \texttt{gen\_theta} & Voltage angle at the generator connection & deg & 84.8 & 80.3 \\
-    \texttt{load\_p} & Net active power of attached load objects (positive withdrawal) & MW & 56.5 & 56.4 \\
-    \texttt{load\_theta} & Voltage angle at the load connection & deg & 56.5 & 58.0 \\
-    \texttt{time\_before\_cooldown\_sub} & Steps until this substation may be reconfigured & steps & 100 & 100 \\
-    \texttt{domain\_mask} & 1 for the agent's own substations, 0 for legacy whole-substation context & --- & 39.1 & 35.7 \\
-    \midrule
-    \multicolumn{5}{l}{\textit{Edge features}} \\
-    \texttt{line\_status} & 1 connected, 0 disconnected & --- & 0 & 0 \\
-    \texttt{rho} & Current flow divided by thermal limit & p.u. & 0 & 0 \\
-    \texttt{timestep\_overflow} & Consecutive steps above the thermal limit & steps & $>99.99$ & $>99.99$ \\
-    \texttt{time\_before\_cooldown\_line} & Steps until this line may be switched & steps & 100 & 100 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\noindent The zero fraction is a sparsity diagnostic, not an information score: 100\%
-means that every sampled value is zero, whereas 0\% only means that zero was
-never observed. Thus, \texttt{line\_status} is constant at one because the
-measurement retains only active physical edges, while \texttt{rho} varies but
-is nonzero on every retained edge. The overflow channel is not constant: its
-zero rate exceeds 99.99\% but rounds to 100\% at the original precision (12
-nonzero entries out of 312{,}000 on \texttt{bus14}, and 2 out of 400{,}000 on
-WCCI).
-\\
-\\
-The two cooldown channels are exactly zero because the measurement uses a
-do-nothing policy. A legal non-idle WCCI rollout confirms that this is
-policy-dependent: a topology change sets the affected substation cooldown to
-3, and reconnecting a line sets its line cooldown to 3. These channels can
-therefore vary during controlled execution even though they are constant in
-this diagnostic sample.
-\\
-\\
-One feature is dimensionless by construction. \texttt{rho} divides each line's
-current flow by that line's own thermal limit, so it is expressed in units the
-grid itself defines. Every other physical channel carries the units of the grid
-it came from.
-
-
-\section{Results}
-\label{sec:wcci-results}
-
-\subsection{Aggregate statistics}
-
-Table~\ref{tab:wcci-shift-all} reports the four statistics over all sampled
-entries.
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Distribution statistics over all sampled nodes and edges, ordered by
-  KS. Offset and $W_1$ are in pooled standard deviations; the scale ratio is
-  WCCI over \texttt{bus14}. Constant channels give undefined ratios.}
-  \label{tab:wcci-shift-all}
-  \setlength{\tabcolsep}{6pt}
-  \begin{tabular}{lrrrrrr}
-    \toprule
-    Feature & $\mu_{\text{bus14}}$ & $\mu_{\text{WCCI}}$ & Offset & Scale ratio & KS & $W_1/\sigma_p$ \\
-    \midrule
-    \texttt{load\_theta}   & $-2.402$ & $0.614$ & $+1.024$ & 0.850 & 0.331 & 1.024 \\
-    \texttt{rho}           & $0.364$ & $0.319$ & $-0.260$ & 1.048 & 0.141 & 0.261 \\
-    \texttt{gen\_theta}    & $-0.633$ & $0.215$ & $+0.503$ & 0.919 & 0.115 & 0.503 \\
-    \texttt{gen\_p}        & $8.645$ & $9.451$ & $+0.020$ & 2.435 & 0.089 & 0.266 \\
-    \texttt{load\_p}       & $9.723$ & $7.579$ & $-0.063$ & 2.363 & 0.040 & 0.238 \\
-    \texttt{domain\_mask}  & $0.609$ & $0.643$ & $+0.071$ & 0.982 & 0.034 & 0.070 \\
-    \texttt{timestep\_overflow} & $5.1\text{e-}5$ & $7.5\text{e-}6$ & $-0.007$ & 0.403 & 0.000 & 0.000 \\
-    \texttt{line\_status}  & $1$ & $1$ & --- & --- & 0.000 & --- \\
-    \texttt{time\_before\_cooldown\_line} & $0$ & $0$ & --- & --- & 0.000 & --- \\
-    \texttt{time\_before\_cooldown\_sub} & $0$ & $0$ & --- & --- & 0.000 & --- \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\noindent Read carelessly this table looks mild. Only \texttt{load\_theta} exceeds
-$\mathrm{KS}=0.2$, and the power channels sit near $\mathrm{KS}=0.05$. But their
-scale ratios are 2.4, and that is exactly the pattern the offset--scale pairing
-was introduced to catch: the two distributions share a centre while differing in
-width, so KS stays small because the bulk still overlaps.
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\linewidth]{figures/wcci_feature_dense.png}
-  \caption{The two dense channels. \texttt{rho} is nearly identical on the two
-  grids, as expected from a quantity already normalized by each grid's own
-  thermal limits. \texttt{domain\_mask} is structural, and its small difference
-  reflects how many neighboring candidate rows the legacy construction pulled
-  into each agent partition.}
-  \label{fig:wcci-dense}
-\end{figure}
-
-
-\subsection{Conditioning on the nodes that carry signal}
-
-The aggregate table understates the problem, because most of its rows are
-structural zeros. A busbar with no generator contributes a zero to
-\texttt{gen\_p} on both grids alike, and roughly 85\% of rows are of that kind.
-Statistics computed over such a column largely describe how many zeros it
-contains.
-\\
-\\
-Restricting each sparse channel to the nodes where the corresponding asset is
-actually attached gives Table~\ref{tab:wcci-shift-nonzero}. Every statistic
-roughly doubles.
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{The four sparse node channels, restricted to nodes that carry the
-  corresponding asset. Means and standard deviations are in MW for the power
-  channels and degrees for the angles.}
-  \label{tab:wcci-shift-nonzero}
-  \setlength{\tabcolsep}{5pt}
-  \begin{tabular}{lrrrrrrrr}
-    \toprule
-    & \multicolumn{2}{c}{\texttt{bus14}} & \multicolumn{2}{c}{WCCI} & & & & \\
-    \cmidrule(lr){2-3}\cmidrule(lr){4-5}
-    Feature & $\mu$ & $\sigma$ & $\mu$ & $\sigma$ & Offset & Scale ratio & KS & $W_1/\sigma_p$ \\
-    \midrule
-    \texttt{load\_theta} & $-5.53$ & $2.43$ & $1.46$ & $4.01$ & $+2.106$ & 1.648 & \textbf{0.758} & 2.106 \\
-    \texttt{gen\_theta}  & $-4.16$ & $2.36$ & $1.10$ & $3.50$ & $+1.757$ & 1.482 & \textbf{0.724} & 1.757 \\
-    \texttt{gen\_p}      & $53.96$ & $23.12$ & $78.75$ & $134.67$ & $+0.257$ & \textbf{5.824} & 0.496 & 0.744 \\
-    \texttt{load\_p}     & $22.36$ & $22.87$ & $17.37$ & $65.69$ & $-0.101$ & 2.873 & 0.093 & 0.378 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-A KS of 0.758 means the two empirical CDFs differ by 76 percentage points at
-their widest separation. These are not the same distribution in any useful
-sense. The angle means state it plainly: \texttt{bus14} sits near $-5.5^\circ$
-and $-4.2^\circ$ while WCCI sits near $+1.5^\circ$ and $+1.1^\circ$, a
-systematic displacement of five to seven degrees. Generation conditioned on
-actual generators averages $54 \pm 23$~MW on \texttt{bus14} against
-$79 \pm 135$~MW on WCCI.
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\linewidth]{figures/wcci_feature_power.png}
-  \caption{Power channels at nodes carrying the corresponding asset, on a linear
-  density scale (top) and a logarithmic one (bottom). The logarithmic row is the
-  informative one: WCCI carries a long right tail that \texttt{bus14} does not
-  have, reaching 399~MW of generation against a 92~MW ceiling. Among the
-  nonzero WCCI \texttt{load\_p} samples, 8.0\% are negative, whereas
-  \texttt{bus14} never produces a negative value.}
-  \label{fig:wcci-power}
-\end{figure}
-
-\noindent The graph construction does not change the sign of \texttt{load\_p}:
-positive values denote withdrawal from the grid. WCCI additionally represents
-seven boundary interconnections as load objects. Their exchanges can have
-either sign, so a negative value denotes power injected into the modeled grid,
-not negative consumption. The \texttt{bus14} data contain only conventional
-demand loads and therefore remain positive.
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\linewidth]{figures/wcci_feature_angles.png}
-  \caption{Voltage angles at nodes carrying the corresponding asset. The
-  \texttt{bus14} distributions lie almost entirely on the negative side, range
-  $[-11.6^\circ,\,+1.5^\circ]$, while WCCI spreads across both signs out to
-  $+16.4^\circ$. The distributions are displaced rather than merely rescaled.}
-  \label{fig:wcci-angles}
-\end{figure}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.72\linewidth]{figures/wcci_feature_ks_ecdf.png}
-  \caption{The empirical CDFs of \texttt{load\_theta} at load-carrying nodes.
-  The KS statistic is the largest vertical distance between the two curves,
-  marked in red.}
-  \label{fig:wcci-ks}
-\end{figure}
-
-
-\section{Two failure modes}
-\label{sec:wcci-interpretation}
-
-Figure~\ref{fig:wcci-offset-scale} separates the channels along the two axes.
-The distinction is not cosmetic, because the architecture responds to them
-differently.
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.78\linewidth]{figures/wcci_feature_offset_scale.png}
-  \caption{Absolute offset against scale ratio, over all sampled entries. The
-  shaded band marks a scale ratio within a third of unity and the dashed line an
-  offset of $0.3$ pooled standard deviations. Channels outside those bounds fail
-  in one of two distinct ways.}
-  \label{fig:wcci-offset-scale}
-\end{figure}
-
-\noindent The actor's node pre-encoder is a linear map followed by ReLU and LayerNorm.
-LayerNorm absorbs much of a uniform change of \emph{scale}: multiplying every
-input channel by a constant leaves the normalized activations largely unchanged.
-It does not absorb an \emph{offset}. Displacing a channel by a constant moves
-the pre-activations to a different region of the ReLU, changing which units fire
-at all, and normalization applied afterwards cannot undo that.
-\\
-\\
-This makes the angles, not the powers, the binding problem. The power channels
-differ in width by factors of 2.9 to 5.8, which the architecture partially
-self-corrects, though the negative \texttt{load\_p} region on WCCI reaching
-$-281$~MW is genuinely unseen territory rather than a wider version of something
-familiar. The angles differ by roughly two pooled standard deviations of
-displacement, which it does not correct at all.
-\\
-\\
-\texttt{rho}, meanwhile, needs no correction: a scale ratio of 1.048 and an
-offset of $-0.26$. The single most decision-relevant channel, the one that says
-how close a line is to its limit, is already comparable across grids because it
-was defined in per-unit terms. That is an argument for expressing features in
-grid-relative units wherever the physics permits it.
-
-
-\section{Implication for the transfer experiments}
-\label{sec:wcci-implication}
-
-A frozen \texttt{bus14} encoder evaluated on WCCI is being asked to interpret
-inputs displaced by about two standard deviations on two of its six node
-channels, and widened several-fold on two more. Any deficit such a policy shows
-relative to one trained from scratch is therefore confounded: it may reflect a
-representation that does not generalize, or merely a representation reading
-miscalibrated inputs.
-\\
-\\
-Two preprocessing mechanisms exist in the codebase. Deterministic physical
-scaling divides each channel by a per-environment physical constant. Running
-standardization maintains per-environment, per-node-type statistics over a
-feature set that includes both power channels and both angle channels, while
-deliberately excluding \texttt{rho}, which the measurements above confirm
-needs no help. On the diagnosis alone the second looks like the match, since it
-is the only one that can move a displaced channel. The next section shows that
-it is not, and that the angle problem is better solved by changing the
-representation than by normalizing it.
-
-
-\section{Correcting the inputs}
-\label{sec:wcci-correction}
-
-\subsection{Running standardization makes the mismatch worse}
-\label{sec:wcci-running-norm}
-
-Standardizing each environment with its own statistics aligns the aggregate
-moments exactly: every channel comes out at offset $0.00$ and scale ratio
-$1.00$. It also moves the distributions further apart on every channel it
-touches (Table~\ref{tab:wcci-running-norm}).
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{KS between the two grids before and after per-environment
-  standardization. The moments align perfectly and every channel degrades. The
-  last column gives the standardized value that encodes ``no asset is attached
-  here'' on \texttt{bus14} and on WCCI respectively.}
-  \label{tab:wcci-running-norm}
-  \setlength{\tabcolsep}{8pt}
-  \begin{tabular}{lrrc}
-    \toprule
-    Channel & KS raw & KS standardized & ``No asset'' encoding \\
-    \midrule
-    \texttt{gen\_p}      & 0.089 & \textbf{0.843} & $-0.396$ vs $-0.178$ \\
-    \texttt{gen\_theta}  & 0.115 & \textbf{0.752} & --- \\
-    \texttt{load\_p}     & 0.040 & \textbf{0.603} & $-0.520$ vs $-0.171$ \\
-    \texttt{load\_theta} & 0.331 & \textbf{0.436} & --- \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\noindent The cause is the mixture structure documented in
-Table~\ref{tab:wcci-shift-nonzero}. These channels are a point mass at zero,
-meaning no generator or load is attached to this busbar, plus a continuous part.
-Subtracting a per-grid mean moves that point mass to a grid-dependent location.
-Since 84--88\,\% of busbars carry no generator, the encoder's single most
-frequent input stops meaning the same thing on the two grids, which is a larger
-mismatch than the displacement being corrected.
-\\
-\\
-Two further properties rule the mechanism out independently of these numbers.
-Standardization is scale-invariant, so it erases any scaling applied before it:
-dividing by a constant and then standardizing gives KS identical to three
-decimals to standardizing alone, so the two mechanisms cannot be combined and
-the second always overrides the first. And running statistics begin empty and
-converge during training, so a frozen encoder would spend early target training
-reading an input distribution that is itself still moving, while a deterministic
-scaling is fixed at construction and identical on both grids from the first
-step.
-
-\subsection{Physical scaling for the power channels}
-\label{sec:wcci-physical-scaling}
-
-Physical scaling, defined in Section~\ref{subsec:graph-feature-normalization},
-divides the power channels by each environment's own maximum generator capacity.
-Two of its properties answer the failure diagnosed above: being multiplicative it
-leaves zeros at zero, so the point mass stays aligned on both grids, and being
-fixed at construction it does not drift during training the way estimated moments
-do.
-\\
-\\
-The divisor is a single generator's nameplate rating, a crude proxy for grid
-scale, so it is worth checking against the alternatives
-(Table~\ref{tab:wcci-normalizer}). It is the closest of the four to the divisor
-that would equalize the two spreads exactly.
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Candidate power normalizers and the \texttt{gen\_p} scale ratio each
-  would produce. A ratio of $1.00$ would be exact; the raw ratio is $2.44$.}
-  \label{tab:wcci-normalizer}
-  \setlength{\tabcolsep}{8pt}
-  \begin{tabular}{lrrr}
-    \toprule
-    Divisor & \texttt{bus14} & WCCI & Resulting ratio \\
-    \midrule
-    Exact & --- & --- & 1.00 \\
-    \textbf{Maximum $P_{\max}$ (used)} & 140 & 400 & \textbf{0.85} \\
-    Total $P_{\max}$ & 540 & 2{,}450 & 0.54 \\
-    Generator count & 6 & 22 & 0.66 \\
-    Median $P_{\max}$ & 85 & 71 & 2.94 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\subsection{The angle displacement is a gauge artifact}
-\label{sec:wcci-angle-representation}
-
-Scaling cannot repair the angle displacement, and the implementation does not
-attempt it: angle channels are divided by a constant $180$, identical on both
-grids, so both sides move together and the relative displacement is untouched.
-\\
-\\
-The measurement itself explains why. An absolute voltage angle is referenced to
-whichever bus is slack, and the two grids do not place theirs alike, so the $5$
-to $7^{\circ}$ displacement visible in Figure~\ref{fig:wcci-angles} is largely
-gauge rather than physics. Nothing that rescales or recentres a
-reference-dependent quantity can fix that; the quantity has to be replaced.
-\\
-\\
-The replacement is the angle drop along each line, defined and placed in
-Section~\ref{sec:line-node-angle}. Being a difference it is gauge-invariant, and
-being defined per line it is dense, so it removes the mixture structure from the
-angle channels outright rather than working around it -- which is what made
-standardization fail on them. This study therefore enables it, alongside
-physical scaling, in both the source and target environments.
-
-\subsection{The corrected distribution}
-\label{sec:wcci-corrected}
-
-Table~\ref{tab:wcci-corrected} measures both changes together, under the same
-protocol as Section~\ref{sec:wcci-protocol}. The angle channel lands in the band
-occupied by \texttt{rho}, and the power spreads come within 15\,\% of parity.
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Distribution shift with \texttt{gnn\_angle\_representation =
-  edge\_diff} and \texttt{gnn\_physical\_scaling = true}, against the
-  uncorrected baseline, over all sampled entries.}
-  \label{tab:wcci-corrected}
-  \setlength{\tabcolsep}{8pt}
-  \begin{tabular}{lrr|rr}
-    \toprule
-    & \multicolumn{2}{c|}{Uncorrected} & \multicolumn{2}{c}{Corrected} \\
-    Channel & ratio & KS & ratio & KS \\
-    \midrule
-    \texttt{load\_theta} & 0.85 & 0.331 & \multicolumn{2}{c}{replaced} \\
-    \texttt{gen\_theta}  & 0.92 & 0.115 & \multicolumn{2}{c}{replaced} \\
-    \texttt{theta\_diff} & \multicolumn{2}{c|}{---} & \textbf{1.15} & \textbf{0.231} \\
-    \texttt{gen\_p}      & 2.44 & 0.089 & \textbf{0.85} & 0.115 \\
-    \texttt{load\_p}     & 2.36 & 0.040 & \textbf{0.83} & 0.244 \\
-    \texttt{rho}         & 1.05 & 0.141 & 1.05 & 0.142 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\noindent The KS increase on the two power channels is the expected cost of the scaling
-rather than a regression. Scaling slides the continuous part of a channel while
-its point mass stays pinned at zero, so the two cumulative distributions
-separate slightly in the bulk even as their dynamic ranges align. Dynamic range
-is what a frozen encoder's weights are calibrated against, so the trade is
-favourable, and it accounts for \texttt{load\_p} reading $0.244$.
-
-\begin{figure}[H]
-  \centering
-  \pendingplot{Corrected feature distributions, produced by the same collection
-  tool with \texttt{--gnn-angle-representation edge\_diff} and
-  \texttt{--gnn-physical-scaling true}.}
-  \caption{Corrected distributions, to be shown alongside
-  Figures~\ref{fig:wcci-power} and \ref{fig:wcci-angles} for direct comparison.}
-  \label{fig:wcci-corrected}
-\end{figure}
+Chapter~\ref{ch:encoder-inputs} measures the encoder's inputs on both grids and
+settles two corrections, both applied in every run below. Power channels are
+divided by each grid's own maximum generator rating, which leaves the structural
+zeros in place and is fixed at construction rather than estimated online
+(Section~\ref{sec:wcci-physical-scaling}). The absolute voltage angle is
+replaced by the drop along each line, which removes a displacement that is a
+property of the slack reference rather than of the grid state
+(Section~\ref{sec:wcci-angle-representation}). Running standardization is left
+off: Section~\ref{sec:wcci-running-norm} measures it degrading three of the four
+channels it touches by a factor of five or more. Together these bring the angle
+channel into the band occupied by
+\texttt{rho} and the power spreads to within 15\,\% of parity
+(Table~\ref{tab:wcci-corrected}).
 
 
 \section{Transfer experiment design}
@@ -702,135 +236,135 @@ scratch arm with and without the input correction isolates whether the
 correction helps or harms on the target grid, independently of any transfer
 effect, on otherwise identical settings.
 
-\section{First transfer results}
-\label{sec:wcci-first-results}
+% \section{First transfer results}
+% \label{sec:wcci-first-results}
 
-The runs reported here are the first arm described above: the eight launched
-before the input analysis was complete, one seed each, with physical scaling and
-running standardization both disabled and the original angle representation. They
-are therefore the uncorrected-input condition, which is the one
-Section~\ref{sec:wcci-implication} predicts should be hardest on a frozen
-encoder. The corrected runs of Table~\ref{tab:wcci-transfer-design} are still
-training.
+% The runs reported here are the first arm described above: the eight launched
+% before the input analysis was complete, one seed each, with physical scaling and
+% running standardization both disabled and the original angle representation. They
+% are therefore the uncorrected-input condition, which is the one
+% Section~\ref{sec:wcci-implication} predicts should be hardest on a frozen
+% encoder. The corrected runs of Table~\ref{tab:wcci-transfer-design} are still
+% training.
 
-Each value below is a deterministic evaluation of a run's best checkpoint over 50
-held-out WCCI chronics. The reference to beat is the do-nothing policy, which
-survives 56\% of those episodes; on this grid inaction is a far stronger baseline
-than on \texttt{bus14}, where it survives about 20\%.
+% Each value below is a deterministic evaluation of a run's best checkpoint over 50
+% held-out WCCI chronics. The reference to beat is the do-nothing policy, which
+% survives 56\% of those episodes; on this grid inaction is a far stronger baseline
+% than on \texttt{bus14}, where it survives about 20\%.
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.92\linewidth]{figures/tr_wcci_full_test_bars.png}
-  \caption{50-episode full-test survival of the best checkpoint, by architecture
-  and training arm, with uncorrected inputs and one seed. The dashed line is the
-  do-nothing policy at 56\%.}
-  \label{fig:wcci-transfer-bars}
-\end{figure}
+% \begin{figure}[H]
+%   \centering
+%   \includegraphics[width=0.92\linewidth]{figures/tr_wcci_full_test_bars.png}
+%   \caption{50-episode full-test survival of the best checkpoint, by architecture
+%   and training arm, with uncorrected inputs and one seed. The dashed line is the
+%   do-nothing policy at 56\%.}
+%   \label{fig:wcci-transfer-bars}
+% \end{figure}
 
-\begin{table}[H]
-  \centering
-  \small
-  \caption{50-episode full-test survival and the step at which each run's best
-  checkpoint was saved. One seed per cell, uncorrected inputs.}
-  \label{tab:wcci-transfer-results}
-  \setlength{\tabcolsep}{5pt}
-  \begin{tabular}{lrrrrr}
-    \toprule
-    Architecture & Scratch (\%) & Frozen (\%) & $\Delta$ (pp) &
-    Scratch ckpt (M) & Frozen ckpt (M) \\
-    \midrule
-    \texttt{e0n0v0} (bus) & 47.62 & 30.48 & $-17.13$ & 7.38 & 0.58 \\
-    \texttt{e1n0v0} (bus) & 51.31 & 13.94 & $-37.37$ & 4.31 & 13.02 \\
-    \texttt{gb2a\_la2b} & 52.32 & 52.60 & $+0.27$ & 7.38 & 14.68 \\
-    \texttt{gb2a\_lb2a} & \textbf{54.46} & 54.37 & $-0.09$ & 7.38 & 10.12 \\
-    \midrule
-    Do-nothing policy & \multicolumn{2}{c}{56.0} & & & \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+% \begin{table}[H]
+%   \centering
+%   \small
+%   \caption{50-episode full-test survival and the step at which each run's best
+%   checkpoint was saved. One seed per cell, uncorrected inputs.}
+%   \label{tab:wcci-transfer-results}
+%   \setlength{\tabcolsep}{5pt}
+%   \begin{tabular}{lrrrrr}
+%     \toprule
+%     Architecture & Scratch (\%) & Frozen (\%) & $\Delta$ (pp) &
+%     Scratch ckpt (M) & Frozen ckpt (M) \\
+%     \midrule
+%     \texttt{e0n0v0} (bus) & 47.62 & 30.48 & $-17.13$ & 7.38 & 0.58 \\
+%     \texttt{e1n0v0} (bus) & 51.31 & 13.94 & $-37.37$ & 4.31 & 13.02 \\
+%     \texttt{gb2a\_la2b} & 52.32 & 52.60 & $+0.27$ & 7.38 & 14.68 \\
+%     \texttt{gb2a\_lb2a} & \textbf{54.46} & 54.37 & $-0.09$ & 7.38 & 10.12 \\
+%     \midrule
+%     Do-nothing policy & \multicolumn{2}{c}{56.0} & & & \\
+%     \bottomrule
+%   \end{tabular}
+% \end{table}
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\linewidth]{figures/tr_wcci_frozen_vs_scratch_curves.png}
-  \caption{Test episodic survival during training, one panel per architecture,
-  frozen transfer against training from scratch. The dashed line is the
-  do-nothing reference at 57.2\% on the training-time evaluation split.}
-  \label{fig:wcci-transfer-curves}
-\end{figure}
+% \begin{figure}[H]
+%   \centering
+%   \includegraphics[width=\linewidth]{figures/tr_wcci_frozen_vs_scratch_curves.png}
+%   \caption{Test episodic survival during training, one panel per architecture,
+%   frozen transfer against training from scratch. The dashed line is the
+%   do-nothing reference at 57.2\% on the training-time evaluation split.}
+%   \label{fig:wcci-transfer-curves}
+% \end{figure}
 
-\noindent\textbf{No arm beats doing nothing.} The best of the eight runs reaches
-54.5\% against 56.0\% for a policy that never acts, and in
-Figure~\ref{fig:wcci-transfer-curves} the curves cross the reference only in
-transient peaks. Whatever the graph representation contributes on
-\texttt{bus14}, it does not yet produce a useful controller here, and every
-comparison below is between policies that are all worse than inaction.
-\\
-\\
-\textbf{Freezing is neutral on the disaggregated schema and destructive on the
-bus schema.} The two heterogeneous architectures match their scratch
-counterparts to within 0.3 points, so the transferred encoder neither helps nor
-obstructs. The two bus architectures lose 17.1 and 37.4 points. This is the
-deficit Section~\ref{sec:wcci-implication} warned would be confounded, and the
-confound is real: with uncorrected inputs a frozen \texttt{bus14} encoder is
-reading displaced power and angle channels, so the loss cannot be attributed to
-the representation failing to generalize. The asymmetry between the schemas is
-the part worth pursuing. In the bus graph every node carries the power and angle
-channels, because generator and load values are aggregated onto their busbar,
-so a frozen encoder meets the miscalibrated quantities on every node it reads.
-In the disaggregated graph those channels are non-zero only on asset nodes,
-which are a minority of the node set, while busbars carry cooldown and
-connectivity, and \texttt{rho} rides on the edges where
-Section~\ref{sec:wcci-interpretation} measured it as already comparable across
-grids. That is a hypothesis this experiment does not test, but it is the one the
-corrected runs will separate.
-\\
-\\
-\textbf{The bus architectures are also the unstable ones.} Their end-of-training
-survival, 10\% and 18\% on the smoothed curve, is far below their own best
-checkpoints at 47.6\% and 51.3\%: both peak early and decay for the rest of
-training. The disaggregated runs end near 47\% and 51\%, close to their best
-checkpoints, so their endpoint numbers describe a policy that still exists at
-the end of training rather than one that was passed through. The gap is worth
-keeping in view whenever a best-checkpoint statistic is quoted for this
-environment.
-\\
-\\
-\textbf{The \texttt{bus14} ordering partly survives.} The two disaggregated
-architectures finish above the two bus ones, and \texttt{gb2a\_lb2a}, the
-direction pair that won the message-direction screen, is the best of the four
-here as well. That is consistent with Chapter~\ref{ch:experiments} without being
-evidence for it: one seed per cell and 2.1 points between the two disaggregated
-architectures cannot separate them.
-\\
-\\
-\textbf{What is still open.} One seed per condition, uncorrected inputs, and an
-encoder frozen for all 15M steps rather than unfrozen after a warm start, which
-tests reuse without adaptation and not the only useful form of transfer. The
-first thing the corrected runs have to establish is not the transfer question at
-all, but whether any arm can clear 56\%.
+% \noindent\textbf{No arm beats doing nothing.} The best of the eight runs reaches
+% 54.5\% against 56.0\% for a policy that never acts, and in
+% Figure~\ref{fig:wcci-transfer-curves} the curves cross the reference only in
+% transient peaks. Whatever the graph representation contributes on
+% \texttt{bus14}, it does not yet produce a useful controller here, and every
+% comparison below is between policies that are all worse than inaction.
+% \\
+% \\
+% \textbf{Freezing is neutral on the disaggregated schema and destructive on the
+% bus schema.} The two heterogeneous architectures match their scratch
+% counterparts to within 0.3 points, so the transferred encoder neither helps nor
+% obstructs. The two bus architectures lose 17.1 and 37.4 points. This is the
+% deficit Section~\ref{sec:wcci-implication} warned would be confounded, and the
+% confound is real: with uncorrected inputs a frozen \texttt{bus14} encoder is
+% reading displaced power and angle channels, so the loss cannot be attributed to
+% the representation failing to generalize. The asymmetry between the schemas is
+% the part worth pursuing. In the bus graph every node carries the power and angle
+% channels, because generator and load values are aggregated onto their busbar,
+% so a frozen encoder meets the miscalibrated quantities on every node it reads.
+% In the disaggregated graph those channels are non-zero only on asset nodes,
+% which are a minority of the node set, while busbars carry cooldown and
+% connectivity, and \texttt{rho} rides on the edges where
+% Section~\ref{sec:wcci-interpretation} measured it as already comparable across
+% grids. That is a hypothesis this experiment does not test, but it is the one the
+% corrected runs will separate.
+% \\
+% \\
+% \textbf{The bus architectures are also the unstable ones.} Their end-of-training
+% survival, 10\% and 18\% on the smoothed curve, is far below their own best
+% checkpoints at 47.6\% and 51.3\%: both peak early and decay for the rest of
+% training. The disaggregated runs end near 47\% and 51\%, close to their best
+% checkpoints, so their endpoint numbers describe a policy that still exists at
+% the end of training rather than one that was passed through. The gap is worth
+% keeping in view whenever a best-checkpoint statistic is quoted for this
+% environment.
+% \\
+% \\
+% \textbf{The \texttt{bus14} ordering partly survives.} The two disaggregated
+% architectures finish above the two bus ones, and \texttt{gb2a\_lb2a}, the
+% direction pair that won the message-direction screen, is the best of the four
+% here as well. That is consistent with Chapter~\ref{ch:experiments} without being
+% evidence for it: one seed per cell and 2.1 points between the two disaggregated
+% architectures cannot separate them.
+% \\
+% \\
+% \textbf{What is still open.} One seed per condition, uncorrected inputs, and an
+% encoder frozen for all 15M steps rather than unfrozen after a warm start, which
+% tests reuse without adaptation and not the only useful form of transfer. The
+% first thing the corrected runs have to establish is not the transfer question at
+% all, but whether any arm can clear 56\%.
 
 
-\section{What this chapter establishes}
-\label{sec:wcci-summary}
+% \section{What this chapter establishes}
+% \label{sec:wcci-summary}
 
-Independently of how the two arms eventually compare, three findings hold.
+% Independently of how the two arms eventually compare, three findings hold.
 
-\begin{itemize}
-  \item \textbf{The encoder is portable; its inputs are not.} Parameter shapes
-  cross grids unchanged once the grid-shaped buffers are dropped. What does not
-  cross is the distribution those parameters were calibrated on, and nothing in
-  the training configuration was correcting it.
+% \begin{itemize}
+%   \item \textbf{The encoder is portable; its inputs are not.} Parameter shapes
+%   cross grids unchanged once the grid-shaped buffers are dropped. What does not
+%   cross is the distribution those parameters were calibrated on, and nothing in
+%   the training configuration was correcting it.
 
-  \item \textbf{Per-feature standardization can be actively harmful when a
-  channel is a mixture.} Standardizing a channel that is 85\,\% structural zeros
-  aligns its moments and misplaces its most frequent value, degrading every
-  channel it touches. This is not specific to power grids: it applies to any
-  graph representation in which a node feature exists only for nodes carrying a
-  particular kind of asset.
+%   \item \textbf{Per-feature standardization can be actively harmful when a
+%   channel is a mixture.} Standardizing a channel that is 85\,\% structural zeros
+%   aligns its moments and misplaces its most frequent value, degrading every
+%   channel it touches. This is not specific to power grids: it applies to any
+%   graph representation in which a node feature exists only for nodes carrying a
+%   particular kind of asset.
 
-  \item \textbf{For gauge-dependent quantities, representation beats
-  normalization.} The single largest mismatch measured here was an artifact of
-  the voltage-angle reference. No choice of scaling addresses it, whereas
-  expressing the angle as a difference across each line removes it by
-  construction and makes the channel dense at the same time.
-\end{itemize}
+%   \item \textbf{For gauge-dependent quantities, representation beats
+%   normalization.} The single largest mismatch measured here was an artifact of
+%   the voltage-angle reference. No choice of scaling addresses it, whereas
+%   expressing the angle as a difference across each line removes it by
+%   construction and makes the channel dense at the same time.
+% \end{itemize}

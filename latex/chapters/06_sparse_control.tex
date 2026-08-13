@@ -1,14 +1,15 @@
 \chapter{Sparse Intervention Control}
 \label{ch:sparse-control}
 
-Every experiment so far has maximized one quantity, survival on held-out
-chronics. This chapter changes the objective. A policy that keeps the grid
+The preceding chapter optimized one quantity, survival on held-out chronics.
+This chapter changes the objective. A policy that keeps the grid
 alive by reconfiguring substations at every opportunity is not what a control
 room wants: interventions have an operational cost, and an agent that acts
 constantly is neither auditable nor trustworthy. The question here is whether
 the same decentralized agents can keep their survival while intervening rarely,
 locally, and mainly when the grid state makes an intervention necessary.
-
+\\
+\\
 The mechanisms are therefore evaluated on two axes at once, survival and how
 often the agents leave the do-nothing action. A mechanism that improves
 sparsity by collapsing survival has not solved the problem, and neither has one
@@ -36,21 +37,14 @@ policy, while deterministic evaluation uses the greedy action by default:
 \]
 The sparse-control roadmap tests four ways to reduce unnecessary topology
 changes: evaluation-time rho overrides, an intervention-gated actor, fixed
-non-idle action penalties, and adaptive Lagrangian intervention budgets.
-
-\paragraph{Motivation.}
-The intervention gate is motivated by hierarchical topology-control work, where
-the action can be decomposed into ``do nothing versus intervene'', then where to
-act, then which local topology configuration to apply~\cite{manczak2023hrl,
-vandersar2023hmarl}. In this thesis only the first level is adapted: each
-regional agent independently decides whether to do nothing or to execute one of
-its existing local topology actions. The fixed and adaptive sparse-control
-objectives are closer to constrained and budgeted RL: non-idle topology
-interventions are treated as a limited resource, following the general
-Lagrangian view of constrained policy optimization and budgeted control
-\cite{achiam2017cpo,stooke2020pid,carrara2019budgeted}. This is also
-operationally meaningful because switching frequency and topology deviation are
-real power-grid objectives, not just cosmetic metrics~\cite{lautenbacher2025morl}.
+non-idle action penalties, and adaptive intervention budgets.
+\\
+\\
+The intervention gate separates whether to act from which action to execute,
+following hierarchical topology-control decompositions~\cite{manczak2023hrl,
+vandersar2023hmarl}. The fixed and adaptive penalties instead treat non-idle
+interventions as a limited resource, following constrained and budgeted
+reinforcement learning~\cite{achiam2017cpo,stooke2020pid,carrara2019budgeted}.
 
 \section{Evaluation-Time Rho Heuristics}
 \label{subsec:sparse-control-heuristics}
@@ -60,7 +54,8 @@ The rho heuristic is an evaluation-only diagnostic. It does not change the
 training objective and it does not prove that the policy learned sparse
 behavior. The policy first proposes the deterministic action \(\bar a_{i,t}\),
 then the evaluator may replace it with action \(0\).
-
+\\
+\\
 The global version uses the pre-action maximum line loading
 \[
   \rho_t^{global}=\max_{\ell\in\mathcal L}\rho_{\ell,t},
@@ -115,7 +110,7 @@ and, for \(a_i>0\),
   \log P(a_i)=\log P(g_i=1)+\log P(b_i=a_i\mid g_i=1).
 \]
 
-Two deterministic decoders are used. The \texttt{final\_action\_map} decoder
+\noindent Two deterministic decoders are used. The \texttt{final\_action\_map} decoder
 selects the most likely final executed action:
 \[
   P(a_i=0)=P(g_i=0),\qquad
@@ -124,7 +119,8 @@ selects the most likely final executed action:
 The \texttt{hierarchical\_greedy} decoder first chooses the most likely gate
 decision, then chooses the most likely non-idle action only if the gate selects
 intervention.
-
+\\
+\\
 The original coupled entropy term is
 \[
   H_i=H(g_i)+P(g_i=1)H(b_i).
@@ -147,7 +143,7 @@ control contribution.
 \label{subsec:sparse-control-fixed-penalty}
 
 \paragraph{Implementation detail.}
-The Sparse16 sweep adds a fixed reward penalty to the final executed action of
+The fixed-penalty sweep adds a reward penalty to the final executed action of
 each agent:
 \[
   r'_{i,t}=r_{i,t}
@@ -163,16 +159,17 @@ The grid is
   \lambda_{fixed}\in\{0.0,0.001,0.003,0.01\},\qquad
   \text{seed}\in\{0,1,2\},
 \]
-which gives \(2\times4\times3=24\) runs. All Sparse16 runs set
-\texttt{safe\_intervention\_penalty = 0.0}, so the penalty is not rho-weighted.
+which gives \(2\times4\times3=24\) runs. The state-dependent safety penalty is
+disabled in every condition (\texttt{safe\_intervention\_penalty = 0.0}), so
+the penalty is not rho-weighted.
 
 \paragraph{Interpretation.}
-Sparse16 changes only the training reward. It does not override actions during
+This mechanism changes only the training reward. It does not override actions during
 evaluation and it does not hard-mask exploration during training. The policy can
 still sample non-idle actions, but each such action must be useful enough to pay
-its fixed cost. The key comparison is \texttt{sparse16\_flat\_p010} versus
-\texttt{sparse16\_gated\_p010}, which asks whether the gate adds value once a
-simple sparse objective already exists.
+its fixed cost. Comparing the flat and gated actors at
+$\lambda_{fixed}=0.010$ tests whether the gate adds value once a simple sparse
+objective already exists.
 
 \section{Adaptive Intervention Budget}
 \label{subsec:sparse-control-aib}
@@ -209,7 +206,8 @@ interventions become more expensive; if it is below the budget, the penalty
 relaxes. The default settings are \texttt{intervention\_budget\_lr = 0.02},
 \texttt{intervention\_budget\_init\_lambda = 0.0}, and
 \texttt{intervention\_budget\_max\_lambda = 10.0}.
-
+\\
+\\
 Three cost modes are used:
 \begin{itemize}
   \item \textbf{Non-idle cost:}
@@ -228,27 +226,21 @@ In the AIB setting, \(\rho_{safe}=0.90\) is not a hard action override. It is
 the center of a smooth sigmoid safety weight.
 
 \paragraph{AIB experiment grid.}
-The first AIB folder, \texttt{configs/adaptive\_intervention\_budget\_7},
-contains the main local-budget ablations:
+The main local-budget ablation contains five conditions:
 \begin{itemize}
-  \item \texttt{aib\_00\_flat\_local\_t020}: flat actor, local-safe cost,
-  \(d=0.20\);
-  \item \texttt{aib\_01\_flat\_local\_t010}: stricter local-safe budget,
-  \(d=0.10\);
-  \item \texttt{aib\_02\_flat\_local\_t035}: looser local-safe budget,
-  \(d=0.35\);
-  \item \texttt{aib\_03\_gate\_hgreedy\_sep\_local\_t020}: gated actor,
+  \item flat actor, local-safe cost, $d=0.20$;
+  \item flat actor, stricter local-safe budget, $d=0.10$;
+  \item flat actor, looser local-safe budget, $d=0.35$;
+  \item gated actor,
   hierarchical-greedy evaluation, separated entropy, local-safe cost,
-  \(d=0.20\);
-  \item \texttt{aib\_04\_flat\_nonidle\_t020}: flat actor with adaptive plain
-  non-idle cost, \(d=0.20\).
+  $d=0.20$;
+  \item flat actor with adaptive plain non-idle cost, $d=0.20$.
 \end{itemize}
-The comparison \texttt{aib\_00\_flat\_local\_t020} versus
-\texttt{aib\_04\_flat\_nonidle\_t020} isolates the value of local rho weighting.
-
-The mechanism-ablation folder
-\texttt{configs/adaptive\_intervention\_budget\_mechanism\_15} contains 15
-additional flat-actor runs. It separates fixed versus adaptive coefficients,
+Comparing the local-safe and plain non-idle costs at $d=0.20$ isolates the
+value of local rho weighting.
+\\
+\\
+A complementary 15-run flat-actor ablation separates fixed versus adaptive coefficients,
 plain non-idle versus state-dependent costs, global versus local rho weighting,
 and rho-threshold sensitivity.
 
@@ -268,7 +260,7 @@ and rho-threshold sensitivity.
     Evaluation is manually changed \\
     Intervention gate & Changes action factorization and sampling &
     Final-action MAP or hierarchical greedy & Gate collapse can starve non-idle exploration \\
-    Sparse16 & Fixed reward penalty on non-idle actions & No action override &
+    Fixed penalty & Fixed reward penalty on non-idle actions & No action override &
     Penalty coefficient must be tuned \\
     AIB non-idle & Adaptive reward penalty on non-idle actions & No action override &
     Multiplier can grow if target is too strict \\
@@ -289,182 +281,38 @@ and rho-threshold sensitivity.
     Question & Comparison \\
     \midrule
     Does a fixed sparse penalty already work? &
-    Baseline versus \texttt{sparse16\_flat\_p010} \\
+    Baseline versus flat actor with $\lambda_{fixed}=0.010$ \\
     Does the gate help beyond a sparse objective? &
-    \texttt{sparse16\_flat\_p010} versus \texttt{sparse16\_gated\_p010} \\
+    Flat versus gated actor at $\lambda_{fixed}=0.010$ \\
     Fixed versus adaptive coefficient? &
-    \texttt{sparse16\_flat\_p010} or \texttt{aibm\_00\_fixed\_nonidle\_p006}
-    versus \texttt{aib\_04\_flat\_nonidle\_t020} \\
+    Fixed non-idle penalty versus adaptive non-idle cost at $d=0.20$ \\
     Does local-safe weighting matter? &
-    \texttt{aib\_00\_flat\_local\_t020} versus
-    \texttt{aib\_04\_flat\_nonidle\_t020} \\
+    Local-safe versus plain non-idle cost at $d=0.20$ \\
     Does global-safe weighting matter? &
-    \texttt{aibm\_02\_adaptive\_global\_t020} versus
-    \texttt{aib\_00\_flat\_local\_t020} \\
+    Global-safe versus local-safe cost at $d=0.20$ \\
     Is \(\rho_{safe}=0.90\) special? &
-    \texttt{aibm\_03} with \(0.85\), \texttt{aib\_00} with \(0.90\),
-    and \texttt{aibm\_04} with \(0.95\) \\
+    Local-safe cost with $\rho_{safe}\in\{0.85,0.90,0.95\}$ \\
     Is the heuristic only an evaluation trick? &
-    Rho-heuristic runs versus learned sparse/AIB runs \\
+    Rho heuristics versus learned fixed-penalty and AIB policies \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-\paragraph{Full-test checkpoint summaries.}
-The following tables report the average full-test episodic survival over the
-three evaluated seeds. The survival values are computed directly from the JSON
-files in \texttt{Topology\_Task/outputs/full\_test\_eval}. These JSON files also
-record where the compact action-distribution artifacts were written. The
-action-0 fractions are computed from the corresponding local
-\texttt{Topology\_Task/outputs/full\_test\_eval\_actions/*/action\_summary.json}
-files and averaged over seeds. The all-agent action-0 column is the arithmetic
-mean of the three per-agent action-0 fractions. The do-nothing row is a
-reference policy that always selects action 0; its survival is computed from
-\texttt{Topology\_Task/outputs/do\_nothing\_eval/bus14\_test\_20}. Remaining
-``--'' entries indicate that the compact action summaries for those full-test
-jobs are not available locally.
+\paragraph{Full-test evaluation.}
+Figure~\ref{fig:sparse-control-fulltest-tradeoff} summarizes survival and the
+mean action-0 fraction across agents. Exact values and per-agent action-0
+fractions are reported in Appendix~\ref{app:sparse-control-full-test-tables}.
 
-\begin{table}[htbp]
+\clearpage
+\begin{figure}[H]
   \centering
-  \small
-  \caption{Full-test summary for evaluation-time rho heuristics.}
-  \label{tab:a0-heuristic-full-test}
-  \setlength{\tabcolsep}{4pt}
-  \resizebox{\textwidth}{!}{%
-  \begin{tabular}{L{0.34\textwidth}rrrrr}
-    \toprule
-    Run type & Avg. episodic survival (\%) & Avg. action-0 all agents &
-    Avg. action-0 agent 0 & Avg. action-0 agent 1 &
-    Avg. action-0 agent 2 \\
-    \midrule
-    Do-nothing policy & 20.25 & 1.000 & 1.000 & 1.000 & 1.000 \\
-    Baseline flat policy & 93.67 & 0.434 & 0.554 & 0.385 & 0.363 \\
-    Global rho heuristic, \(\rho_{safe}=0.90\) & 98.36 & 0.936 & 0.933 & 0.936 & 0.940 \\
-    Local rho heuristic, \(\rho_{safe}=0.90\) & 97.07 & 0.968 & 0.992 & 0.985 & 0.928 \\
-    \bottomrule
-  \end{tabular}
-  }
-\end{table}
-
-\begin{table}[htbp]
-  \centering
-  \small
-  \caption{Full-test summary for intervention-gated actors.}
-  \label{tab:a0-gate-full-test}
-  \setlength{\tabcolsep}{4pt}
-  \resizebox{\textwidth}{!}{%
-  \begin{tabular}{L{0.34\textwidth}rrrrr}
-    \toprule
-    Run type & Avg. episodic survival (\%) & Avg. action-0 all agents &
-    Avg. action-0 agent 0 & Avg. action-0 agent 1 &
-    Avg. action-0 agent 2 \\
-    \midrule
-    Do-nothing policy & 20.25 & 1.000 & 1.000 & 1.000 & 1.000 \\
-    Baseline flat policy & 93.67 & 0.434 & 0.554 & 0.385 & 0.363 \\
-    Intervention gate, final-action MAP & 89.82 & 0.802 & 0.826 & 0.889 & 0.690 \\
-    Intervention gate, hierarchical greedy & 93.66 & 0.395 & 0.066 & 0.844 & 0.276 \\
-    \bottomrule
-  \end{tabular}
-  }
-\end{table}
-
-\begin{table}[htbp]
-  \centering
-  \small
-  \caption{Full-test summary for Sparse16 flat-policy runs.}
-  \label{tab:a0-sparse16-flat-full-test}
-  \setlength{\tabcolsep}{4pt}
-  \resizebox{\textwidth}{!}{%
-  \begin{tabular}{L{0.34\textwidth}rrrrr}
-    \toprule
-    Run type & Avg. episodic survival (\%) & Avg. action-0 all agents &
-    Avg. action-0 agent 0 & Avg. action-0 agent 1 &
-    Avg. action-0 agent 2 \\
-    \midrule
-    Do-nothing policy & 20.25 & 1.000 & 1.000 & 1.000 & 1.000 \\
-    Baseline flat policy & 93.67 & 0.434 & 0.554 & 0.385 & 0.363 \\
-    Flat Sparse16, \(\lambda_{fixed}=0.000\) & 98.23 & 0.494 & 0.524 & 0.463 & 0.496 \\
-    Flat Sparse16, \(\lambda_{fixed}=0.001\) & 96.75 & 0.486 & 0.642 & 0.401 & 0.416 \\
-    Flat Sparse16, \(\lambda_{fixed}=0.003\) & 93.97 & 0.575 & 0.691 & 0.346 & 0.688 \\
-    Flat Sparse16, \(\lambda_{fixed}=0.010\) & 97.44 & 0.905 & 0.907 & 0.954 & 0.853 \\
-    \bottomrule
-  \end{tabular}
-  }
-\end{table}
-
-\begin{table}[htbp]
-  \centering
-  \small
-  \caption{Full-test summary for Sparse16 gated-policy runs.}
-  \label{tab:a0-sparse16-gated-full-test}
-  \setlength{\tabcolsep}{4pt}
-  \resizebox{\textwidth}{!}{%
-  \begin{tabular}{L{0.34\textwidth}rrrrr}
-    \toprule
-    Run type & Avg. episodic survival (\%) & Avg. action-0 all agents &
-    Avg. action-0 agent 0 & Avg. action-0 agent 1 &
-    Avg. action-0 agent 2 \\
-    \midrule
-    Do-nothing policy & 20.25 & 1.000 & 1.000 & 1.000 & 1.000 \\
-    Baseline flat policy & 93.67 & 0.434 & 0.554 & 0.385 & 0.363 \\
-    Gated Sparse16, \(\lambda_{fixed}=0.000\) & 78.51 & 0.787 & 0.747 & 0.949 & 0.665 \\
-    Gated Sparse16, \(\lambda_{fixed}=0.001\) & 73.82 & 0.862 & 0.956 & 0.832 & 0.799 \\
-    Gated Sparse16, \(\lambda_{fixed}=0.003\) & 94.59 & 0.887 & 0.934 & 0.929 & 0.799 \\
-    Gated Sparse16, \(\lambda_{fixed}=0.010\) & 85.69 & 0.974 & 0.990 & 0.984 & 0.947 \\
-    \bottomrule
-  \end{tabular}
-  }
-\end{table}
-
-\begin{table}[htbp]
-  \centering
-  \small
-  \caption{Full-test summary for adaptive intervention budget runs.}
-  \label{tab:a0-aib-full-test}
-  \setlength{\tabcolsep}{4pt}
-  \resizebox{\textwidth}{!}{%
-  \begin{tabular}{L{0.34\textwidth}rrrrr}
-    \toprule
-    Run type & Avg. episodic survival (\%) & Avg. action-0 all agents &
-    Avg. action-0 agent 0 & Avg. action-0 agent 1 &
-    Avg. action-0 agent 2 \\
-    \midrule
-    Do-nothing policy & 20.25 & 1.000 & 1.000 & 1.000 & 1.000 \\
-    Baseline flat policy & 93.67 & 0.434 & 0.554 & 0.385 & 0.363 \\
-    Flat local-safe AIB, \(d=0.20\) & 98.31 & 0.978 & 0.980 & 0.989 & 0.966 \\
-    Flat local-safe AIB, \(d=0.10\) & 98.39 & 0.979 & 0.992 & 0.995 & 0.949 \\
-    Flat local-safe AIB, \(d=0.35\) & 96.61 & 0.934 & 0.959 & 0.947 & 0.896 \\
-    Gated local-safe AIB, \(d=0.20\), hierarchical greedy &
-    33.87 & 0.999 & 1.000 & 1.000 & 0.998 \\
-    Flat non-idle AIB, \(d=0.20\) & 95.08 & 0.986 & 0.997 & 0.992 & 0.970 \\
-    \bottomrule
-  \end{tabular}
-  }
-\end{table}
-
-\begin{table}[htbp]
-  \centering
-  \small
-  \caption{Full-test summary for the teacher-student distillation runs.}
-  \label{tab:teacher-student-full-test}
-  \setlength{\tabcolsep}{4pt}
-  \resizebox{\textwidth}{!}{%
-  \begin{tabular}{L{0.34\textwidth}rrrrr}
-    \toprule
-    Run type & Avg. episodic survival (\%) & Avg. action-0 all agents &
-    Avg. action-0 agent 0 & Avg. action-0 agent 1 &
-    Avg. action-0 agent 2 \\
-    \midrule
-    Do-nothing policy & 20.25 & 1.000 & 1.000 & 1.000 & 1.000 \\
-    Teacher: MAPPO with local rho heuristic & 97.07 & 0.968 & 0.992 & 0.985 & 0.928 \\
-    Student BC, balanced non-idle 0.50, weight 5, aux 0.50 &
-    92.14 & 0.939 & 0.974 & 0.925 & 0.919 \\
-    Student BC, balanced non-idle 0.20, weight 3, aux 0.25 &
-    90.76 & 0.957 & 0.982 & 0.948 & 0.940 \\
-    \bottomrule
-  \end{tabular}
-  }
-\end{table}
+  \includegraphics[width=0.96\linewidth]{figures/sparse_control_fulltest_tradeoff.png}
+  \caption{Joint action-0/survival comparison of the selected sparse-control
+  mechanisms on \texttt{bus14}. Large markers denote condition means and faint
+  markers the individual seeds. The plot uses checkpoint-aligned action-0
+  rates and full-test survival, so it visualizes the chapter's two objectives.}
+  \label{fig:sparse-control-fulltest-tradeoff}
+\end{figure}
 
 \paragraph{Metrics to report.}
 The main performance metric remains episodic survival. It should be paired with
@@ -478,12 +326,15 @@ and topology-distance changes.
 The current roadmap interpretation is that the gate is not the strongest
 contribution by itself. Sparse reward shaping already improves action-0 usage,
 the adaptive budget makes the sparse penalty self-tuning, and the local-safe
-cost makes the penalty more physically meaningful. In particular,
-\texttt{sparse16\_flat\_p010} is a strong fixed-penalty baseline, while the
-most principled learned sparse-control candidate is
-\texttt{aib\_00\_flat\_local\_t020}: it keeps the original decentralized actor,
+cost makes the penalty more physically meaningful. In particular, the flat
+actor with $\lambda_{fixed}=0.010$ is a strong fixed-penalty baseline, while
+the flat local-safe AIB policy with $d=0.20$ is the most principled learned
+sparse-control candidate: it keeps the original decentralized actor,
 does not rely on an evaluation-time override, learns the intervention penalty
 adaptively, and uses a local state-dependent safety weight.
+Figure~\ref{fig:sparse-control-fulltest-tradeoff} also makes the main failure
+mode visible: high action-0 usage is not sufficient when the gate collapses and
+survival falls.
 
 
 \section{Preliminary WCCI Stress Test}
@@ -511,16 +362,55 @@ episodes per seed; they are not full-test estimates.
     Global rho heuristic, $\rho_{safe}=0.90$ & $28.35\pm11.06$ & 0.974 \\
     Local rho heuristic, $\rho_{safe}=0.90$ & $9.46\pm3.54$ & 0.995 \\
     Intervention gate, final-action MAP & $25.92\pm10.69$ & 0.400 \\
-    Flat Sparse16, $\lambda_{fixed}=0.010$ & $27.00\pm12.13$ & 0.489 \\
+    Flat fixed penalty, $\lambda_{fixed}=0.010$ & $27.00\pm12.13$ & 0.489 \\
     Flat local-safe AIB, $d=0.20$ & $21.65\pm2.21$ & 0.927 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-The mechanisms change intervention frequency, but none reliably improves
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.76\linewidth]{figures/sparse_control_wcci_tradeoff.png}
+  \caption{Action-0/survival trade-off for the preliminary
+  maintenance-enabled WCCI runs. Each point is a seed-aggregated run variant.
+  The upper-right region remains preferred, but no method combines high
+  sparsity with strong survival on this larger grid.}
+  \label{fig:sparse-wcci-action-survival-tradeoff}
+\end{figure}
+
+\noindent The mechanisms change intervention frequency, but none reliably improves
 survival over the weak MLP baseline: the differences are small relative to the
 seed variation. The local rho heuristic and AIB are highly sparse but remain
 weak controllers, suggesting that sparsity transfers more readily than control
 quality. This failed pilot changes grid size, action space, and maintenance at
-once, so it cannot identify the cause. Chapter~\ref{ch:wcci-transfer} isolates
-these factors before studying cross-grid graph transfer.
+once, so it cannot identify the cause. It nevertheless exposes the limitation
+of continuing with a fixed-width MLP actor on the larger grid. The next two
+chapters therefore introduce a size-independent graph representation and test
+its design choices. Chapter~\ref{ch:wcci-transfer} later returns to WCCI and
+isolates the confounded factors before studying cross-grid transfer.
+
+\begin{tcolorbox}[
+  colframe=red!75!black,
+  colback=red!5!white,
+  title=Chapter Summary
+]
+\textbf{Objective:} Preserve survival while reducing unnecessary topology
+interventions.
+
+\textbf{Findings:}
+\begin{itemize}
+  \item \textbf{Evaluation heuristics} reach 97--98\% survival with action 0 in
+  94--97\% of decisions, but sparsity is imposed after the policy acts.
+  \item \textbf{A fixed penalty} already gives a strong learned controller:
+  $\lambda_{fixed}=0.010$ reaches 97.44\% survival and a 0.905 action-0
+  fraction without an evaluation override.
+  \item \textbf{Local-safe AIB} gives the best learned trade-off: budgets
+  $d=0.10$ and $d=0.20$ reach about 98.4\% survival and 0.98 action-0 usage.
+  The gated variants are less reliable and can collapse to almost permanent
+  no-op behavior.
+\end{itemize}
+
+\textbf{Conclusion:} Sparse behavior can be learned on \texttt{bus14}, but the
+same MLP mechanisms remain weak on WCCI. This motivates the graph
+representation introduced next.
+\end{tcolorbox}
