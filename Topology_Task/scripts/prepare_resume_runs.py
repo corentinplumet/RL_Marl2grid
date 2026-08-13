@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import re
 import shlex
 import sys
 from pathlib import Path
@@ -31,6 +32,7 @@ except ModuleNotFoundError as exc:
 
 
 CHECKPOINT_SAVE_PREFIXES = ("final_", "best_test_")
+ONLINE_WANDB_RUN_DIR = re.compile(r"^run-\d{8}_\d{6}-(.+)$")
 
 
 def checkpoint_stem(path_or_name: str | Path) -> str:
@@ -54,6 +56,25 @@ def namespace_get(namespace: Any, key: str, default: Any = None) -> Any:
     if isinstance(namespace, dict):
         return namespace.get(key, default)
     return getattr(namespace, key, default)
+
+
+def online_wandb_run_id(run_path: Any) -> str:
+    """Extract an immutable W&B ID from a saved online-run directory path."""
+    if not run_path:
+        return ""
+    match = ONLINE_WANDB_RUN_DIR.fullmatch(Path(str(run_path)).name)
+    return match.group(1) if match else ""
+
+
+def effective_target_step(row: dict[str, Any], target_timesteps: int) -> int:
+    """Return the last full-rollout step reached by the MAPPO training loop."""
+    try:
+        batch_size = int(row.get("n_envs") or 0) * int(row.get("n_steps") or 0)
+    except (TypeError, ValueError):
+        batch_size = 0
+    if batch_size <= 0:
+        return int(target_timesteps)
+    return (int(target_timesteps) // batch_size) * batch_size
 
 
 def task_dir_from_script() -> Path:
@@ -133,6 +154,12 @@ def load_checkpoint_summary(path: Path, config_index: dict[str, list[Path]], tas
     checkpoint_name = checkpoint_stem(path)
     base_run_name = strip_checkpoint_save_prefixes(path)
     config_path = find_config_path(exp_tag, checkpoint_name, config_index, task_dir)
+    wandb_run_path = str(record.get("wb_run_name", "") or "")
+    checkpoint_boundary = record.get("checkpoint_boundary", {})
+    exact_boundary = bool(
+        isinstance(checkpoint_boundary, dict)
+        and checkpoint_boundary.get("exact") is True
+    )
     return {
         "checkpoint_path": str(path),
         "checkpoint_name": checkpoint_name,
@@ -140,10 +167,15 @@ def load_checkpoint_summary(path: Path, config_index: dict[str, list[Path]], tas
         "base_run_name": base_run_name,
         "exp_tag": exp_tag,
         "seed": namespace_get(args, "seed", ""),
+        "n_envs": namespace_get(args, "n_envs", ""),
+        "n_steps": namespace_get(args, "n_steps", ""),
         "global_step": int(record.get("global_step", 0) or 0),
         "saved_total_timesteps": namespace_get(args, "total_timesteps", ""),
         "last_rollout": record.get("last_rollout", ""),
+        "exact_boundary": exact_boundary,
         "config_path": config_path,
+        "wandb_run_path": wandb_run_path,
+        "wandb_run_id": online_wandb_run_id(wandb_run_path),
     }
 
 
@@ -170,6 +202,8 @@ def build_resume_command(
         args.extend(["--resume-allow-device-migration", "true"])
     if reset_environments:
         args.extend(["--resume-reset-environments", "true"])
+    if row.get("wandb_run_id"):
+        args.extend(["--resume-wandb-run-id", str(row["wandb_run_id"])])
     return " ".join(shlex.quote(str(part)) for part in args)
 
 
@@ -217,7 +251,9 @@ def print_rows(rows: list[dict[str, Any]]) -> None:
         "global_step",
         "saved_total_timesteps",
         "last_rollout",
+        "exact_boundary",
         "config_path",
+        "wandb_run_id",
         "status",
     ]
     print("\t".join(columns))
@@ -330,7 +366,9 @@ def main() -> int:
             row["status"] = "missing_config"
             continue
         global_step = int(row.get("global_step") or 0)
-        if global_step >= ns.target_timesteps and not ns.include_complete:
+        target_step = effective_target_step(row, ns.target_timesteps)
+        row["effective_target_step"] = target_step
+        if global_step >= target_step and not ns.include_complete:
             row["status"] = "already_at_target"
             continue
         row["status"] = "ready"

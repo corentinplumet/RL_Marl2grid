@@ -21,7 +21,13 @@ except ModuleNotFoundError:  # pragma: no cover - Python < 3.11 guard
             "Install it with: pip install tomli"
         ) from exc
 
-from prepare_resume_runs import collect_rows, load_config_index, relative_to_task, resolve_path
+from prepare_resume_runs import (
+    collect_rows,
+    effective_target_step,
+    load_config_index,
+    relative_to_task,
+    resolve_path,
+)
 
 
 def load_toml(path: Path) -> dict[str, Any]:
@@ -77,8 +83,9 @@ def resume_run_name_for_command(row: dict[str, Any], task_dir: Path) -> str:
     return str(Path(row["checkpoint_path"]).expanduser().resolve())
 
 
-def checkpoint_score(row: dict[str, Any]) -> tuple[int, int, float]:
+def checkpoint_score(row: dict[str, Any]) -> tuple[int, int, int, float]:
     name = str(row.get("checkpoint_name", ""))
+    exact_rank = 1 if row.get("exact_boundary") else 0
     global_step = int(row.get("global_step") or 0)
     prefix_rank = 0 if name.startswith("best_test_") else 1
     if name.startswith("final_"):
@@ -87,7 +94,7 @@ def checkpoint_score(row: dict[str, Any]) -> tuple[int, int, float]:
         mtime = Path(row["checkpoint_path"]).stat().st_mtime
     except OSError:
         mtime = 0.0
-    return global_step, prefix_rank, mtime
+    return exact_rank, global_step, prefix_rank, mtime
 
 
 def matching_checkpoints(
@@ -235,22 +242,21 @@ def main() -> int:
             "checkpoint(s)."
         )
 
-    eligible = matches
-    if not ns.include_complete:
-        eligible = [
-            row
-            for row in matches
-            if int(row.get("global_step") or 0) < ns.target_timesteps
-        ]
-    if not eligible:
-        best = max(matches, key=checkpoint_score)
+    selected = max(matches, key=checkpoint_score)
+    target_step = effective_target_step(selected, ns.target_timesteps)
+    if (
+        not ns.include_complete
+        and int(selected.get("global_step") or 0) >= target_step
+    ):
         raise SystemExit(
             "Matching checkpoint is already at or beyond the requested target: "
-            f"{best['checkpoint_name']} at {int(best.get('global_step') or 0):,} "
-            f"steps. Use --include-complete to submit anyway."
+            f"{selected['checkpoint_name']} at "
+            f"{int(selected.get('global_step') or 0):,} "
+            f"steps (effective final rollout: {target_step:,} for the nominal "
+            f"{ns.target_timesteps:,}-step budget). Use --include-complete to "
+            "submit anyway."
         )
-
-    selected = max(eligible, key=checkpoint_score)
+    wandb_run_id = ns.wandb_run_id or str(selected.get("wandb_run_id", ""))
     command = build_command(
         selected,
         config_rel_path,
@@ -259,7 +265,7 @@ def main() -> int:
         ns.target_timesteps,
         ns.time_limit,
         ns.wandb_run_name,
-        ns.wandb_run_id,
+        wandb_run_id,
         ns.allow_device_migration,
         ns.reset_environments,
     )
@@ -268,6 +274,19 @@ def main() -> int:
     print(f"Config: {config_rel_path}")
     print(f"Checkpoint: {selected['checkpoint_name']}.tar")
     print(f"Checkpoint step: {int(selected.get('global_step') or 0):,}")
+    print(
+        "Checkpoint boundary: "
+        + ("exact post-update" if selected.get("exact_boundary") else "snapshot fallback")
+    )
+    print(
+        f"Target: {ns.target_timesteps:,} nominal steps; "
+        f"{target_step:,} at the last full rollout"
+    )
+    if wandb_run_id:
+        source = "command line" if ns.wandb_run_id else "saved online run"
+        print(f"W&B run ID ({source}): {wandb_run_id}")
+    else:
+        print("W&B run ID: unavailable; the continuation will log offline")
     print(f"Command: {printable}")
 
     if not ns.submit:

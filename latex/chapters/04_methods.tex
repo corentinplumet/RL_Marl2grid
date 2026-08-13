@@ -898,21 +898,21 @@ endpoints. Neighboring generators and loads are never constructed, and the
 explicit-line representation creates no far-end attachment. Pooling is thus a
 summary operation, not the information-security boundary.
 
-Figure~\ref{fig:dynamic-neighbor-visibility} summarizes the dynamic visibility
-mask and the explicit-line exception.
+% Figure~\ref{fig:dynamic-neighbor-visibility} summarizes the dynamic visibility
+% mask and the explicit-line exception.
 
-\begin{figure}[H]
-  \centering
-  \resizebox{0.94\linewidth}{!}{%
-    \input{figures/graph_dynamic_neighbor_mask.tex}%
-  }
-  \caption{Dynamic visibility with a fixed candidate graph. In the direct-edge
-  schemas, reassignment changes the active pair and visible far-end busbar;
-  disconnection masks all contextual busbars. In
-  \texttt{heterogeneous\_line}, the shared line node remains visible while its
-  attachments are masked. Gray dashed elements have zero masks.}
-  \label{fig:dynamic-neighbor-visibility}
-\end{figure}
+% \begin{figure}[H]
+%   \centering
+%   \resizebox{0.94\linewidth}{!}{%
+%     \input{figures/graph_dynamic_neighbor_mask.tex}%
+%   }
+%   \caption{Dynamic visibility with a fixed candidate graph. In the direct-edge
+%   schemas, reassignment changes the active pair and visible far-end busbar;
+%   disconnection masks all contextual busbars. In
+%   \texttt{heterogeneous\_line}, the shared line node remains visible while its
+%   attachments are masked. Gray dashed elements have zero masks.}
+%   \label{fig:dynamic-neighbor-visibility}
+% \end{figure}
 
 \subsubsection{Representation-dependent information}
 
