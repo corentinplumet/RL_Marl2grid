@@ -56,10 +56,18 @@ def inspect(
     config = read_config(config_path)
     args = config.get("args", {})
     exp_tag = str(args.get("exp_tag") or config.get("run", {}).get("name") or config_path.stem)
+    total_timesteps = int(args.get("total_timesteps") or 0)
+    # Training runs whole rollouts: core.py takes n_rollouts = total_timesteps //
+    # batch_size, so a finished run stops at the last multiple of the batch and
+    # never reaches total_timesteps itself. Comparing against the raw config
+    # value marks every completed run as resumable.
+    batch_size = int(args.get("n_envs") or 0) * int(args.get("n_steps") or 0)
+    reachable = (total_timesteps // batch_size) * batch_size if batch_size else total_timesteps
     row: dict[str, Any] = {
         "config_path": relative_to_task(config_path, task_dir),
         "exp_tag": exp_tag,
-        "target_timesteps": int(args.get("total_timesteps") or 0),
+        "target_timesteps": total_timesteps,
+        "reachable_timesteps": reachable,
         "time_limit": float(args.get("time_limit") or 0.0),
         "global_step": 0,
         "detail": "",
@@ -83,7 +91,14 @@ def inspect(
     # a checkpoint may have been written under an earlier budget.
     summary["config_path"] = row["config_path"]
     row["summary"] = summary
-    row["status"] = "complete" if row["global_step"] >= row["target_timesteps"] else "resumable"
+    if row["global_step"] >= row["reachable_timesteps"]:
+        row["status"] = "complete"
+        if row["reachable_timesteps"] != row["target_timesteps"]:
+            row["detail"] = f"last full rollout of {row['target_timesteps']:,}"
+    else:
+        row["status"] = "resumable"
+        remaining = row["reachable_timesteps"] - row["global_step"]
+        row["detail"] = f"{remaining:,} steps left ({100 * row['global_step'] / row['reachable_timesteps']:.0f}% done)"
     return row
 
 
@@ -145,7 +160,7 @@ def main() -> int:
             step = f"{row['global_step']:,}" if row["global_step"] else "-"
             print(
                 f"{row['exp_tag']:<{width}}  {row['status']:<10}  {step:>12}  "
-                f"{row['target_timesteps']:>12,}  {row['detail']}"
+                f"{row['reachable_timesteps']:>12,}  {row['detail']}"
             )
 
     counts = {s: sum(1 for r in rows if r["status"] == s) for s in STATUS_ORDER}
