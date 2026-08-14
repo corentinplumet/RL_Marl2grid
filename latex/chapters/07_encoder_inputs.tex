@@ -57,6 +57,19 @@ pooled spread:
   &W_1/\sigma_p &= \frac{1}{\sigma_p}\int_0^1 |F_A^{-1}(q)-F_B^{-1}(q)|\,\mathrm{d}q .
 \end{align}
 {\color{clarif}
+\paragraph{Reading the symbols.} $A$ is always \texttt{bus14}, the source grid,
+and $B$ always WCCI, the target: an offset is therefore positive when WCCI sits
+higher, and a scale ratio above one means WCCI is the wider of the two. $F_A$
+and $F_B$ are the two \emph{empirical cumulative distribution functions}, one
+per grid, built from the samples of Section~\ref{sec:wcci-protocol}: $F_A(x)$ is
+the fraction of \texttt{bus14}'s sampled values that fall at or below $x$, so it
+rises from $0$ to $1$ as $x$ sweeps the axis. Its inverse $F_A^{-1}(q)$ runs the
+other way, returning the value below which a fraction $q$ of the sample lies ---
+$F_A^{-1}(0.5)$ is the median. The two definitions are what let the last two
+statistics compare the same pair of samples from perpendicular directions: KS
+measures the gap between the curves vertically at fixed $x$, $W_1$ between their
+inverses horizontally at fixed $q$.
+
 \paragraph{Naming the last two.} $\mathrm{KS}$ is the Kolmogorov--Smirnov
 statistic: the largest vertical gap between the two empirical cumulative
 distribution functions. It lies in $[0,1]$, reaching $0$ when the distributions
@@ -267,19 +280,23 @@ distributions several times further apart (Table~\ref{tab:wcci-running-norm}).
   \small
   \caption{KS between the two grids before and after per-environment
   standardization. The moments align perfectly, and three of the four channels
-  degrade by a factor of five or more. The last column gives the standardized
-  value that encodes ``no asset is attached here'' on \texttt{bus14} and on
-  WCCI respectively.}
+  degrade by a factor of five or more. {\color{clarif}The last column is the
+  number a busbar with \emph{no asset attached} presents to the encoder once
+  standardized. Raw, that busbar reads $0$ on both grids. Standardizing sends it
+  to $(0-\mu)/\sigma=-\mu/\sigma$, which is a property of the grid, so the same
+  physical fact arrives as two different numbers --- and on the angle channels
+  with two different signs.}}
   \label{tab:wcci-running-norm}
   \setlength{\tabcolsep}{8pt}
   \begin{tabular}{lrrc}
     \toprule
     Channel & KS raw & KS standardized & ``No asset'' encoding \\
+    & & & \texttt{bus14} vs WCCI \\
     \midrule
     \texttt{gen\_p}      & 0.111 & \textbf{0.805} & $-0.450$ vs $-0.197$ \\
-    \texttt{gen\_theta}  & 0.139 & \textbf{0.700} & --- \\
+    \texttt{gen\_theta}  & 0.139 & \textbf{0.700} & $+0.409$ vs $-0.148$ \\
     \texttt{load\_p}     & 0.055 & \textbf{0.590} & $-0.599$ vs $-0.188$ \\
-    \texttt{load\_theta} & 0.412 & 0.326 & --- \\
+    \texttt{load\_theta} & 0.412 & 0.326 & $+0.910$ vs $-0.252$ \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -290,7 +307,10 @@ meaning no generator or load is attached to this busbar, plus a continuous part.
 Subtracting a per-grid mean moves that point mass to a grid-dependent location.
 Since 80--85\,\% of busbars carry no generator, the encoder's single most
 frequent input stops meaning the same thing on the two grids, which is a larger
-mismatch than the displacement being corrected.
+mismatch than the displacement being corrected. On the two angle channels it is
+starker still: an unattached busbar reads $+0.409$ and $+0.910$ on
+\texttt{bus14} but $-0.148$ and $-0.252$ on WCCI, so the absence of an asset
+lands on opposite sides of zero depending on which grid the encoder is reading.
 \\
 \\
 The one channel that improves confirms the mechanism rather than contradicting

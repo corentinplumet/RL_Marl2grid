@@ -1187,7 +1187,7 @@ class MAEnvWrapper(Env):
                 # Only worker 0 exports spaces to AsyncMultiAgentVecEnv. Eval
                 # environments and direct wrappers also use the default idx=0.
                 if idx == 0:
-                    self._attach_action_graph_metadata()
+                    self._attach_action_graph_metadata(args)
         else:
             raise NotImplementedError("Make the implementation in this case")
 
@@ -1211,7 +1211,7 @@ class MAEnvWrapper(Env):
 
         self.use_heuristic = args.use_heuristic
 
-    def _attach_action_graph_metadata(self) -> None:
+    def _attach_action_graph_metadata(self, args: Dict[str, Any]) -> None:
         """Decode each exposed action once and map it to agent graph rows."""
         for agent_id in self.g2op_ma_env.agents:
             reduced_mapping = self._reduced_action_id_mapping.get(agent_id)

@@ -16,7 +16,7 @@ if [[ $# -gt 0 ]]; then
 fi
 
 target_timesteps="${TARGET_TIMESTEPS:-15000000}"
-time_limit_minutes="${TIME_LIMIT_MINUTES:-1300}"
+time_limit_minutes="${TIME_LIMIT_MINUTES:-4980}"
 launcher="${LAUNCHER:-job_jed.sh}"
 checkpoint_dir="${CHECKPOINT_DIR:-checkpoint/no_leak/gs_se3p_NL}"
 reset_environments="${RESET_ENVIRONMENTS:-true}"
@@ -40,7 +40,7 @@ skipped_complete=0
 prepared=0
 failed=0
 
-for config_path in "$config_dir"/nl_s3ep_*_s0.toml; do
+for config_path in "$config_dir"/nl_s3ep_*gine*_s0.toml; do
   checked=$((checked + 1))
   config_rel="${config_path#Topology_Task/}"
   run_name="$(basename "${config_path%.toml}")"
@@ -89,7 +89,7 @@ for config_path in "$config_dir"/nl_s3ep_*_s0.toml; do
 done
 
 echo
-echo "Checked $checked nl_s3ep seed-0 configurations."
+echo "Checked $checked nl_s3ep GINE seed-0 configurations."
 echo "Skipped $skipped_running active Slurm job(s)."
 echo "Skipped $skipped_complete completed run(s)."
 if [[ "$submit" == true ]]; then
