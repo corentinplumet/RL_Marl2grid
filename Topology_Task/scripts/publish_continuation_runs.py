@@ -31,14 +31,78 @@ except ImportError as exc:  # pragma: no cover - depends on the active env
 
 DEFAULT_ENTITY = "corentin-plumet-epfl"
 DEFAULT_PROJECT = "Grid2Op"
-DEFAULT_GROUP = "NLS_cas_hl"
-CORE_RUN_RE = re.compile(
-    r"^cas_hl_NLS_(?:mean|tmean)_f[01]_a0h[01]_s0$"
-)
 OFFLINE_DIR_RE = re.compile(
     r"^offline-run-(?P<timestamp>\d{8}_\d{6})-(?P<run_name>.+)$"
 )
 JOB_ID_RE = re.compile(r"-(?P<job_id>\d+)$")
+
+
+@dataclass(frozen=True)
+class PublicationProfile:
+    name: str
+    group: str
+    archive_run_re: re.Pattern[str]
+    expected_archive_names: tuple[str, ...]
+    archive_prefix: str
+    base_prefix: str
+    tags: tuple[str, ...]
+
+    def base_lookup_name(self, archive_run_name: str) -> str:
+        if not archive_run_name.startswith(self.archive_prefix):
+            raise ValueError(
+                f"Run {archive_run_name!r} does not start with the profile prefix "
+                f"{self.archive_prefix!r}."
+            )
+        return self.base_prefix + archive_run_name[len(self.archive_prefix) :]
+
+
+def _nls_names() -> tuple[str, ...]:
+    return tuple(
+        f"cas_hl_NLS_{pool}_{features}_{head}_s0"
+        for pool in ("mean", "tmean")
+        for features in ("f0", "f1")
+        for head in ("a0h0", "a0h1")
+    )
+
+
+def _s3dw_resumed_names() -> tuple[str, ...]:
+    return tuple(
+        [
+            f"nl_s3dw_bus_n0_none_e0n0v0_mp{depth}_h{width}_s0"
+            for depth in (1, 2)
+            for width in (16, 32, 64, 128)
+        ]
+        + ["nl_s3dw_bus_n0_none_e0n0v0_mp3_h32_s0"]
+    )
+
+
+PUBLICATION_PROFILES = {
+    "nls_cas_hl": PublicationProfile(
+        name="nls_cas_hl",
+        group="NLS_cas_hl",
+        archive_run_re=re.compile(
+            r"^cas_hl_NLS_(?:mean|tmean)_f[01]_a0h[01]_s0$"
+        ),
+        expected_archive_names=_nls_names(),
+        archive_prefix="cas_hl_NLS_",
+        base_prefix="cas_hl_NLS_",
+        tags=("NLS_cas_hl",),
+    ),
+    "nl_s3dw": PublicationProfile(
+        name="nl_s3dw",
+        group="gs_s3dw",
+        archive_run_re=re.compile(
+            r"^nl_s3dw_bus_n0_none_e0n0v0_"
+            r"(?:mp[12]_h(?:16|32|64|128)|mp3_h32)_s0$"
+        ),
+        expected_archive_names=_s3dw_resumed_names(),
+        # The no-leakage configs and continuation archives use ``nl_`` while
+        # the original cloud sweep predates that rename and uses ``gs_``.
+        archive_prefix="nl_s3dw_",
+        base_prefix="gs_s3dw_",
+        tags=("gs_s3dw", "no-leakage"),
+    ),
+}
 
 
 @dataclass(frozen=True)
@@ -56,22 +120,16 @@ class Archive:
     def suffix(self) -> str:
         return self.job_id or self.timestamp.replace("_", "")
 
-    @property
-    def new_id(self) -> str:
-        return f"{self.run_name}-cont-{self.suffix}"
 
-    @property
-    def display_name(self) -> str:
-        return f"{self.run_name} [continuation {self.suffix}]"
+def _target_run_id(archive: Archive, profile: PublicationProfile) -> str:
+    return f"{profile.base_lookup_name(archive.run_name)}-cont-{archive.suffix}"
 
 
-def expected_base_names() -> list[str]:
-    return [
-        f"cas_hl_NLS_{pool}_{features}_{head}_s0"
-        for pool in ("mean", "tmean")
-        for features in ("f0", "f1")
-        for head in ("a0h0", "a0h1")
-    ]
+def _target_display_name(archive: Archive, profile: PublicationProfile) -> str:
+    return (
+        f"{profile.base_lookup_name(archive.run_name)} "
+        f"[continuation {archive.suffix}]"
+    )
 
 
 def _parse_json(value: str) -> Any:
@@ -136,6 +194,7 @@ def _job_id(path: Path, stop: Path) -> str:
 def discover_archives(
     roots: list[Path],
     *,
+    run_name_re: re.Pattern[str],
     min_start_step: int,
     selected_job_ids: set[str],
 ) -> list[Archive]:
@@ -153,7 +212,7 @@ def discover_archives(
             if not match:
                 continue
             run_name = match.group("run_name")
-            if not CORE_RUN_RE.fullmatch(run_name):
+            if not run_name_re.fullmatch(run_name):
                 continue
             candidates = sorted(offline_dir.glob("run-*.wandb"))
             if not candidates:
@@ -267,18 +326,21 @@ def _create_target_run(
     archive: Archive,
     base: Any,
     *,
+    target_id: str,
+    display_name: str,
     entity: str,
     project: str,
     group: str,
+    tags: list[str],
 ) -> None:
     run = wandb.init(
         entity=entity,
         project=project,
-        id=archive.new_id,
-        name=archive.display_name,
+        id=target_id,
+        name=display_name,
         group=group,
         job_type="continuation",
-        tags=["NLS_cas_hl", "continuation"],
+        tags=[*tags, "continuation"],
         config=_continuation_config(archive, base),
         resume="allow",
         reinit=True,
@@ -308,6 +370,15 @@ def parse_args() -> argparse.Namespace:
     task_dir = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--profile",
+        choices=sorted(PUBLICATION_PROFILES),
+        default="nls_cas_hl",
+        help=(
+            "Continuation family to publish. The profile fixes the accepted "
+            "archive names, original-run name mapping, default group, and tags."
+        ),
+    )
+    parser.add_argument(
         "--archive-root",
         type=Path,
         action="append",
@@ -319,7 +390,11 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--entity", default=DEFAULT_ENTITY)
     parser.add_argument("--project", default=DEFAULT_PROJECT)
-    parser.add_argument("--group", default=DEFAULT_GROUP)
+    parser.add_argument(
+        "--group",
+        default=None,
+        help="Override the W&B group selected by --profile.",
+    )
     parser.add_argument(
         "--job-id",
         action="append",
@@ -346,13 +421,17 @@ def parse_args() -> argparse.Namespace:
     args = parser.parse_args()
     if args.archive_root is None:
         args.archive_root = [task_dir.parent / "outputs"]
+    if args.group is None:
+        args.group = PUBLICATION_PROFILES[args.profile].group
     return args
 
 
 def main() -> int:
     args = parse_args()
+    profile = PUBLICATION_PROFILES[args.profile]
     archives = discover_archives(
         args.archive_root,
+        run_name_re=profile.archive_run_re,
         min_start_step=args.min_start_step,
         selected_job_ids=set(args.job_id),
     )
@@ -361,44 +440,62 @@ def main() -> int:
 
     duplicates: dict[str, int] = {}
     for archive in archives:
-        duplicates[archive.new_id] = duplicates.get(archive.new_id, 0) + 1
+        target_id = _target_run_id(archive, profile)
+        duplicates[target_id] = duplicates.get(target_id, 0) + 1
     repeated = [run_id for run_id, count in duplicates.items() if count > 1]
     if repeated:
         raise SystemExit(f"Duplicate generated continuation IDs: {repeated}")
 
-    print("========== NLS continuation publication plan ==========")
+    found_names = {archive.run_name for archive in archives}
+    missing_names = sorted(set(profile.expected_archive_names) - found_names)
+
+    print("========== Continuation publication plan ==========")
+    print(f"Profile: {profile.name}")
     print(f"Entity/project: {args.entity}/{args.project}")
     print(f"Group: {args.group}")
     print(f"Mode: {'EXECUTE' if args.execute else 'DRY-RUN'}")
     print(f"Archives: {len(archives)}")
+    if missing_names:
+        print(
+            f"WARNING: {len(missing_names)} expected archive(s) were not found: "
+            + ", ".join(missing_names)
+        )
     for archive in archives:
+        target_id = _target_run_id(archive, profile)
+        display_name = _target_display_name(archive, profile)
         print(
             f"- {archive.run_name}: {archive.min_step:,}..{archive.max_step:,} "
             f"({archive.history_rows:,} records)\n"
             f"    source: {archive.run_file}\n"
-            f"    target: {archive.new_id} / {archive.display_name}"
+            f"    target: {target_id} / {display_name}"
         )
     print("=======================================================")
 
     api = wandb.Api(timeout=args.api_timeout)
     bases: dict[str, Any] = {}
     failures = 0
-    for run_name in expected_base_names():
+    for archive_run_name in profile.expected_archive_names:
+        base_lookup_name = profile.base_lookup_name(archive_run_name)
         try:
-            base = _base_run(api, args.entity, args.project, run_name)
-            bases[run_name] = base
+            base = _base_run(api, args.entity, args.project, base_lookup_name)
+            bases[archive_run_name] = base
             print(
-                f"BASE {run_name}: id={base.id}, group={base.group or '<none>'} "
+                f"BASE {archive_run_name} -> {base.name}: "
+                f"id={base.id}, group={base.group or '<none>'} "
                 f"-> {args.group}"
             )
             if args.execute:
                 _set_metadata(
                     base,
                     group=args.group,
-                    tags=["NLS_cas_hl", "base-segment"],
+                    tags=[*profile.tags, "base-segment"],
                 )
         except Exception as exc:
-            print(f"FAILED base lookup/grouping for {run_name}: {exc}", file=sys.stderr)
+            print(
+                f"FAILED base lookup/grouping for {archive_run_name} "
+                f"({base_lookup_name}): {exc}",
+                file=sys.stderr,
+            )
             failures += 1
 
     for archive in archives:
@@ -407,26 +504,31 @@ def main() -> int:
             print(f"SKIP {archive.run_name}: original run unavailable", file=sys.stderr)
             failures += 1
             continue
-        target_path = f"{args.entity}/{args.project}/{archive.new_id}"
+        target_id = _target_run_id(archive, profile)
+        display_name = _target_display_name(archive, profile)
+        target_path = f"{args.entity}/{args.project}/{target_id}"
         existing = None
         try:
             existing = api.run(target_path)
         except Exception:
             pass
         if existing is not None and existing.config.get("continuation_sync_completed") and not args.force:
-            print(f"SKIP {archive.new_id}: already marked as completely synced")
+            print(f"SKIP {target_id}: already marked as completely synced")
             continue
         if not args.execute:
-            print(f"DRY-RUN publish {archive.run_name} -> {archive.new_id}")
+            print(f"DRY-RUN publish {archive.run_name} -> {target_id}")
             continue
 
         try:
             _create_target_run(
                 archive,
                 base,
+                target_id=target_id,
+                display_name=display_name,
                 entity=args.entity,
                 project=args.project,
                 group=args.group,
+                tags=list(profile.tags),
             )
             command = [
                 "wandb",
@@ -439,7 +541,7 @@ def main() -> int:
                 "--project",
                 args.project,
                 "--id",
-                archive.new_id,
+                target_id,
                 str(archive.run_file),
             ]
             print(f"RUN {' '.join(command)}")
@@ -462,13 +564,13 @@ def main() -> int:
             _set_metadata(
                 target,
                 group=args.group,
-                name=archive.display_name,
-                tags=["NLS_cas_hl", "continuation"],
+                name=display_name,
+                tags=[*profile.tags, "continuation"],
                 config=final_config,
             )
-            print(f"DONE https://wandb.ai/{args.entity}/{args.project}/runs/{archive.new_id}")
+            print(f"DONE https://wandb.ai/{args.entity}/{args.project}/runs/{target_id}")
         except Exception as exc:
-            print(f"FAILED {archive.new_id}: {exc}", file=sys.stderr)
+            print(f"FAILED {target_id}: {exc}", file=sys.stderr)
             failures += 1
 
     if not args.execute:

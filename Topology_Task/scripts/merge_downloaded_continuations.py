@@ -21,9 +21,21 @@ from typing import Any
 import pandas as pd
 
 
-CORE_RUN_RE = re.compile(
-    r"^cas_hl_NLS_(?:mean|tmean)_f[01]_a0h[01]_s0$"
-)
+MERGE_PROFILES = {
+    "nls_cas_hl": {
+        "group_dir": "NLS_cas_hl",
+        "base_run_re": re.compile(
+            r"^cas_hl_NLS_(?:mean|tmean)_f[01]_a0h[01]_s0$"
+        ),
+    },
+    "nl_s3dw": {
+        "group_dir": "gs_s3dw",
+        "base_run_re": re.compile(
+            r"^gs_s3dw_bus_n0_none_e0n0v0_"
+            r"mp[123]_h(?:16|32|64|128)_s0$"
+        ),
+    },
+}
 FIXED_COLUMNS = {
     "run_name",
     "run_id",
@@ -208,9 +220,21 @@ def parse_args() -> argparse.Namespace:
     task_dir = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--profile",
+        choices=sorted(MERGE_PROFILES),
+        default="nls_cas_hl",
+        help="Run family and default local run_data directory to merge.",
+    )
+    parser.add_argument(
         "--group-dir",
         type=Path,
-        default=task_dir / "outputs" / "run_data" / "NLS_cas_hl",
+        default=None,
+        help="Override the profile's run_data directory.",
+    )
+    parser.add_argument(
+        "--base-run-regex",
+        default=None,
+        help="Override the profile's full-match regex for original run names.",
     )
     parser.add_argument(
         "--output-dir",
@@ -220,11 +244,21 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--no-write-csv", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.group_dir is None:
+        folder = MERGE_PROFILES[args.profile]["group_dir"]
+        args.group_dir = task_dir / "outputs" / "run_data" / folder
+    return args
 
 
 def main() -> int:
     args = parse_args()
+    profile = MERGE_PROFILES[args.profile]
+    base_run_re = (
+        re.compile(args.base_run_regex)
+        if args.base_run_regex
+        else profile["base_run_re"]
+    )
     group_dir = args.group_dir.expanduser().resolve()
     runs_root = group_dir / "runs"
     output_dir = (args.output_dir or group_dir / "merged_runs").expanduser().resolve()
@@ -235,14 +269,28 @@ def main() -> int:
     bases = [
         row
         for row in catalog
-        if not row["is_continuation"] and CORE_RUN_RE.fullmatch(row["name"])
+        if not row["is_continuation"] and base_run_re.fullmatch(row["name"])
     ]
-    continuations = [row for row in catalog if row["is_continuation"]]
     if not bases:
-        raise SystemExit("No NLS_cas_hl base runs found in the downloaded group.")
+        raise SystemExit(
+            f"No {args.profile} base runs found in the downloaded group."
+        )
+    base_ids = {row["id"] for row in bases}
+    base_names = {row["name"] for row in bases}
+    continuations = [
+        row
+        for row in catalog
+        if row["is_continuation"]
+        and (
+            row["parent_id"] in base_ids
+            or row["parent_name"] in base_names
+            or row["name"].split(" [continuation ", 1)[0] in base_names
+        )
+    ]
     pairs = _pair_continuations(bases, continuations)
 
     print("========== Canonical continuation merge ==========")
+    print(f"Profile: {args.profile}")
     print(f"Input: {runs_root}")
     print(f"Output: {output_dir}")
     print(f"Base runs: {len(bases)}")
