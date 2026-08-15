@@ -139,23 +139,40 @@ def _parse_json(value: str) -> Any:
         return value
 
 
-def _history_step(record: Any) -> int | None:
-    if record.history.step.num:
-        return int(record.history.step.num)
+def _history_item_steps(record: Any) -> tuple[int | None, int | None]:
+    """Return (training step, W&B internal step) from one history record."""
+    values: dict[str, Any] = {}
     for item in record.history.item:
-        key = list(item.nested_key) or ([item.key] if item.key else [])
-        if key == ["_step"]:
-            value = _parse_json(item.value_json)
-            try:
-                return int(value)
-            except (TypeError, ValueError):
-                return None
-    return None
+        key_parts = list(item.nested_key) or ([item.key] if item.key else [])
+        if not key_parts:
+            continue
+        key = "/".join(str(part).strip("/") for part in key_parts)
+        values[key] = _parse_json(item.value_json)
+
+    training_step: int | None = None
+    for key in ("charts/global_step", "global_step"):
+        if key not in values:
+            continue
+        try:
+            training_step = int(values[key])
+            break
+        except (TypeError, ValueError):
+            continue
+
+    internal_step: int | None = None
+    if "_step" in values:
+        try:
+            internal_step = int(values["_step"])
+        except (TypeError, ValueError):
+            pass
+    if internal_step is None and record.history.step.num:
+        internal_step = int(record.history.step.num)
+    return training_step, internal_step
 
 
 def history_range(path: Path) -> tuple[int, int, int]:
-    min_step: int | None = None
-    max_step: int | None = None
+    training_steps: list[int] = []
+    internal_steps: list[int] = []
     rows = 0
     store = DataStore()
     store.open_for_scan(str(path))
@@ -168,17 +185,23 @@ def history_range(path: Path) -> tuple[int, int, int]:
             record.ParseFromString(data)
             if record.WhichOneof("record_type") != "history":
                 continue
-            step = _history_step(record)
-            if step is None:
-                continue
-            rows += 1
-            min_step = step if min_step is None else min(min_step, step)
-            max_step = step if max_step is None else max(max_step, step)
+            training_step, internal_step = _history_item_steps(record)
+            if training_step is not None:
+                training_steps.append(training_step)
+            if internal_step is not None:
+                internal_steps.append(internal_step)
+            if training_step is not None or internal_step is not None:
+                rows += 1
     finally:
         store.close()
-    if min_step is None or max_step is None:
+
+    # Resumed offline runs can restart W&B's internal counter even though the
+    # checkpoint's training clock continues. Prefer the explicitly logged
+    # training clock and use the internal value only for older archives.
+    steps = training_steps or internal_steps
+    if not steps:
         raise ValueError(f"No stepped history records found in {path}")
-    return min_step, max_step, rows
+    return min(steps), max(steps), rows
 
 
 def _job_id(path: Path, stop: Path) -> str:

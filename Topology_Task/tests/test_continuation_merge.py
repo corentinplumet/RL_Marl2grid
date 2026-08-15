@@ -27,6 +27,7 @@ def _write_run(
     run_id: str,
     steps: list[int],
     values: list[float],
+    training_steps: list[int] | None = None,
     config: dict | None = None,
 ) -> dict:
     run_dir = root / f"{name}__{run_id}"
@@ -39,7 +40,10 @@ def _write_run(
         json.dumps(config or {}),
         encoding="utf-8",
     )
-    pd.DataFrame({"_step": steps, "survival": values}).to_csv(
+    history = {"_step": steps, "survival": values}
+    if training_steps is not None:
+        history["charts/global_step"] = training_steps
+    pd.DataFrame(history).to_csv(
         run_dir / "history.csv.gz",
         index=False,
     )
@@ -67,14 +71,17 @@ class ContinuationMergeTests(unittest.TestCase):
                 root,
                 name=base_name,
                 run_id="base-id",
-                steps=[0, 10, 20, 30],
+                steps=[0, 1, 2, 3],
+                training_steps=[0, 10, 20, 30],
                 values=[0.0, 1.0, 2.0, 3.0],
             )
             continuation = _write_run(
                 root,
                 name=f"{base_name} [continuation 123]",
                 run_id="continuation-id",
-                steps=[20, 30, 40],
+                # W&B's internal counter restarted in the resumed run.
+                steps=[0, 1, 2],
+                training_steps=[20, 30, 40],
                 values=[20.0, 30.0, 40.0],
                 config={
                     "is_continuation": True,
@@ -90,6 +97,9 @@ class ContinuationMergeTests(unittest.TestCase):
             self.assertEqual(merged["survival"].tolist(), [0.0, 1.0, 20.0, 30.0, 40.0])
             self.assertEqual(merged["run_name"].unique().tolist(), [base_name])
             self.assertEqual(merged["run_id"].unique().tolist(), ["base-id"])
+            self.assertEqual(
+                merged["wandb_internal_step"].tolist(), [0, 1, 0, 1, 2]
+            )
             self.assertEqual(boundaries[0]["start_step"], 20)
             self.assertEqual(boundaries[0]["previous_retained_step"], 10)
 

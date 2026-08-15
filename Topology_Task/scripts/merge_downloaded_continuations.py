@@ -74,7 +74,25 @@ def _normalize(history: pd.DataFrame) -> pd.DataFrame:
     history = history.copy()
     if "_step" not in history.columns:
         raise ValueError("History has no _step column")
-    history["_step"] = pd.to_numeric(history["_step"], errors="coerce")
+
+    step_source = "_step"
+    for candidate in ("charts/global_step", "global_step"):
+        if candidate not in history.columns:
+            continue
+        candidate_steps = pd.to_numeric(history[candidate], errors="coerce")
+        if candidate_steps.notna().any():
+            step_source = candidate
+            break
+
+    if step_source != "_step":
+        internal_steps = pd.to_numeric(history["_step"], errors="coerce")
+        if "wandb_internal_step" in history.columns:
+            history["wandb_internal_step"] = pd.to_numeric(
+                history["wandb_internal_step"], errors="coerce"
+            ).fillna(internal_steps)
+        else:
+            history["wandb_internal_step"] = internal_steps
+    history["_step"] = pd.to_numeric(history[step_source], errors="coerce")
     history = history.dropna(subset=["_step"])
     if history.empty:
         return history
