@@ -519,6 +519,50 @@ def _apply_eval_overrides(args: Namespace, cli: Namespace) -> Namespace:
     return args
 
 
+def _apply_transfer_target_overrides(
+    args: Namespace, cli: Namespace
+) -> Tuple[Namespace, bool, str]:
+    """Retarget a shared candidate actor without changing its learned weights."""
+    source_env_id = str(getattr(args, "env_id", ""))
+    target_env_id = str(getattr(cli, "target_env_id", "") or "").strip()
+    if not target_env_id:
+        return args, False, source_env_id
+
+    requirements = {
+        "actor_encoder='gnn'": getattr(args, "actor_encoder", "") == "gnn",
+        "actor_action_head='candidate_pool'": (
+            getattr(args, "actor_action_head", "") == "candidate_pool"
+        ),
+        "share_actor_gnn=true": bool(getattr(args, "share_actor_gnn", False)),
+        "share_candidate_scorer=true": bool(
+            getattr(args, "share_candidate_scorer", False)
+        ),
+        "gnn_concat_flat=false": not bool(
+            getattr(args, "gnn_concat_flat", False)
+        ),
+    }
+    missing = [label for label, satisfied in requirements.items() if not satisfied]
+    if missing:
+        raise ValueError(
+            "Zero-shot cross-grid evaluation requires a fully transferable "
+            "candidate actor; checkpoint does not satisfy: " + ", ".join(missing)
+        )
+
+    reduced_action_space = str(
+        getattr(cli, "target_reduced_action_space", "") or ""
+    ).strip()
+    if not reduced_action_space:
+        raise ValueError(
+            "--target-reduced-action-space is required for cross-grid candidate "
+            "evaluation. WCCI's unreduced topology action space is too large for "
+            "this evaluation path."
+        )
+
+    args.env_id = target_env_id
+    args.reduced_action_space = reduced_action_space
+    return args, True, source_env_id
+
+
 def _configure_obs_normalization(
     args: Namespace,
     obs_stats: Dict[str, Any],
@@ -588,6 +632,43 @@ def _build_actors(record: Dict[str, Any], args: Namespace, evaluator: Any, devic
         actor.load_state_dict(record[agent_id])
         actor.eval()
     return actors
+
+
+def _build_zero_shot_transfer_actors(
+    checkpoint_path: Path,
+    args: Namespace,
+    evaluator: Any,
+    device: th.device,
+    source_agent: str,
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """Build target-grid actors and load only transferable learned parameters."""
+    from alg.mappo.core import build_actor_modules
+    from common.transfer import load_encoder_from_checkpoint
+
+    actor_env = evaluator.env.env
+    agent_ids = [
+        f"agent_{idx}" for idx in range(len(actor_env.observation_space.keys()))
+    ]
+    continuous_actions = getattr(args, "action_type", "topology") == "redispatch"
+    actors = build_actor_modules(
+        actor_env,
+        args,
+        agent_ids,
+        continuous_actions,
+        device=device,
+    )
+    report = load_encoder_from_checkpoint(
+        actors,
+        str(checkpoint_path),
+        freeze=True,
+        device=device,
+        load_action_head=True,
+        action_head_source_agent=source_agent,
+        freeze_action_head=True,
+    )
+    for actor in actors.values():
+        actor.eval()
+    return actors, report
 
 
 def _safe_name(value: str) -> str:
@@ -782,6 +863,33 @@ def parse_args() -> Namespace:
             "'disable' always evaluates raw observations."
         ),
     )
+    parser.add_argument(
+        "--target-env-id",
+        type=str,
+        default="",
+        help=(
+            "Evaluate a transferable shared GNN/candidate actor on another "
+            "environment without training, e.g. bus36_wcci_nomaint."
+        ),
+    )
+    parser.add_argument(
+        "--target-reduced-action-space",
+        type=str,
+        default="",
+        help=(
+            "Target-grid reduced-action metadata used to rebuild candidate "
+            "action metadata during zero-shot transfer."
+        ),
+    )
+    parser.add_argument(
+        "--transfer-action-head-source-agent",
+        type=str,
+        default="agent_0",
+        help=(
+            "Source actor whose learned shared scorer parameters are loaded. "
+            "For a genuinely shared scorer, every source actor is equivalent."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -816,6 +924,15 @@ def main() -> None:
     args = _merge_missing_defaults(_as_namespace(first_record["args"]))
     args = _configure_legacy_connected_feature(args, first_record)
     args = _apply_eval_overrides(args, cli)
+    args, zero_shot_transfer, source_env_id = _apply_transfer_target_overrides(
+        args, cli
+    )
+    if zero_shot_transfer and cli.obs_normalization != "disable":
+        raise ValueError(
+            "Cross-grid evaluation must use --obs-normalization disable. The "
+            "checkpoint's flat bus14 normalization arrays do not match WCCI; "
+            "this does not alter the graph input when gnn_concat_flat=false."
+        )
     obs_stats = _extract_obs_stats(first_record)
     args, obs_stats, obs_norm_mode = _configure_obs_normalization(
         args, obs_stats, cli.obs_normalization
@@ -866,10 +983,24 @@ def main() -> None:
     )
     if obs_stats:
         evaluator.env.env.set_obs_stats(obs_stats)
-    actors = _build_actors(record, args, evaluator, device)
+    transfer_report = None
+    if zero_shot_transfer:
+        actors, transfer_report = _build_zero_shot_transfer_actors(
+            checkpoint_path,
+            args,
+            evaluator,
+            device,
+            cli.transfer_action_head_source_agent,
+        )
+    else:
+        actors = _build_actors(record, args, evaluator, device)
 
     print(f"Checkpoint: {_repo_relative(checkpoint_path)}")
     print(f"Checkpoint global_step: {checkpoint_step}")
+    if zero_shot_transfer:
+        print(f"Zero-shot transfer: {source_env_id} -> {args.env_id}")
+        print(f"Target reduced action space: {args.reduced_action_space}")
+        print(f"Transfer report: {transfer_report}")
     print(f"Evaluating split: {cli.split}")
     print(f"Evaluation episodes: {cli.eval_episodes or evaluator.eval_episodes}")
     print(f"Device: {device}")
@@ -893,6 +1024,13 @@ def main() -> None:
         "created_at": datetime.now(timezone.utc).isoformat(),
         "checkpoint": str(checkpoint_path),
         "checkpoint_global_step": checkpoint_step,
+        "zero_shot_transfer": bool(zero_shot_transfer),
+        "source_env_id": source_env_id,
+        "target_env_id": str(args.env_id),
+        "target_reduced_action_space": str(
+            getattr(args, "reduced_action_space", "") or ""
+        ),
+        "transfer_report": transfer_report,
         "requested_model": cli.model,
         "requested_step": cli.step,
         "requested_step_policy": cli.step_policy,

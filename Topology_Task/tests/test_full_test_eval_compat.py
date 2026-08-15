@@ -4,6 +4,7 @@ import unittest
 import torch as th
 
 from full_test_eval.evaluate_checkpoint import (
+    _apply_transfer_target_overrides,
     _configure_legacy_connected_feature,
 )
 
@@ -39,6 +40,44 @@ class FullTestEvalCompatibilityTest(unittest.TestCase):
         self.assertFalse(
             getattr(args, "gnn_include_legacy_connected_feature", False)
         )
+
+    def test_shared_candidate_actor_can_be_retargeted_without_flat_inputs(self):
+        args = Namespace(
+            env_id="bus14",
+            actor_encoder="gnn",
+            actor_action_head="candidate_pool",
+            share_actor_gnn=True,
+            share_candidate_scorer=True,
+            gnn_concat_flat=False,
+        )
+        cli = Namespace(
+            target_env_id="bus36_wcci_nomaint",
+            target_reduced_action_space="outputs/reduced.json",
+        )
+
+        args, enabled, source_env_id = _apply_transfer_target_overrides(args, cli)
+
+        self.assertTrue(enabled)
+        self.assertEqual(source_env_id, "bus14")
+        self.assertEqual(args.env_id, "bus36_wcci_nomaint")
+        self.assertEqual(args.reduced_action_space, "outputs/reduced.json")
+
+    def test_cross_grid_eval_rejects_nonshared_candidate_scorer(self):
+        args = Namespace(
+            env_id="bus14",
+            actor_encoder="gnn",
+            actor_action_head="candidate_pool",
+            share_actor_gnn=True,
+            share_candidate_scorer=False,
+            gnn_concat_flat=False,
+        )
+        cli = Namespace(
+            target_env_id="bus36_wcci_nomaint",
+            target_reduced_action_space="outputs/reduced.json",
+        )
+
+        with self.assertRaisesRegex(ValueError, "share_candidate_scorer=true"):
+            _apply_transfer_target_overrides(args, cli)
 
 
 if __name__ == "__main__":

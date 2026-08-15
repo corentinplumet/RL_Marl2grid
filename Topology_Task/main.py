@@ -84,6 +84,7 @@ def main(args: Namespace) -> None:
     cli_resume_allow_device_migration = args.resume_allow_device_migration
     cli_resume_reset_environments = args.resume_reset_environments
     cli_wandb_mode = args.wandb_mode
+    cli_cuda = args.cuda
 
     if cli_resume_run_name:
         run_name = cli_resume_wandb_run_name or _strip_checkpoint_save_prefixes(
@@ -116,6 +117,10 @@ def main(args: Namespace) -> None:
         args.resume_allow_device_migration = cli_resume_allow_device_migration
         args.resume_reset_environments = cli_resume_reset_environments
         args.wandb_mode = cli_wandb_mode
+        # The checkpoint records the device used by the original process. A
+        # continuation must instead honor the current launcher (for example,
+        # moving a CPU/JED checkpoint to a CUDA/Izar worker).
+        args.cuda = cli_cuda
         args.resume_start_next_rollout = (
             _is_completed_final_checkpoint(cli_resume_run_name)
             if cli_resume_start_next_rollout is None
