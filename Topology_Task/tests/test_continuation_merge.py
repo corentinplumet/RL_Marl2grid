@@ -103,6 +103,38 @@ class ContinuationMergeTests(unittest.TestCase):
             self.assertEqual(boundaries[0]["start_step"], 20)
             self.assertEqual(boundaries[0]["previous_retained_step"], 10)
 
+    def test_declared_end_recovers_reset_counter_without_global_step_column(self):
+        with TemporaryDirectory() as temporary_dir:
+            root = Path(temporary_dir)
+            base_name = "gs_s3dw_bus_n0_none_e0n0v0_mp1_h16_s0"
+            base = _write_run(
+                root,
+                name=base_name,
+                run_id="base-id",
+                steps=[0, 10, 20, 30],
+                values=[0.0, 1.0, 2.0, 3.0],
+            )
+            continuation = _write_run(
+                root,
+                name=f"{base_name} [continuation 456]",
+                run_id="continuation-id",
+                steps=[10, 20, 30],
+                values=[20.0, 30.0, 40.0],
+                config={
+                    "is_continuation": True,
+                    "continuation_of_run_id": "base-id",
+                    "continuation_of_run_name": base_name,
+                    "continuation_end_step": 50,
+                },
+            )
+
+            pairs = _pair_continuations([base], [continuation])
+            merged, boundaries = _merge_one(base, pairs["base-id"])
+
+            self.assertEqual(merged["_step"].tolist(), [0, 10, 20, 30, 40, 50])
+            self.assertEqual(boundaries[0]["start_step"], 30)
+            self.assertEqual(boundaries[0]["end_step"], 50)
+
 
 if __name__ == "__main__":
     unittest.main()

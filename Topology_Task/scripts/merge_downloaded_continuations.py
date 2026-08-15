@@ -70,7 +70,11 @@ def _load_history(run_dir: Path) -> pd.DataFrame:
     raise FileNotFoundError(f"No history file in {run_dir}")
 
 
-def _normalize(history: pd.DataFrame) -> pd.DataFrame:
+def _normalize(
+    history: pd.DataFrame,
+    *,
+    declared_end_step: int | float | str | None = None,
+) -> pd.DataFrame:
     history = history.copy()
     if "_step" not in history.columns:
         raise ValueError("History has no _step column")
@@ -92,7 +96,18 @@ def _normalize(history: pd.DataFrame) -> pd.DataFrame:
             ).fillna(internal_steps)
         else:
             history["wandb_internal_step"] = internal_steps
-    history["_step"] = pd.to_numeric(history[step_source], errors="coerce")
+        history["_step"] = pd.to_numeric(history[step_source], errors="coerce")
+    else:
+        history["_step"] = pd.to_numeric(history["_step"], errors="coerce")
+        declared_end = pd.to_numeric(
+            pd.Series([declared_end_step]), errors="coerce"
+        ).iloc[0]
+        available_steps = history["_step"].dropna()
+        if pd.notna(declared_end) and not available_steps.empty:
+            offset = int(declared_end) - int(available_steps.max())
+            if offset:
+                history["wandb_internal_step"] = history["_step"]
+                history["_step"] = history["_step"] + offset
     history = history.dropna(subset=["_step"])
     if history.empty:
         return history
@@ -189,7 +204,10 @@ def _merge_one(
     boundaries: list[dict[str, Any]] = []
     loaded: list[tuple[int, int, dict[str, Any], pd.DataFrame]] = []
     for continuation in continuations:
-        history = _normalize(_load_history(continuation["run_dir"]))
+        history = _normalize(
+            _load_history(continuation["run_dir"]),
+            declared_end_step=continuation.get("declared_end"),
+        )
         if history.empty:
             raise RuntimeError(f"Continuation history is empty: {continuation['run_dir']}")
         actual_start = int(history["_step"].min())
