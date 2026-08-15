@@ -502,7 +502,11 @@ def main() -> int:
         raise SystemExit(f"Duplicate generated continuation IDs: {repeated}")
 
     found_names = {archive.run_name for archive in archives}
-    missing_names = sorted(set(profile.expected_archive_names) - found_names)
+    missing_names = (
+        []
+        if args.job_id
+        else sorted(set(profile.expected_archive_names) - found_names)
+    )
 
     print("========== Continuation publication plan ==========")
     print(f"Profile: {profile.name}")
@@ -529,7 +533,9 @@ def main() -> int:
     api = wandb.Api(timeout=args.api_timeout)
     bases: dict[str, Any] = {}
     failures = 0
-    for archive_run_name in profile.expected_archive_names:
+    # Only resolve and update bases that are needed by the selected archives.
+    # This makes --job-id a true one-run operation.
+    for archive_run_name in sorted(found_names):
         base_lookup_name = profile.base_lookup_name(archive_run_name)
         try:
             base = _base_run(api, args.entity, args.project, base_lookup_name)
@@ -575,43 +581,42 @@ def main() -> int:
             continue
 
         try:
-            _create_target_run(
-                archive,
-                base,
-                target_id=target_id,
-                display_name=display_name,
-                entity=args.entity,
-                project=args.project,
-                group=args.group,
-                tags=list(profile.tags),
-            )
             command = [
                 "wandb",
                 "sync",
-                "--append",
                 "--include-synced",
                 "--no-mark-synced",
+                "--skip-console",
                 "--entity",
                 args.entity,
                 "--project",
                 args.project,
                 "--id",
                 target_id,
-                str(archive.run_file),
+                str(archive.offline_dir),
             ]
+            # A previous interrupted attempt may already have created the
+            # target. Append only in that case; a fresh target is created
+            # directly by `wandb sync` without a preliminary online run.
+            if existing is not None:
+                command.insert(2, "--append")
             print(f"RUN {' '.join(command)}")
-            result = subprocess.run(
+            process = subprocess.Popen(
                 command,
-                check=False,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
+                bufsize=1,
             )
-            output = result.stdout or ""
-            if output:
-                print(output, end="" if output.endswith("\n") else "\n")
-            if result.returncode != 0 or _semantic_sync_error(output):
-                raise RuntimeError(f"wandb sync failed with exit code {result.returncode}")
+            output_lines: list[str] = []
+            if process.stdout is not None:
+                for line in process.stdout:
+                    output_lines.append(line)
+                    print(line, end="", flush=True)
+            returncode = process.wait()
+            output = "".join(output_lines)
+            if returncode != 0 or _semantic_sync_error(output):
+                raise RuntimeError(f"wandb sync failed with exit code {returncode}")
 
             target = _cloud_run_with_retry(api, target_path)
             final_config = _continuation_config(archive, base)
