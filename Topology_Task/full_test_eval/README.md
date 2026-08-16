@@ -101,6 +101,45 @@ The default JSON summary is written under:
 Topology_Task/outputs/full_test_eval/
 ```
 
+## Shared-candidate zero-shot WCCI evaluation with 64 actions
+
+The NL/NLS shared candidate checkpoints can be evaluated with the WCCI
+`mk64` action space using the dedicated Izar launcher. It preserves the
+existing `mk256` protocol (50 deterministic test episodes, frozen transferred
+encoder and scorer, disabled cross-grid observation normalization) and changes
+only the target reduced action space.
+
+First generate the `mk64` artifact if it is not already present on Izar:
+
+```bash
+TOP_KS=64 Topology_Task/teacher_student/reduce_wcci_action_space_sizes.sh
+```
+
+Preview all 16 NL/NLS evaluations:
+
+```bash
+DRY_RUN=true Topology_Task/full_test_eval/launch_shared_zero_shot_wcci_mk64_izar.sh
+```
+
+Submit all 16:
+
+```bash
+Topology_Task/full_test_eval/launch_shared_zero_shot_wcci_mk64_izar.sh
+```
+
+Optional arguments filter run names. For example, `NL_` selects the eight
+unscaled checkpoints and `NLS_` selects the eight scaled checkpoints:
+
+```bash
+Topology_Task/full_test_eval/launch_shared_zero_shot_wcci_mk64_izar.sh NLS_
+Topology_Task/full_test_eval/launch_shared_zero_shot_wcci_mk64_izar.sh NL_ _mean_f0_a0h0
+```
+
+Results are kept separate from `mk256` under directories ending in `_mk64`.
+Existing results are skipped unless `FORCE_RESULTS=true` is set. Exact
+per-step action traces are disabled by default, as in the original evaluation;
+set `SAVE_ACTION_TRACE=true` if they are needed.
+
 ## Output
 
 The important terminal line looks like:
