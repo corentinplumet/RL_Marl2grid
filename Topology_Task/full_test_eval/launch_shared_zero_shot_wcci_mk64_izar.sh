@@ -112,8 +112,9 @@ if ! is_true "$dry_run"; then
     exit 1
   fi
 
-  # Do not launch any jobs unless the artifact contains the requested count for
-  # every target agent; a filename alone is not sufficient evidence.
+  # The reducer interprets top-k as a cap: an agent can contain fewer actions
+  # when fewer candidates satisfy the ranking filters. Reject empty or
+  # oversized sets, but accept and report valid undersized sets.
   python - "$action_space_abs" "$action_size" <<'PY'
 import json
 import sys
@@ -129,14 +130,35 @@ sizes = {
     agent: int(payload.get("selected_action_size", -1))
     for agent, payload in sorted(agents.items())
 }
-invalid = {agent: size for agent, size in sizes.items() if size != expected}
+invalid = {
+    agent: size
+    for agent, size in sizes.items()
+    if size <= 0 or size > expected
+}
 if invalid:
     raise SystemExit(
-        f"Expected exactly {expected} actions per agent in {path}; got {sizes}"
+        f"Expected between 1 and {expected} actions per agent in {path}; got {sizes}"
+    )
+configured_caps = reduction.get("top_k_by_agent", {})
+wrong_caps = {
+    agent: configured_caps.get(agent)
+    for agent in sizes
+    if configured_caps and int(configured_caps.get(agent, -1)) != expected
+}
+if wrong_caps:
+    raise SystemExit(
+        f"Expected top-k cap {expected} for every agent in {path}; "
+        f"got {configured_caps}"
     )
 print(f"Validated mk{expected} target action space: " + ", ".join(
     f"{agent}={size}" for agent, size in sizes.items()
 ))
+undersized = {agent: size for agent, size in sizes.items() if size < expected}
+if undersized:
+    print(
+        f"Warning: mk{expected} is a top-k cap; fewer candidates qualified for "
+        + ", ".join(f"{agent} ({size})" for agent, size in undersized.items())
+    )
 PY
 
   for checkpoint in "${plan_checkpoints[@]}"; do

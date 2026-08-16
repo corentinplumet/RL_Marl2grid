@@ -267,33 +267,33 @@ and rho-threshold sensitivity.
   \end{tabular}
 \end{table}
 
-\begin{table}[htbp]
-  \centering
-  \small
-  \caption{Main sparse-control comparisons to report.}
-  \label{tab:sparse-control-main-comparisons}
-  \setlength{\tabcolsep}{4pt}
-  \begin{tabular}{L{0.45\textwidth}L{0.45\textwidth}}
-    \toprule
-    Question & Comparison \\
-    \midrule
-    Does a fixed sparse penalty already work? &
-    Baseline versus flat actor with $\lambda_{fixed}=0.010$ \\
-    Does the gate help beyond a sparse objective? &
-    Flat versus gated actor at $\lambda_{fixed}=0.010$ \\
-    Fixed versus adaptive coefficient? &
-    Fixed non-idle penalty versus adaptive non-idle cost at $d=0.20$ \\
-    Does local-safe weighting matter? &
-    Local-safe versus plain non-idle cost at $d=0.20$ \\
-    Does global-safe weighting matter? &
-    Global-safe versus local-safe cost at $d=0.20$ \\
-    Is \(\rho_{safe}=0.90\) special? &
-    Local-safe cost with $\rho_{safe}\in\{0.85,0.90,0.95\}$ \\
-    Is the heuristic only an evaluation trick? &
-    Rho heuristics versus learned fixed-penalty and AIB policies \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+% \begin{table}[htbp]
+%   \centering
+%   \small
+%   \caption{Main sparse-control comparisons to report.}
+%   \label{tab:sparse-control-main-comparisons}
+%   \setlength{\tabcolsep}{4pt}
+%   \begin{tabular}{L{0.45\textwidth}L{0.45\textwidth}}
+%     \toprule
+%     Question & Comparison \\
+%     \midrule
+%     Does a fixed sparse penalty already work? &
+%     Baseline versus flat actor with $\lambda_{fixed}=0.010$ \\
+%     Does the gate help beyond a sparse objective? &
+%     Flat versus gated actor at $\lambda_{fixed}=0.010$ \\
+%     Fixed versus adaptive coefficient? &
+%     Fixed non-idle penalty versus adaptive non-idle cost at $d=0.20$ \\
+%     Does local-safe weighting matter? &
+%     Local-safe versus plain non-idle cost at $d=0.20$ \\
+%     Does global-safe weighting matter? &
+%     Global-safe versus local-safe cost at $d=0.20$ \\
+%     Is \(\rho_{safe}=0.90\) special? &
+%     Local-safe cost with $\rho_{safe}\in\{0.85,0.90,0.95\}$ \\
+%     Is the heuristic only an evaluation trick? &
+%     Rho heuristics versus learned fixed-penalty and AIB policies \\
+%     \bottomrule
+%   \end{tabular}
+% \end{table}
 
 \paragraph{Full-test evaluation.}
 Figure~\ref{fig:sparse-control-fulltest-tradeoff} summarizes survival and the
@@ -310,12 +310,6 @@ fractions are reported in Appendix~\ref{app:sparse-control-full-test-tables}.
   rates and full-test survival, so it visualizes the chapter's two objectives.}
   \label{fig:sparse-control-fulltest-tradeoff}
 \end{figure}
-
-\paragraph{Metrics to report.}
-The main performance metric remains episodic survival, paired with the mean
-action-0 fraction across agents. Detailed sparsity and physical-diagnostic
-metrics (e.g., budget multipliers, topology-distance changes) are deferred to
-Appendix~\ref{app:sparse-control-full-test-tables}.
 
 \paragraph{Interpretation.}
 The current roadmap interpretation is that the gate is not the strongest

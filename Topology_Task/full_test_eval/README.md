@@ -152,6 +152,11 @@ It uses the same evaluation protocol and writes to separate `_mk128`
 directories. Internally, both launchers use the same validated implementation;
 `ACTION_SIZE=N` can also select another available `mkN` artifact.
 
+Here `mkN` means a top-k cap, not necessarily exactly `N` retained actions for
+every agent. If fewer candidates satisfy the reduction filters, an agent can
+have a smaller set. The launcher accepts non-empty sets up to the cap, verifies
+the configured per-agent cap when present, and prints the actual sizes.
+
 ## Output
 
 The important terminal line looks like:
