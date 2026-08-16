@@ -36,9 +36,9 @@ policy, while deterministic evaluation uses the greedy action by default:
 \[
   a_{i,t}^{eval}=\arg\max_a \pi_i(a\mid o_{i,t}).
 \]
-The sparse-control roadmap tests four ways to reduce unnecessary topology
+The sparse-control roadmap tests five ways to reduce unnecessary topology
 changes: evaluation-time rho overrides, an intervention-gated actor, fixed
-non-idle action penalties, and adaptive intervention budgets.
+non-idle action penalties, adaptive intervention budgets, and behavioral cloning from heuristics.
 \\
 \\
 The intervention gate separates whether to act from which action to execute,
@@ -205,15 +205,12 @@ relaxes. The default settings are \texttt{intervention\_budget\_lr = 0.02},
 \texttt{intervention\_budget\_max\_lambda = 10.0}.
 \\
 \\
-Three cost modes are used:
+Two cost modes are used:
 \begin{itemize}
   \item \textbf{Non-idle cost:}
   \(w_i(s_t)=1\), so
   \(c_i(s_t,a_{i,t})=\mathbf{1}[a_{i,t}\neq0]\). This is an adaptive version
   of a plain sparse-action penalty.
-  \item \textbf{Global-safe cost:}
-  \(w^{global}(s_t)=\sigma(k(\rho_{safe}-\rho_t^{global}))\). This penalizes
-  non-idle actions mostly when the whole grid is safe.
   \item \textbf{Local-safe cost:}
   \(w_i^{local}(s_t)=\sigma(k(\rho_{safe}-\rho_{i,t}^{local}))\). This is the
   decentralized version: safe local states make interventions expensive, while
@@ -235,11 +232,20 @@ The main local-budget ablation contains five conditions:
 \end{itemize}
 Comparing the local-safe and plain non-idle costs at $d=0.20$ isolates the
 value of local rho weighting.
-\\
-\\
-A complementary 15-run flat-actor ablation separates fixed versus adaptive coefficients,
-plain non-idle versus state-dependent costs, global versus local rho weighting,
-and rho-threshold sensitivity.
+
+\section{Behavioral Cloning from Heuristics}
+\label{subsec:sparse-control-bc}
+
+\paragraph{Implementation detail.}
+The evaluation-time rho heuristics (Section~\ref{subsec:sparse-control-heuristics}) produce highly sparse, safe behavior, but they require a manual override. To internalize this behavior into the policy weights, a teacher-student distillation approach is tested. The teacher is a MAPPO model running the local rho heuristic, and the student is trained via Behavioral Cloning (BC) to match the teacher's executed actions. The student is then evaluated without the heuristic override to see if it learned to voluntarily imitate the sparsity. Two balancing configurations are evaluated to manage the severe class imbalance caused by the teacher's high action-0 rate.
+
+\paragraph{Interpretation.}
+As reported in Appendix~\ref{app:sparse-control-full-test-tables}, the student policies reach roughly 91--92\% survival and 94--96\% sparsity. While this shows that sparse behavior can be partially distilled into the actor weights, the resulting student is weaker than the AIB methods and sacrifices a portion of the teacher's survival (97.1\%). Consequently, the distillation route is less reliable than natively learning the sparse objective through the Adaptive Intervention Budget.
+
+\section{Results}
+Figure~\ref{fig:sparse-control-fulltest-tradeoff} summarizes survival and the
+mean action-0 fraction across agents. Exact values and per-agent action-0
+fractions are reported in Appendix~\ref{app:sparse-control-full-test-tables}.
 
 \begin{table}[htbp]
   \centering
@@ -263,6 +269,8 @@ and rho-threshold sensitivity.
     Multiplier can grow if target is too strict \\
     AIB local-safe & Adaptive state-dependent reward penalty & No action override &
     Depends on the local rho safety-weight design \\
+    Behavioral cloning & Distills heuristic into actor weights & No action override &
+    Struggles with extreme action-0 class imbalance \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -295,12 +303,6 @@ and rho-threshold sensitivity.
 %   \end{tabular}
 % \end{table}
 
-\paragraph{Full-test evaluation.}
-Figure~\ref{fig:sparse-control-fulltest-tradeoff} summarizes survival and the
-mean action-0 fraction across agents. Exact values and per-agent action-0
-fractions are reported in Appendix~\ref{app:sparse-control-full-test-tables}.
-
-\clearpage
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.96\linewidth]{figures/sparse_control_fulltest_tradeoff.png}
@@ -324,7 +326,6 @@ adaptively, and uses a local state-dependent safety weight.
 Figure~\ref{fig:sparse-control-fulltest-tradeoff} also makes the main failure
 mode visible: high action-0 usage is not sufficient when the gate collapses and
 survival falls.
-
 
 \section{Preliminary WCCI Stress Test}
 \label{sec:sparse-wcci-stress-test}
@@ -377,7 +378,8 @@ of continuing with a fixed-width MLP actor on the larger grid. The next two
 chapters therefore introduce a size-independent graph representation and test
 its design choices. Chapter~\ref{ch:wcci-transfer} later returns to WCCI and
 isolates the confounded factors before studying cross-grid transfer.
-
+\\
+\\
 \begin{tcolorbox}[
   colframe=red!75!black,
   colback=red!5!white,

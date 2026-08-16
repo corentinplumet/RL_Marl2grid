@@ -152,6 +152,17 @@ It uses the same evaluation protocol and writes to separate `_mk128`
 directories. Internally, both launchers use the same validated implementation;
 `ACTION_SIZE=N` can also select another available `mkN` artifact.
 
+For the `mk512` artifact, preview and submit with:
+
+```bash
+DRY_RUN=true Topology_Task/full_test_eval/launch_shared_zero_shot_wcci_mk512_izar.sh
+Topology_Task/full_test_eval/launch_shared_zero_shot_wcci_mk512_izar.sh
+```
+
+The results and action summaries are written to separate `_mk512`
+directories. Slurm options can still be supplied through `SBATCH_*`
+environment variables, for example `SBATCH_EXCLUDE=i39`.
+
 Here `mkN` means a top-k cap, not necessarily exactly `N` retained actions for
 every agent. If fewer candidates satisfy the reduction filters, an agent can
 have a smaller set. The launcher accepts non-empty sets up to the cap, verifies
