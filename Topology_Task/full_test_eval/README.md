@@ -167,6 +167,15 @@ passes it as an explicit `sbatch --exclude` option:
 EXCLUDE_NODES=i39 Topology_Task/full_test_eval/launch_shared_zero_shot_wcci_mk512_izar.sh
 ```
 
+For the `mk1024` artifact, use the corresponding entry point:
+
+```bash
+EXCLUDE_NODES=i39 DRY_RUN=true Topology_Task/full_test_eval/launch_shared_zero_shot_wcci_mk1024_izar.sh
+EXCLUDE_NODES=i39 Topology_Task/full_test_eval/launch_shared_zero_shot_wcci_mk1024_izar.sh
+```
+
+Its summaries and action artifacts are isolated in `_mk1024` directories.
+
 Here `mkN` means a top-k cap, not necessarily exactly `N` retained actions for
 every agent. If fewer candidates satisfy the reduction filters, an agent can
 have a smaller set. A per-agent cap can also be below `N` when the agent's
