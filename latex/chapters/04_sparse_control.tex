@@ -1,25 +1,26 @@
 \chapter{Sparse Intervention Control}
 \label{ch:sparse-control}
 
-The preceding chapter optimized one quantity, survival on held-out chronics.
-This chapter changes the objective. A policy that keeps the grid
-alive by reconfiguring substations at every opportunity is not what a control
-room wants: interventions have an operational cost, and an agent that acts
-constantly is neither auditable nor trustworthy. The question here is whether
-the same decentralized agents can keep their survival while intervening rarely,
-locally, and mainly when the grid state makes an intervention necessary.
+The preceding chapter optimized survival on held-out chronics. This chapter
+introduces a secondary objective: sparsity. A policy that keeps the grid alive
+by reconfiguring substations at every opportunity is impractical for a control
+room: interventions carry operational costs, and an agent acting constantly is
+neither auditable nor trustworthy. The question is whether decentralized agents
+can maintain high survival while intervening rarely, locally, and only when necessary.
 \\
 \\
-The mechanisms are therefore evaluated on two axes at once, survival and how
-often the agents leave the do-nothing action. A mechanism that improves
-sparsity by collapsing survival has not solved the problem, and neither has one
-that keeps survival by never becoming sparse.
+In the literature, sparse activity is most often enforced by hard-coding a physical threshold to dictate when the agent is permitted to act. Instead of relying on an external override, this chapter attempts to make sparse intervention behavior natively learnable.
+\\
+\\
+Mechanisms are therefore evaluated on two competing axes: survival rate and
+intervention sparsity. An effective mechanism must improve sparsity without
+degrading survival.
 
 
 \paragraph{Question.}
 Can the agents keep high survival while behaving more like operators: acting
-rarely, acting locally, acting mainly when the grid state makes an intervention
-useful, and keeping the final policy decentralized?
+rarely andmainly when the grid state makes an intervention
+useful?
 
 \paragraph{Baseline and change.}
 This block starts from the flat decentralized MAPPO topology-control actor. For
@@ -176,15 +177,11 @@ objective already exists.
 
 \paragraph{Implementation detail.}
 The adaptive intervention budget turns sparse topology control into a local
-constraint. For each agent,
-\[
-  c_i(s_t,a_{i,t})=
-  \mathbf{1}[a_{i,t}\neq0]w_i(s_t),
-\]
-and the desired constraint is
-\[
-  \mathrm{E}_{\pi_i}\left[c_i(s_t,a_{i,t})\right]\le d.
-\]
+constraint. For each agent, the cost is
+\(c_i(s_t,a_{i,t}) = \mathbf{1}[a_{i,t}\neq0]w_i(s_t)\),
+and the desired constraint is \(\mathrm{E}_{\pi_i}\left[c_i(s_t,a_{i,t})\right]\le d\).
+\\
+\\
 The implemented rollout reward removes the constant term that does not affect
 the PPO action gradient:
 \[
@@ -315,12 +312,10 @@ fractions are reported in Appendix~\ref{app:sparse-control-full-test-tables}.
 \end{figure}
 
 \paragraph{Metrics to report.}
-The main performance metric remains episodic survival. It should be paired with
-sparsity and physical-diagnostic metrics: per-agent action-0 fractions,
-per-agent non-idle rates, the distribution of how many agents act
-simultaneously, intervention-budget multipliers, budget costs and violations,
-the rate of interventions in costly safe states, pre- and post-action max rho,
-and topology-distance changes.
+The main performance metric remains episodic survival, paired with the mean
+action-0 fraction across agents. Detailed sparsity and physical-diagnostic
+metrics (e.g., budget multipliers, topology-distance changes) are deferred to
+Appendix~\ref{app:sparse-control-full-test-tables}.
 
 \paragraph{Interpretation.}
 The current roadmap interpretation is that the gate is not the strongest
@@ -396,7 +391,8 @@ isolates the confounded factors before studying cross-grid transfer.
 ]
 \textbf{Objective:} Preserve survival while reducing unnecessary topology
 interventions.
-
+\\
+\\
 \textbf{Findings:}
 \begin{itemize}
   \item \textbf{Evaluation heuristics} reach 97--98\% survival with action 0 in
@@ -409,7 +405,7 @@ interventions.
   The gated variants are less reliable and can collapse to almost permanent
   no-op behavior.
 \end{itemize}
-
+\vspace{0.35cm}
 \textbf{Conclusion:} Sparse behavior can be learned on \texttt{bus14}, but the
 same MLP mechanisms remain weak on WCCI. This motivates the graph
 representation introduced next.

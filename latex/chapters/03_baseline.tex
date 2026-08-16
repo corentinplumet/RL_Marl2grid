@@ -1,33 +1,7 @@
 \chapter{Establishing a Baseline}
 \label{ch:baseline}
 
-This chapter establishes a robust flat-actor baseline for the IEEE 14-bus task.
-It first tunes a decentralized MLP-based MAPPO agent for stable training and
-high survival, then tests whether an initial bias toward the do-nothing action
-improves exploration. This isolates the training choices before
-Chapter~\ref{ch:sparse-control} changes the operational objective and the later
-graph chapters change the actor representation.
-
-% \section{How to Read This Chapter}
-% \label{sec:results-structure}
-
-% This chapter is organized as a sequence of experiment blocks, and the later
-% experimental chapters reuse the same pattern. Each block follows the same
-% structure:
-
-% \begin{enumerate}
-%   \item \textbf{Question.} What uncertainty or design choice does this test
-%   address?
-%   \item \textbf{Baseline and change.} Which run is the control, and what is
-%   changed in the comparison runs?
-%   \item \textbf{Protocol.} Which data split, checkpoint, seeds, and metric are
-%   used?
-%   \item \textbf{Implementation detail.} Which algorithmic, architectural, or
-%   mathematical change is being tested, when this is relevant?
-%   \item \textbf{Evidence.} Which table and figure summarize the result?
-%   \item \textbf{Interpretation.} What can be concluded, and what still needs to
-%   be verified?
-% \end{enumerate}
+This chapter establishes a robust MLP actor baseline for the IEEE 14-bus task.
 
 \section{Evaluation Protocol}
 \label{sec:results-evaluation-protocol}
@@ -35,34 +9,12 @@ graph chapters change the actor representation.
 All experiments use an 80/20 train/test chronic split. The 80\% training split is used for policy updates, while the 20\% test split estimates generalization. Evaluation rollouts run periodically during training using 10 episodes per split. 
 \\
 \\
-The primary performance metric is test episodic survival (expressed as a percentage), representing the fraction of evaluation episodes where the agent successfully prevents a blackout. Results are reported using seed-aggregated mean curves, with shaded regions indicating variability. Final evaluations report the performance of the checkpoint that achieved the highest test survival during training.
-
-\section{Experiment Index}
-\label{sec:results-experiment-index}
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Current result blocks and their role in the thesis.}
-  \label{tab:experiment-index}
-  \setlength{\tabcolsep}{4pt}
-  \begin{tabular}{L{0.2\textwidth}L{0.37\textwidth}L{0.36\textwidth}}
-    \toprule
-    Block & Main question & Primary evidence \\
-    \midrule
-    MLP baseline reruns & Which baseline training changes stabilize MAPPO? &
-    Table~\ref{tab:a0-core-summary}, Figures~\ref{fig:rerun-a0-pairwise}
-    and~\ref{fig:rerun-a0-all} \\
-    Initial do-nothing bias & Does biasing initial exploration toward do-nothing help? &
-    Table~\ref{tab:a0-bias-summary}, Figure~\ref{fig:rerun-a0-bias} \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+The primary performance metric is test episodic survival (expressed as a percentage), representing the fraction of evaluation timestep where the agent survives and successfully prevents a blackout. Results are reported using seed-aggregated mean curves, with shaded regions indicating variability. Final evaluations report the performance of the checkpoint that achieved the highest training survival.
 
 \section{IEEE 14-Bus Experiments}
 \label{sec:bus14-results}
 
-The initial PPO/MAPPO baseline from the MARL2Grid framework yielded unstable policies and low survival rates on the IEEE 14-bus topology-control task. The following experiments systematically test training and architectural modifications to establish a high-performing baseline.
+The initial MAPPO baseline from the MARL2Grid framework lead to unstable policies and low survival rates on the IEEE 14-bus topology-control task. The following experiments test training and architectural modifications to establish a high-performing baseline.
 
 \subsection{MLP Baseline}
 \label{subsec:a0-core-reruns}
@@ -76,8 +28,6 @@ We start from the MLP MAPPO baseline of the MARL2Grid framework and test several
 stabilization choices:
 
 \begin{itemize}
-  \item increasing actor and critic capacity from two hidden layers to three
-  hidden layers;
   \item using reward normalization;
   \item changing the critic update so that the critic is updated once for the
   whole batch instead of once per agent;
@@ -110,12 +60,11 @@ stabilization choices:
 
 \paragraph{Evidence.}
 Table~\ref{tab:a0-core-summary} reports final and peak survival for the core
-ablations. Figure~\ref{fig:rerun-a0-pairwise} shows each comparison against the
-\texttt{Optimized MLP Baseline}, and Figure~\ref{fig:rerun-a0-all} overlays all
+ablations. Figure~\ref{fig:rerun-a0-all} overlays all
 core MLP baseline curves.
 
 \paragraph{Interpretation.}
-The \texttt{Optimized MLP Baseline}, which combines three hidden layers, reward normalization, and an optimized critic update, achieves the best performance and convergence speed, yielding the highest and most stable final survival (\(\sim\)93\%). Removing or reducing any of these three elements, using a smaller architecture, disabling reward normalization, or reverting to a non-optimized critic update, results in a drop in either learning speed or final survival. The original unoptimized baseline fails entirely to learn a competitive policy. Because the \texttt{Optimized MLP Baseline} consistently outperforms the ablations, it is established as the standard reference for all subsequent comparisons.
+The \texttt{Optimized MLP Baseline}, which combines reward normalization and an optimized critic update, achieves the best performance and convergence speed, yielding the highest and most stable final survival (\(\sim\)93\%). Removing or reducing any of these three elements, using a smaller architecture, disabling reward normalization, or reverting to a non-optimized critic update, results in a drop in either learning speed or final survival. The original unoptimized baseline fails entirely to learn a competitive policy. Because the \texttt{Optimized MLP Baseline} consistently outperforms the ablations, it is established as the standard reference for all subsequent comparisons.
 
 \begin{table}[H]
   \centering
@@ -154,12 +103,12 @@ The \texttt{Optimized MLP Baseline}, which combines three hidden layers, reward 
   \label{fig:rerun-a0-all}
 \end{figure}
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\textwidth]{figures/rerun_a0_core_pairwise_comparisons.png}
-  \caption{Pairwise MLP baseline rerun comparisons against the \texttt{Optimized MLP Baseline}.}
-  \label{fig:rerun-a0-pairwise}
-\end{figure}
+% \begin{figure}[H]
+%   \centering
+%   \includegraphics[width=\textwidth]{figures/rerun_a0_core_pairwise_comparisons.png}
+%   \caption{Pairwise MLP baseline rerun comparisons against the \texttt{Optimized MLP Baseline}.}
+%   \label{fig:rerun-a0-pairwise}
+% \end{figure}
 
 \begin{table}[H]
   \centering
@@ -179,8 +128,6 @@ The \texttt{Optimized MLP Baseline}, which combines three hidden layers, reward 
   \end{tabular}
   }
 \end{table}
-
-% \hl{I need to run a full test eval on the best checkpoint of that MLP baseline}
 
 \subsection{Initial Do-Nothing Bias}
 \label{subsec:a0-bias-reruns}
@@ -236,12 +183,10 @@ The current conclusion is that adding an initialization bias is generally hurtfu
   \label{fig:rerun-a0-bias}
 \end{figure}
 
-% \hl{I might need to run a full test eval of these runs}
-% \hl{maybe i need to rerrun all these runs because they don't go/stop at 15M steps}
-
 \begin{tcolorbox}[colframe=red!75!black, colback=red!5!white, title=Chapter Summary]
 \textbf{Objective:} Establish a stable, high-performing flat MAPPO baseline.
-
+\\
+\\
 \textbf{Findings:}
 \begin{itemize}
     \item \textbf{MLP optimization:} Hyperparameter tuning, reward normalization,
@@ -251,7 +196,7 @@ The current conclusion is that adding an initialization bias is generally hurtfu
     non-monotonic; it is not a reliable substitute for learning when to
     intervene.
 \end{itemize}
-
+\vspace{0.35cm}
 \textbf{Conclusion:} The tuned flat actor is a strong survival baseline. The
 next step is to ask whether it can behave more like an operator by intervening
 less often without losing that survival, which is the subject of

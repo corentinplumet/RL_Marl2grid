@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Re-evaluate every NL/NLS shared-candidate checkpoint zero-shot on WCCI with
-# exactly 64 target actions per agent. The original mk256 results are untouched.
+# Re-evaluate every NL/NLS shared-candidate checkpoint zero-shot on WCCI.
+# ACTION_SIZE defaults to 64; result directories are separated by mk size.
 
 set -euo pipefail
 
@@ -8,7 +8,12 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 task_dir="$(cd "$script_dir/.." && pwd)"
 repo_dir="$(cd "$task_dir/.." && pwd)"
 
-action_space_rel="outputs/teacher_student_datasets/wcci_full2048a_90_v3/metadata/reduced_action_space_wcci_full2048a_90_v3_mk64.json"
+action_size="${ACTION_SIZE:-64}"
+if [[ ! "$action_size" =~ ^[1-9][0-9]*$ ]]; then
+  echo "ACTION_SIZE must be a positive integer, got: $action_size" >&2
+  exit 1
+fi
+action_space_rel="outputs/teacher_student_datasets/wcci_full2048a_90_v3/metadata/reduced_action_space_wcci_full2048a_90_v3_mk${action_size}.json"
 action_space_abs="$task_dir/$action_space_rel"
 dry_run="${DRY_RUN:-false}"
 force_results="${FORCE_RESULTS:-false}"
@@ -55,16 +60,16 @@ for family in NL NLS; do
   if [[ "$family" == NL ]]; then
     checkpoint_dir="checkpoint/no_leak/shared/NL_cas_hl_shared"
     source_prefix="cas_hl_NL_shared"
-    result_group="NL_cas_hl_shared_wcci36_mk64"
+    result_group="NL_cas_hl_shared_wcci36_mk${action_size}"
   else
     # This is the scaled Izar family used by the existing mk256 zero-shot run.
     checkpoint_dir="checkpoint/no_leak/shared/NL_cas_hl_scaled_shared_izar"
     source_prefix="cas_hl_NLS_izar_shared"
-    result_group="NLS_cas_hl_izar_shared_wcci36_mk64"
+    result_group="NLS_cas_hl_izar_shared_wcci36_mk${action_size}"
   fi
 
   for variant in "${variants[@]}"; do
-    label="zs64_${family}_${variant}"
+    label="zs${action_size}_${family}_${variant}"
     if ! matches_filters "$label" "$@"; then
       continue
     fi
@@ -72,8 +77,8 @@ for family in NL NLS; do
 
     source_name="${source_prefix}_${variant}_s0"
     checkpoint="${checkpoint_dir}/best_test_${source_name}.tar"
-    output="outputs/full_test_eval/shared/${result_group}/best_test_${source_name}_mk64.json"
-    action_dir="outputs/full_test_eval_actions/shared/${result_group}/best_test_${source_name}_mk64"
+    output="outputs/full_test_eval/shared/${result_group}/best_test_${source_name}_mk${action_size}.json"
+    action_dir="outputs/full_test_eval_actions/shared/${result_group}/best_test_${source_name}_mk${action_size}"
 
     if [[ -f "$task_dir/$output" ]] && ! is_true "$force_results"; then
       echo "Skip existing result: $output (FORCE_RESULTS=true to rerun)"
@@ -101,19 +106,20 @@ fi
 
 if ! is_true "$dry_run"; then
   if [[ ! -f "$action_space_abs" ]]; then
-    echo "Missing mk64 reduced action space: $action_space_abs" >&2
+    echo "Missing mk${action_size} reduced action space: $action_space_abs" >&2
     echo "Generate it from the repository root with:" >&2
-    echo "  TOP_KS=64 Topology_Task/teacher_student/reduce_wcci_action_space_sizes.sh" >&2
+    echo "  TOP_KS=${action_size} Topology_Task/teacher_student/reduce_wcci_action_space_sizes.sh" >&2
     exit 1
   fi
 
-  # Do not launch any jobs unless the artifact really contains 64 actions for
+  # Do not launch any jobs unless the artifact contains the requested count for
   # every target agent; a filename alone is not sufficient evidence.
-  python - "$action_space_abs" <<'PY'
+  python - "$action_space_abs" "$action_size" <<'PY'
 import json
 import sys
 
 path = sys.argv[1]
+expected = int(sys.argv[2])
 with open(path, encoding="utf-8") as handle:
     reduction = json.load(handle)
 agents = reduction.get("agents", {})
@@ -123,12 +129,12 @@ sizes = {
     agent: int(payload.get("selected_action_size", -1))
     for agent, payload in sorted(agents.items())
 }
-invalid = {agent: size for agent, size in sizes.items() if size != 64}
+invalid = {agent: size for agent, size in sizes.items() if size != expected}
 if invalid:
     raise SystemExit(
-        f"Expected exactly 64 actions per agent in {path}; got {sizes}"
+        f"Expected exactly {expected} actions per agent in {path}; got {sizes}"
     )
-print("Validated mk64 target action space: " + ", ".join(
+print(f"Validated mk{expected} target action space: " + ", ".join(
     f"{agent}={size}" for agent, size in sizes.items()
 ))
 PY
@@ -141,7 +147,7 @@ PY
   done
 fi
 
-echo "========== Shared zero-shot WCCI mk64 =========="
+echo "========== Shared zero-shot WCCI mk${action_size} =========="
 echo "Matched:             $matched"
 echo "Skipped existing:    $skipped_existing"
 echo "Planned submissions: ${#plan_labels[@]}"
@@ -187,7 +193,7 @@ for index in "${!plan_labels[@]}"; do
 done
 
 if is_true "$dry_run"; then
-  echo "Validated ${#plan_labels[@]} mk64 submission command(s)."
+  echo "Validated ${#plan_labels[@]} mk${action_size} submission command(s)."
 else
-  echo "Submitted ${#plan_labels[@]} mk64 zero-shot evaluation job(s)."
+  echo "Submitted ${#plan_labels[@]} mk${action_size} zero-shot evaluation job(s)."
 fi

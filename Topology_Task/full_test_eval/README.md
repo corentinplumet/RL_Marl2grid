@@ -140,6 +140,18 @@ Existing results are skipped unless `FORCE_RESULTS=true` is set. Exact
 per-step action traces are disabled by default, as in the original evaluation;
 set `SAVE_ACTION_TRACE=true` if they are needed.
 
+For the corresponding 128-actions-per-agent evaluation, use the dedicated
+entry point (assuming the `mk128` JSON already exists):
+
+```bash
+DRY_RUN=true Topology_Task/full_test_eval/launch_shared_zero_shot_wcci_mk128_izar.sh
+Topology_Task/full_test_eval/launch_shared_zero_shot_wcci_mk128_izar.sh
+```
+
+It uses the same evaluation protocol and writes to separate `_mk128`
+directories. Internally, both launchers use the same validated implementation;
+`ACTION_SIZE=N` can also select another available `mkN` artifact.
+
 ## Output
 
 The important terminal line looks like:
