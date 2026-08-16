@@ -139,24 +139,39 @@ if invalid:
     raise SystemExit(
         f"Expected between 1 and {expected} actions per agent in {path}; got {sizes}"
     )
-configured_caps = reduction.get("top_k_by_agent", {})
-wrong_caps = {
-    agent: configured_caps.get(agent)
-    for agent in sizes
-    if configured_caps and int(configured_caps.get(agent, -1)) != expected
-}
-if wrong_caps:
+declared_top_k = int(reduction.get("top_k", -1))
+if declared_top_k != expected:
     raise SystemExit(
-        f"Expected top-k cap {expected} for every agent in {path}; "
+        f"Expected top_k={expected} in {path}; got top_k={declared_top_k}"
+    )
+configured_caps = {
+    agent: int(cap)
+    for agent, cap in reduction.get("top_k_by_agent", {}).items()
+}
+invalid_caps = {
+    agent: cap
+    for agent, cap in configured_caps.items()
+    if cap <= 0 or cap > expected
+}
+if invalid_caps:
+    raise SystemExit(
+        f"Per-agent caps must be between 1 and {expected} in {path}; "
         f"got {configured_caps}"
     )
+over_cap = {
+    agent: {"selected": size, "cap": configured_caps[agent]}
+    for agent, size in sizes.items()
+    if agent in configured_caps and size > configured_caps[agent]
+}
+if over_cap:
+    raise SystemExit(f"Selected action sizes exceed per-agent caps in {path}: {over_cap}")
 print(f"Validated mk{expected} target action space: " + ", ".join(
     f"{agent}={size}" for agent, size in sizes.items()
 ))
 undersized = {agent: size for agent, size in sizes.items() if size < expected}
 if undersized:
     print(
-        f"Warning: mk{expected} is a top-k cap; fewer candidates qualified for "
+        f"Warning: mk{expected} is a maximum; this artifact retains fewer for "
         + ", ".join(f"{agent} ({size})" for agent, size in undersized.items())
     )
 PY

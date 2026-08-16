@@ -165,8 +165,9 @@ environment variables, for example `SBATCH_EXCLUDE=i39`.
 
 Here `mkN` means a top-k cap, not necessarily exactly `N` retained actions for
 every agent. If fewer candidates satisfy the reduction filters, an agent can
-have a smaller set. The launcher accepts non-empty sets up to the cap, verifies
-the configured per-agent cap when present, and prints the actual sizes.
+have a smaller set. A per-agent cap can also be below `N` when the agent's
+original action space is smaller. The launcher accepts non-empty sets up to the
+global and per-agent caps and prints the actual sizes.
 
 ## Output
 
