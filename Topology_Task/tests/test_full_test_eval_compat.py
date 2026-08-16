@@ -6,6 +6,7 @@ import torch as th
 from full_test_eval.evaluate_checkpoint import (
     _apply_transfer_target_overrides,
     _configure_legacy_connected_feature,
+    _transfer_mode,
 )
 
 
@@ -78,6 +79,20 @@ class FullTestEvalCompatibilityTest(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "share_candidate_scorer=true"):
             _apply_transfer_target_overrides(args, cli)
+
+    def test_transfer_mode_distinguishes_same_grid_action_space_retarget(self):
+        self.assertEqual(
+            _transfer_mode(True, "bus36_wcci_nomaint", "bus36_wcci_nomaint"),
+            "same_grid_action_space",
+        )
+        self.assertEqual(
+            _transfer_mode(True, "bus14", "bus36_wcci_nomaint"),
+            "cross_grid",
+        )
+        self.assertEqual(
+            _transfer_mode(False, "bus14", "bus14"),
+            "none",
+        )
 
 
 if __name__ == "__main__":

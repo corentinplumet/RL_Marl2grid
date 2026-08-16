@@ -563,6 +563,15 @@ def _apply_transfer_target_overrides(
     return args, True, source_env_id
 
 
+def _transfer_mode(enabled: bool, source_env_id: str, target_env_id: str) -> str:
+    """Distinguish cross-grid transfer from a same-grid action-space retarget."""
+    if not enabled:
+        return "none"
+    if str(source_env_id).strip() == str(target_env_id).strip():
+        return "same_grid_action_space"
+    return "cross_grid"
+
+
 def _configure_obs_normalization(
     args: Namespace,
     obs_stats: Dict[str, Any],
@@ -927,7 +936,10 @@ def main() -> None:
     args, zero_shot_transfer, source_env_id = _apply_transfer_target_overrides(
         args, cli
     )
-    if zero_shot_transfer and cli.obs_normalization != "disable":
+    transfer_mode = _transfer_mode(
+        zero_shot_transfer, source_env_id, str(getattr(args, "env_id", ""))
+    )
+    if transfer_mode == "cross_grid" and cli.obs_normalization != "disable":
         raise ValueError(
             "Cross-grid evaluation must use --obs-normalization disable. The "
             "checkpoint's flat bus14 normalization arrays do not match WCCI; "
@@ -998,7 +1010,10 @@ def main() -> None:
     print(f"Checkpoint: {_repo_relative(checkpoint_path)}")
     print(f"Checkpoint global_step: {checkpoint_step}")
     if zero_shot_transfer:
-        print(f"Zero-shot transfer: {source_env_id} -> {args.env_id}")
+        if transfer_mode == "same_grid_action_space":
+            print(f"Same-grid action-space retarget: {source_env_id}")
+        else:
+            print(f"Zero-shot transfer: {source_env_id} -> {args.env_id}")
         print(f"Target reduced action space: {args.reduced_action_space}")
         print(f"Transfer report: {transfer_report}")
     print(f"Evaluating split: {cli.split}")
@@ -1025,6 +1040,7 @@ def main() -> None:
         "checkpoint": str(checkpoint_path),
         "checkpoint_global_step": checkpoint_step,
         "zero_shot_transfer": bool(zero_shot_transfer),
+        "transfer_mode": transfer_mode,
         "source_env_id": source_env_id,
         "target_env_id": str(args.env_id),
         "target_reduced_action_space": str(
