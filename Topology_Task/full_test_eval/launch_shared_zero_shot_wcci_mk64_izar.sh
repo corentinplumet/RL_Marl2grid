@@ -107,14 +107,16 @@ if [[ ${#plan_labels[@]} -eq 0 ]]; then
   exit 0
 fi
 
-if ! is_true "$dry_run"; then
-  if [[ ! -f "$action_space_abs" ]]; then
+if [[ ! -f "$action_space_abs" ]]; then
+  if ! is_true "$dry_run"; then
     echo "Missing mk${action_size} reduced action space: $action_space_abs" >&2
     echo "Generate it from the repository root with:" >&2
     echo "  TOP_KS=${action_size} Topology_Task/teacher_student/reduce_wcci_action_space_sizes.sh" >&2
     exit 1
+  else
+    echo "Dry-run warning: mk${action_size} artifact is not available locally; skipping its content validation." >&2
   fi
-
+else
   # The reducer interprets top-k as a cap: an agent can contain fewer actions
   # when fewer candidates satisfy the ranking filters. Reject empty or
   # oversized sets, but accept and report valid undersized sets.
@@ -133,38 +135,64 @@ sizes = {
     agent: int(payload.get("selected_action_size", -1))
     for agent, payload in sorted(agents.items())
 }
+original_sizes = {
+    agent: int(payload.get("original_action_size", -1))
+    for agent, payload in sorted(agents.items())
+}
 invalid = {
     agent: size
     for agent, size in sizes.items()
-    if size <= 0 or size > expected
+    if size <= 0
+    or size > expected
+    or original_sizes[agent] <= 0
+    or size > original_sizes[agent]
 }
 if invalid:
     raise SystemExit(
-        f"Expected between 1 and {expected} actions per agent in {path}; got {sizes}"
+        f"Invalid selected/original action sizes in {path}: "
+        f"selected={sizes}, original={original_sizes}, requested_cap={expected}"
     )
 declared_top_k = int(reduction.get("top_k", -1))
-if declared_top_k != expected:
-    raise SystemExit(
-        f"Expected top_k={expected} in {path}; got top_k={declared_top_k}"
-    )
 configured_caps = {
     agent: int(cap)
     for agent, cap in reduction.get("top_k_by_agent", {}).items()
 }
-invalid_caps = {
-    agent: cap
-    for agent, cap in configured_caps.items()
-    if cap <= 0 or cap > expected
-}
-if invalid_caps:
-    raise SystemExit(
-        f"Per-agent caps must be between 1 and {expected} in {path}; "
-        f"got {configured_caps}"
-    )
+if configured_caps:
+    missing_caps = sorted(set(sizes) - set(configured_caps))
+    if missing_caps:
+        raise SystemExit(f"Missing per-agent caps in {path}: {missing_caps}")
+    expected_caps = {
+        agent: min(expected, original_sizes[agent])
+        for agent in sizes
+    }
+    wrong_caps = {
+        agent: {"configured": configured_caps[agent], "expected": expected_caps[agent]}
+        for agent in sizes
+        if configured_caps[agent] != expected_caps[agent]
+    }
+    if wrong_caps:
+        raise SystemExit(
+            f"Per-agent caps do not represent mk{expected} in {path}: {wrong_caps}"
+        )
+    if declared_top_k != expected:
+        print(
+            f"Warning: global top_k={declared_top_k} is stale; validated the "
+            f"explicit mk{expected} per-agent caps instead."
+        )
+else:
+    if declared_top_k != expected:
+        raise SystemExit(
+            f"Expected top_k={expected} in {path}; got top_k={declared_top_k} "
+            "and no explicit top_k_by_agent override."
+        )
+    configured_caps = {
+        agent: min(expected, original_sizes[agent])
+        for agent in sizes
+    }
 over_cap = {
     agent: {"selected": size, "cap": configured_caps[agent]}
     for agent, size in sizes.items()
-    if agent in configured_caps and size > configured_caps[agent]
+    if size > configured_caps[agent]
 }
 if over_cap:
     raise SystemExit(f"Selected action sizes exceed per-agent caps in {path}: {over_cap}")
@@ -178,7 +206,9 @@ if undersized:
         + ", ".join(f"{agent} ({size})" for agent, size in undersized.items())
     )
 PY
+fi
 
+if ! is_true "$dry_run"; then
   for checkpoint in "${plan_checkpoints[@]}"; do
     if [[ ! -f "$task_dir/$checkpoint" ]]; then
       echo "Missing source checkpoint: $task_dir/$checkpoint" >&2

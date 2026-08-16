@@ -175,12 +175,20 @@ EXCLUDE_NODES=i39 Topology_Task/full_test_eval/launch_shared_zero_shot_wcci_mk10
 ```
 
 Its summaries and action artifacts are isolated in `_mk1024` directories.
+If an action-space artifact exists during `DRY_RUN`, its metadata and effective
+per-agent sizes are validated before the submission commands are printed.
 
 Here `mkN` means a top-k cap, not necessarily exactly `N` retained actions for
 every agent. If fewer candidates satisfy the reduction filters, an agent can
 have a smaller set. A per-agent cap can also be below `N` when the agent's
 original action space is smaller. The launcher accepts non-empty sets up to the
 global and per-agent caps and prints the actual sizes.
+
+When `top_k_by_agent` is present, those explicit caps are authoritative. This
+supports artifacts where agents with small original spaces are capped at their
+full sizes and where the scalar `top_k` field is stale. The launcher validates
+each explicit cap against `min(N, original_action_size)` and reports a warning
+for the stale scalar instead of rejecting an otherwise valid artifact.
 
 ## Output
 
