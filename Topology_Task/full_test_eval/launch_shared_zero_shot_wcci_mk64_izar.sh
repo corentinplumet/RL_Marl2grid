@@ -18,6 +18,9 @@ action_space_abs="$task_dir/$action_space_rel"
 dry_run="${DRY_RUN:-false}"
 force_results="${FORCE_RESULTS:-false}"
 save_action_trace="${SAVE_ACTION_TRACE:-false}"
+# Convert either launcher variable into an explicit sbatch command-line option.
+# Some Slurm installations do not honor SBATCH_EXCLUDE from the environment.
+exclude_nodes="${EXCLUDE_NODES:-${SBATCH_EXCLUDE:-}}"
 
 variants=(
   mean_f0_a0h0
@@ -189,6 +192,7 @@ echo "Matched:             $matched"
 echo "Skipped existing:    $skipped_existing"
 echo "Planned submissions: ${#plan_labels[@]}"
 echo "Save action trace:   $save_action_trace"
+echo "Excluded nodes:      ${exclude_nodes:-none}"
 echo "DRY_RUN:             $dry_run"
 echo "================================================"
 
@@ -199,8 +203,11 @@ for index in "${!plan_labels[@]}"; do
   output="${plan_outputs[$index]}"
   action_dir="${plan_action_dirs[$index]}"
 
-  command=(
-    sbatch
+  command=(sbatch)
+  if [[ -n "$exclude_nodes" ]]; then
+    command+=("--exclude=$exclude_nodes")
+  fi
+  command+=(
     "--job-name=$label"
     Topology_Task/full_test_eval/job_full_test_eval_izar.sh
     --checkpoint "$checkpoint"

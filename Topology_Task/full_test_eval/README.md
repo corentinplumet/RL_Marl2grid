@@ -160,8 +160,12 @@ Topology_Task/full_test_eval/launch_shared_zero_shot_wcci_mk512_izar.sh
 ```
 
 The results and action summaries are written to separate `_mk512`
-directories. Slurm options can still be supplied through `SBATCH_*`
-environment variables, for example `SBATCH_EXCLUDE=i39`.
+directories. To avoid a problematic node, set `EXCLUDE_NODES`; the launcher
+passes it as an explicit `sbatch --exclude` option:
+
+```bash
+EXCLUDE_NODES=i39 Topology_Task/full_test_eval/launch_shared_zero_shot_wcci_mk512_izar.sh
+```
 
 Here `mkN` means a top-k cap, not necessarily exactly `N` retained actions for
 every agent. If fewer candidates satisfy the reduction filters, an agent can
