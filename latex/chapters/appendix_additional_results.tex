@@ -28,8 +28,8 @@ corresponding training-curve and parameter-count diagnostics.
   \centering
   \small
   \caption{Screen A. Full-test survival of the best checkpoint, one seed per
-  cell, by message-passing depth and encoder width. The reference depth and
-  width used by every other screen is \texttt{mp2\_h128}.}
+  cell, by message-passing depth and encoder width. Screen B reuses
+  \texttt{mp2\_h128} as its all-visible/mean reference.}
   \label{tab:depth-width-grid}
   \setlength{\tabcolsep}{6pt}
   \begin{tabular}{lcccc}
@@ -38,14 +38,11 @@ corresponding training-curve and parameter-count diagnostics.
     \cmidrule(lr){2-5}
     Layers $K$ & 16 & 32 & 64 & 128 \\
     \midrule
-    1 & \textbf{98.68} & 97.07 & 96.54 & 84.18 \\
-    2 & 84.19 & 67.39 & 68.38 & 96.66 \\
-    3 & 20.50 & 93.39 & 92.97 & 100.00\textsuperscript{\dag} \\
+    1 & 84.02 & 92.72 & 65.52 & 92.96 \\
+    2 & 92.12 & 91.37 & 53.38 & 94.72 \\
+    3 & 89.11 & \textbf{97.80} & 65.57 & 86.48 \\
     \bottomrule
   \end{tabular}
-  \\[0.4em]
-  {\small \textsuperscript{\dag}Best checkpoint selected at 0.17M steps; see
-  Section~\ref{sec:screen-depth-width}.}
 \end{table}
 
 \begin{table}[H]
@@ -60,49 +57,61 @@ corresponding training-curve and parameter-count diagnostics.
     Level & Mean (\%) & Min (\%) & Max (\%) \\
     \midrule
     \multicolumn{4}{l}{\emph{Message-passing depth}} \\
-    $K=1$ & 94.12 & 84.18 & 98.68 \\
-    $K=2$ & 79.15 & 67.39 & 96.66 \\
-    $K=3$ & 76.71 & 20.50 & 100.00 \\
+    $K=1$ & 83.80 & 65.52 & 92.96 \\
+    $K=2$ & 82.90 & 53.38 & 94.72 \\
+    $K=3$ & 84.74 & 65.57 & 97.80 \\
     \midrule
     \multicolumn{4}{l}{\emph{Encoder width}} \\
-    $d_h=16$ & 67.79 & 20.50 & 98.68 \\
-    $d_h=32$ & 85.95 & 67.39 & 97.07 \\
-    $d_h=64$ & 85.96 & 68.38 & 96.54 \\
-    $d_h=128$ & 93.61 & 84.18 & 100.00 \\
+    $d_h=16$ & 88.42 & 84.02 & 92.12 \\
+    $d_h=32$ & 93.97 & 91.37 & 97.80 \\
+    $d_h=64$ & 61.49 & 53.38 & 65.57 \\
+    $d_h=128$ & 91.39 & 86.48 & 94.72 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\linewidth]{figures/gs_s3dw_width_within_depth.png}
+  \includegraphics[width=\linewidth]{figures/nl_s3dw_width_within_depth.png}
   \caption{Screen A. Test episodic survival during training, one panel per
-  message-passing depth, with the four widths compared inside each panel.}
+  message-passing depth, with the four widths compared inside each panel.
+  Restarted runs use the canonical history in which the continuation replaces
+  the overlapping post-checkpoint branch.}
   \label{fig:depth-width-curves}
 \end{figure}
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.92\linewidth]{figures/gs_s3dw_capacity_vs_survival.png}
+  \includegraphics[width=0.92\linewidth]{figures/nl_s3dw_capacity_vs_survival.png}
   \caption{Screen A. Full-test survival against actor parameter count on a
   logarithmic axis, joined within each depth. The grid spans 83.6k to 244.9k
   actor parameters, a factor of three.}
   \label{fig:depth-width-cost}
 \end{figure}
 
-\section{Screen B: Encoder Operator and Readout}
+\section{Screen B: Graph Readout Scope and Reducer}
 \label{app:screen-b-additional-results}
 
-Figure~\ref{fig:encoder-pooling-curves} complements the endpoint comparison in
-Table~\ref{tab:encoder-pooling-grid} with the training trajectories of the four
-encoder--readout configurations.
+Figures~\ref{fig:encoder-pooling-curves} and
+\ref{fig:encoder-pooling-fulltest} complement the endpoint comparison in
+Table~\ref{tab:encoder-pooling-grid} with the eight training trajectories and
+the full-test interaction between readout scope and reducer.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.85\linewidth]{figures/gs_s3p_curves.png}
-  \caption{Screen B. Smoothed training episodic survival curves by encoder and
-  readout configuration (Seed 0).}
+  \includegraphics[width=0.94\linewidth]{figures/nl_s3ep_curves.png}
+  \caption{Screen B. Smoothed training episodic survival curves by readout
+  scope and reducer (seed 0).}
   \label{fig:encoder-pooling-curves}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.78\linewidth]{figures/nl_s3ep_fulltest_interaction.png}
+  \caption{Screen B. Full-test survival of each best checkpoint. Connecting
+  the two reducers within a scope makes the scope--reducer interaction visible;
+  energized-only readout leads under both reductions.}
+  \label{fig:encoder-pooling-fulltest}
 \end{figure}
 
 \section{Screen C: Structural Augmentations of the Busbar Graph}

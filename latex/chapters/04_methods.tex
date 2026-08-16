@@ -1595,11 +1595,14 @@ choices enter one candidate score.
     \input{figures/candidate_action_scoring_pipeline.tex}%
   }
   \caption[Candidate-action scoring pipeline]{Candidate-action scoring for an
-  endpoint-move candidate. The encoder provides the global graph embedding
-  $\mathbf z_a$ and physical node states $\mathbf H$. Violet outlines mark the
-  only rows gathered for the local context: both busbars of the modified
-  substation and the touched explicit-line node. One pooling construction then
-  produces $\mathbf c_j$. The static descriptor
+  endpoint-move candidate. Stage~1 is the shared GNN encoder, given in full in
+  Figure~\ref{fig:graph-actor-pipeline}: it maps the local graph to node states
+  $\mathbf H$, and the same stack yields the global embedding $\mathbf z_a$ by
+  masked readout and projection, so the two inputs to the scorer come from one
+  set of weights rather than two. In stage~2 the violet outlines mark the only
+  rows gathered from $\mathbf H$ for the local context: both busbars of the
+  modified substation and the touched explicit-line node. One pooling
+  construction then produces $\mathbf c_j$. The static descriptor
   $\boldsymbol\phi_j$ may be appended before the shared non-idle scorer. The
   idle action uses either zero local context in that scorer or a dedicated
   scorer.}

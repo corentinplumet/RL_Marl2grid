@@ -63,6 +63,40 @@ class ContinuationMergeTests(unittest.TestCase):
             run_re.fullmatch("gs_s3dw_bus_n0_none_e0n0v0_mp3_h32_s1")
         )
 
+    def test_direct_s3dw_profile_recognizes_no_leakage_names(self):
+        run_re = MERGE_PROFILES["nl_s3dw_direct"]["base_run_re"]
+        self.assertIsNotNone(
+            run_re.fullmatch("nl_s3dw_bus_n0_none_e0n0v0_mp3_h32_s0")
+        )
+        self.assertIsNone(
+            run_re.fullmatch("gs_s3dw_bus_n0_none_e0n0v0_mp3_h32_s0")
+        )
+
+    def test_direct_sync_continuation_suffix_pairs_through_resume_name(self):
+        with TemporaryDirectory() as temporary_dir:
+            root = Path(temporary_dir)
+            base_name = "nl_s3dw_bus_n0_none_e0n0v0_mp1_h16_s0"
+            base = _write_run(
+                root,
+                name=base_name,
+                run_id="base-id",
+                steps=[0, 1],
+                values=[0.0, 1.0],
+            )
+            continuation = _write_run(
+                root,
+                name=f"{base_name}_continuation",
+                run_id=base_name,
+                steps=[1, 2],
+                values=[10.0, 20.0],
+                config={"resume_run_name": base_name},
+            )
+
+            self.assertTrue(continuation["is_continuation"])
+            self.assertEqual(continuation["parent_name"], base_name)
+            pairs = _pair_continuations([base], [continuation])
+            self.assertEqual(pairs["base-id"], [continuation])
+
     def test_continuation_replaces_overlap_and_keeps_canonical_identity(self):
         with TemporaryDirectory() as temporary_dir:
             root = Path(temporary_dir)

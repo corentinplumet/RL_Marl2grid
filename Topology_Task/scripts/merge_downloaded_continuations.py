@@ -35,6 +35,16 @@ MERGE_PROFILES = {
             r"mp[123]_h(?:16|32|64|128)_s0$"
         ),
     },
+    # Direct ``wandb sync`` uploads retained the no-leakage ``nl_`` names and
+    # used a legacy ``_continuation`` display-name suffix instead of the
+    # explicit provenance fields added by publish_continuation_runs.py.
+    "nl_s3dw_direct": {
+        "group_dir": "nl_s3dw",
+        "base_run_re": re.compile(
+            r"^nl_s3dw_bus_n0_none_e0n0v0_"
+            r"mp[123]_h(?:16|32|64|128)_s0$"
+        ),
+    },
 }
 FIXED_COLUMNS = {
     "run_name",
@@ -128,7 +138,12 @@ def _identity(run_dir: Path) -> dict[str, Any]:
         name = run_dir.name.split("__", 1)[0]
     if not run_id:
         run_id = run_dir.name.rsplit("__", 1)[-1]
-    continuation = bool(config.get("is_continuation")) or "[continuation " in name
+    continuation = (
+        bool(config.get("is_continuation"))
+        or "[continuation " in name
+        or name.endswith("_continuation")
+    )
+    resume_parent_name = str(config.get("resume_run_name") or "") if continuation else ""
     return {
         "run_dir": run_dir,
         "name": name,
@@ -138,10 +153,21 @@ def _identity(run_dir: Path) -> dict[str, Any]:
         "metadata": metadata,
         "is_continuation": continuation,
         "parent_id": str(config.get("continuation_of_run_id") or ""),
-        "parent_name": str(config.get("continuation_of_run_name") or ""),
+        "parent_name": str(
+            config.get("continuation_of_run_name") or resume_parent_name
+        ),
         "declared_start": config.get("continuation_start_step"),
         "declared_end": config.get("continuation_end_step"),
     }
+
+
+def _fallback_parent_name(continuation_name: str) -> str:
+    """Recover a base display name from older continuation naming schemes."""
+    if " [continuation " in continuation_name:
+        return continuation_name.split(" [continuation ", 1)[0]
+    if continuation_name.endswith("_continuation"):
+        return continuation_name[: -len("_continuation")]
+    return continuation_name
 
 
 def _catalog(runs_root: Path) -> list[dict[str, Any]]:
@@ -165,7 +191,7 @@ def _pair_continuations(
             base = base_by_name.get(continuation["parent_name"])
         if base is None:
             # Fallback for an older upload lacking explicit provenance.
-            prefix = continuation["name"].split(" [continuation ", 1)[0]
+            prefix = _fallback_parent_name(continuation["name"])
             base = base_by_name.get(prefix)
         if base is None:
             raise RuntimeError(
@@ -320,7 +346,7 @@ def main() -> int:
         and (
             row["parent_id"] in base_ids
             or row["parent_name"] in base_names
-            or row["name"].split(" [continuation ", 1)[0] in base_names
+            or _fallback_parent_name(row["name"]) in base_names
         )
     ]
     pairs = _pair_continuations(bases, continuations)
