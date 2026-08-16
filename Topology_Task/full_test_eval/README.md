@@ -208,6 +208,34 @@ The JSON summary also records the checkpoint path, checkpoint step, split,
 number of evaluated episodes, heuristic settings, deterministic mode, and
 survival as both a fraction and a percentage.
 
+## WCCI fine-tuned NLS shared-candidate checkpoints
+
+The eight `trcas_shared_NLS_*_finetune_s0` checkpoints are already trained on
+`bus36_wcci_nomaint` with the `mk256` reduced action space. Evaluate them
+directly—without the zero-shot `--target-env-id` or
+`--target-reduced-action-space` overrides—with:
+
+```bash
+EXCLUDE_NODES=i39 DRY_RUN=true \
+  Topology_Task/full_test_eval/launch_trcas_shared_nls_finetune_izar.sh
+
+EXCLUDE_NODES=i39 \
+  Topology_Task/full_test_eval/launch_trcas_shared_nls_finetune_izar.sh
+```
+
+The launcher submits one 50-episode deterministic test job per architecture,
+saves episode/action summaries, and keeps the results under
+`outputs/full_test_eval/shared/trcas_shared_NLS_finetune_wcci36_mk256`.
+Existing JSON results are skipped; set `FORCE_RESULTS=true` to replace them.
+Optional substring arguments select variants, for example
+`mean_f0_a0h0` or `tmean`.
+
+Observation normalization defaults to `require`. These WCCI-trained models use
+`norm_obs=true`, so silently evaluating without their saved statistics would
+not reproduce the trained policy. If an older checkpoint lacks statistics, the
+job stops instead of silently using raw observations. Set
+`OBS_NORMALIZATION=auto` only when that fallback is explicitly desired.
+
 ## Observation Normalization
 
 Older checkpoints did not store the training observation normalization stats.
