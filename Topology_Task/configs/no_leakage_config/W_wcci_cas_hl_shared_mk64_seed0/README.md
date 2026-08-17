@@ -6,32 +6,34 @@ This folder contains a matched 16-run WCCI campaign:
 - conservative fine-tuning (`ft64c`) versus random initialization (`sc64c`);
 - seed 0 only;
 - exactly 64 available actions per agent;
-- 5M target-environment steps.
+- a 5M-step conservative recipe for fine-tuning;
+- the 15M-step bus14 recipe for training from scratch.
 
-The two regimes use the same architecture, action space, WCCI chronic split,
-optimizer settings, rollout schedule, critic initialization, and target budget.
-The only intended difference is the actor initialization: `ft64c` transfers the
-bus14 graph encoder and shared candidate scorer, while `sc64c` initializes them
-randomly. Both actors remain fully trainable and both WCCI critics start fresh.
+The two regimes use the same architecture, mk64 action space, seed, WCCI
+chronic split, rollout schedule, and fresh WCCI critic initialization. They use
+training recipes appropriate to their roles: `ft64c` transfers the bus14 graph
+encoder and shared candidate scorer and adapts them conservatively, while
+`sc64c` initializes the actor randomly and uses the original, stronger bus14
+training recipe. Both actors remain fully trainable.
 
-## Conservative settings
+## Training settings
 
-| Setting | Value |
-|---|---:|
-| Actor learning rate | `3e-5` |
-| Critic learning rate | `1e-4` |
-| Final LR fraction | `0.1` |
-| PPO update epochs | 5 |
-| Clip coefficient | `0.1` |
-| Target KL | `0.01` |
-| Entropy coefficient | `0.001 -> 0.0001` |
-| Target steps | 5,000,000 |
-| Local-rho during training | disabled |
+| Setting | `ft64c` fine-tuning | `sc64c` scratch |
+|---|---:|---:|
+| Actor learning rate | `3e-5` | `1e-4` |
+| Critic learning rate | `1e-4` | `1e-4` |
+| Final LR fraction | `0.1` | `0.0` |
+| PPO update epochs | 5 | 10 |
+| Clip coefficient | `0.1` | `0.2` |
+| Target KL | `0.01` | `0.02` |
+| Entropy coefficient | `0.001 -> 0.0001` | `0.01 -> 0.01` |
+| Target steps | 5,000,000 | 15,000,000 |
+| Local-rho during training | disabled | disabled |
 
-The scratch learning rate is deliberately matched to fine-tuning so the
-campaign isolates transferred initialization. It is not claimed to be the
-optimal scratch learning rate; a later `1e-4` scratch control can test that
-separately if needed.
+This is a procedure-level comparison rather than a one-variable initialization
+ablation: it compares conservative transfer against a credible from-scratch
+recipe. A later conservative scratch control on only the leading architectures
+can isolate initialization if needed.
 
 ## Launching on Izar
 

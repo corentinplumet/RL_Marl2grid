@@ -1,6 +1,6 @@
-# Conservative WCCI mk64 shared-candidate campaign, seed 0.
+# WCCI mk64 shared-candidate campaign, seed 0.
 # architecture=NLS_mean_f0_a0h1; initialization=finetune
-# The scratch/fine-tune pair differs only in transferred actor initialization.
+# Optimization recipe: conservative 5M adaptation.
 # Actor source: checkpoint/no_leak/shared/NL_cas_hl_scaled_shared_izar/best_test_cas_hl_NLS_izar_shared_mean_f0_a0h1_s0.tar
 
 [run]
@@ -27,7 +27,7 @@ WANDB_DIR = "{run_dir}/wandb"
 XDG_CACHE_HOME = "{run_dir}/cache"
 
 [args]
-# Matched conservative WCCI mk64 protocol
+# WCCI mk64 scratch/fine-tuning comparison
 time_limit = 4260
 checkpoint = true
 alg = "MAPPO"
@@ -117,7 +117,7 @@ gnn_running_norm = false
 gnn_power_scale_mw = 0.0
 gnn_norm_clip = 10.0
 
-# 5M-step conservative WCCI mk64 target-training budget
+# 5M-step conservative WCCI mk64 fine-tuning budget
 total_timesteps = 5000000
 n_steps = 576
 eval_freq = 82944
@@ -128,7 +128,7 @@ critic_act_fn = "relu"
 actor_lr = 0.00003
 critic_lr = 0.0001
 anneal_lr = true
-# Retain 10% of both learning rates at the end of the 5M-step budget.
+# Retain 10% of both learning rates at the end of fine-tuning.
 lr_final_frac = 0.1
 gamma = 0.9
 gae_lambda = 0.95

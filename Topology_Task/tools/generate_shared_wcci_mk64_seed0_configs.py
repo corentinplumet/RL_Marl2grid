@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the matched seed-0 NLS WCCI mk64 training campaign."""
+"""Generate the seed-0 NLS WCCI mk64 scratch/fine-tuning campaign."""
 
 from __future__ import annotations
 
@@ -73,31 +73,50 @@ def generate_config(variant: str, regime: str) -> str:
     text = replace_once(
         text,
         "# Paired WCCI scratch/fine-tuning protocol",
-        "# Matched conservative WCCI mk64 protocol",
+        "# WCCI mk64 scratch/fine-tuning comparison",
     )
-    text = replace_once(
-        text,
-        "# 15M-step WCCI target-training budget",
-        "# 5M-step conservative WCCI mk64 target-training budget",
-    )
-    text = replace_once(text, "total_timesteps = 15000000", "total_timesteps = 5000000")
-    text = replace_once(text, "actor_lr = 0.0001", "actor_lr = 0.00003")
-    text = replace_once(
-        text,
-        "anneal_lr = true\n",
-        "anneal_lr = true\n"
-        "# Retain 10% of both learning rates at the end of the 5M-step budget.\n"
-        "lr_final_frac = 0.1\n",
-    )
-    text = replace_once(text, "update_epochs = 10", "update_epochs = 5")
-    text = replace_once(text, "target_kl = 0.02", "target_kl = 0.01")
-    text = replace_once(text, "clip_coef = 0.2", "clip_coef = 0.1")
-    text = replace_once(text, "entropy_coef = 0.01", "entropy_coef = 0.001")
-    text = replace_once(
-        text,
-        "entropy_coef_final = 0.01",
-        "entropy_coef_final = 0.0001",
-    )
+
+    if regime == "finetune":
+        text = replace_once(
+            text,
+            "# 15M-step WCCI target-training budget",
+            "# 5M-step conservative WCCI mk64 fine-tuning budget",
+        )
+        text = replace_once(
+            text,
+            "total_timesteps = 15000000",
+            "total_timesteps = 5000000",
+        )
+        text = replace_once(text, "actor_lr = 0.0001", "actor_lr = 0.00003")
+        text = replace_once(
+            text,
+            "anneal_lr = true\n",
+            "anneal_lr = true\n"
+            "# Retain 10% of both learning rates at the end of fine-tuning.\n"
+            "lr_final_frac = 0.1\n",
+        )
+        text = replace_once(text, "update_epochs = 10", "update_epochs = 5")
+        text = replace_once(text, "target_kl = 0.02", "target_kl = 0.01")
+        text = replace_once(text, "clip_coef = 0.2", "clip_coef = 0.1")
+        text = replace_once(text, "entropy_coef = 0.01", "entropy_coef = 0.001")
+        text = replace_once(
+            text,
+            "entropy_coef_final = 0.01",
+            "entropy_coef_final = 0.0001",
+        )
+    else:
+        text = replace_once(
+            text,
+            "# 15M-step WCCI target-training budget",
+            "# 15M-step bus14-recipe WCCI mk64 scratch budget",
+        )
+        text = replace_once(
+            text,
+            "anneal_lr = true\n",
+            "anneal_lr = true\n"
+            "# Match the bus14 recipe: anneal both learning rates to zero.\n"
+            "lr_final_frac = 0.0\n",
+        )
 
     source_checkpoint = "random initialization"
     if regime == "finetune":
@@ -106,11 +125,11 @@ def generate_config(variant: str, regime: str) -> str:
         end = text.index('"', start)
         source_checkpoint = text[start:end]
 
+    recipe = "conservative 5M adaptation" if regime == "finetune" else "bus14 15M scratch"
     header = (
-        "# Conservative WCCI mk64 shared-candidate campaign, seed 0.\n"
+        "# WCCI mk64 shared-candidate campaign, seed 0.\n"
         f"# architecture=NLS_{variant}; initialization={regime}\n"
-        "# The scratch/fine-tune pair differs only in transferred actor "
-        "initialization.\n"
+        f"# Optimization recipe: {recipe}.\n"
         f"# Actor source: {source_checkpoint}\n\n"
     )
     first_paragraph_end = text.find("\n\n")
