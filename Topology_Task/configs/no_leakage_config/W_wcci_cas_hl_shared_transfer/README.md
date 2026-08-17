@@ -1,5 +1,9 @@
 # Shared-candidate WCCI scratch versus fine-tuning campaign
 
+The later conservative mk64 protocol and the reasons for changing the original
+fine-tuning settings are documented in
+[`CONSERVATIVE_FINETUNING_MK64.md`](CONSERVATIVE_FINETUNING_MK64.md).
+
 This folder contains the seed-0 target-training comparison for the shared
 candidate actors previously evaluated zero-shot on WCCI. It contains 32 runs:
 

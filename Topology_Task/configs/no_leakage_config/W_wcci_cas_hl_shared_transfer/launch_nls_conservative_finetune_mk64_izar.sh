@@ -17,6 +17,7 @@ action_space_abs="$task_dir/$action_space_rel"
 dry_run="${DRY_RUN:-false}"
 force_launch="${FORCE_LAUNCH:-false}"
 exclude_nodes="${EXCLUDE_NODES:-${SBATCH_EXCLUDE:-}}"
+run_suffix="${RUN_SUFFIX:-}"
 
 actor_lr="${ACTOR_LR:-0.00003}"
 critic_lr="${CRITIC_LR:-0.0001}"
@@ -27,6 +28,11 @@ target_kl="${TARGET_KL:-0.01}"
 entropy_coef="${ENTROPY_COEF:-0.001}"
 entropy_coef_final="${ENTROPY_COEF_FINAL:-0.0001}"
 lr_final_frac="${LR_FINAL_FRAC:-0.1}"
+
+if [[ ! "$run_suffix" =~ ^[A-Za-z0-9_.-]*$ ]]; then
+  echo "RUN_SUFFIX may contain only letters, digits, dots, underscores, and hyphens." >&2
+  exit 1
+fi
 
 is_true() {
   case "${1:-false}" in
@@ -101,7 +107,7 @@ echo "DRY_RUN:              $dry_run"
 echo "============================================================="
 
 for variant in "${variants[@]}"; do
-  label="ft64c_NLS_${variant}_s0"
+  label="ft64c_NLS_${variant}_s0${run_suffix}"
   if ! matches_filters "$label" "$@"; then
     continue
   fi
