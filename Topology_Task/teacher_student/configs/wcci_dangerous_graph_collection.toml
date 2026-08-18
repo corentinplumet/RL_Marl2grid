@@ -1,0 +1,83 @@
+# Model-independent WCCI dangerous-state graph dataset collection.
+# This file defines only the environment and graph-observation schema. The
+# collector replaces reduced_action_space with the largest supplied label space
+# and never constructs or loads a policy when invoked with --config.
+
+[run]
+extra_args = []
+
+[args]
+alg = "MAPPO"
+seed = 0
+cuda = false
+n_threads = 8
+track = false
+checkpoint = false
+
+env_id = "bus36_wcci_nomaint"
+action_type = "topology"
+reduced_action_space = ""
+difficulty = 0
+decentralized = true
+n1_reward = false
+env_config_path = "scenario.json"
+norm_obs = false
+use_heuristic = false
+line_margin_reward_weight = 0.0
+topology_reward_weight = 0.0
+constraints_type = 0
+split_chronics = true
+test_chronics_pct = 0.2
+chronic_split_seed = 0
+
+# Complete graph-observation schema shared by the NLS candidate actors.
+actor_encoder = "gnn"
+actor_action_head = "candidate_pool"
+candidate_action_pool = "mean"
+candidate_action_use_features = true
+candidate_action_do_nothing_head = false
+gnn_type = "gine"
+gnn_hidden_dim = 128
+gnn_out_dim = 128
+gnn_layers = 2
+gnn_heads = 4
+gnn_readout_aggr = "mean"
+sparse_gt_pooling = ""
+graphsage_aggr = "mean"
+gcn_edge_weight_feature = "none"
+gnn_layer_norm = true
+gnn_node_pre_encoder = true
+gnn_edge_pre_encoder = false
+gnn_node_id_embeddings = false
+gnn_node_id_emb_dim = 8
+gnn_concat_flat = false
+share_actor_gnn = true
+share_candidate_scorer = true
+gnn_graph_type = "heterogeneous_line"
+gnn_include_legacy_connected_feature = true
+gnn_include_neighbors = false
+gnn_context_requires_connection = true
+gnn_generator_edge_direction = "bidirectional"
+gnn_load_edge_direction = "bidirectional"
+gnn_line_node_edge_direction = "bidirectional"
+gnn_summary_edge_direction = "bidirectional"
+gnn_add_substation_edges = false
+gnn_add_substation_nodes = false
+sparse_gt_add_self_edges = true
+sparse_gt_add_substation_edges = false
+sparse_gt_use_edge_attr = true
+sparse_gt_use_edge_type_embeddings = true
+sparse_gt_relation_bias = true
+sparse_gt_dropout = 0.0
+sparse_gt_attention_dropout = 0.0
+sparse_gt_ffn_multiplier = 4
+gnn_angle_representation = "edge_diff"
+gnn_physical_scaling = true
+gnn_running_norm = false
+gnn_power_scale_mw = 0.0
+gnn_norm_clip = 10.0
+
+deterministic_eval = true
+eval_action_heuristic = "none"
+eval_episodes = 10
+eval_all_split_chronics = false

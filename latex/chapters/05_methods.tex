@@ -1162,8 +1162,7 @@ The default action head produces one output column per discrete action. That
 column is tied to an action index and knows nothing about the physical objects
 the action modifies. This section describes an alternative head that scores each
 action from the graph nodes it touches. It is available only for the
-disaggregated line-node schema of Section~\ref{sec:heterogeneous-line-graph} and is
-selected with \texttt{actor\_action\_head=candidate\_pool}; the default remains
+disaggregated line-node schema of Section~\ref{sec:heterogeneous-line-graph}; the default remains
 the action-index head of Appendix~\ref{sec:gnn-action-head}. The PPO objective,
 the categorical policy, sampling, and deterministic evaluation are unchanged.
 
@@ -1209,36 +1208,12 @@ makes the line nodes usable: an action next to a loaded line is scored
 from that line's own embedding.
 \\
 \\
-The implementation separates three choices, summarized in
-Table~\ref{tab:candidate-scoring-choices}. They can be combined independently,
-so the two uniform pooling rules give eight variants. Learned attention adds a
-third pooling family, described after the uniform controls.
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Independent choices in the candidate-action scorer.}
-  \label{tab:candidate-scoring-choices}
-  \setlength{\tabcolsep}{4pt}
-  \begin{tabular}{L{0.20\textwidth}L{0.35\textwidth}L{0.35\textwidth}}
-    \toprule
-    Component & First choice & Alternative \\
-    \midrule
-    Touched-node context
-      & Average all touched nodes together into one vector.
-      & Average busbars, lines, loads, and generators separately, then concatenate the four vectors. \\\addlinespace[2pt]
-    Static action descriptor
-      & Omit it and score from the graph state and touched nodes alone.
-      & Append the action indicators and counts listed in Table~\ref{tab:candidate-action-features}. \\\addlinespace[2pt]
-    Idle action
-      & Use the shared scorer with an empty touched-node context.
-      & Use a dedicated scorer that reads only the global graph embedding. \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-Figure~\ref{fig:candidate-action-scoring-pipeline} shows how these independent
-choices enter one candidate score.
+Three choices combine independently: how the touched nodes are pooled into
+$\mathbf{c}_j$, whether the static descriptor $\boldsymbol\phi_j$ is appended,
+and whether the idle action uses the shared scorer or its own. The two uniform
+pooling rules therefore give eight variants, and learned attention adds a third
+pooling family. Figure~\ref{fig:candidate-action-scoring-pipeline} shows how the
+three enter one candidate score; the following subsections define them.
 
 \begin{figure}[H]
   \centering
@@ -1259,8 +1234,6 @@ choices enter one candidate score.
   scorer.}
   \label{fig:candidate-action-scoring-pipeline}
 \end{figure}
-
-The following subsections define these inputs and explain their consequences.
 
 \subsection{What each action touches}
 \label{subsec:candidate-action-metadata}
@@ -1379,8 +1352,9 @@ substation-summary and virtual nodes are excluded, since an action touches
 equipment and not a learned hub.
 \\
 \\
-For each object type $t\in\{\mathrm{bus},\mathrm{line},\mathrm{load},
-\mathrm{gen}\}$, the masked mean is
+Write $\mathcal{N}_t(j)$ for the rows of type
+$t\in\{\mathrm{bus},\mathrm{line},\mathrm{load},\mathrm{gen}\}$ that action $j$
+touches. The masked mean over any such set is
 \begin{equation}
   \mathbf{c}^{(t)}_j =
   \frac{1}{\max\left(1,|\mathcal{N}_t(j)|\right)}
@@ -1388,25 +1362,10 @@ For each object type $t\in\{\mathrm{bus},\mathrm{line},\mathrm{load},
   \label{eq:candidate-typed-mean}
 \end{equation}
 where the clamped denominator makes an untouched type give the zero vector
-instead of a division by zero. Uniform pooling can either average all touched
-nodes jointly,
-\begin{equation}
-  \mathbf{c}^{\mathrm{joint}}_j =
-  \frac{\sum_t\sum_{v\in\mathcal{N}_t(j)}\mathbf{h}^{(K)}_v}
-       {\max\left(1,\sum_t|\mathcal{N}_t(j)|\right)},
-  \label{eq:candidate-joint-mean}
-\end{equation}
-or preserve node roles by concatenating the four type-specific means,
-\begin{equation}
-  \mathbf{c}^{\mathrm{sep}}_j =
-  \left[\mathbf{c}^{(\mathrm{bus})}_j;
-        \mathbf{c}^{(\mathrm{line})}_j;
-        \mathbf{c}^{(\mathrm{load})}_j;
-        \mathbf{c}^{(\mathrm{gen})}_j\right].
-  \label{eq:candidate-separated-mean}
-\end{equation}
-The available local-context constructions are summarized in
-Table~\ref{tab:candidate-pool-modes}.
+instead of a division by zero. The joint rule applies this once to all touched
+rows regardless of type, giving width $d_h$; the type-separated rule applies it
+per type and concatenates the four results, giving width $4d_h$ and preserving
+node roles (Table~\ref{tab:candidate-pool-modes}).
 
 \begin{table}[H]
   \centering
@@ -1497,19 +1456,17 @@ input depends on whether the static action descriptor is included:
   \quad j\geq 1.
   \label{eq:candidate-shared-scorer}
 \end{equation}
-The idle action touches no node, so its local context is the zero vector. It can
-either use the same scorer as the non-idle actions,
+The idle action touches no node, so its local context is the zero vector. It
+either reuses the same scorer or gets a dedicated one:
 \begin{equation}
   \ell_{a,0} =
-  \operatorname{MLP}_{\mathrm{score}}(\mathbf{x}_{a,0}) + b_{\varnothing},
-  \qquad \mathbf{c}_0=\mathbf{0},
-  \label{eq:candidate-shared-do-nothing}
-\end{equation}
-or use a dedicated scorer over the global graph embedding:
-\begin{equation}
-  \ell_{a,0} =
-  \operatorname{MLP}_{\varnothing}(\mathbf{z}_a) + b_{\varnothing},
-  \label{eq:candidate-do-nothing-head}
+  \begin{cases}
+    \operatorname{MLP}_{\mathrm{score}}(\mathbf{x}_{a,0}) + b_{\varnothing},
+      & \text{shared, with }\mathbf{c}_0=\mathbf{0},\\
+    \operatorname{MLP}_{\varnothing}(\mathbf{z}_a) + b_{\varnothing},
+      & \text{dedicated.}
+  \end{cases}
+  \label{eq:candidate-idle-scorer}
 \end{equation}
 In both cases $b_{\varnothing}$ is a learned scalar applied only to the idle
 action. Sharing the scorer preserves parameter sharing across the full action
@@ -1517,7 +1474,6 @@ set, but presents it with an empty context not seen for non-idle actions. A
 dedicated scorer instead treats ``do nothing'' as a global safety decision, at
 the cost of extra parameters and a different scoring mechanism.
 
-{\color{blue}
 \subsection{Cost and current limits}
 \label{subsec:candidate-configuration}
 
@@ -1535,15 +1491,11 @@ used, its different mechanism also makes the action-$0$ frequency an explicit
 comparison metric rather than something assumed comparable.
 \\
 \\
-The head currently requires the disaggregated line-node graph and does not combine with
+The head requires the disaggregated line-node graph and does not combine with
 the intervention gate, which is refused at construction rather than silently
-ignored. One-hop context is not required when using the angle-drop
-representation: the neighbor-inclusion setting
-adds no far-end equipment to this representation, because the shared-line state
-is supplied by the line node itself. Auxiliary heads over the same node
-embeddings, such as predicting which lines are about to overload, are a possible
-later addition.
-}
+ignored. One-hop context makes no difference here: the neighbor-inclusion
+setting adds no far-end equipment to this schema, because the line node already
+supplies the shared-line state.
 \section{Action-Space Reduction for Large Grids}
 \label{sec:wcci-action-space-reduction}
 

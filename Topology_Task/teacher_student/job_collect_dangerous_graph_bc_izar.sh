@@ -18,7 +18,8 @@ if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
   cat <<'EOF'
 Usage:
   sbatch --exclude=i39 Topology_Task/teacher_student/job_collect_dangerous_graph_bc_izar.sh \
-    --checkpoint checkpoint/final_ft64c_NLS_mean_f1_a0h0_s0.tar \
+    --config teacher_student/configs/wcci_dangerous_graph_collection.toml \
+    --rollout-policy best_simulated \
     --label-action-space mk64=outputs/.../reduced_action_space_..._mk64.json \
     --label-action-space mk128=outputs/.../reduced_action_space_..._mk128.json \
     --label-action-space mk256=outputs/.../reduced_action_space_..._mk256.json \

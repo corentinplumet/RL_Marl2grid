@@ -250,18 +250,26 @@ def main() -> None:
     checkpoint_dir = cli.checkpoint_dir.expanduser()
     if not checkpoint_dir.is_absolute():
         checkpoint_dir = (TASK_DIR / checkpoint_dir).resolve()
-    source = cli.checkpoint or str(metadata.get("checkpoint", ""))
+    source = cli.checkpoint or metadata.get("checkpoint")
     if not source:
-        raise ValueError("Provide --checkpoint or collect metadata with a checkpoint path.")
-    checkpoint_path = _resolve_checkpoint_path(source, checkpoint_dir)
+        raise ValueError(
+            "Provide --checkpoint to select the model weights to fine-tune. "
+            "Checkpoint-free collection datasets intentionally do not choose a model."
+        )
+    checkpoint_path = _resolve_checkpoint_path(str(source), checkpoint_dir)
     output_path = _resolve_output(cli.output)
 
-    dataset_checkpoint_value = str(metadata.get("checkpoint", ""))
+    dataset_checkpoint_raw = metadata.get("checkpoint")
+    dataset_checkpoint_value = (
+        str(dataset_checkpoint_raw) if dataset_checkpoint_raw else ""
+    )
     if cli.distill_weight > 0.0:
-        if not dataset_checkpoint_value:
+        if not dataset_checkpoint_value or not bool(
+            metadata.get("has_policy_logits", True)
+        ):
             raise ValueError(
-                "The dataset has no source checkpoint, so reference-policy KL "
-                "cannot be used. Set --distill-weight 0."
+                "The dataset has no genuine source-policy logits, so "
+                "reference-policy KL cannot be used. Set --distill-weight 0."
             )
         dataset_checkpoint = _resolve_checkpoint_path(
             dataset_checkpoint_value, checkpoint_dir

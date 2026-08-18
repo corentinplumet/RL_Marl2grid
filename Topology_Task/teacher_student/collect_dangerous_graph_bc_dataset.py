@@ -12,6 +12,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Tuple
 
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - Python < 3.11
+    import tomli as tomllib
+
 import numpy as np
 import torch as th
 
@@ -20,7 +25,9 @@ if str(TASK_DIR) not in sys.path:
     sys.path.insert(0, str(TASK_DIR))
 
 from common.utils import cast_np_to_tensors, set_random_seed, str2bool
+from alg.mappo.config import get_alg_args
 from env.eval import Evaluator
+from env.config import get_env_args
 from env.utils import _load_reduced_action_id_mapping
 from full_test_eval.evaluate_checkpoint import (
     _as_namespace,
@@ -84,6 +91,56 @@ def _task_path(value: str) -> Path:
     if not path.is_absolute():
         path = (TASK_DIR / path).resolve()
     return path
+
+
+def _cli_values(value: Any) -> List[str]:
+    if isinstance(value, bool):
+        return ["true" if value else "false"]
+    if isinstance(value, list):
+        result: List[str] = []
+        for item in value:
+            result.extend(_cli_values(item))
+        return result
+    return [str(value)]
+
+
+def _args_from_config(config_path: Path) -> Namespace:
+    """Parse one normal training TOML through the project argument parsers."""
+    with config_path.open("rb") as handle:
+        config = tomllib.load(handle)
+    config_args = dict(config.get("args", {}))
+    if not config_args:
+        raise ValueError(f"Config has no [args] section: {config_path}")
+
+    argv = [str(Path(__file__).name)]
+    for key, value in config_args.items():
+        if value == "":
+            continue
+        argv.append("--" + key.replace("_", "-"))
+        argv.extend(_cli_values(value))
+    argv.extend(str(value) for value in config.get("run", {}).get("extra_args", []))
+
+    main_parser = argparse.ArgumentParser(add_help=False)
+    main_parser.add_argument("--alg", default="MAPPO")
+    main_parser.add_argument("--seed", type=int, default=0)
+    main_parser.add_argument("--cuda", type=str2bool, default=False)
+    main_parser.add_argument("--th-deterministic", type=str2bool, default=False)
+    main_parser.add_argument("--n-threads", type=int, default=4)
+    main_parser.add_argument("--track", type=str2bool, default=False)
+    main_parser.add_argument("--checkpoint", type=str2bool, default=False)
+    main_parser.add_argument("--verbose", type=str2bool, default=False)
+
+    original_argv = sys.argv
+    try:
+        sys.argv = argv
+        main_args = main_parser.parse_known_args()[0]
+        return Namespace(
+            **vars(main_args),
+            **vars(get_env_args()),
+            **vars(get_alg_args()),
+        )
+    finally:
+        sys.argv = original_argv
 
 
 def _parse_action_space_specs(
@@ -242,8 +299,10 @@ def _metadata_payload(
     *,
     status: str,
     cli: Namespace,
-    checkpoint_path: Path,
-    checkpoint_step: int,
+    checkpoint_path: Path | None,
+    checkpoint_step: int | None,
+    source_config: Path | None,
+    has_policy_logits: bool,
     args: Namespace,
     obs_norm_mode: str,
     action_space_label: str,
@@ -269,8 +328,15 @@ def _metadata_payload(
         "created_at": datetime.now(timezone.utc).isoformat(),
         "collector": "teacher_student.collect_dangerous_graph_bc_dataset",
         "dataset_mode": "dangerous_graph_bc",
-        "checkpoint": str(checkpoint_path),
-        "checkpoint_global_step": int(checkpoint_step),
+        "checkpoint": str(checkpoint_path) if checkpoint_path is not None else None,
+        "checkpoint_global_step": (
+            int(checkpoint_step) if checkpoint_step is not None else None
+        ),
+        "source_config": str(source_config) if source_config is not None else None,
+        "has_policy_logits": bool(has_policy_logits),
+        "reference_logits_kind": (
+            "checkpoint_policy" if has_policy_logits else "unavailable_zero_placeholder"
+        ),
         "checkpoint_exp_tag": str(getattr(args, "exp_tag", "")),
         "env_id": str(getattr(args, "env_id", "")),
         "action_space_label": action_space_label,
@@ -328,7 +394,22 @@ def _metadata_payload(
 
 def parse_args() -> Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--checkpoint", required=True)
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument(
+        "--checkpoint",
+        help=(
+            "Optional policy checkpoint for DAgger-style state visitation and "
+            "reference logits. Use --config for checkpoint-free collection."
+        ),
+    )
+    source.add_argument(
+        "--config",
+        type=Path,
+        help=(
+            "Training TOML that defines the WCCI environment and graph-observation "
+            "schema. No model weights are loaded in this mode."
+        ),
+    )
     parser.add_argument("--checkpoint-dir", type=Path, default=TASK_DIR / "checkpoint")
     parser.add_argument(
         "--label-action-space",
@@ -368,8 +449,8 @@ def parse_args() -> Namespace:
     parser.add_argument("--outcome-time-step", type=int, default=1)
     parser.add_argument(
         "--rollout-policy",
-        choices=["checkpoint", "best_simulated", "do_nothing"],
-        default="checkpoint",
+        choices=["auto", "checkpoint", "best_simulated", "do_nothing"],
+        default="auto",
     )
     parser.add_argument(
         "--obs-normalization",
@@ -401,13 +482,37 @@ def main() -> None:
     if cli.min_dangerous_query_gap <= 0:
         raise ValueError("--min-dangerous-query-gap must be positive.")
 
-    checkpoint_dir = cli.checkpoint_dir.expanduser()
-    if not checkpoint_dir.is_absolute():
-        checkpoint_dir = (TASK_DIR / checkpoint_dir).resolve()
-    checkpoint_path = _resolve_checkpoint_path(cli.checkpoint, checkpoint_dir)
-    first_record = _load_checkpoint(checkpoint_path, th.device("cpu"))
-    args = _merge_missing_defaults(_as_namespace(first_record["args"]))
-    args = _configure_legacy_connected_feature(args, first_record)
+    checkpoint_path: Path | None = None
+    source_config: Path | None = None
+    first_record: Dict[str, Any] | None = None
+    if cli.checkpoint:
+        checkpoint_dir = cli.checkpoint_dir.expanduser()
+        if not checkpoint_dir.is_absolute():
+            checkpoint_dir = (TASK_DIR / checkpoint_dir).resolve()
+        checkpoint_path = _resolve_checkpoint_path(cli.checkpoint, checkpoint_dir)
+        first_record = _load_checkpoint(checkpoint_path, th.device("cpu"))
+        args = _merge_missing_defaults(_as_namespace(first_record["args"]))
+        args = _configure_legacy_connected_feature(args, first_record)
+        cli.rollout_policy = (
+            "checkpoint" if cli.rollout_policy == "auto" else cli.rollout_policy
+        )
+    else:
+        source_config = cli.config.expanduser()
+        if not source_config.is_absolute():
+            source_config = (TASK_DIR / source_config).resolve()
+        if not source_config.exists():
+            raise FileNotFoundError(f"Config does not exist: {source_config}")
+        args = _args_from_config(source_config)
+        cli.rollout_policy = (
+            "best_simulated"
+            if cli.rollout_policy == "auto"
+            else cli.rollout_policy
+        )
+        if cli.rollout_policy == "checkpoint":
+            raise ValueError(
+                "--rollout-policy checkpoint requires --checkpoint. With --config, "
+                "use best_simulated or do_nothing."
+            )
     checkpoint_action_space = str(getattr(args, "reduced_action_space", "") or "")
     action_space_specs = _parse_action_space_specs(
         cli.label_action_space, checkpoint_action_space
@@ -420,7 +525,8 @@ def main() -> None:
     checkpoint_space_matches = [
         label
         for label, path in action_space_specs.items()
-        if checkpoint_action_space
+        if checkpoint_path is not None
+        and checkpoint_action_space
         and _task_path(path) == _task_path(checkpoint_action_space)
     ]
     rollout_action_space = (
@@ -465,17 +571,32 @@ def main() -> None:
     missing = [name for name, ok in required.items() if not ok]
     if missing:
         raise ValueError(
-            "Checkpoint is incompatible with graph BC collection: "
+            "Collection source is incompatible with graph BC collection: "
             + ", ".join(missing)
         )
 
-    obs_stats = _extract_obs_stats(first_record)
-    args, obs_stats, obs_norm_mode = _configure_obs_normalization(
-        args, obs_stats, cli.obs_normalization
-    )
+    obs_stats = _extract_obs_stats(first_record) if first_record is not None else {}
+    if first_record is not None:
+        args, obs_stats, obs_norm_mode = _configure_obs_normalization(
+            args, obs_stats, cli.obs_normalization
+        )
+    else:
+        if cli.obs_normalization == "require":
+            raise ValueError(
+                "--obs-normalization require needs checkpoint normalization "
+                "statistics. Use disable or auto for checkpoint-free collection."
+            )
+        args.norm_obs = False
+        args.gnn_running_norm = False
+        obs_stats = {}
+        obs_norm_mode = "disabled_checkpoint_free"
     set_random_seed(int(getattr(args, "seed", 0)))
     device = _resolve_device(args, cli.device)
-    record = _load_checkpoint(checkpoint_path, device)
+    record = (
+        _load_checkpoint(checkpoint_path, device)
+        if checkpoint_path is not None
+        else None
+    )
     evaluator = Evaluator(
         args,
         logger=None,
@@ -485,37 +606,44 @@ def main() -> None:
     )
     if obs_stats:
         evaluator.env.env.set_obs_stats(obs_stats)
-    same_action_space = bool(
-        checkpoint_action_space
-        and _task_path(checkpoint_action_space) == Path(simulation_action_space)
-    )
-    if same_action_space:
-        actors = _build_actors(record, args, evaluator, device)
-    else:
-        transferable = {
-            "share_actor_gnn": bool(getattr(args, "share_actor_gnn", False)),
-            "share_candidate_scorer": bool(
-                getattr(args, "share_candidate_scorer", False)
-            ),
-            "gnn_concat_flat=false": not bool(
-                getattr(args, "gnn_concat_flat", False)
-            ),
-        }
-        missing_transfer = [name for name, ok in transferable.items() if not ok]
-        if missing_transfer:
-            raise ValueError(
-                "Retargeting the checkpoint to the largest action space requires "
-                "a transferable shared actor; missing: "
-                + ", ".join(missing_transfer)
-            )
-        actors, _ = _build_zero_shot_transfer_actors(
-            checkpoint_path,
-            args,
-            evaluator,
-            device,
-            cli.transfer_action_head_source_agent,
+    actors: Dict[str, Any] = {}
+    if checkpoint_path is not None:
+        same_action_space = bool(
+            checkpoint_action_space
+            and _task_path(checkpoint_action_space) == Path(simulation_action_space)
         )
-    agent_ids = sorted(actors)
+        if same_action_space:
+            actors = _build_actors(record, args, evaluator, device)
+        else:
+            transferable = {
+                "share_actor_gnn": bool(getattr(args, "share_actor_gnn", False)),
+                "share_candidate_scorer": bool(
+                    getattr(args, "share_candidate_scorer", False)
+                ),
+                "gnn_concat_flat=false": not bool(
+                    getattr(args, "gnn_concat_flat", False)
+                ),
+            }
+            missing_transfer = [name for name, ok in transferable.items() if not ok]
+            if missing_transfer:
+                raise ValueError(
+                    "Retargeting the checkpoint to the largest action space requires "
+                    "a transferable shared actor; missing: "
+                    + ", ".join(missing_transfer)
+                )
+            actors, _ = _build_zero_shot_transfer_actors(
+                checkpoint_path,
+                args,
+                evaluator,
+                device,
+                cli.transfer_action_head_source_agent,
+            )
+        agent_ids = sorted(actors)
+    else:
+        agent_ids = [
+            f"agent_{index}"
+            for index in range(len(evaluator.env.env.observation_space.keys()))
+        ]
     simulation_action_sizes = {
         agent: int(evaluator.env.env.action_space[agent].n) for agent in agent_ids
     }
@@ -571,7 +699,10 @@ def main() -> None:
     completed_normally = False
 
     print("========== Dangerous-state graph BC collection ==========")
-    print(f"Checkpoint: {_repo_relative(checkpoint_path)}")
+    if checkpoint_path is not None:
+        print(f"Source checkpoint: {_repo_relative(checkpoint_path)}")
+    else:
+        print(f"Source config (no weights): {_repo_relative(source_config)}")
     print(f"Output: {output_dir}")
     print(f"Split / episodes: {cli.split} / {target_episodes}")
     print(
@@ -608,15 +739,25 @@ def main() -> None:
                 agent: float(value)
                 for agent, value in evaluator.env.get_current_agent_max_rho().items()
             }
-            policy_logits = _policy_logits(actors, obs, device)
-            rollout_policy_actions = {}
-            for agent in agent_ids:
-                rollout_indices = space_indices[rollout_action_space][agent]
-                restricted_logits = policy_logits[agent][rollout_indices]
-                restricted_action = int(np.argmax(restricted_logits))
-                rollout_policy_actions[agent] = int(
-                    rollout_indices[restricted_action]
-                )
+            if actors:
+                policy_logits = _policy_logits(actors, obs, device)
+                rollout_policy_actions = {}
+                for agent in agent_ids:
+                    rollout_indices = space_indices[rollout_action_space][agent]
+                    restricted_logits = policy_logits[agent][rollout_indices]
+                    restricted_action = int(np.argmax(restricted_logits))
+                    rollout_policy_actions[agent] = int(
+                        rollout_indices[restricted_action]
+                    )
+            else:
+                # The writer keeps fixed fields for compatibility with the BC
+                # trainer. These are explicitly marked as unavailable in metadata
+                # and must never be used for a preservation/distillation loss.
+                policy_logits = {
+                    agent: np.zeros(simulation_action_sizes[agent], dtype=np.float32)
+                    for agent in agent_ids
+                }
+                rollout_policy_actions = {agent: 0 for agent in agent_ids}
 
             is_dangerous = bool(
                 np.isfinite(global_rho)
@@ -751,9 +892,9 @@ def main() -> None:
                 else:
                     skipped_gap_dangerous_states += 1
                 rollout_actions = (
-                    {agent: 0 for agent in agent_ids}
-                    if cli.rollout_policy == "do_nothing"
-                    else rollout_policy_actions
+                    rollout_policy_actions
+                    if cli.rollout_policy == "checkpoint"
+                    else {agent: 0 for agent in agent_ids}
                 )
 
             next_obs, _, terminations, truncations, _ = evaluator.env.step(rollout_actions)
@@ -792,7 +933,13 @@ def main() -> None:
                 status="complete" if completed_normally else "interrupted",
                 cli=cli,
                 checkpoint_path=checkpoint_path,
-                checkpoint_step=int(record.get("global_step", 0)),
+                checkpoint_step=(
+                    int(record.get("global_step", 0))
+                    if record is not None
+                    else None
+                ),
+                source_config=source_config,
+                has_policy_logits=bool(actors),
                 args=args,
                 obs_norm_mode=obs_norm_mode,
                 action_space_label=space_label,
@@ -828,6 +975,13 @@ def main() -> None:
                     "simulation_action_space_label": simulation_label,
                     "simulation_reduced_action_space": simulation_action_space,
                     "rollout_action_space_label": rollout_action_space,
+                    "checkpoint": (
+                        str(checkpoint_path) if checkpoint_path is not None else None
+                    ),
+                    "source_config": (
+                        str(source_config) if source_config is not None else None
+                    ),
+                    "has_policy_logits": bool(actors),
                     "paired_action_spaces": metadata_by_space,
                     "target_episodes": target_episodes,
                     "chronic_sample_seed": cli.chronic_sample_seed,
