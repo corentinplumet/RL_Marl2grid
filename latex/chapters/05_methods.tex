@@ -1523,42 +1523,19 @@ empirical improvement rate,
        {\#\{\text{tested states where }a\text{ is evaluated}\}},
 \]
 with a minimum-count filter to avoid selecting rarely sampled actions. The final
-reduced action space keeps the best actions per agent, while always preserving
-action \(0\). The candidate sets are then sanity-checked with a one-step
-simulator-greedy controller: at each risky state, the controller simulates the
-available reduced actions and executes the best improving one. That check also
-sizes the reduced space, since it shows how much survival is still reachable
-once the action set is cut. Table~\ref{tab:wcci-h1-greedy-reduced-action-spaces}
-reports it for five sizes; the survival of trained agents on this environment is
-a separate question and is not covered here.
-
-\begin{table}[htbp]
-  \centering
-  \small
-  \caption{One-step greedy evaluation of WCCI reduced action spaces on 50
-  random test chronics. All rows use the same chronic sample
-  (\texttt{chronic\_sample\_seed=0}); the do-nothing mean survival on this
-  sample is \(28.30\%\).}
-  \label{tab:wcci-h1-greedy-reduced-action-spaces}
-  \setlength{\tabcolsep}{4pt}
-  \resizebox{\textwidth}{!}{%
-  \begin{tabular}{L{0.30\textwidth}L{0.28\textwidth}rrrr}
-    \toprule
-    Reduced action space & Kept actions per agent
-    \((a_0,a_1,a_2,a_3)\) & Greedy survival (\%) &
-    Do-nothing survival (\%) & Survival delta (\%) & Greedy full survival (\%) \\
-    \midrule
-    Do-nothing reference & \(1,1,1,1\) & -- & 28.30 & -- & -- \\
-    WCCI \(h=1\), \texttt{mk64} & \(64,64,64,64\) & 55.24 & 28.30 & 26.94 & 22.00 \\
-    WCCI \(h=1\), \texttt{mk128} & \(77,128,127,128\) & 60.65 & 28.30 & 32.35 & 22.00 \\
-    WCCI \(h=1\), \texttt{mk256} & \(77,256,127,256\) & 68.61 & 28.30 & 40.31 & 36.00 \\
-    WCCI \(h=1\), \texttt{mk512} & \(77,512,127,512\) & 71.21 & 28.30 & 42.90 & 40.00 \\
-    WCCI \(h=1\), \texttt{mk1024} & \(77,1024,127,1024\) & 78.18 & 28.30 & 49.87 & 54.00 \\
-    \bottomrule
-  \end{tabular}
-  }
-\end{table}
-
+reduced action space keeps the $k$ best-scoring actions per agent, while always
+preserving action \(0\); an agent with fewer than $k$ actions keeps all of them.
+\\
+\\
+Choosing $k$ is an empirical question rather than a design one, so it is settled
+where the reduced space is used. The candidate sets are sanity-checked with a
+one-step simulator-greedy controller that, at each risky state, simulates the
+available reduced actions and executes the best improving one. That controller
+also sizes the reduction, since it shows how much survival the action set can
+still reach once cut. Section~\ref{sec:wcci-environment} reports the
+resulting sizes and the value of $k$ used for the transfer experiments.
+\\
+\\
 \begin{tcolorbox}[
   colframe=red!75!black,
   colback=red!5!white,
@@ -1579,9 +1556,9 @@ large WCCI action space is made tractable.
   One-hop context is optional, since the line node already carries the shared
   measurements.
   \item \textbf{WCCI reduction:} Actions are ranked offline by how often they
-  reduce loading in simulated stressed states. Action 0 is always retained, and
-  the reduced sets are checked with a one-step simulator-greedy controller
-  before policy training.
+  reduce loading in simulated stressed states. The best $k$ per agent are kept
+  and action 0 is always retained; a one-step simulator-greedy controller checks
+  the reduced sets and fixes $k$ before policy training.
 \end{itemize}
 
 \textbf{Takeaway:} Graph representation, action scoring, and action-space size

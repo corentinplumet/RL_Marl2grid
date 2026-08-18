@@ -257,68 +257,33 @@ the training trajectories and endpoint ordering.
 
 Chapter~\ref{ch:encoder-inputs} retains the compact shift table
 (Table~\ref{tab:wcci-shift}) and the consolidated distribution panel
-(Figure~\ref{fig:wcci-distributions}). This section provides the channel
-definitions, the raw moments behind the shift statistics, and the tail
-behaviour that linear axes compress.
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Node and edge features of the busbar graph with their units,
-  and the fraction of sampled entries equal to zero on each grid. A busbar only
-  carries generation or load when an asset is attached to it, which makes four
-  of the six node channels structurally sparse.}
-  \label{tab:wcci-graph-features-appendix}
-  \setlength{\tabcolsep}{5pt}
-  \begin{tabular}{L{0.31\textwidth}L{0.30\textwidth}lrr}
-    \toprule
-    Feature & Meaning & Unit & \multicolumn{2}{c}{Zeros (\%)} \\
-    \cmidrule(l){4-5}
-    & & & \texttt{bus14} & WCCI \\
-    \midrule
-    \multicolumn{5}{l}{\textit{Node features}} \\
-    \texttt{gen\_p} & Active power injected by attached generators & MW & 80.1 & 85.4 \\
-    \texttt{gen\_theta} & Voltage angle at the generator connection & deg & 81.1 & 76.1 \\
-    \texttt{load\_p} & Net active power of attached load objects (positive withdrawal) & MW & 45.9 & 46.7 \\
-    \texttt{load\_theta} & Voltage angle at the load connection & deg & 45.9 & 48.9 \\
-    \texttt{time\_before\_cooldown\_sub} & Steps until this substation may be reconfigured & steps & 100 & 100 \\
-    \texttt{domain\_mask} & 1 for the agent's own substations, 0 for connected context & --- & 24.3 & 21.7 \\
-    \midrule
-    \multicolumn{5}{l}{\textit{Edge features}} \\
-    \texttt{line\_status} & 1 connected, 0 disconnected & --- & 0 & 0 \\
-    \texttt{rho} & Current flow divided by thermal limit & p.u. & 0 & 0 \\
-    \texttt{timestep\_overflow} & Consecutive steps above the thermal limit & steps & $>99.99$ & $>99.99$ \\
-    \texttt{time\_before\_cooldown\_line} & Steps until this line may be switched & steps & 100 & 100 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+(Figure~\ref{fig:wcci-distributions}). This section provides the raw moments
+behind those statistics and the tail behaviour that linear axes compress. All
+values are measured on the disaggregated line-node graph under the protocol of
+Section~\ref{sec:wcci-protocol}.
 
 \begin{table}[H]
   \centering
   \small
   \caption{Raw moments behind Table~\ref{tab:wcci-shift}, with the Wasserstein
-  distance. $W_1/\sigma_p$ tracks the offset almost exactly on the displaced
-  channels, which is why the main table omits it: for distributions that differ
-  mainly by a shift the two statistics carry the same information.}
+  distance. ``Owning'' restricts each channel to the node type that carries it.
+  $W_1/\sigma_p$ tracks the offset almost exactly on the displaced channel,
+  which is why the main table omits it: for distributions that differ mainly by
+  a shift the two statistics carry the same information.}
   \label{tab:wcci-shift-full-appendix}
   \setlength{\tabcolsep}{5pt}
   \begin{tabular}{llrrrrrrr}
     \toprule
     & & \multicolumn{2}{c}{\texttt{bus14}} & \multicolumn{2}{c}{WCCI} & & & \\
     \cmidrule(lr){3-4}\cmidrule(lr){5-6}
-    Channel & Restriction & mean & sd & mean & sd & offset & ratio & $W_1/\sigma_p$ \\
+    Channel & Rows & mean & sd & mean & sd & offset & ratio & $W_1/\sigma_p$ \\
     \midrule
-    \texttt{load\_theta} & all      & $-2.987$ & $3.283$ & $0.747$ & $2.963$ & $+1.194$ & 0.903 & 1.194 \\
-                         & carrying & $-5.527$ & $2.431$ & $1.462$ & $4.018$ & $+2.105$ & 1.653 & 2.104 \\
-    \texttt{gen\_theta}  & all      & $-0.787$ & $1.925$ & $0.265$ & $1.786$ & $+0.566$ & 0.928 & 0.566 \\
-                         & carrying & $-4.158$ & $2.361$ & $1.108$ & $3.522$ & $+1.756$ & 1.492 & 1.756 \\
-    \texttt{gen\_p}      & all      & $10.763$ & $23.911$ & $11.530$ & $58.620$ & $+0.017$ & 2.452 & 0.300 \\
-                         & carrying & $54.038$ & $23.069$ & $78.738$ & $134.810$ & $+0.255$ & 5.844 & 0.746 \\
-    \texttt{load\_p}     & all      & $12.104$ & $20.192$ & $9.184$ & $48.766$ & $-0.078$ & 2.415 & 0.270 \\
-                         & carrying & $22.393$ & $22.888$ & $17.243$ & $65.774$ & $-0.105$ & 2.874 & 0.379 \\
-    \midrule
-    \texttt{rho}         & all      & $0.364$ & $0.168$ & $0.320$ & $0.176$ & $-0.259$ & 1.050 & 0.260 \\
-    \texttt{domain\_mask} & all     & $0.757$ & $0.429$ & $0.783$ & $0.413$ & $+0.061$ & 0.961 & 0.062 \\
+    \texttt{p}     & all    & $6.538$  & $17.615$ & $5.461$  & $37.718$ & $-0.037$ & 2.141 & 0.204 \\
+                   & owning & $27.306$ & $26.998$ & $19.067$ & $68.613$ & $-0.158$ & 2.541 & 0.485 \\
+    \texttt{theta} & all    & $-1.236$ & $2.570$  & $0.305$  & $2.127$  & $+0.653$ & 0.827 & 0.653 \\
+                   & owning & $-5.162$ & $2.707$  & $1.064$  & $3.871$  & $+1.864$ & 1.430 & 1.864 \\
+    \texttt{rho}   & all    & $0.133$  & $0.203$  & $0.116$  & $0.187$  & $-0.088$ & 0.922 & 0.088 \\
+                   & owning & $0.364$  & $0.168$  & $0.319$  & $0.176$  & $-0.260$ & 1.050 & 0.261 \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -326,12 +291,11 @@ behaviour that linear axes compress.
 \begin{figure}[H]
   \centering
   \includegraphics[width=\linewidth]{figures/wcci_feature_tails.png}
-  \caption{Tail behaviour of the power channels on log density, and the
-  structural \texttt{domain\_mask}. WCCI carries a generator pinned near its
-  $399$~MW rating and a load region reaching $-281$~MW, neither of which occurs
-  anywhere on \texttt{bus14}: a frozen encoder has no calibration for either.
-  \texttt{domain\_mask} is near-identical on the two grids, so the small
-  difference in Table~\ref{tab:wcci-shift} carries no signal.}
+  \caption{Full range of the two asset channels on log density. WCCI carries a
+  generator pinned near its $399$~MW rating and a load region reaching
+  $-281$~MW, neither of which occurs anywhere on \texttt{bus14}: a transferred
+  encoder has no calibration for either. The angle panel shows the displacement
+  rather than a difference in width.}
   \label{fig:wcci-tails-appendix}
 \end{figure}
 

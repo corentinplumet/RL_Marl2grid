@@ -286,6 +286,11 @@ def main() -> None:
     cpu_record = _load_checkpoint(checkpoint_path, th.device("cpu"))
     args = _merge_missing_defaults(_as_namespace(cpu_record["args"]))
     args = _configure_legacy_connected_feature(args, cpu_record)
+    source_env_id = str(getattr(args, "env_id", ""))
+    dataset_env_id = str(metadata.get("env_id", "") or "")
+    if not dataset_env_id:
+        raise ValueError("Dataset metadata has no env_id.")
+    cross_grid_transfer = source_env_id != dataset_env_id
     checkpoint_action_space = str(getattr(args, "reduced_action_space", "") or "")
     dataset_action_space = str(metadata.get("reduced_action_space", "") or "")
     if not dataset_action_space:
@@ -295,7 +300,13 @@ def main() -> None:
             f"Dataset action-space file does not exist: "
             f"{_task_path(dataset_action_space)}"
         )
+    args.env_id = dataset_env_id
     args.reduced_action_space = dataset_action_space
+    if cross_grid_transfer:
+        # Bus14 flat-observation statistics are not meaningful on WCCI. The
+        # transferable candidate actors use graph-only inputs
+        # (gnn_concat_flat=false) with deterministic physical scaling.
+        args.norm_obs = False
     args.track = False
     args.eval_action_heuristic = "none"
     args.deterministic_eval = True
@@ -312,8 +323,13 @@ def main() -> None:
     set_random_seed(cli.seed)
     device = _resolve_device(args, cli.device)
     source_record = _load_checkpoint(checkpoint_path, device)
+    if cross_grid_transfer:
+        source_record = dict(source_record)
+        training_state = dict(source_record.get("training_state", {}) or {})
+        training_state.pop("obs_stats", None)
+        source_record["training_state"] = training_state
     evaluator = Evaluator(args, logger=None, device=device, chronic_split="train")
-    obs_stats = _extract_obs_stats(source_record)
+    obs_stats = {} if cross_grid_transfer else _extract_obs_stats(source_record)
     if obs_stats:
         evaluator.env.env.set_obs_stats(obs_stats)
     same_action_space = bool(
@@ -406,6 +422,7 @@ def main() -> None:
     print("========== Dangerous-state graph BC training ==========")
     print(f"Dataset: {dataset_dir}")
     print(f"Checkpoint: {_repo_relative(checkpoint_path)}")
+    print(f"Environment transfer: {source_env_id} -> {dataset_env_id}")
     print(f"Output: {output_path}")
     print(f"Shards / epochs: {len(shards)} / {cli.epochs}")
     print(f"Batch / LR: {cli.batch_size} / {cli.lr}")
@@ -517,6 +534,10 @@ def main() -> None:
                 "dataset": str(dataset_dir),
                 "source_checkpoint": str(checkpoint_path),
                 "source_checkpoint_global_step": int(source_record.get("global_step", 0)),
+                "source_env_id": source_env_id,
+                "target_env_id": dataset_env_id,
+                "cross_grid_actor_transfer": cross_grid_transfer,
+                "source_obs_stats_discarded": cross_grid_transfer,
                 "objective": (
                     "balanced_weighted_ce_plus_intervention_bce_plus_reference_kl"
                     if cli.distill_weight > 0.0

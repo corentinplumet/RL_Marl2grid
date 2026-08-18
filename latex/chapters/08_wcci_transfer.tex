@@ -191,14 +191,23 @@ channel into the band occupied by
 \section{Transfer experiment design}
 \label{sec:wcci-design}
 
-Four encoder architectures are carried over from Chapter~\ref{ch:experiments},
-two from the message-direction screen and two from the structural screen. Each
-runs in two arms at three seeds. In the \emph{frozen} arm the encoder is loaded
-from the paired \texttt{bus14} run and its parameters stop requiring gradients,
-so only the action heads train; in the \emph{scratch} arm the same architecture
-starts from random initialization. Every other setting is copied from the
-corresponding \texttt{bus14} configuration, which is what makes the encoder
-weights loadable at all.
+The transferred model is the shared candidate-scoring actor of
+Section~\ref{sec:candidate-action-scoring} on the disaggregated line-node graph,
+the configuration Screen~E selected on \texttt{bus14}. Four of its settings are
+varied factorially: the input condition (raw features and absolute angles, or
+physical scaling with the angle drop), the touched-node pooling (joint or
+type-separated mean), the static action descriptor (off or on), and the idle
+action (shared or dedicated scorer). Each of the sixteen cells runs in two arms.
+In the \emph{fine-tuned} arm the encoder and the candidate scorer are both
+loaded from the paired \texttt{bus14} run and both keep training; in the
+\emph{scratch} arm the same configuration starts from random initialization.
+Every other setting is copied from the corresponding \texttt{bus14}
+configuration, which is what makes the weights loadable at all.
+\\
+\\
+Transferring the scorer as well as the encoder is what the candidate head makes
+possible. Its parameters do not depend on the action count, so one agent's
+scorer, \texttt{agent\_0} here, can initialize every agent on the target grid.
 \\
 \\
 Loading needs care in one place. The encoder registers its edge index and node
@@ -222,20 +231,21 @@ randomly initialized.
     \midrule
     Environment & \texttt{bus36\_wcci\_nomaint}, difficulty 0, topology actions, 80/20 split with split seed 0 \\
     Action space & Reduced at $k=256$, giving 77 / 256 / 127 / 256 actions per agent \\
-    Architectures & \texttt{gb2a\_la2b} and \texttt{gb2a\_lb2a} (disaggregated); \texttt{e0n0v0} and \texttt{e1n0v0} (bus) \\
-    Arms & Frozen encoder with trained heads; identical architecture from scratch \\
-    Seeds & 0, 1, 2 \\
+    Actor & Shared candidate-scoring head on the disaggregated line-node graph, \texttt{share\_actor\_gnn} \\
+    Factors & Input condition $\times$ touched-node pooling $\times$ descriptor $\times$ idle scorer, $2^4=16$ cells \\
+    Arms & Fine-tuned encoder and scorer from the paired \texttt{bus14} run, both trainable; identical configuration from scratch \\
+    Seeds & 0 \\
     Budget & 15M steps, matching the \texttt{bus14} source runs \\
-    Inputs & \texttt{edge\_diff} angles, physical scaling enabled \\
+    Inputs & Both conditions are run: raw features with absolute angles, and physical scaling with \texttt{edge\_diff} \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-\noindent A first set of runs was launched with the uncorrected inputs before the analysis
-above was complete. Those are retained rather than discarded: comparing the
-scratch arm with and without the input correction isolates whether the
-correction helps or harms on the target grid, independently of any transfer
-effect, on otherwise identical settings.
+\noindent Running both input conditions rather than only the corrected one is deliberate.
+Comparing the scratch arms with and without the correction isolates whether it
+helps or harms on the target grid at all, independently of any transfer effect
+and on otherwise identical settings; comparing each scratch arm against its
+fine-tuned partner isolates the transfer.
 
 % \section{First transfer results}
 % \label{sec:wcci-first-results}

@@ -125,11 +125,11 @@ epochs                     = 3
 Train the primary model:
 
 ```bash
-sbatch --exclude=i39 \
-  Topology_Task/teacher_student/job_train_dangerous_graph_bc_izar.sh \
-  --dataset outputs/teacher_student_datasets/wcci_nomaint_danger090_multi_primary/mk64 \
+sbatch \
+  Topology_Task/teacher_student/job_train_dangerous_graph_bc_jed.sh \
+  --dataset outputs/teacher_student_datasets/wcci_nomaint_danger090_multi_conservative/mk64 \
   --checkpoint checkpoint/final_ft64c_NLS_mean_f1_a0h0_s0.tar \
-  --output checkpoint/dangerous_graph_bc/bcg_bal020_w3_aux025_kl010_NLS_mean_f1_a0h0_s0.tar \
+  --output checkpoint/dangerous_graph_bc/bcg_cons1496_bal020_w3_aux025_NLS_mean_f1_a0h0_s0.tar \
   --epochs 3 \
   --batch-size 64 \
   --lr 0.00001 \
@@ -138,23 +138,36 @@ sbatch --exclude=i39 \
   --aux-intervention-loss true \
   --aux-weight 0.25 \
   --distill-weight 0 \
-  --freeze-encoder false
+  --freeze-encoder false \
+  --device cpu
 ```
 
 Train the `tmean_f0_a0h0` control from the same labels:
 
 ```bash
-sbatch --exclude=i39 \
-  Topology_Task/teacher_student/job_train_dangerous_graph_bc_izar.sh \
-  --dataset outputs/teacher_student_datasets/wcci_nomaint_danger090_multi_primary/mk64 \
+sbatch \
+  Topology_Task/teacher_student/job_train_dangerous_graph_bc_jed.sh \
+  --dataset outputs/teacher_student_datasets/wcci_nomaint_danger090_multi_conservative/mk64 \
   --checkpoint checkpoint/final_ft64c_NLS_tmean_f0_a0h0_s0.tar \
-  --output checkpoint/dangerous_graph_bc/bcg_bal020_w3_aux025_NLS_tmean_f0_a0h0_s0.tar \
-  --distill-weight 0
+  --output checkpoint/dangerous_graph_bc/bcg_cons1496_bal020_w3_aux025_NLS_tmean_f0_a0h0_s0.tar \
+  --distill-weight 0 \
+  --device cpu
 ```
 
 The trainer updates the graph encoder and shared candidate scorer, preserves the
 critic and observation statistics, and writes a standalone full-test-compatible
 checkpoint. `--freeze-encoder true` provides a later scorer-only ablation.
+
+### Direct supervised transfer from bus14
+
+The same checkpoint-free labels can adapt the original compatible NLS bus14
+actor directly, without an intermediate WCCI PPO fine-tuning stage. The trainer
+rebuilds the shared candidate actor for the WCCI mk64 action space, disables and
+discards incompatible bus14 flat-observation statistics, and optimizes the actor
+on the hard-state labels. Use the exact bus14 checkpoint from the corresponding
+zero-shot baseline and keep `--distill-weight 0`. The resulting checkpoint is
+standalone actor-evaluation compatible; its preserved bus14 critic must not be
+used to resume WCCI PPO training.
 
 ## 4. Evaluation
 
