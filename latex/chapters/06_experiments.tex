@@ -17,7 +17,7 @@ The preliminary viability runs and Screens C--D predate the corrected
 local-graph construction of
 Section~\ref{subsec:graph-local-global}. Their fixed candidate graphs marked
 all rows of a neighboring substation as visible, including unattached busbars
-and, in heterogeneous graphs, neighboring private assets. Those isolated rows
+and, in disaggregated graphs, neighboring private assets. Those isolated rows
 could enter graph readout even when no live boundary line connected them to the
 agent. Screens C--D therefore characterize the \emph{legacy,
 information-leaking observation} and must not be presented as strictly
@@ -44,14 +44,14 @@ B supersede the earlier campaigns under those names.
   (Section~\ref{sec:heterogeneous-graph-representation}): a $3\times3$
   factorial, 27 runs. \emph{Complete.}
   \item \textbf{Screen E} varies candidate-node pooling, the action descriptor,
-  and the idle-action head on the leakage-free explicit-line graph: a $2^3$
+  and the idle-action head on the leakage-free disaggregated line-node graph: a $2^3$
   factorial, eight runs at seed 0, repeated with corrected graph inputs.
   \emph{Complete.}
 \end{itemize}
 
 \noindent Screens A and B form one corrected-boundary sequence on the busbar
 graph and share the nominal \texttt{mp2\_h128} GINE/mean reference. Screen E is
-the other corrected-boundary screen, on the explicit-line graph. Screens C and
+the other corrected-boundary screen, on the disaggregated line-node graph. Screens C and
 D are kept as separate legacy evidence and are not compared numerically with
 the corrected campaigns.
 
@@ -405,7 +405,7 @@ they compose.
 \subsection*{Design}
 
 A complete $2^3$ factorial with three seeds per cell, 24 runs. The graph type is
-\texttt{bus} throughout and the baseline cell is the unaugmented
+busbar throughout and the baseline cell is the unaugmented
 \texttt{e0n0v0}. It has the same nominal $K=2$, width-128, GINE/mean design as
 the corrected reference, but predates the boundary fix and is not numerically
 comparable to Screens A and B. Cells are named by their three switches, so
@@ -477,7 +477,7 @@ and load relations behave independently?
 
 A complete $3\times3$ factorial over the generator and load directions with
 three seeds per cell: 27 runs.
-The graph type is \texttt{heterogeneous} throughout; the line and summary
+The graph type is disaggregated throughout; the line and summary
 directions stay \texttt{bidirectional} and are inert for this schema. The
 encoder matches the reference configuration: GINE, two layers, 128
 features, mean readout, no augmentations, so the only screened factors are
@@ -552,7 +552,7 @@ A $2^3$ factorial on \texttt{bus14}, seed $0$, eight runs. Pooling is
 \texttt{mean} or \texttt{typed\_mean}; the action descriptor is appended
 (\texttt{f1}) or withheld (\texttt{f0}); the idle action is scored by a
 dedicated head (\texttt{a0h1}) or by the shared scorer (\texttt{a0h0}). Every
-run uses the explicit-line graph without one-hop context, a two-layer GINE
+run uses the disaggregated line-node graph without one-hop context, a two-layer GINE
 encoder of width $128$, and the 15M-step budget of
 Section~\ref{sec:screening-common-protocol}. All eight reached 15M steps.
 

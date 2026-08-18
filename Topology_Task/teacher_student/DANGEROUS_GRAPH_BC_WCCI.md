@@ -1,0 +1,177 @@
+# Dangerous-state graph behavior cloning on WCCI no-maintenance
+
+This stage adapts the earlier `BC_bal..._w..._aux...` idea to the shared GINE
+candidate actors. It is deliberately separate from PPO fine-tuning.
+
+## What is collected
+
+Collection runs only on the WCCI **training** chronic split. It can produce
+paired mk64, mk128, and mk256 datasets in one rollout. The environment exposes
+the largest supplied space (mk256), each candidate is simulated once, and the
+best action is recomputed independently inside each smaller subset. At every
+state with global max rho at or above `0.90`:
+
+1. identify every concerned agent whose local line domain reaches rho `0.90`;
+2. simulate that agent's non-idle actions from the largest supplied space;
+3. reject illegal, ambiguous, exception-producing, and terminal actions;
+4. label the valid action with the lowest next-step max rho only if it improves
+   on do-nothing by at least `0.001`, or if it rescues a terminal do-nothing
+   transition;
+5. otherwise label action 0;
+6. label every unconcerned agent with action 0.
+
+Each action-space dataset stores the same complete graph observations, its own
+hard labels and restricted policy logits, local/global rho diagnostics, and the
+selected action improvement. Candidate simulations are not duplicated in the
+saved children: mk64 and mk128 labels are derived in memory from the single
+mk256 simulation pass.
+
+The default rollout follows the checkpoint policy without a rho gate. This is a
+DAgger-like choice: it queries the brute-force teacher precisely on the states
+the model itself visits and mishandles. When the source checkpoint is mk64 and
+mk64 is one of the supplied spaces, its rollout remains restricted to mk64 even
+though mk256 candidates are simulated for labels. `best_simulated` can instead
+be used to extend trajectories with the best unilateral label found at
+dangerous states; `--rollout-action-space` controls its action subset.
+
+## 1. Smoke-test collection
+
+Use a completed WCCI mk64 checkpoint, preferably the final primary
+`mean_f1_a0h0` fine-tuning checkpoint:
+
+```bash
+cd /home/plumet/RL_Marl2grid
+
+sbatch --exclude=i39 \
+  Topology_Task/teacher_student/job_collect_dangerous_graph_bc_izar.sh \
+  --checkpoint checkpoint/final_ft64c_NLS_mean_f1_a0h0_s0.tar \
+  --split train \
+  --eval-all-split-chronics false \
+  --max-episodes 2 \
+  --max-env-steps 5000 \
+  --chronic-sample-seed 0 \
+  --max-dangerous-states-per-episode 10 \
+  --danger-rho-threshold 0.90 \
+  --local-rho-threshold 0.90 \
+  --rollout-policy checkpoint \
+  --label-action-space mk64=outputs/teacher_student_datasets/wcci_full2048a_90_v3/metadata/reduced_action_space_wcci_full2048a_90_v3_mk64.json \
+  --label-action-space mk128=outputs/teacher_student_datasets/wcci_full2048a_90_v3/metadata/reduced_action_space_wcci_full2048a_90_v3_mk128.json \
+  --label-action-space mk256=outputs/teacher_student_datasets/wcci_full2048a_90_v3/metadata/reduced_action_space_wcci_full2048a_90_v3_mk256.json \
+  --output-dir outputs/teacher_student_datasets/smoke_wcci_nomaint_danger090_multi
+```
+
+Inspect the job log and dataset metadata before starting the full collection.
+
+## 2. Bounded training-split collection
+
+```bash
+sbatch --exclude=i39 \
+  Topology_Task/teacher_student/job_collect_dangerous_graph_bc_izar.sh \
+  --checkpoint checkpoint/final_ft64c_NLS_mean_f1_a0h0_s0.tar \
+  --split train \
+  --split-chronics true \
+  --eval-all-split-chronics false \
+  --max-episodes 100 \
+  --chronic-sample-seed 0 \
+  --max-dangerous-states 2500 \
+  --max-dangerous-states-per-episode 25 \
+  --min-dangerous-query-gap 12 \
+  --danger-rho-threshold 0.90 \
+  --local-rho-threshold 0.90 \
+  --min-improvement 0.001 \
+  --outcome-time-step 1 \
+  --rollout-policy checkpoint \
+  --label-action-space mk64=outputs/teacher_student_datasets/wcci_full2048a_90_v3/metadata/reduced_action_space_wcci_full2048a_90_v3_mk64.json \
+  --label-action-space mk128=outputs/teacher_student_datasets/wcci_full2048a_90_v3/metadata/reduced_action_space_wcci_full2048a_90_v3_mk128.json \
+  --label-action-space mk256=outputs/teacher_student_datasets/wcci_full2048a_90_v3/metadata/reduced_action_space_wcci_full2048a_90_v3_mk256.json \
+  --shard-size 512 \
+  --output-dir outputs/teacher_student_datasets/wcci_nomaint_danger090_multi_primary
+```
+
+This creates three paired datasets under `.../mk64`, `.../mk128`, and
+`.../mk256`. The names describe the reduction cap. Agents whose complete
+original action set is smaller than a cap naturally expose fewer actions.
+
+This does not traverse every training chronic. It deterministically shuffles
+the training split with seed 0, visits at most 100 chronics, queries at most 25
+dangerous states per chronic, keeps queried states at least 12 environment
+steps apart, and stops at 2500 total dangerous states. Start with the smoke
+test, inspect its simulation rate, then adjust these bounds if needed.
+
+Do not collect from the 50 held-out test chronics. Select the matching child
+dataset when training an mk64, mk128, or mk256 actor. The trainer rebuilds the
+candidate metadata for that action space and transfers the shared scorer. The
+hard action labels can also train compatible NLS variants. The stored policy
+logits, however, belong only to
+the checkpoint used for collection. Therefore, use the preservation KL only
+when training that same checkpoint; pass `--distill-weight 0` for another
+variant. A later per-model recollection is an optional second DAgger round.
+
+## 3. Balanced graph-actor fine-tuning
+
+The default objective mirrors the earlier successful naming convention:
+
+```text
+balanced non-idle fraction = 0.20
+non-idle CE weight         = 3.0
+aux intervention weight    = 0.25
+reference-policy KL weight = 0.10
+actor learning rate        = 1e-5
+epochs                     = 3
+```
+
+Train the primary model:
+
+```bash
+sbatch --exclude=i39 \
+  Topology_Task/teacher_student/job_train_dangerous_graph_bc_izar.sh \
+  --dataset outputs/teacher_student_datasets/wcci_nomaint_danger090_multi_primary/mk64 \
+  --checkpoint checkpoint/final_ft64c_NLS_mean_f1_a0h0_s0.tar \
+  --output checkpoint/dangerous_graph_bc/bcg_bal020_w3_aux025_kl010_NLS_mean_f1_a0h0_s0.tar \
+  --epochs 3 \
+  --batch-size 64 \
+  --lr 0.00001 \
+  --balanced-nonidle-frac 0.20 \
+  --nonidle-weight 3.0 \
+  --aux-intervention-loss true \
+  --aux-weight 0.25 \
+  --distill-weight 0.10 \
+  --freeze-encoder false
+```
+
+Train the `tmean_f0_a0h0` control from the same labels:
+
+```bash
+sbatch --exclude=i39 \
+  Topology_Task/teacher_student/job_train_dangerous_graph_bc_izar.sh \
+  --dataset outputs/teacher_student_datasets/wcci_nomaint_danger090_multi_primary/mk64 \
+  --checkpoint checkpoint/final_ft64c_NLS_tmean_f0_a0h0_s0.tar \
+  --output checkpoint/dangerous_graph_bc/bcg_bal020_w3_aux025_NLS_tmean_f0_a0h0_s0.tar \
+  --distill-weight 0
+```
+
+The trainer updates the graph encoder and shared candidate scorer, preserves the
+critic and observation statistics, and writes a standalone full-test-compatible
+checkpoint. `--freeze-encoder true` provides a later scorer-only ablation.
+
+## 4. Evaluation
+
+Evaluate the BC checkpoint without a deployment heuristic first:
+
+```bash
+python Topology_Task/full_test_eval/evaluate_checkpoint.py \
+  --checkpoint checkpoint/dangerous_graph_bc/bcg_bal020_w3_aux025_kl010_NLS_mean_f1_a0h0_s0.tar \
+  --split test \
+  --split-chronics true \
+  --eval-all-split-chronics true \
+  --eval-episodes 50 \
+  --deterministic-eval true \
+  --eval-action-heuristic none \
+  --obs-normalization auto \
+  --output-json outputs/full_test_eval/shared/dangerous_graph_bc/bcg_bal020_w3_aux025_kl010_NLS_mean_f1_a0h0_s0.json
+```
+
+Compare against the exact source checkpoint on overall survival, difficult
+chronics, easy-chronic preservation, rescues, and non-rescue delta. Only after
+the ungated comparison should local-rho be added as a separate deployment
+ablation.

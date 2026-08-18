@@ -264,7 +264,7 @@ behaviour that linear axes compress.
 \begin{table}[H]
   \centering
   \small
-  \caption{Node and edge features of the \texttt{bus} graph with their units,
+  \caption{Node and edge features of the busbar graph with their units,
   and the fraction of sampled entries equal to zero on each grid. A busbar only
   carries generation or load when an asset is attached to it, which makes four
   of the six node channels structurally sparse.}
@@ -334,3 +334,40 @@ behaviour that linear axes compress.
   difference in Table~\ref{tab:wcci-shift} carries no signal.}
   \label{fig:wcci-tails-appendix}
 \end{figure}
+
+\clearpage
+
+\section{Deterministic Feature Scales}
+\label{app:physical-scales}
+
+Section~\ref{subsec:graph-feature-normalization} gives the two references that
+carry physical content, the power base and the angular scale. The complete list
+of divisors, including the discrete counters, is below.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Deterministic physical scales used for continuous graph features.
+  The power base is the largest installed generator rating on the grid; the
+  remaining discrete channels use the corresponding Grid2Op parameter bound.}
+  \label{tab:graph-physical-scales}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{L{0.34\textwidth}L{0.25\textwidth}L{0.31\textwidth}}
+    \toprule
+    Features & Scale $s_f$ & Source \\
+    \midrule
+    \texttt{gen\_p}, \texttt{load\_p}, \texttt{p}
+      & Power base in MW & Largest installed generator rating. \\
+    \texttt{gen\_theta}, \texttt{load\_theta}, \texttt{theta}, \texttt{theta\_diff}
+      & $180$ degrees & Fixed angular scale. \\
+    \texttt{time\_before\_cooldown\_sub}
+      & Maximum substation cooldown & Grid2Op environment parameter. \\
+    \texttt{time\_before\_cooldown\_line}
+      & Maximum line cooldown & Grid2Op environment parameter. \\
+    \texttt{timestep\_overflow}
+      & Allowed overflow duration & Grid2Op environment parameter. \\
+    Maintenance time and duration
+      & Episode horizon & Grid2Op chronic horizon. \\
+    \bottomrule
+  \end{tabular}
+\end{table}

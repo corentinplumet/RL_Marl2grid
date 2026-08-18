@@ -83,15 +83,12 @@
 \appendix
 \input{chapters/appendix_additional_results}
 
-\chapter{GINE and GAT Graph-Actor Architectures}
+\chapter{GINE Graph-Actor Architecture}
 \label{app:gine-architecture}
 
 This appendix specifies the complete edge-aware actor used in the graph
-experiments. GINE and GAT receive the same graph inputs and use the same
-pooling and action head. Their only architectural difference is the
-message-passing operator: GINE inserts an edge embedding into the message
-content, whereas GAT uses an edge embedding to decide how strongly the message
-is weighted.
+experiments: the shared input and encoder pipeline, the GINE message-passing
+update, the graph readout, and the agent-specific action head.
 
 \section{Shared input and encoder pipeline}
 
@@ -113,7 +110,7 @@ passes through
 \end{equation}
 which produces a 128-dimensional node state. Learned global node-identifier
 embeddings and the optional external edge pre-encoder are disabled. Every GINE
-or GAT layer nevertheless contains its own trainable projection of the edge
+layer nevertheless contains its own trainable projection of the edge
 vector to the dimension required by that layer.
 
 Two message-passing layers are used. After each layer, the implementation
@@ -155,68 +152,13 @@ Linear--ReLU--Linear and outputs 128 features. Equation~\ref{eq:gine-layer}
 shows why edge attributes are part of the message content. Two identical node
 states can send different messages when one edge is an overloaded physical
 line and the other is an asset-attachment relation. Likewise, reversing a
-typed heterogeneous edge activates a different relation-one-hot column and can
+typed disaggregated edge activates a different relation-one-hot column and can
 produce a different message.
 
 GINE uses an unweighted sum over incoming active edges. It does not learn a
 softmax competition between neighbors. The edge embedding changes what is
 sent; the number of incoming messages and their vector sum determine the
 aggregate.
-
-\section{GAT message passing}
-\label{sec:gat-message-passing}
-
-GAT first computes a score for every active incoming edge and attention head.
-For head $r$, the implementation has the form
-\begin{align}
-  s^{(k,r)}_{uv}
-    &= \operatorname{LeakyReLU}\!\left(
-      \mathbf{a}_{s,r}^{\top}\mathbf{W}_{s,r}\mathbf{h}^{(k)}_u
-      +\mathbf{a}_{d,r}^{\top}\mathbf{W}_{d,r}\mathbf{h}^{(k)}_v
-      +\mathbf{a}_{e,r}^{\top}\mathbf{W}_{e,r}\mathbf{e}_{uv}
-    \right), \\
-  \alpha^{(k,r)}_{uv}
-    &= \frac{\exp s^{(k,r)}_{uv}}
-      {\sum_{w:(w,v)\in\mathcal{E}_t}\exp s^{(k,r)}_{wv}},
-  \label{eq:gat-attention}\\
-  \widetilde{\mathbf{h}}^{(k+1)}_v
-    &= \frac{1}{H}\sum_{r=1}^{H}
-       \sum_{u:(u,v)\in\mathcal{E}_t}
-       \alpha^{(k,r)}_{uv}\mathbf{W}_{r}\mathbf{h}^{(k)}_u.
-  \label{eq:gat-layer}
-\end{align}
-GAT uses $H=4$ heads and
-\texttt{concat=false}, so the four head outputs are averaged and the layer
-still returns 128 features. The edge embedding affects
-$\alpha_{uv}$: it changes how much attention the receiver assigns to the
-sender. In the standard GAT operator used here, the edge vector is not added to
-the value vector $\mathbf{W}_{r}\mathbf{h}_u$. This is the central difference
-from GINE.
-
-GAT internally adds a self-loop for every node. That computational self-loop
-is separate from any explicit self edge in the graph schema, which these
-representations do not create.
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Exact architectural difference between the implemented GINE and
-  GAT actors.}
-  \label{tab:gine-gat-comparison}
-  \setlength{\tabcolsep}{4pt}
-  \begin{tabular}{L{0.23\textwidth}L{0.33\textwidth}L{0.33\textwidth}}
-    \toprule
-    Component & GINE & GAT \\
-    \midrule
-    Edge use & Added to the sender state inside every message & Enters the attention score for every incoming edge \\
-    Neighbor aggregation & Unweighted sum & Softmax-weighted sum \\
-    Self information & Explicit $(1+\epsilon)\mathbf{h}_v$ term & Internal GAT self-loop \\
-    Multiple heads & Not used & Four heads, averaged rather than concatenated \\
-    Post-layer operation & ReLU, then LayerNorm & ReLU, then LayerNorm \\
-    Pooling and action head & Shared implementation & Shared implementation \\
-    \bottomrule
-  \end{tabular}
-\end{table}
 
 \section{Pooling and graph output}
 \label{sec:gnn-pooling-action}
@@ -234,13 +176,13 @@ node types, not a separate mean per type. Therefore:
 \begin{itemize}
   \item the busbar graph pools controlled busbars and only the far-end busbars
   currently attached by live boundary lines;
-  \item the direct heterogeneous graph additionally pools controlled generators
+  \item the disaggregated graph additionally pools controlled generators
   and loads, but never neighboring private assets;
-  \item the explicit-line graph additionally pools transmission-line nodes and
+  \item the disaggregated line-node graph additionally pools transmission-line nodes and
   contains no neighboring equipment.
 \end{itemize}
 An inactive contextual candidate contributes neither to the numerator nor to
-the denominator. The ordinary GINE/GAT mean readout includes visible context;
+the denominator. The ordinary GINE mean readout includes visible context;
 \texttt{controlled\_mean} replaces $m_v$ by the product of the visibility and
 controlled-node masks. Visible context can still influence controlled nodes
 through message passing, but it is not aggregated directly. Sum and maximum
@@ -284,7 +226,7 @@ Only the GNN encoder and graph output projection are shared across agents. The
 action heads are agent-specific because agents can have different local action
 sets and therefore different output widths $|\mathcal{A}_a|$. The critic is a
 separate MLP over the centralized flat state and does not reuse the actor
-GINE/GAT embedding.
+graph embedding.
 
 Equation~\ref{eq:gnn-action-head} is the default head. The optional
 candidate-action head of Section~\ref{sec:candidate-action-scoring} keeps this
@@ -296,7 +238,7 @@ states that Equation~\ref{eq:gnn-mean-pooling} averages.
 \label{sec:gnn-node-input-inventory}
 
 All node types of one representation receive the same feature columns. Columns
-not listed for a node type are zero. Type identity reaches GINE and GAT through
+not listed for a node type are zero. Type identity reaches GINE through
 the \texttt{is\_*} columns. The inventory below describes visible nodes. For an
 inactive contextual candidate, the complete row---including type and role
 columns---is zero, all incident edges are inactive, and the node is excluded
@@ -305,12 +247,12 @@ from readout.
 \begin{table}[H]
   \centering
   \scriptsize
-  \caption{Node types and nonzero input features received by GINE and GAT,
+  \caption{Node types and nonzero input features received by GINE,
   under the default \texttt{gnn\_angle\_representation = node}. Under
   \texttt{edge\_diff} the \texttt{gen\_theta}, \texttt{load\_theta} and
   \texttt{theta} entries leave the node rows in every representation; the
   busbar and disaggregated graphs move the angle drop onto the physical line
-  edge, while the explicit-line graph writes it on the transmission-line row
+  edge, while the disaggregated line-node graph writes it on the transmission-line row
   as \texttt{theta\_diff} (Section~\ref{sec:line-node-angle}).}
   \label{tab:gine-gat-node-inventory}
   \setlength{\tabcolsep}{3pt}
@@ -320,11 +262,11 @@ from readout.
     \midrule
     \texttt{bus} & Busbar & \texttt{gen\_p}, \texttt{gen\_theta}, \texttt{load\_p}, \texttt{load\_theta}, \texttt{time\_before\_cooldown\_sub}, \texttt{domain\_mask} \\
     \midrule
-    \texttt{heterogeneous} & Busbar & \texttt{is\_busbar}, \texttt{time\_before\_cooldown\_sub}, \texttt{domain\_mask} \\
+    disaggregated & Busbar & \texttt{is\_busbar}, \texttt{time\_before\_cooldown\_sub}, \texttt{domain\_mask} \\
      & Generator & \texttt{is\_generator}, \texttt{p}=\texttt{gen\_p}, \texttt{theta}=\texttt{gen\_theta}, \texttt{domain\_mask} \\
      & Load & \texttt{is\_load}, \texttt{p}=\texttt{load\_p}, \texttt{theta}=\texttt{load\_theta}, \texttt{domain\_mask} \\
     \midrule
-    \texttt{heterogeneous\_line} & Busbar & \texttt{is\_busbar}, \texttt{time\_before\_cooldown\_sub}, \texttt{domain\_mask} \\
+    disaggregated line-node & Busbar & \texttt{is\_busbar}, \texttt{time\_before\_cooldown\_sub}, \texttt{domain\_mask} \\
      & Generator & \texttt{is\_generator}, \texttt{p}=\texttt{gen\_p}, \texttt{theta}=\texttt{gen\_theta}, \texttt{domain\_mask} \\
      & Load & \texttt{is\_load}, \texttt{p}=\texttt{load\_p}, \texttt{theta}=\texttt{load\_theta}, \texttt{domain\_mask} \\
      & Transmission line & \texttt{is\_transmission\_line}, \texttt{line\_status}, \texttt{rho}, \texttt{timestep\_overflow}, \texttt{time\_before\_cooldown\_line}, optional maintenance times, \texttt{domain\_mask} \\
@@ -338,18 +280,18 @@ from readout.
 \section{Exact edge inputs by representation}
 \label{sec:gnn-edge-input-inventory}
 
-The edge vector contains all edge information consumed by GINE and GAT.
+The edge vector contains all edge information consumed by GINE.
 Inactive candidates are filtered out before the vectors in
 Table~\ref{tab:gine-gat-edge-inventory} reach a convolution.
 
 \begin{table}[H]
   \centering
   \scriptsize
-  \caption{Directed edge relations and edge-feature vectors received by GINE
-  and GAT, under the default \texttt{gnn\_angle\_representation = node}.
+  \caption{Directed edge relations and edge-feature vectors received by GINE,
+  under the default \texttt{gnn\_angle\_representation = node}.
   ``Relation'' denotes one active relation-one-hot column. Under
   \texttt{edge\_diff} the physical-line block of the busbar and disaggregated
-  graphs gains a \texttt{theta\_diff} column; the explicit-line rows are
+  graphs gains a \texttt{theta\_diff} column; the line-node rows are
   unchanged, because there the drop is a line-node feature and the attachment
   edges stay free of physical channels.}
   \label{tab:gine-gat-edge-inventory}
@@ -361,12 +303,12 @@ Table~\ref{tab:gine-gat-edge-inventory} reach a convolution.
     \texttt{bus} & Physical busbar $\leftrightarrow$ busbar & \texttt{line\_status}, \texttt{rho}, \texttt{timestep\_overflow}, \texttt{time\_before\_cooldown\_line}, optional maintenance times; no relation one-hot \\
      & Optional self or same-substation & Same width; all physical values zero; no relation one-hot \\
     \midrule
-    \texttt{heterogeneous} & Physical busbar $\leftrightarrow$ busbar & Complete measured physical-line block plus \texttt{relation\_physical\_line} \\
+    disaggregated & Physical busbar $\leftrightarrow$ busbar & Complete measured physical-line block plus \texttt{relation\_physical\_line} \\
      & Generator $\leftrightarrow$ busbar & Neutral physical block plus direction-specific generator relation \\
      & Load $\leftrightarrow$ busbar & Neutral physical block plus direction-specific load relation \\
      & Optional self or same-substation & Neutral physical block plus the corresponding relation \\
     \midrule
-    \texttt{heterogeneous\_line} & Busbar $\leftrightarrow$ line node & One origin/extremity-and-direction relation; no line-state attributes \\
+    disaggregated line-node & Busbar $\leftrightarrow$ line node & One origin/extremity-and-direction relation; no line-state attributes \\
      & Generator $\leftrightarrow$ busbar & One direction-specific generator relation \\
      & Load $\leftrightarrow$ busbar & One direction-specific load relation \\
      & Optional self or same-substation & One corresponding relation \\
@@ -380,8 +322,8 @@ The complete relation names and activation rules are given in
 Tables~\ref{tab:heterogeneous-edge-features}
 and~\ref{tab:heterogeneous-line-edge-features}. Those tables distinguish, for
 example, generator-to-busbar from busbar-to-generator and origin from
-extremity line attachments. These distinctions matter directly to both
-edge-aware models: GINE changes message content and GAT changes attention.
+extremity line attachments. These distinctions matter directly to an
+edge-aware model such as GINE, which folds the edge vector into every message.
 
 \chapter{Graph Construction Details}
 \label{app:graph-construction}
@@ -400,7 +342,7 @@ Write $d_g,d_d,d_{\ell}\in\{1,2\}$ for the number of retained directions of the
 generator, load, and line-node attachments: $2$ for \texttt{bidirectional} and
 $1$ for either one-way mode. Let $P_{\ell}$ be the number of represented line
 endpoints: an internal line contributes two and a boundary line in a local
-explicit-line graph contributes only its controlled endpoint. Thus
+disaggregated line-node graph contributes only its controlled endpoint. Thus
 $L\leq P_{\ell}\leq 2L$. Table~\ref{tab:appendix-graph-sizes} gives the size of
 the fixed candidate graph before any mask is applied.
 
@@ -417,8 +359,8 @@ the fixed candidate graph before any mask is applied.
     Schema & Candidate nodes & Candidate directed edges \\
     \midrule
     \texttt{bus} & $SB$ & $2B^2L$ \\
-    \texttt{heterogeneous} & $SB+N_g+N_d$ & $2B^2L + B(d_gN_g+d_dN_d)$ \\
-    \texttt{heterogeneous\_line} & $SB+N_g+N_d+L$ & $Bd_{\ell}P_{\ell} + B(d_gN_g+d_dN_d)$ \\
+    disaggregated & $SB+N_g+N_d$ & $2B^2L + B(d_gN_g+d_dN_d)$ \\
+    disaggregated line-node & $SB+N_g+N_d+L$ & $Bd_{\ell}P_{\ell} + B(d_gN_g+d_dN_d)$ \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -428,7 +370,7 @@ relations enabled therefore has $2B^2L+SB+SB(B-1)$ candidate directed edges.
 The disaggregated schema adds $N_g+N_d$ nodes and between $B(N_g+N_d)$ and
 $2B(N_g+N_d)$ asset candidates to the busbar graph, and buys individual asset
 states with them. For a complete state graph, $P_{\ell}=2L$, so the
-explicit-line schema replaces the $2B^2L$ busbar-to-busbar term by
+disaggregated line-node schema replaces the $2B^2L$ busbar-to-busbar term by
 $2Bd_{\ell}L$: identical at $B=2$ and cheaper for $B>2$. A local boundary line
 has candidates only at its controlled endpoint, which reduces $P_{\ell}$ and
 prevents construction of a far-end attachment. The schema adds $L$ line nodes
@@ -444,8 +386,7 @@ $2N_{\mathrm{bus}}$ edges, or $S$ or $2S$ when summary nodes are also enabled.
 \label{app:graph-indexing}
 
 Grid2Op numbers busbars from one in its topology vector; those identifiers are
-converted to the zero-based index $b$ used in
-Equation~\ref{eq:busbar-node-id}.
+converted to the zero-based index $b$ used in the node identifier $i(s,b)$.
 
 An inactive candidate edge keeps its row in the edge-feature tensor, so the
 tensor shape is fixed for an episode, but the row is zero-filled and its
@@ -465,8 +406,8 @@ A local actor graph always contains the controlled substations and every line
 touching them. Additional membership is schema-specific. The \texttt{bus}
 graph contains only the far-end busbar currently attached by each live boundary
 line, and that busbar exposes aggregated neighboring power and angle. The
-direct \texttt{heterogeneous} graph contains the same far-end busbar, but never
-its generator or load nodes. The \texttt{heterogeneous\_line} graph represents
+direct disaggregated graph contains the same far-end busbar, but never
+its generator or load nodes. The disaggregated line-node graph represents
 the shared line itself and therefore constructs no neighboring busbar or
 private asset and no far-end attachment edge. The centralized state graph is
 intentionally unrestricted for centralized training. Ordinary pooling
@@ -480,8 +421,8 @@ The regression suite checks that contextual visibility follows a live busbar
 attachment, moves when the attachment is switched, and disappears after a
 line outage; controlled nodes remain present; structural relations cannot make
 a hidden candidate visible; inactive rows are zero; neighboring private assets
-are absent from direct heterogeneous graphs; and all neighboring equipment is
-absent from explicit-line local graphs. Candidate-action tests additionally
+are absent from disaggregated graphs; and all neighboring equipment is
+absent from disaggregated line-node local graphs. Candidate-action tests additionally
 verify that a boundary line remains addressable through its line node without
 adding far-end equipment. Controlled-readout tests verify both that the pooled
 set is fixed and that gradients can still reach visible context through message

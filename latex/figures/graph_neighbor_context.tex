@@ -61,7 +61,7 @@
 \begin{scope}[xshift=-19pt, xscale=1.08]
   \path[panel] (0,0) rectangle (5.55,5.35);
   \node[font=\bfseries\small\sffamily] at (2.775,5.02)
-    {(a) \texttt{bus}};
+    {(a) busbar};
   \path[controlled] (0.18,0.32) rectangle (2.68,4.55);
   \path[context] (2.87,0.32) rectangle (5.37,4.55);
   \node[zone, text=black!55] at (1.43,4.28) {CONTROLLED};
@@ -79,7 +79,7 @@
 \begin{scope}[xshift=157pt, xscale=1.08]
   \path[panel] (0,0) rectangle (5.55,5.35);
   \node[font=\bfseries\small\sffamily] at (2.775,5.02)
-    {(b) \texttt{heterogeneous}};
+    {(b) disaggregated};
 
   \path[controlled] (0.18,0.32) rectangle (2.68,4.55);
   \path[context] (2.87,0.32) rectangle (5.37,4.55);
@@ -108,7 +108,7 @@
 \begin{scope}[xshift=11.70cm]
   \path[panel] (0,0) rectangle (6.68,5.35);
   \node[font=\bfseries\small\sffamily] at (2.775,5.02)
-    {(c) \texttt{heterogeneous\_line}};
+    {(c) disaggregated line-node};
   \path[controlled] (0.18,0.32) rectangle (3.16,4.55);
   \path[context] (3.3,0.32) rectangle (6.45,4.55);
   \node[zone, text=black!55] at (1.67,4.28) {CONTROLLED};
@@ -138,5 +138,5 @@
 \draw[physical] (15.4,-0.48) -- (16.1,-0.48);
 \node[label, anchor=west] at (16.28,-0.48) {active relation};
 
-  \node[draw=none] at (2.87,-0.48) {G/L -> Aggregated Generator and Load};
+  \node[draw=none] at (2.87,-0.48) {G/L: aggregated generator and load};
 \end{tikzpicture}

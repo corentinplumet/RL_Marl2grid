@@ -19,7 +19,7 @@
 ]
 
 \path[panel] (0,0) rectangle (12.6,5.35);
-\node[title] at (6.3,5.02) {Busbar graph};
+\node[title] at (6.3,5) {Busbar graph};
 
 % The same four-busbar network is reused in the next two figures.
 \node[busbar] (b1) at (2.55,2.75) {$b_1$};
@@ -32,9 +32,9 @@
 \draw[physical] (b3) -- (b4);
 \draw[physical] (b2) -- (b4);
 
-\node[note, text=blue!65!black] at (1.42,3.70)
+\node[note, text=blue!65!black] (node1) at (2,4.21)
   {generator and load values\\aggregated on $b_1$};
-\draw[draw=blue!55!gray, line width=0.8pt] (1.72,3.37) -- (2.25,3.02);
+\draw[blue!55!gray, line width=0.8pt] (node1.south) -- (b1);
 
 \node[muted] at (9.90,4.10)
   {only busbars are nodes};

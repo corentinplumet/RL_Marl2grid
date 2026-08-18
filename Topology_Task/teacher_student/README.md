@@ -22,6 +22,14 @@ The policy proposal before override is also saved:
 policy_action = action proposed by the actor before the heuristic
 ```
 
+## Dangerous-State Graph BC on WCCI
+
+The shared GINE candidate actors need a graph-aware pipeline rather than the
+flat-MLP trainer documented below. The WCCI procedure that collects high-rho
+states, finds the best valid unilateral mk64 action, and conservatively
+fine-tunes the graph actor is documented in
+[`DANGEROUS_GRAPH_BC_WCCI.md`](DANGEROUS_GRAPH_BC_WCCI.md).
+
 ## Collect A Dataset
 
 Run from the repository root:
