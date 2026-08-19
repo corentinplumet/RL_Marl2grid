@@ -55,14 +55,26 @@ from 5 to 17 substations.
 
 ## Launch
 
+JED:
+
 ```bash
-DRY_RUN=true bash configs/no_leakage_config/X_wcci_scratch_arch/launch_izar.sh
+DRY_RUN=true bash configs/no_leakage_config/X_wcci_scratch_arch/launch_jed.sh
+bash configs/no_leakage_config/X_wcci_scratch_arch/launch_jed.sh
+```
+
+IZAR:
+
+```bash
 bash configs/no_leakage_config/X_wcci_scratch_arch/launch_izar.sh
 ```
 
-Filters match on the config name, e.g. `... launch_izar.sh mk64` submits the five
-mk64 cells only. The launcher refuses to submit if any referenced action-space
+Filters match on the config name, e.g. `... launch_jed.sh mk64` submits the five
+mk64 cells only. Both launchers refuse to submit if any referenced action-space
 artifact is missing locally.
+
+The JED launcher exports `TIME_LIMIT` (default 4980 min) to use more of the
+`3-12:00:00` JED allocation than the 4260 the configs inherit from the bus14
+screens. Override with `TIME_LIMIT=... bash ... launch_jed.sh`.
 
 ## Before trusting the results
 
