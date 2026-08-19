@@ -158,6 +158,20 @@ The trainer updates the graph encoder and shared candidate scorer, preserves the
 critic and observation statistics, and writes a standalone full-test-compatible
 checkpoint. `--freeze-encoder true` provides a later scorer-only ablation.
 
+In addition to the last-epoch `--output`, the trainer writes
+`<output_stem>_best.tar`. The best epoch maximizes the macro average, over
+agents, of `0.5 * action0_accuracy + 0.5 * nonidle_accuracy`. Use this `_best`
+checkpoint for rollout evaluation: the shared scorer can oscillate late in a
+capacity run even while its loss decreases. Pass `--best-output` only when a
+different destination is needed.
+
+`--agent-update-mode mixed` (the default) forms one minibatch per agent before
+each optimizer step, so a shared scorer receives all four agent objectives at
+once. `--unshare-candidate-scorer true` is a capacity diagnostic: it keeps the
+graph encoder shared but clones the candidate scorer per WCCI agent. Such a
+checkpoint remains full-test compatible, but it is a target-specialized
+ablation rather than a fully shared transferable actor.
+
 ### Direct supervised transfer from bus14
 
 The same checkpoint-free labels can adapt the original compatible NLS bus14

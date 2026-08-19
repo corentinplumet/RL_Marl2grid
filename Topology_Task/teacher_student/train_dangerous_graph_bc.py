@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import math
 import os
 import sys
 from argparse import Namespace
@@ -148,6 +149,10 @@ def _resolve_output(path: Path) -> Path:
     return path
 
 
+def _default_best_output(output_path: Path) -> Path:
+    return output_path.with_name(f"{output_path.stem}_best{output_path.suffix}")
+
+
 def _task_path(value: str) -> Path:
     path = Path(value).expanduser()
     if not path.is_absolute():
@@ -251,6 +256,20 @@ def _print_eval_metrics(
         )
 
 
+def _eval_selection_score(
+    eval_metrics: Dict[str, Dict[str, float]], agent_ids: List[str]
+) -> float:
+    """Macro balanced accuracy used to retain the best supervised epoch."""
+    scores = []
+    for agent in agent_ids:
+        metrics = eval_metrics[agent]
+        idle_accuracy = float(metrics.get("action0_accuracy", float("nan")))
+        nonidle_accuracy = float(metrics.get("nonidle_accuracy", float("nan")))
+        if math.isfinite(idle_accuracy) and math.isfinite(nonidle_accuracy):
+            scores.append(0.5 * (idle_accuracy + nonidle_accuracy))
+    return float(np.mean(scores)) if scores else float("-inf")
+
+
 def _unshare_candidate_scorers(actors: Dict[str, Any]) -> int:
     """Clone learned scorer modules while keeping the graph encoder shared."""
     cloned = 0
@@ -312,6 +331,15 @@ def parse_args() -> Namespace:
     parser.add_argument("--checkpoint", default=None)
     parser.add_argument("--checkpoint-dir", type=Path, default=TASK_DIR / "checkpoint")
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--best-output",
+        type=Path,
+        default=None,
+        help=(
+            "Checkpoint receiving the best macro balanced-accuracy epoch. "
+            "Defaults to <output_stem>_best.tar."
+        ),
+    )
     parser.add_argument("--exp-tag", default=None)
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--batch-size", type=int, default=64)
@@ -389,6 +417,13 @@ def main() -> None:
         )
     checkpoint_path = _resolve_checkpoint_path(str(source), checkpoint_dir)
     output_path = _resolve_output(cli.output)
+    best_output_path = (
+        _resolve_output(cli.best_output)
+        if cli.best_output is not None
+        else _default_best_output(output_path)
+    )
+    if best_output_path == output_path:
+        raise ValueError("--best-output must differ from --output.")
 
     dataset_checkpoint_raw = metadata.get("checkpoint")
     dataset_checkpoint_value = (
@@ -562,6 +597,7 @@ def main() -> None:
     print(f"Checkpoint: {_repo_relative(checkpoint_path)}")
     print(f"Environment transfer: {source_env_id} -> {dataset_env_id}")
     print(f"Output: {output_path}")
+    print(f"Best output: {best_output_path}")
     print(f"Shards / epochs: {len(shards)} / {cli.epochs}")
     print(f"Batch / LR: {cli.batch_size} / {cli.lr}")
     print(f"Balanced nonidle: {cli.balanced_nonidle_frac}")
@@ -593,6 +629,8 @@ def main() -> None:
             "eval": baseline_metrics,
         }
     ]
+    best_score = float("-inf")
+    best_epoch: int | None = None
     try:
         for epoch in range(1, cli.epochs + 1):
             sums = {agent: _metric_accumulator() for agent in agent_ids}
@@ -701,9 +739,15 @@ def main() -> None:
                 "optimizer_steps": optimizer_steps,
                 "train": train_metrics,
                 "eval": eval_metrics,
+                "selection_score": _eval_selection_score(eval_metrics, agent_ids),
             }
             history.append(epoch_record)
             _print_eval_metrics(eval_metrics, agent_ids, train_metrics)
+            selection_score = float(epoch_record["selection_score"])
+            is_best = selection_score > best_score
+            if is_best:
+                best_score = selection_score
+                best_epoch = epoch
 
             summary = {
                 "created_at": datetime.now(timezone.utc).isoformat(),
@@ -719,6 +763,10 @@ def main() -> None:
                 "source_obs_stats_discarded": cross_grid_transfer,
                 "agent_update_mode": cli.agent_update_mode,
                 "candidate_scorer_unshared": bool(cli.unshare_candidate_scorer),
+                "selection_metric": "macro_mean_0.5_action0_plus_0.5_nonidle_accuracy",
+                "selection_score": selection_score,
+                "best_selection_score": best_score,
+                "best_epoch": best_epoch,
                 "objective": (
                     "balanced_weighted_ce_plus_intervention_bce_plus_reference_kl"
                     if cli.distill_weight > 0.0
@@ -737,11 +785,27 @@ def main() -> None:
                 summary=summary,
             )
             print(f"saved {output_path}", flush=True)
+            if is_best:
+                _save_checkpoint(
+                    output_path=best_output_path,
+                    source_record=source_record,
+                    args=args,
+                    actors=actors,
+                    optimizer=optimizer,
+                    summary=summary,
+                )
+                print(
+                    f"saved best {best_output_path} "
+                    f"epoch={best_epoch} score={best_score:.6f}",
+                    flush=True,
+                )
     finally:
         evaluator.env.close()
 
     print("========== Graph BC complete ==========")
     print(f"Output: {output_path}")
+    print(f"Best output: {best_output_path}")
+    print(f"Best epoch / score: {best_epoch} / {best_score:.6f}")
     print(f"Optimizer steps: {optimizer_steps}")
 
 
