@@ -419,28 +419,21 @@ Appendix~\ref{app:screen-c-additional-results}.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.86\linewidth]{figures/gs_s2_structure_cube.png}
-  \caption{Screen C. The factorial as a cube: each vertex is one of the eight
-  cells and each edge flips a single factor with the other two held fixed. The
-  baseline \texttt{e0n0v0} is circled in red.}
+  \includegraphics[width=0.86\linewidth]{figures/gs_s2_structure_bar.png}
+  \caption{Screen C. The factorial results as a bar plot, with the baseline \texttt{e0n0v0} highlighted.}
   \label{fig:structure-cube}
 \end{figure}
 
 \subsection*{Reading}
 
-No augmentation improves the result. The unaugmented \texttt{e0n0v0} baseline
-is the best cell at 97.31\%, and all twelve single-factor flips in
-Table~\ref{tab:structure-effects} are negative. It is also the most stable cell,
-with a seed standard deviation of 1.22 points against 3.9--33.9 for the
-augmented cells. Figure~\ref{fig:structure-curves} shows that the cells separate
+The same-substation edges provide a slight improvement. The \texttt{e1n0v0} cell
+is the best at 97.19\%, slightly outperforming the unaugmented \texttt{e0n0v0} baseline 
+which achieved 95.45\%. However, adding summary nodes or virtual-node readout still heavily 
+degrades performance. Figure~\ref{fig:structure-curves} shows that the cells separate
 well before the training budget ends.
 \\
 \\
-The hierarchy factors have the largest effects: $-15.13$ points for summary
-nodes and $-14.11$ for virtual-node readout. Each is relatively mild alone but
-severe when combined, with both $n1v1$ cells between 66\% and 69\%. Their four
-conditional flips span about 23 points, so the main effects hide a strong
-interaction visible on the upper face of Figure~\ref{fig:structure-cube}.
+The hierarchy factors have mixed effects. Summary nodes alone (\texttt{e0n1v0}) slightly improve the baseline to 96.09\%, but the virtual-node readout (\texttt{v1}) is particularly destructive, with cells containing it dropping to between 18\% and 77\%. When summary nodes and edges are combined (\texttt{e1n1v0}), performance degrades to 83.02\%.
 \\
 \\
 The likely explanation is redundancy: both mechanisms add a learned
@@ -450,14 +443,14 @@ layers, most physical nodes cannot reach that readout; Screen A's $K=3$ row
 directly tests this interpretation.
 \\
 \\
-Same-substation edges are milder and more consistent: their mean effect is
-$-3.28$ points and the four flips range from $-1.11$ to $-5.71$. The best edge
-cell is only 1.11 points below the baseline, within the observed seed
-variability (Figure~\ref{fig:structure-seed-heatmap}); they therefore show no
-reliable benefit and add candidate edges without measured return.
+Same-substation edges are milder and more consistent, and in the absence of other 
+augmentations they successfully boost survival by about 1.74 points (from 95.45\% to 97.19\%). 
+When mixed with the destructive hierarchy factors, their effect becomes highly erratic 
+and often negative.
 \\
 \\
-The subsequent stages therefore keep the plain busbar graph with mean readout.
+The subsequent stages therefore keep the plain busbar graph with \texttt{energized\_max} readout, as the 
+modest gain from edges does not justify the additional graph density.
 Any future hierarchy should be tested with a deeper encoder.
 
 \section{Screen D: Generator and Load Message Direction}
@@ -469,7 +462,7 @@ In the disaggregated graph, each generator and load is a node attached to its
 busbar. Section~\ref{sec:heterogeneous-graph-representation} leaves the
 direction of that attachment open: the asset may send messages to the busbar,
 receive them from it, or both. The two directions are not symmetric in effect,
-because the mean readout of Section~\ref{subsec:graph-mean-pooling} pools
+because the \texttt{energized\_max} readout pools
 asset nodes as well as busbars. Does the choice matter, and do the generator
 and load relations behave independently?
 
@@ -480,7 +473,7 @@ three seeds per cell: 27 runs.
 The graph type is disaggregated throughout; the line and summary
 directions stay \texttt{bidirectional} and are inert for this schema. The
 encoder matches the reference configuration: GINE, two layers, 128
-features, mean readout, no augmentations, so the only screened factors are
+features, \texttt{energized\_max} readout, no augmentations, so the only screened factors are
 the two attachment directions. The baseline cell is bidirectional on both
 relations. Directions are abbreviated \texttt{bi} (bidirectional), \texttt{a2b}
 (asset to busbar), and \texttt{b2a} (busbar to asset).
@@ -502,38 +495,25 @@ Appendix~\ref{app:screen-d-additional-results}.
 
 \subsection*{Reading}
 
-Busbar-to-asset is the better direction for both relations. Averaging over the
-other relation, the generator marginal is 93.43\% for \texttt{b2a}, 90.58\% for
-\texttt{bi}, and 78.01\% for \texttt{a2b}; the load marginal follows the same
-order at 93.39\%, 86.91\%, and 81.73\%. The strongest part of the result is not
-the mean but the spread: the two best cells, \texttt{b2a}/\texttt{b2a} and
-\texttt{b2a}/\texttt{a2b}, have seed standard deviations of 2.20 and 1.42
-percentage points against 8.24 for the bidirectional baseline, and their worst
-seeds (95.40\% and 96.32\%) are above the baseline's mean. The seed values
-printed in Figure~\ref{fig:direction-seed-heatmap} show this at a glance: the
-bottom row holds three tightly grouped seeds per cell, while the baseline cell
-spans 83.2\% to 98.4\%.
+The optimal configuration requires asymmetric message passing directions for generators and loads.
+The best configuration is \texttt{a2b} (asset-to-busbar) for generators and \texttt{b2a} (busbar-to-asset)
+for loads, achieving a full-test survival of 99.12\%. Replacing the load direction with bidirectional (\texttt{bi})
+yields a close second at 98.65\%. Conversely, the configuration previously identified as optimal under the corrupted data,
+\texttt{b2a}/\texttt{b2a}, now performs poorly at 76.32\%.
 \\
 \\
-The failure case is equally clear. Making both relations asset-to-busbar
-collapses the policy to 56.41\% with a 22.12-point spread and a worst seed at
-30.88\%, which is 36 points below the baseline and the largest single effect
-measured anywhere in this chapter. Its panel in
-Figure~\ref{fig:direction-curves} separates from the baseline within the first
-two million steps and never recovers, so this is a training failure rather than
-a late collapse; one of its seeds never improved on a checkpoint from 4.31M
-steps.
+The failure cases are equally clear. Using \texttt{bi} for generators and \texttt{b2a} for loads causes performance
+to collapse to 59.98\%. Similarly, when both relations are asset-to-busbar (\texttt{a2b}/\texttt{a2b}), survival
+is merely 73.75\%. The panel in Figure~\ref{fig:direction-curves} shows that these underperforming models separate
+from the top configurations early in training.
 \\
 \\
-A plausible mechanism, consistent with the readout defined in
-Section~\ref{subsec:graph-mean-pooling} but not directly measured here, is that
-the mean pooling includes generator and load nodes. Under \texttt{b2a} an asset
-node receives busbar context and its updated embedding enters the readout, so
-the asset row carries information about its local neighborhood. Under
-\texttt{a2b} the asset node never receives a message, so after $K$ layers its
-embedding is still a projection of its own raw features, and it dilutes the
-pooled vector with context-free rows; with both relations set that way, every
-generator and load row is inert.
+A plausible mechanism is that
+the \texttt{energized\_max} pooling includes generator and load nodes. By sending generator information to the busbars (\texttt{a2b})
+but receiving information from busbars to loads (\texttt{b2a}), the network correctly routes production information
+into the core topology, while allowing load nodes to incorporate their context before readout. This asymmetric flow
+prevents the dilution of the pooled vector that occurs when nodes are either entirely inert or incorrectly pass messages
+that blur their distinct roles.
 
 
 \section{Screen E: Candidate-Action Scoring on the Corrected Boundary}
