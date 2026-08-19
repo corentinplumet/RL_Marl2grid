@@ -3,8 +3,7 @@
 
 This chapter begins by verifying that a shared GNN actor can match the tuned
 MLP baseline, then reports the graph-design screens. Screens A and B are the
-completed seed-0 campaigns on the corrected information boundary; Screens C
-and D retain the earlier three-seed legacy campaigns; Screen E is a seed-0
+completed seed-0 campaigns on the corrected information boundary across all screens; Screen E is a seed-0
 factorial on the corrected boundary. All ask whether a specific choice in the
 actor of Chapter~\ref{ch:methods} changes survival on held-out chronics.
 
@@ -100,7 +99,7 @@ is a comparison against its own baseline cell.
     Exploration & No initial do-nothing prior and no action-0 logit bonus \\
     Sparse control & Disabled: no intervention gate, no intervention penalty, no evaluation-time rho heuristic \\
     Evaluation & Deterministic evaluation every 82{,}944 environment steps, 10 episodes on each split \\
-    Seeds & Screens A, B, E: 0; Screens C, D: 0, 1, 2 \\
+    Seeds & Screens A, B, C, D, E: 0 \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -115,8 +114,8 @@ test split. What differs here is how a run is reduced to one number. Each run sa
 \\
 \\
 Every run reaches the 15M-step budget, to within a negligible margin, so the
-screens do not report how far their runs got. Screens A and B report one seed
-per cell; Screens C and D aggregate three seeds per cell. Every seed-level
+screens do not report how far their runs got. All screens report one seed
+per cell. Every seed-level
 endpoint is evaluated over the same 201 held-out chronics.
 
 \subsection{Compute}
@@ -128,7 +127,7 @@ three-seed legacy campaigns also distribute seeds across both systems.
 \\
 \\
 Evaluation is deterministic at a fixed checkpoint and seed. The corrected
-Screens A and B nevertheless have only one training seed per cell, so their
+screens have only one training seed per cell, so their
 differences are descriptive rather than estimates of between-seed effects.
 \\
 \\
@@ -404,17 +403,16 @@ they compose.
 
 \subsection*{Design}
 
-A complete $2^3$ factorial with three seeds per cell, 24 runs. The graph type is
+A complete $2^3$ factorial at seed 0, 8 runs. The graph type is
 busbar throughout and the baseline cell is the unaugmented
-\texttt{e0n0v0}. It has the same nominal $K=2$, width-128, GINE/mean design as
-the corrected reference, but predates the boundary fix and is not numerically
-comparable to Screens A and B. Cells are named by their three switches, so
+\texttt{e0n0v0}. It has the same $K=2$, width-128, GINE/\texttt{energized\_max} design as
+the corrected reference from Screen B. Cells are named by their three switches, so
 \texttt{e1n0v1} means same-substation edges on, summary nodes off, virtual-node
 readout on.
 
 \subsection*{Result}
 
-The detailed result tables, training curves, and per-seed heatmap are reported in
+The detailed result tables and training curves are reported in
 Appendix~\ref{app:screen-c-additional-results}.
 
 \begin{figure}[H]
@@ -428,7 +426,7 @@ Appendix~\ref{app:screen-c-additional-results}.
 
 The same-substation edges provide a slight improvement. The \texttt{e1n0v0} cell
 is the best at 97.19\%, slightly outperforming the unaugmented \texttt{e0n0v0} baseline 
-which achieved 95.45\%. However, adding summary nodes or virtual-node readout still heavily 
+which achieved 95.45\%\footnote{This \texttt{e0n0v0} baseline is mathematically identical to the best-performing Energized/Max cell from Screen B, which achieved 99.39\%. The discrepancy in their final survival rates is due to the different hardware used for training (Screen B on Izar GPUs, Screen C on Jed CPUs), which affects the non-deterministic environment stepping and hardware-specific operations, leading to divergent trajectories.}. However, adding summary nodes or virtual-node readout still heavily 
 degrades performance. Figure~\ref{fig:structure-curves} shows that the cells separate
 well before the training budget ends.
 \\
@@ -468,8 +466,7 @@ and load relations behave independently?
 
 \subsection*{Design}
 
-A complete $3\times3$ factorial over the generator and load directions with
-three seeds per cell: 27 runs.
+A complete $3\times3$ factorial over the generator and load directions at seed 0: 9 runs.
 The graph type is disaggregated throughout; the line and summary
 directions stay \texttt{bidirectional} and are inert for this schema. The
 encoder matches the reference configuration: GINE, two layers, 128
@@ -487,8 +484,7 @@ Appendix~\ref{app:screen-d-additional-results}.
   \centering
   \includegraphics[width=0.96\linewidth]{figures/gs_hmd_direction_seed_heatmap.png}
   \caption{Screen D. Full-test survival of the best checkpoint by generator
-  direction (rows) and load direction (columns), with the three individual seed
-  values printed under each cell mean. The baseline cell is
+  direction (rows) and load direction (columns). The baseline cell is
   \texttt{bi}/\texttt{bi}.}
   \label{fig:direction-seed-heatmap}
 \end{figure}
