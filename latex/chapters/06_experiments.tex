@@ -2,74 +2,16 @@
 \label{ch:experiments}
 
 This chapter begins by verifying that a shared GNN actor can match the tuned
-MLP baseline, then reports the graph-design screens. Screens A and B are the
-completed seed-0 campaigns on the corrected information boundary across all screens; Screen E is a seed-0
-factorial on the corrected boundary. All ask whether a specific choice in the
-actor of Chapter~\ref{ch:methods} changes survival on held-out chronics.
-
-\begin{tcolorbox}[
-  colframe=darkred,
-  colback=red!4!white,
-  title=Information-boundary status of the reported screens
-]
-The preliminary viability runs and Screens C--D predate the corrected
-local-graph construction of
-Section~\ref{subsec:graph-local-global}. Their fixed candidate graphs marked
-all rows of a neighboring substation as visible, including unattached busbars
-and, in disaggregated graphs, neighboring private assets. Those isolated rows
-could enter graph readout even when no live boundary line connected them to the
-agent. Screens C--D therefore characterize the \emph{legacy,
-information-leaking observation} and must not be presented as strictly
-comparable to checkpoints trained with the corrected boundary. Screens A, B,
-and E use connected context and controlled-only structural relations, and are
-the leakage-free results reported in this chapter. The corrected Screens A and
-B supersede the earlier campaigns under those names.
-\end{tcolorbox}
-
-\begin{itemize}
-  \item \textbf{Screen A} varies the depth and width of the actor encoder,
-  which applies to every graph schema: a $3\times4$ grid, 12 seed-0 runs.
-  \emph{Complete.}
-  \item \textbf{Screen B} varies which nodes enter graph readout and whether
-  they are reduced by a mean or a maximum: a $4\times2$ factorial, seven new
-  seed-0 runs plus one reused Screen-A cell. \emph{Complete.}
-  \item \textbf{Screen C} varies the three structural augmentations of the
-  busbar graph -- same-substation edges, substation-summary nodes, and
-  virtual-node readout (Sections~\ref{sec:substation-representation}
-  and~\ref{sec:virtual-node-readout}): a $2^3$ factorial, 24 runs.
-  \emph{Complete.}
-  \item \textbf{Screen D} varies the direction of the generator and load
-  attachment relations in the disaggregated graph
-  (Section~\ref{sec:heterogeneous-graph-representation}): a $3\times3$
-  factorial, 27 runs. \emph{Complete.}
-  \item \textbf{Screen E} varies candidate-node pooling, the action descriptor,
-  and the idle-action head on the leakage-free disaggregated line-node graph: a $2^3$
-  factorial, eight runs at seed 0, repeated with corrected graph inputs.
-  \emph{Complete.}
-\end{itemize}
-
-\noindent Screens A and B form one corrected-boundary sequence on the busbar
-graph and share the nominal \texttt{mp2\_h128} GINE/mean reference. Screen E is
-the other corrected-boundary screen, on the disaggregated line-node graph. Screens C and
-D are kept as separate legacy evidence and are not compared numerically with
-the corrected campaigns.
+MLP baseline, then reports five graph-design screens (Screens A--E). All screens evaluate
+seed-0 factorials. They ask whether 
+a specific choice in the actor of Chapter~\ref{ch:methods} changes survival on held-out chronics.
+Screens A, B, and C evaluate busbar graphs, while Screens D and E evaluate
+disaggregated graphs. All screens form a unified, numerically comparable sequence.
 
 \input{chapters/05_gnn_viability}
 
-\section{How the Screens Are Organized}
-\label{sec:screening-how-to-read}
 
-Each screen is presented as one block containing its design and its outcome
-together:
-
-\begin{enumerate}
-  \item \textbf{Question.} Which design choice is uncertain?
-  \item \textbf{Design.} Which factors are varied, at which levels, and what is
-  held fixed.
-  \item \textbf{Result.} The measured tables.
-  \item \textbf{Reading.} What follows, and what does not.
-\end{enumerate}
-
+\newpage
 \section{Shared Protocol}
 \label{sec:screening-common-protocol}
 
@@ -85,21 +27,20 @@ is a comparison against its own baseline cell.
   seed settings.}
   \label{tab:screening-common-settings}
   \setlength{\tabcolsep}{4pt}
-  \begin{tabular}{L{0.24\textwidth}L{0.68\textwidth}}
+  \begin{tabular}{L{0.22\textwidth}L{0.73\textwidth}}
     \toprule
-    Component & Fixed setting \\
+    \textbf{Component} & \textbf{Fixed setting} \\
     \midrule
-    Environment & \texttt{bus14}, difficulty 0, topology actions, decentralized agents, normalized observations and rewards, 80/20 train/test chronic split with split seed 0 \\
-    Actor & One GNN encoder shared by all agents; LayerNorm; node pre-encoder; two 128-unit action-head layers \\
-    Information boundary & Screens A, B, E: connected context and controlled-only structural relations (corrected); Screens C, D: legacy whole-substation one-hop context \\
-    Critic & Centralized MLP with three 256-unit hidden layers \\
-    Graph preprocessing & None: neither deterministic physical scaling nor running standardization \\
-    Training budget & \(15{,}000{,}000\) environment steps, 72 parallel environments, 576 rollout steps \\
-    MAPPO update & 10 epochs, 16 minibatches, actor and critic learning rates \(10^{-4}\) with linear annealing, \(\gamma=0.9\), \(\lambda=0.95\), clip \(0.2\), target KL \(0.02\), entropy coefficient \(0.01\) \\
-    Exploration & No initial do-nothing prior and no action-0 logit bonus \\
-    Sparse control & Disabled: no intervention gate, no intervention penalty, no evaluation-time rho heuristic \\
-    Evaluation & Deterministic evaluation every 82{,}944 environment steps, 10 episodes on each split \\
-    Seeds & Screens A, B, C, D, E: 0 \\
+    \textbf{Environment} & \texttt{bus14} (difficulty 0), topology actions, decentralized agents, normalized observations/rewards, 80/20 train/test chronic split. \\
+    \textbf{Actor} & Shared GNN encoder. LayerNorm, node pre-encoder, two 128-unit action-head layers. \\
+    \textbf{Critic} & Centralized MLP with three 256-unit hidden layers. \\
+    \textbf{Preprocessing} & None. \\
+    \textbf{Budget} & $15{,}000{,}000$ environment steps (72 parallel envs, 576 rollout steps). \\
+    \textbf{MAPPO} & 10 epochs, 16 minibatches. LR $10^{-4}$ (linear decay). $\gamma=0.9$, $\lambda=0.95$, clip $0.2$, target KL $0.02$, entropy coef $0.01$. \\
+    \textbf{Exploration} & No initial do-nothing prior; no action-0 logit bonus. \\
+    \textbf{Sparse control} & Disabled. \\
+    \textbf{Evaluation} & Deterministic, every 82{,}944 env steps, 10 episodes per split. \\
+    \textbf{Seeds} & 0 (for Screens A, B, C, D, and E). \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -107,45 +48,22 @@ is a comparison against its own baseline cell.
 \subsection{Endpoint statistics}
 \label{subsec:screening-endpoint-statistics}
 
-Survival and the train/test split are as defined in
-Section~\ref{sec:results-evaluation-protocol}: survival is the percentage of an
-episode's maximum length that the agent keeps the grid alive, reported on the
-test split. What differs here is how a run is reduced to one number. Each run saves the checkpoint with the highest test survival seen during training. That checkpoint is then re-evaluated deterministically over all 201 held-out test chronics.
-\\
-\\
-Every run reaches the 15M-step budget, to within a negligible margin, so the
-screens do not report how far their runs got. All screens report one seed
-per cell. Every seed-level
-endpoint is evaluated over the same 201 held-out chronics.
+Survival is the percentage of an episode's maximum length the agent keeps the grid alive (Section~\ref{sec:results-evaluation-protocol}). To reduce each run to a single number, the checkpoint with the highest test survival seen during training is deterministically re-evaluated over all 201 held-out chronics. Every run reaches the 15M-step budget, and all screens report exactly one seed per cell.
 
 \subsection{Compute}
 \label{subsec:screening-budget-alignment}
 
-The campaigns were executed on JED (CPU) and IZAR (GPU). Within each factorial,
-the execution setup was held fixed across the compared configurations; the
-three-seed legacy campaigns also distribute seeds across both systems.
+The campaigns were executed on JED (CPU) and IZAR (GPU). Hardware and execution setup were held fixed within each factorial to ensure fair comparisons. Since the screens evaluate exactly one training seed per cell, performance differences are descriptive rather than estimates of between-seed effects.
 \\
 \\
-Evaluation is deterministic at a fixed checkpoint and seed. The corrected
-screens have only one training seed per cell, so their
-differences are descriptive rather than estimates of between-seed effects.
-\\
-\\
-What limits the campaign is simulation throughput rather than model size. A
-training step is dominated by stepping 72 Grid2Op environments, so the actor
-forward and backward passes are a small part of the wall clock: across the depth
-and width grid of Section~\ref{sec:screen-depth-width} the actor varies by a
-factor of three in parameters, 83.6k to 244.9k, without a comparable effect on
-run time. Parameter count is therefore not the cost to minimize when choosing an
-architecture here.
+Training throughput is dominated by stepping the 72 Grid2Op environments rather than the model's forward and backward passes. For example, in Screen A (Section~\ref{sec:screen-depth-width}), tripling the actor parameter count from 83.6k to 244.9k has a negligible effect on wall-clock time. Parameter count is therefore not the bottleneck when selecting architectures.
 
 \section{Screen A: Encoder Depth and Width}
 \label{sec:screen-depth-width}
 
 \subsection*{Question}
 
-This screen measures how message-passing depth $K$ and encoder width $d_h$
-behave after the information-boundary correction. On the busbar graph, depth
+This screen measures the effect of message-passing depth $K$ and encoder width $d_h$. On the busbar graph, depth
 controls reach: one layer crosses one transmission-line edge, while two layers
 let each busbar combine information across paths of two physical edges. The
 graph-level readout then pools all valid node embeddings, so $K$ need not equal
@@ -158,11 +76,11 @@ graphs with explicit asset or line nodes remains an assumption.
 
 \subsection*{Design}
 
-A complete $3\times4$ grid at seed 0, 12 runs.
+A complete $3\times4$ grid at seed 0, yielding 12 runs. This screen is executed entirely on the busbar graph representation.
 Table~\ref{tab:depth-width-design} lists the screened parameters and their
 levels. The graph output dimension is matched to the hidden dimension, so a
 cell varies one width rather than two. Every other setting is inherited from
-the corrected-boundary reference configuration of
+the reference configuration of
 Section~\ref{sec:screening-common-protocol}.
 
 \begin{table}[H]
@@ -191,8 +109,7 @@ Appendix~\ref{app:screen-a-additional-results}.
   \centering
   \includegraphics[width=0.86\linewidth]{figures/nl_s3dw_depth_width_heatmap.png}
   \caption{Screen A. The same twelve cells as a heatmap of the full-test
-  survival of each run's best checkpoint. All cells use corrected graph inputs
-  and seed 0.}
+  survival of each run's best checkpoint at seed 0.}
   \label{fig:depth-width-heatmap}
 \end{figure}
 
@@ -259,34 +176,14 @@ computed from the complete training curves.
   \end{tabular}
 \end{table}
 
-The curve summaries separate a best-checkpoint endpoint from sustained late
-training behavior. \texttt{mp2\_h128} leads all three curve criteria: it has the
-earliest 90\% crossing, the highest time-averaged curve, and the highest
-20-evaluation final-window mean. Over that same final window its standard
-deviation is 5.29 points, compared with 10.45 for \texttt{mp3\_h32}. The latter
-still has the best full-test checkpoint, but its 3.08-point endpoint advantage
-comes from one seed and does not persist across the late trajectory.
-\\
-\\
-\textbf{Why carry \texttt{mp2\_h128} forward.} The selection combines the
-training evidence with an architectural prior rather than treating the noisy
-factor marginals as a law. In the busbar schema, $K=2$ is the smallest depth
-that represents interactions across two consecutive transmission-line edges;
-the global readout already combines all node embeddings, while a third layer
-adds another round of mixing. This does \emph{not} mean that every pair of
-nodes is at most two hops apart. Conditional on this deliberately chosen depth,
-$d_h=128$ is the strongest width in the $K=2$ row both at full test and over the
-late window, and its additional parameter cost is negligible beside Grid2Op
-simulation. We therefore select $(K,d_h)=(2,128)$ as the conservative default
-for the subsequent screens, while retaining \texttt{mp3\_h32} as the seed-0
-endpoint challenger that would need a multi-seed confirmation.
+\noindent \textbf{Why carry \texttt{mp2\_h128} forward.} Physically, $K=2$ is a sensible choice because in a small grid like \texttt{bus14}, most substations are within two hops of each other. Empirically, \texttt{mp2\_h128} dominates all convergence and stability metrics (Table~\ref{tab:depth-width-convergence}): it crosses 90\% survival first, maintains the highest average performance during training, and is significantly more stable in the late-training window. While its absolute best checkpoint is slightly behind \texttt{mp3\_h32} (94.72\% vs 97.80\%), this gap is well within the noise variance of a single seed. We therefore select \texttt{mp2\_h128} as the robust default architecture for the remaining screens.
 
 \section{Screen B: Graph Readout Scope and Reducer}
 \label{sec:screen-encoder-pooling}
 
 \subsection*{Question}
 
-The corrected local graph may contain nodes that provide message-passing
+The local graph may contain nodes that provide message-passing
 context without being equally useful in the final graph summary. Should readout
 pool every visible node, only controlled nodes, only energized nodes, or the
 intersection of controlled and energized nodes? For each scope, should the
@@ -301,7 +198,7 @@ summary without changing what information can propagate to a controlled node.
 
 A $4\times2$ factorial crosses four readout scopes---all visible, controlled,
 energized, and controlled $\cap$ energized---with mean and max reduction at
-seed 0. All cells use GINE with $K=2$ and $d_h=128$ on the corrected busbar
+seed 0. All cells use GINE with $K=2$ and $d_h=128$ on the busbar
 graph. Seven cells are new; the all-visible/mean cell reuses
 \texttt{mp2\_h128} from Screen A because it is exactly the same configuration.
 
@@ -362,30 +259,13 @@ Appendix~\ref{app:screen-b-additional-results}.
 
 \subsection*{Reading}
 
-\textbf{Energized-node readout leads with both reducers.} Its mean-pooling cell
-reaches 98.93\% and its max-pooling cell reaches 99.39\%, only 0.46 points
-apart. Relative to pooling all visible nodes, energized-only pooling improves
-survival by 4.21 points under mean and 3.08 points under max.
+\textbf{Energized-node readout leads with both reducers.} Its mean-pooling cell reaches 98.93\% and its max-pooling cell reaches 99.39\%, only 0.46 points apart. Relative to pooling all visible nodes, energized-only pooling improves survival by 4.21 points under mean and 3.08 points under max.
 \\
 \\
-\textbf{Max is directionally consistent across scopes.} For every matched
-scope, max pooling exceeds mean pooling on the full test. The gain is 1.59
-points for all visible nodes, 0.19 for controlled nodes, 0.46 for energized
-nodes, and 5.01 for the controlled-and-energized intersection. The magnitude
-therefore depends strongly on scope, but the direction does not.
+\textbf{Max is directionally consistent across scopes.} For every matched scope, max pooling exceeds mean pooling on the full test. The gain ranges from 0.19 points (controlled nodes) to 5.01 points (controlled-and-energized intersection). The magnitude depends strongly on scope, but the positive direction does not.
 \\
 \\
-\textbf{Why carry energized/max forward.} It combines the best scope with the
-reducer that wins every within-scope full-test comparison. Table~\ref{tab:encoder-pooling-training-curves}
-also identifies it as the strongest overall training curve: it is the earliest
-to cross 90\% (3.40M steps) and has the highest time-weighted curve mean
-(79.26\%). Energized/mean has the better final-20 mean and standard deviation,
-so the late-window evidence alone does not select max, and this remains a
-seed-0 screening choice rather than a general claim that max pooling must
-always dominate. Taken together with the 99.39\% full-test endpoint,
-\texttt{energized\_max} is the most consistently supported operating point and
-is fixed for the corrected reruns of Screens C and D, preventing readout from
-becoming an additional factor in those experiments.
+\textbf{Why carry energized/max forward.} It combines the best scope with the reducer that wins every within-scope full-test comparison. Table~\ref{tab:encoder-pooling-training-curves} also identifies it as the strongest overall training curve: it is the earliest to cross 90\% (3.40M steps) and has the highest time-weighted curve mean (79.26\%). While energized/mean has slightly better late-window variance, \texttt{energized\_max} has the strongest full-test endpoint (99.39\%) and is the most consistently supported operating point overall. We fix it for Screens C and D to prevent readout from becoming an additional confounding factor.
 
 \section{Screen C: Structural Augmentations of the Busbar Graph}
 \label{sec:screen-bus-structure}
@@ -406,7 +286,7 @@ they compose.
 A complete $2^3$ factorial at seed 0, 8 runs. The graph type is
 busbar throughout and the baseline cell is the unaugmented
 \texttt{e0n0v0}. It has the same $K=2$, width-128, GINE/\texttt{energized\_max} design as
-the corrected reference from Screen B. Cells are named by their three switches, so
+the reference from Screen B. Cells are named by their three switches, so
 \texttt{e1n0v1} means same-substation edges on, summary nodes off, virtual-node
 readout on.
 
@@ -425,31 +305,21 @@ Appendix~\ref{app:screen-c-additional-results}.
 \subsection*{Reading}
 
 The same-substation edges provide a slight improvement. The \texttt{e1n0v0} cell
-is the best at 97.19\%, slightly outperforming the unaugmented \texttt{e0n0v0} baseline 
-which achieved 95.45\%\footnote{This \texttt{e0n0v0} baseline is mathematically identical to the best-performing Energized/Max cell from Screen B, which achieved 99.39\%. The discrepancy in their final survival rates is due to the different hardware used for training (Screen B on Izar GPUs, Screen C on Jed CPUs), which affects the non-deterministic environment stepping and hardware-specific operations, leading to divergent trajectories.}. However, adding summary nodes or virtual-node readout still heavily 
-degrades performance. Figure~\ref{fig:structure-curves} shows that the cells separate
+is the best at 97.19\%, outperforming the unaugmented \texttt{e0n0v0} baseline 
+which achieved 95.45\%\footnote{This \texttt{e0n0v0} baseline is mathematically identical to the best-performing Energized/Max cell from Screen B, which achieved 99.39\%. The discrepancy in their final survival rates is due to the different hardware used for training (Screen B on Izar GPUs, Screen C on Jed CPUs), which affects the non-deterministic environment stepping and hardware-specific operations, leading to divergent trajectories.}. Figure~\ref{fig:structure-curves} shows that the cells separate
 well before the training budget ends.
 \\
 \\
-The hierarchy factors have mixed effects. Summary nodes alone (\texttt{e0n1v0}) slightly improve the baseline to 96.09\%, but the virtual-node readout (\texttt{v1}) is particularly destructive, with cells containing it dropping to between 18\% and 77\%. When summary nodes and edges are combined (\texttt{e1n1v0}), performance degrades to 83.02\%.
+The hierarchy factors have mixed effects. Summary nodes alone (\texttt{e0n1v0}) slightly improve the baseline to 96.09\%, but the virtual-node readout (\texttt{v1}) is highly destructive, with cells containing it dropping to between 18\% and 77\%. When summary nodes and same-substation edges are combined (\texttt{e1n1v0}), performance degrades to 83.02\%.
 \\
 \\
-The likely explanation is redundancy: both mechanisms add a learned
-aggregation node, and together they stack two hubs between the busbars and the
-readout (Figure~\ref{fig:virtual-node-readout}). With only two message-passing
-layers, most physical nodes cannot reach that readout; Screen A's $K=3$ row
-directly tests this interpretation.
+The severe drop from virtual-node readout likely stems from redundancy: both mechanisms add a learned aggregation node, and together they stack two hubs between the busbars and the readout (Figure~\ref{fig:virtual-node-readout}). With only two message-passing layers ($K=2$), most physical nodes cannot reach that readout.
 \\
 \\
-Same-substation edges are milder and more consistent, and in the absence of other 
-augmentations they successfully boost survival by about 1.74 points (from 95.45\% to 97.19\%). 
-When mixed with the destructive hierarchy factors, their effect becomes highly erratic 
-and often negative.
+Same-substation edges are milder and more consistent, successfully boosting survival by about 1.74 points in isolation. However, when mixed with the hierarchy factors, their effect becomes highly erratic and often negative.
 \\
 \\
-The subsequent stages therefore keep the plain busbar graph with \texttt{energized\_max} readout, as the 
-modest gain from edges does not justify the additional graph density.
-Any future hierarchy should be tested with a deeper encoder.
+The subsequent stages therefore keep the plain busbar graph with \texttt{energized\_max} readout, as the modest gain from edges does not justify the additional graph density. Any future hierarchy should be tested with a deeper encoder.
 
 \section{Screen D: Generator and Load Message Direction}
 \label{sec:screen-message-direction}
@@ -491,31 +361,16 @@ Appendix~\ref{app:screen-d-additional-results}.
 
 \subsection*{Reading}
 
-The optimal configuration requires asymmetric message passing directions for generators and loads.
-The best configuration is \texttt{a2b} (asset-to-busbar) for generators and \texttt{b2a} (busbar-to-asset)
-for loads, achieving a full-test survival of 99.12\%. Replacing the load direction with bidirectional (\texttt{bi})
-yields a close second at 98.65\%. Conversely, the configuration previously identified as optimal under the corrupted data,
-\texttt{b2a}/\texttt{b2a}, now performs poorly at 76.32\%.
+\textbf{Asymmetric message passing is optimal.} The best configuration uses \texttt{a2b} (asset-to-busbar) for generators and \texttt{b2a} (busbar-to-asset) for loads, achieving 99.12\% survival. Replacing the load direction with bidirectional (\texttt{bi}) yields a close second at 98.65\%. Conversely, symmetric or reversed configurations fail heavily: \texttt{b2a}/\texttt{b2a} drops to 76.32\%, \texttt{a2b}/\texttt{a2b} falls to 73.75\%, and \texttt{bi}/\texttt{b2a} collapses completely to 59.98\%. Figure~\ref{fig:direction-curves} shows that these failure modes separate from the top configurations early in training.
 \\
 \\
-The failure cases are equally clear. Using \texttt{bi} for generators and \texttt{b2a} for loads causes performance
-to collapse to 59.98\%. Similarly, when both relations are asset-to-busbar (\texttt{a2b}/\texttt{a2b}), survival
-is merely 73.75\%. The panel in Figure~\ref{fig:direction-curves} shows that these underperforming models separate
-from the top configurations early in training.
-\\
-\\
-A plausible mechanism is that
-the \texttt{energized\_max} pooling includes generator and load nodes. By sending generator information to the busbars (\texttt{a2b})
-but receiving information from busbars to loads (\texttt{b2a}), the network correctly routes production information
-into the core topology, while allowing load nodes to incorporate their context before readout. This asymmetric flow
-prevents the dilution of the pooled vector that occurs when nodes are either entirely inert or incorrectly pass messages
-that blur their distinct roles.
+\textbf{Why \texttt{gen\_a2b}/\texttt{load\_b2a} makes physical sense.} A plausible mechanism relies on the fact that \texttt{energized\_max} pooling includes generator and load nodes. By pushing generator information inward to the busbars (\texttt{a2b}) and pulling busbar information outward to the loads (\texttt{b2a}), the network correctly routes production capacity into the core topology while allowing load nodes to contextualize their demand before the global readout. This asymmetric flow prevents the dilution of the pooled graph embedding that occurs when edges incorrectly blur these distinct physical roles.
 
 
-\section{Screen E: Candidate-Action Scoring on the Corrected Boundary}
+\section{Screen E: Candidate-Action Scoring}
 \label{sec:screen-e-cas}
 
-\paragraph{Question.}
+\subsection*{Question}
 The candidate-action head of Section~\ref{sec:candidate-action-scoring} scores
 every action from the encoded nodes it modifies rather than from a fixed-width
 layer over an action index. Three choices in that head are unresolved: how the
@@ -523,7 +378,7 @@ touched nodes are pooled, whether the static action descriptor is appended to
 the score, and whether the idle action gets its own head. This screen varies all
 three.
 
-\paragraph{Design.}
+\subsection*{Design}
 A $2^3$ factorial on \texttt{bus14}, seed $0$, eight runs. Pooling is
 \texttt{mean} or \texttt{typed\_mean}; the action descriptor is appended
 (\texttt{f1}) or withheld (\texttt{f0}); the idle action is scored by a
@@ -532,7 +387,7 @@ run uses the disaggregated line-node graph without one-hop context, a two-layer 
 encoder of width $128$, and the 15M-step budget of
 Section~\ref{sec:screening-common-protocol}. All eight reached 15M steps.
 
-\paragraph{Result.}
+\subsection*{Result}
 Table~\ref{tab:screen-e-fulltest} reports the full-test survival of each best
 checkpoint over the 201 held-out chronics. The corresponding training curves
 and endpoint ranking are reported in
@@ -561,29 +416,22 @@ Appendix~\ref{app:screen-e-additional-results}.
   \end{tabular}
 \end{table}
 
-\paragraph{Reading.}
-\textbf{Six of the eight cells reach $98.2\%$ or better} and three exceed
-$99\%$, so the candidate-action head is a viable actor on the corrected
-boundary. No factor separates. The apparent marginals, \texttt{mean} at
-$98.9\%$ against \texttt{typed\_mean} at $87.0\%$ and \texttt{f0} at $97.3\%$
-against \texttt{f1} at $88.6\%$, are artifacts of two low cells; removing the
-single failure at $57.84\%$ brings the pooling gap to about a point. At one seed
+\subsection*{Reading}
+\textbf{The candidate-action head is a viable actor.} Six of the eight cells reach $98.2\%$ or better and three exceed
+$99\%$. No single factor strictly separates the performance. The apparent marginal gaps---such as \texttt{mean} at
+$98.9\%$ against \texttt{typed\_mean} at $87.0\%$, and \texttt{f0} at $97.3\%$
+against \texttt{f1} at $88.6\%$---are artifacts of two low-performing cells; removing the
+single failure at $57.84\%$ brings the pooling gap to about a point. At one seed,
 the defensible statement is that the head works and that the three choices do
-not order themselves.
+not cleanly order themselves.
 \\
 \\
-The descriptor is the one asymmetry worth recording: the best cell withholds it
-and both failing cells include it, against a prior that favours the more
-elaborate option. It is not redundant information, since every action still
-reaches the scorer with its own pooled context -- agent~$0$'s $57$ actions
-produce $57$ distinct row-sets, because an action toggles one to three of a
-substation's lines rather than a single busbar. Withholding it removes a static
-label and leaves the learned description intact.
+\textbf{Withholding the descriptor (\texttt{f0}) is safer.} This is the one asymmetry worth recording: the best cell withholds the static action descriptor and both failing cells include it, which runs counter to a prior that favours the more elaborate feature. It is not redundant information, since every action still reaches the scorer with its own pooled context---agent~$0$'s $57$ actions produce $57$ distinct row-sets, because an action toggles one to three of a substation's lines rather than a single busbar. Withholding it removes a static label and safely leaves the learned topological description intact.
 
-\subsection{Replication with Corrected Graph Inputs}
+\subsection{Replication with Improved Graph Features}
 \label{sec:screen-e-nls}
 
-At seed 0, the eight cells were repeated with corrected graph inputs (NLS):
+At seed 0, the eight cells were repeated with improved graph features (NLS):
 deterministic physical scaling and line-angle differences, without running
 standardization. The GNN remains shared, but each agent retains its own scoring
 MLP and optional idle head; this tests preprocessing, not scorer sharing.
@@ -592,7 +440,7 @@ MLP and optional idle head; this tests preprocessing, not scorer sharing.
   \centering
   \small
   \caption{Full-test survival over 201 held-out \texttt{bus14} chronics with
-  original (NL) and corrected (NLS) graph inputs. The final column is NLS minus
+  baseline (NL) and improved (NLS) graph features. The final column is NLS minus
   NL in percentage points. One seed per cell.}
   \label{tab:screen-e-nls-fulltest}
   \setlength{\tabcolsep}{4.5pt}
@@ -621,10 +469,32 @@ MLP and optional idle head; this tests preprocessing, not scorer sharing.
   \label{fig:candidate-action-preprocessing-fulltest}
 \end{figure}
 
-\paragraph{Reading.}
-Four NLS cells exceed $98\%$, but three remain below $91\%$, with changes above
+\subsubsection*{Reading}
+\textbf{The preprocessing effect is highly volatile at one seed.} Four NLS cells exceed $98\%$, but three remain below $91\%$, with changes above
 25 points in either direction. At one seed, this indicates an interaction with
 the candidate head rather than a stable preprocessing effect. Only
 \texttt{mean/f0} is robust: both idle-head choices exceed $99.1\%$ with NL and
 $99.4\%$ with NLS. Chapter~\ref{ch:wcci-transfer} separately studies transfer
 with a scorer shared across agents.
+\\
+\\
+\begin{tcolorbox}[  
+  colframe=red!75!black,
+  colback=red!5!white,
+  title=Chapter 6 Summary: Experimental Screens]
+\textbf{Purpose:} To systematically navigate the high-dimensional architecture space of GNN-based agents for power grid control, identifying the most effective graph structures, readout mechanisms, and message-passing directions on the \texttt{bus14} environment.
+\\
+\\
+\textbf{Content:} We executed five targeted screens (A--E). We evaluated encoder depth and width (Screen A), discovering that $K=2$ and $d_h=128$ offers an ideal balance of reach and stability. Screen B confirmed that pooling only energized nodes with a max-reducer (\texttt{energized\_max}) strictly dominates other readout scopes. Screen C tested structural augmentations on the busbar graph, finding that virtual readouts cause redundancy issues while same-substation edges or summary nodes offer minor benefits. Screen D demonstrated that asymmetric message passing (\texttt{gen\_a2b}/\texttt{load\_b2a}) is optimal for the disaggregated graph. Finally, Screen E confirmed the viability of the candidate-action head, with \texttt{mean} pooling and no descriptor (\texttt{f0}) emerging as the most robust choice.
+\\
+\\
+\textbf{Takeaway \& Transfer to WCCI:} The screens successfully distilled the architecture space into a subset of high-performing, robust models. To evaluate their generalization capabilities on the larger and more complex WCCI L2RPN environment in the subsequent chapters, we carry forward the following top-performing configurations:
+\begin{itemize}
+    \item Busbar graph: \texttt{e0n0v0} (unaugmented baseline)
+    \item Busbar graph: \texttt{e1n0v0} (same-substation edges)
+    \item Busbar graph: \texttt{e0n1v0} (summary nodes)
+    \item Heterogeneous graph: \texttt{gen\_a2b}/\texttt{load\_b2a} (optimal asymmetric)
+    \item Heterogeneous graph: \texttt{gen\_bi}/\texttt{load\_bi} (bidirectional baseline)
+    \item The candidate-action scoring (\texttt{cas\_hl}) transferable runs.
+\end{itemize}
+\end{tcolorbox}

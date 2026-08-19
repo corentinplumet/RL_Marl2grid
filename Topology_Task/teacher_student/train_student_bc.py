@@ -43,8 +43,11 @@ from teacher_student.dataset import (
     task_relative,
 )
 from teacher_student.losses import (
-    classification_metrics,
+    classification_counts,
+    empty_classification_counts,
+    finalize_classification_counts,
     intervention_bce_loss,
+    merge_classification_counts,
     soft_label_kl_loss,
     weighted_action_cross_entropy,
 )
@@ -69,8 +72,7 @@ class DummyActorEnv:
             for agent in agent_ids
         }
         self.action_space = {
-            agent: Discrete(int(action_sizes[agent]))
-            for agent in agent_ids
+            agent: Discrete(int(action_sizes[agent])) for agent in agent_ids
         }
         self.graph_specs = None
 
@@ -163,7 +165,7 @@ def evaluate_students(
     batch_size: int,
     max_batches_per_agent: int,
 ) -> Dict[str, Dict[str, float]]:
-    metric_sums = {agent: {"n": 0.0} for agent in agent_ids}
+    metric_sums = {agent: empty_classification_counts() for agent in agent_ids}
     batches_seen = {agent: 0 for agent in agent_ids}
     for actor in actors.values():
         actor.eval()
@@ -189,13 +191,15 @@ def evaluate_students(
                         device=device,
                     )
                     logits = _actor_logits(actors[agent], obs)
-                    _merge_metric_sum(metric_sums[agent], classification_metrics(logits, target))
+                    merge_classification_counts(
+                        metric_sums[agent],
+                        classification_counts(logits, target),
+                    )
                     batches_seen[agent] += 1
     for actor in actors.values():
         actor.train()
     return {
-        agent: _finalize_metric_sum(metric_sums[agent])
-        for agent in agent_ids
+        agent: finalize_classification_counts(metric_sums[agent]) for agent in agent_ids
     }
 
 
@@ -267,7 +271,9 @@ def parse_args() -> Namespace:
     parser.add_argument("--max-shards", type=int, default=None)
     parser.add_argument("--eval-batches", type=int, default=50)
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--device", type=str, default="auto", choices=["auto", "cpu", "cuda", "mps"])
+    parser.add_argument(
+        "--device", type=str, default="auto", choices=["auto", "cpu", "cuda", "mps"]
+    )
     parser.add_argument("--n-threads", type=int, default=4)
     parser.add_argument("--progress-every", type=int, default=200)
     return parser.parse_args()
@@ -284,7 +290,9 @@ def main() -> None:
     if cli.soft_temperature <= 0.0:
         raise ValueError("--soft-temperature must be positive.")
     if cli.soft_distillation_loss and cli.soft_weight <= 0.0:
-        raise ValueError("--soft-weight must be positive when soft distillation is enabled.")
+        raise ValueError(
+            "--soft-weight must be positive when soft distillation is enabled."
+        )
 
     dataset_dir = resolve_dataset_dir(cli.dataset)
     metadata = load_metadata(dataset_dir)
@@ -324,11 +332,17 @@ def main() -> None:
     obs_stats = _extract_obs_stats(teacher_record)
 
     if cli.device == "cpu":
-        device = set_torch(cli.n_threads, getattr(teacher_args, "th_deterministic", False), cuda=False)
+        device = set_torch(
+            cli.n_threads, getattr(teacher_args, "th_deterministic", False), cuda=False
+        )
     elif cli.device == "cuda":
-        device = set_torch(cli.n_threads, getattr(teacher_args, "th_deterministic", False), cuda=True)
+        device = set_torch(
+            cli.n_threads, getattr(teacher_args, "th_deterministic", False), cuda=True
+        )
         if device.type != "cuda":
-            raise RuntimeError("--device cuda was requested, but CUDA is not available.")
+            raise RuntimeError(
+                "--device cuda was requested, but CUDA is not available."
+            )
     elif cli.device == "mps":
         if not th.backends.mps.is_available():
             raise RuntimeError("--device mps was requested, but MPS is not available.")
@@ -472,7 +486,9 @@ def main() -> None:
                     optimizer.zero_grad(set_to_none=True)
                     loss.backward()
                     if cli.max_grad_norm > 0.0:
-                        th.nn.utils.clip_grad_norm_(actor.parameters(), cli.max_grad_norm)
+                        th.nn.utils.clip_grad_norm_(
+                            actor.parameters(), cli.max_grad_norm
+                        )
                     optimizer.step()
                     optimizer_steps += 1
 
@@ -484,7 +500,9 @@ def main() -> None:
                     sums["aux_loss"] += float(aux_loss.detach().cpu().item()) * n
                     sums["soft_loss"] += float(soft_loss.detach().cpu().item()) * n
 
-            if shard_idx % max(cli.progress_every, 1) == 0 or shard_idx == len(epoch_shards):
+            if shard_idx % max(cli.progress_every, 1) == 0 or shard_idx == len(
+                epoch_shards
+            ):
                 print(
                     f"epoch {epoch}/{cli.epochs} shard {shard_idx}/{len(epoch_shards)} "
                     f"optimizer_steps={optimizer_steps}",
@@ -492,8 +510,7 @@ def main() -> None:
                 )
 
         train_metrics = {
-            agent: _finalize_metric_sum(epoch_metric_sums[agent])
-            for agent in agent_ids
+            agent: _finalize_metric_sum(epoch_metric_sums[agent]) for agent in agent_ids
         }
         eval_metrics = evaluate_students(
             actors,
@@ -546,11 +563,15 @@ def main() -> None:
             "student_training_objective": (
                 "weighted_ce_plus_intervention_bce_plus_soft_kl"
                 if cli.soft_distillation_loss and cli.aux_intervention_loss
-                else "weighted_ce_plus_soft_kl"
-                if cli.soft_distillation_loss
-                else "weighted_ce_plus_intervention_bce"
-                if cli.aux_intervention_loss
-                else "weighted_ce"
+                else (
+                    "weighted_ce_plus_soft_kl"
+                    if cli.soft_distillation_loss
+                    else (
+                        "weighted_ce_plus_intervention_bce"
+                        if cli.aux_intervention_loss
+                        else "weighted_ce"
+                    )
+                )
             ),
             "args": vars(cli),
             "history": history,

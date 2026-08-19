@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import shutil
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, Tuple
+from typing import Any, Dict, Iterator, List, Mapping, Optional, Tuple
 
 import numpy as np
 
@@ -47,7 +47,9 @@ def metadata_export_path(dataset_dir: Path, kind: str) -> Path:
     return metadata_export_dir(dataset_dir) / f"{dataset_dir.name}_{kind}.json"
 
 
-def export_metadata_file(dataset_dir: Path, source_path: Path, kind: str) -> Optional[Path]:
+def export_metadata_file(
+    dataset_dir: Path, source_path: Path, kind: str
+) -> Optional[Path]:
     if not source_path.exists():
         return None
     export_path = metadata_export_path(dataset_dir, kind)
@@ -166,8 +168,48 @@ def make_minibatches(
     n_batches = int(np.ceil(n / batch_size))
 
     for _ in range(n_batches):
-        batch_nonidle = rng.choice(nonidle, size=n_nonidle, replace=nonidle.size < n_nonidle)
+        batch_nonidle = rng.choice(
+            nonidle, size=n_nonidle, replace=nonidle.size < n_nonidle
+        )
         batch_idle = rng.choice(idle, size=n_idle, replace=idle.size < n_idle)
         batch = np.concatenate([batch_nonidle, batch_idle])
         rng.shuffle(batch)
         yield batch
+
+
+def make_joint_agent_minibatches(
+    targets_by_agent: Mapping[str, np.ndarray],
+    batch_size: int,
+    rng: np.random.Generator,
+    balanced_nonidle_frac: float = 0.0,
+) -> Iterator[Dict[str, np.ndarray]]:
+    """Yield one minibatch per active agent for a joint optimizer update.
+
+    Shared graph actors previously received every minibatch from one agent
+    before moving to the next. Joint batches accumulate one loss from each
+    agent before stepping the optimizer, which reduces order-dependent
+    forgetting while preserving each agent's requested idle/non-idle sampling.
+    """
+    iterators = {
+        str(agent): iter(
+            make_minibatches(
+                np.asarray(targets),
+                batch_size,
+                rng,
+                balanced_nonidle_frac=balanced_nonidle_frac,
+            )
+        )
+        for agent, targets in targets_by_agent.items()
+    }
+    while iterators:
+        joint: Dict[str, np.ndarray] = {}
+        exhausted = []
+        for agent, iterator in iterators.items():
+            try:
+                joint[agent] = next(iterator)
+            except StopIteration:
+                exhausted.append(agent)
+        for agent in exhausted:
+            del iterators[agent]
+        if joint:
+            yield joint
