@@ -31,11 +31,13 @@ case "$cluster" in
     cluster_eval_args=()
     ;;
   jed)
-    # Academic CPU partition. Resources are requested per submission rather
-    # than taken from the job script's 72-CPU header, matching
-    # launch_jed_bus14_nl_evals.sh.
+    # Academic CPU partition. job_full_test_eval.sh already sets
+    # --mem-per-cpu=32G, and sbatch rejects --mem alongside it, so memory is
+    # left to the job script and only the CPU count is narrowed here: a
+    # 50-episode evaluation does not need the header's 72 cores, and fewer
+    # cores also scales the per-cpu memory request down with it.
     job_script="Topology_Task/full_test_eval/job_full_test_eval.sh"
-    cluster_sbatch=("--cpus-per-task=${EVAL_CPUS:-8}" "--mem=${EVAL_MEM:-128G}")
+    cluster_sbatch=("--cpus-per-task=${EVAL_CPUS:-8}")
     cluster_eval_args=(--device cpu)
     ;;
   *)
