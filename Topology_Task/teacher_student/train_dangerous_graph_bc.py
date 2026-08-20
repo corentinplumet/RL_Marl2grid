@@ -61,6 +61,10 @@ from teacher_student.losses import (
     utility_ranking_counts,
     weighted_action_cross_entropy,
 )
+from teacher_student.scratch_initialization import (
+    build_scratch_actors,
+    scratch_checkpoint_base,
+)
 
 
 def _unique_parameters(modules: Iterable[th.nn.Module]) -> List[th.nn.Parameter]:
@@ -485,8 +489,26 @@ def _save_checkpoint(
 def parse_args() -> Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset", type=Path, required=True)
-    parser.add_argument("--checkpoint", default=None)
+    parser.add_argument(
+        "--checkpoint",
+        default=None,
+        help=(
+            "Warm-start checkpoint, or architecture-template checkpoint when "
+            "--initialization scratch. Scratch mode never loads its learned "
+            "actor, critic, optimizer, or normalization state."
+        ),
+    )
     parser.add_argument("--checkpoint-dir", type=Path, default=TASK_DIR / "checkpoint")
+    parser.add_argument(
+        "--initialization",
+        choices=["warm_start", "scratch"],
+        default="warm_start",
+        help=(
+            "warm_start transfers the checkpoint actor weights; scratch uses "
+            "the checkpoint only as an architecture template and initializes "
+            "fresh actors directly on the dataset environment/action space."
+        ),
+    )
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument(
         "--best-output",
@@ -590,6 +612,12 @@ def main() -> None:
         raise ValueError("Invalid utility-regression loss weight or scale.")
     if cli.distill_weight < 0.0 or cli.distill_temperature <= 0.0:
         raise ValueError("Invalid distillation weight or temperature.")
+    if cli.initialization == "scratch" and cli.distill_weight > 0.0:
+        raise ValueError(
+            "Scratch initialization cannot use reference-policy distillation: "
+            "set --distill-weight 0. A nonzero KL weight would reintroduce the "
+            "source policy into the scratch control."
+        )
 
     dataset_dir = resolve_dataset_dir(cli.dataset)
     metadata = load_metadata(dataset_dir)
@@ -617,8 +645,9 @@ def main() -> None:
     source = cli.checkpoint or metadata.get("checkpoint")
     if not source:
         raise ValueError(
-            "Provide --checkpoint to select the model weights to fine-tune. "
-            "Checkpoint-free collection datasets intentionally do not choose a model."
+            "Provide --checkpoint to select the warm-start weights or, with "
+            "--initialization scratch, the architecture template. Checkpoint-free "
+            "collection datasets intentionally do not choose an architecture."
         )
     checkpoint_path = _resolve_checkpoint_path(str(source), checkpoint_dir)
     output_path = _resolve_output(cli.output)
@@ -683,6 +712,7 @@ def main() -> None:
     args.deterministic_eval = True
     args.n_threads = int(cli.n_threads)
     args.exp_tag = cli.exp_tag or output_path.stem
+    args.seed = int(cli.seed)
     args.resume_run_name = None
     args.resume_wandb_id = None
     args.resume_wandb_name = None
@@ -694,21 +724,30 @@ def main() -> None:
 
     set_random_seed(cli.seed)
     device = _resolve_device(args, cli.device)
-    source_record = _load_checkpoint(checkpoint_path, device)
-    if cross_grid_transfer:
-        source_record = dict(source_record)
-        training_state = dict(source_record.get("training_state", {}) or {})
-        training_state.pop("obs_stats", None)
-        source_record["training_state"] = training_state
+    if cli.initialization == "scratch":
+        source_record = scratch_checkpoint_base(args)
+    else:
+        source_record = _load_checkpoint(checkpoint_path, device)
+        if cross_grid_transfer:
+            source_record = dict(source_record)
+            training_state = dict(source_record.get("training_state", {}) or {})
+            training_state.pop("obs_stats", None)
+            source_record["training_state"] = training_state
     evaluator = Evaluator(args, logger=None, device=device, chronic_split="train")
-    obs_stats = {} if cross_grid_transfer else _extract_obs_stats(source_record)
+    obs_stats = (
+        {}
+        if cli.initialization == "scratch" or cross_grid_transfer
+        else _extract_obs_stats(source_record)
+    )
     if obs_stats:
         evaluator.env.env.set_obs_stats(obs_stats)
     same_action_space = bool(
         checkpoint_action_space
         and _task_path(checkpoint_action_space) == _task_path(dataset_action_space)
     )
-    if same_action_space:
+    if cli.initialization == "scratch":
+        actors = build_scratch_actors(args, evaluator, device)
+    elif same_action_space:
         actors = _build_actors(source_record, args, evaluator, device)
     else:
         transferable = {
@@ -799,8 +838,14 @@ def main() -> None:
 
     print("========== Dangerous-state graph BC training ==========")
     print(f"Dataset: {dataset_dir}")
-    print(f"Checkpoint: {_repo_relative(checkpoint_path)}")
-    print(f"Environment transfer: {source_env_id} -> {dataset_env_id}")
+    print(f"Initialization: {cli.initialization}")
+    if cli.initialization == "scratch":
+        print(f"Architecture template: {_repo_relative(checkpoint_path)}")
+        print("Learned template weights loaded: False")
+    else:
+        print(f"Checkpoint: {_repo_relative(checkpoint_path)}")
+        print("Learned template weights loaded: True")
+    print(f"Architecture environment: {source_env_id} -> {dataset_env_id}")
     print(f"Output: {output_path}")
     print(f"Best output: {best_output_path}")
     print(f"Shards / epochs: {len(shards)} / {cli.epochs}")
@@ -838,7 +883,12 @@ def main() -> None:
     print("========================================================")
 
     optimizer_steps = 0
-    print("========== epoch 0 source baseline ==========", flush=True)
+    baseline_label = (
+        "random initialization baseline"
+        if cli.initialization == "scratch"
+        else "source baseline"
+    )
+    print(f"========== epoch 0 {baseline_label} ==========", flush=True)
     baseline_metrics = _evaluate(
         actors,
         shards,
@@ -1050,14 +1100,28 @@ def main() -> None:
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "trainer": "teacher_student.train_dangerous_graph_bc",
                 "dataset": str(dataset_dir),
-                "source_checkpoint": str(checkpoint_path),
-                "source_checkpoint_global_step": int(
-                    source_record.get("global_step", 0)
+                "initialization": cli.initialization,
+                "learned_source_weights_loaded": cli.initialization == "warm_start",
+                "architecture_template_checkpoint": str(checkpoint_path),
+                "architecture_template_global_step": int(
+                    cpu_record.get("global_step", 0)
+                ),
+                "source_checkpoint": (
+                    str(checkpoint_path) if cli.initialization == "warm_start" else None
+                ),
+                "source_checkpoint_global_step": (
+                    int(cpu_record.get("global_step", 0))
+                    if cli.initialization == "warm_start"
+                    else None
                 ),
                 "source_env_id": source_env_id,
                 "target_env_id": dataset_env_id,
-                "cross_grid_actor_transfer": cross_grid_transfer,
-                "source_obs_stats_discarded": cross_grid_transfer,
+                "cross_grid_actor_transfer": bool(
+                    cross_grid_transfer and cli.initialization == "warm_start"
+                ),
+                "source_obs_stats_discarded": bool(
+                    cross_grid_transfer or cli.initialization == "scratch"
+                ),
                 "agent_update_mode": cli.agent_update_mode,
                 "candidate_scorer_unshared": bool(cli.unshare_candidate_scorer),
                 "selection_metric": (

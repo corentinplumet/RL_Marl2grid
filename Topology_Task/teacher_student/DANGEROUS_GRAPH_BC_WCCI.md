@@ -234,6 +234,57 @@ zero-shot baseline and keep `--distill-weight 0`. The resulting checkpoint is
 standalone actor-evaluation compatible; its preserved bus14 critic must not be
 used to resume WCCI PPO training.
 
+### From-scratch control with the same architecture
+
+Use `--initialization scratch` to isolate the value of the bus14 initialization.
+The required `--checkpoint` is only an architecture template in this mode: none
+of its actor, critic, optimizer, observation-normalization, or rollout state is
+loaded. The actors are freshly initialized after constructing the WCCI mk32
+environment. The output deliberately contains no critic and is intended for
+actor evaluation, not MAPPO resume.
+
+For a fair warm-start comparison, keep the dataset, chronic split, seed, loss,
+optimizer, and epoch budget identical. A full mk32 utility-regression scratch
+control can be submitted on JED with:
+
+```bash
+sbatch --job-name=rank32_scratch_mean \
+  Topology_Task/teacher_student/job_train_dangerous_graph_bc_jed.sh \
+  --dataset outputs/teacher_student_datasets/wcci_nomaint_danger090_mk32_rank_full \
+  --checkpoint checkpoint/no_leak/shared/NL_cas_hl_scaled_shared_izar/best_test_cas_hl_NLS_izar_shared_mean_f1_a0h0_s0.tar \
+  --initialization scratch \
+  --output checkpoint/dangerous_graph_bc/rankfull32_scratch_shared_NLS_mean_f1_a0h0_s0.tar \
+  --objective utility_regression \
+  --epochs 50 \
+  --batch-size 64 \
+  --lr 0.00001 \
+  --weight-decay 0 \
+  --max-grad-norm 1.0 \
+  --utility-weight 1.0 \
+  --utility-huber-beta 0.5 \
+  --unsafe-weight 0.5 \
+  --unsafe-margin 1.0 \
+  --min-trainable-candidates 2 \
+  --aux-intervention-loss true \
+  --aux-weight 0.25 \
+  --distill-weight 0 \
+  --validation-chronic-frac 0.20 \
+  --validation-seed 1701 \
+  --agent-update-mode mixed \
+  --unshare-candidate-scorer false \
+  --freeze-encoder false \
+  --seed 0 \
+  --device cpu \
+  --n-threads 8
+```
+
+Scratch mode rejects nonzero `--distill-weight`, since reference-policy KL would
+reintroduce the bus14 policy. Standard architectural initialization settings
+such as `init_do_nothing_prob` are still taken from the template arguments; they
+are initialization hyperparameters, not learned checkpoint values. The epoch-0
+metrics are labelled `random initialization baseline` in the log, and the saved
+metadata records `learned_source_weights_loaded=false`.
+
 ## 4. Evaluation
 
 Evaluate the BC checkpoint without a deployment heuristic first:
