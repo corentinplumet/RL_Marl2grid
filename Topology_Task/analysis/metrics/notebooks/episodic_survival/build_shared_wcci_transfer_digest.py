@@ -1314,46 +1314,199 @@ display(decomposition)
 ''')
 
 code(r'''
-hard_order = (
+# The x-axis is fixed to the do-nothing ordering for every run drawn below, so
+# two anatomy charts can be laid side by side and read column by column.
+HARD_ORDER = (
     baseline.loc[baseline["is_hard"]]
     .sort_values("dn_survival")["chronic_name"].tolist()
 )
+RUN_PREVIEW = ["run"] + DIGEST_COLUMNS
+
+
+def find_runs(query=None, *, scored_only=True, **filters):
+    """Rows of `runs` matching a substring and/or exact factor filters.
+
+    `query` is matched case-insensitively against the run stem, the key and the
+    checkpoint stem. Filters are exact matches on any column of `runs`
+    (`adaptation`, `mk`, `heuristic`, `rho`, `variant`, `family`, `pool`, ...);
+    pass a list to match any of its members. Best `hard_pct` first.
+    """
+    frame = runs.dropna(subset=["hard_pct"]) if scored_only else runs
+    if query is not None:
+        haystack = (
+            frame["run"].astype(str) + " " + frame["key"].astype(str)
+            + " " + frame["checkpoint_stem"].astype(str)
+        )
+        frame = frame.loc[haystack.str.contains(str(query), case=False, regex=False)]
+    for column, wanted in filters.items():
+        if column not in frame.columns:
+            raise KeyError(f"{column!r} is not a column of `runs`")
+        wanted = list(wanted) if isinstance(wanted, (list, tuple, set)) else [wanted]
+        frame = frame.loc[frame[column].isin(wanted)]
+    return frame.sort_values("hard_pct", ascending=False)
+
+
+def resolve_run(selector=None, *, rank=None, key=None, quiet=False, **filters):
+    """Resolve a selector down to exactly one row of `runs`.
+
+    Accepts a leaderboard `rank` (1 = top of §4), an exact `key`, a substring of
+    the run name, and/or factor filters. When several runs match, the best one
+    on `hard_pct` is taken and the alternatives are listed.
+    """
+    if rank is not None:
+        if not 1 <= rank <= len(leaderboard):
+            raise IndexError(f"rank must lie in 1..{len(leaderboard)}")
+        key = leaderboard.iloc[rank - 1]["key"]
+    if key is not None:
+        matches = runs.loc[runs["key"] == key]
+        if matches.empty:
+            raise KeyError(f"no run with key {key!r}")
+    else:
+        matches = find_runs(selector, **filters)
+        if matches.empty:
+            raise LookupError(f"no scored run matches {selector!r} {filters}")
+        if len(matches) > 1 and not quiet:
+            display(Markdown(
+                f"_{len(matches)} runs match — taking the best on `hard_pct`. "
+                "Narrow the selector to pick another._"
+            ))
+            display(matches[RUN_PREVIEW].head(8))
+    row = matches.iloc[0]
+    if not row["has_episodes"]:
+        raise ValueError(
+            f"{row['run']} was downloaded as summary JSON only — it can be ranked "
+            "on `overall_pct` but has no per-episode curve to draw (see §2)."
+        )
+    return row
+
+
+def describe_run(row):
+    gate = (
+        "ungated" if row["heuristic"] == "none"
+        else f"{row['heuristic']} {row['rho']:.2f}"
+    )
+    return f"{row['adaptation']} · mk{int(row['mk'])} · {gate} · {row['variant']}"
+
+
+def plot_difficult_chronic_anatomy(
+    selector=None, *, rank=None, key=None, order=None, show_greedy=True,
+    label=None, title=None, save_as=None, ax=None, **filters,
+):
+    """Draw the §10 anatomy chart — do-nothing / one chosen run / greedy @ same mk.
+
+    Pick the run with `rank=` (leaderboard position), `key=`, a substring of the
+    run name, or factor filters such as `adaptation="MAPPO fine-tune", mk=256`.
+    `order="model"` re-sorts the x-axis by the chosen run instead of the shared
+    do-nothing ordering; `save_as="stem"` also writes the figure to EXPORT_DIR.
+    Use `resolve_run(...)` with the same arguments to get the row itself.
+    """
+    row = resolve_run(selector, rank=rank, key=key, **filters)
+    mk = int(row["mk"])
+
+    model_curve = (
+        episodes.loc[(episodes["key"] == row["key"]) & episodes["is_hard"],
+                     ["chronic_name", "survival"]]
+        .set_index("chronic_name")["survival"] * 100
+    )
+    dn_curve = (
+        baseline.loc[baseline["is_hard"], ["chronic_name", "dn_survival"]]
+        .set_index("chronic_name")["dn_survival"] * 100
+    )
+    greedy_curve = (
+        greedy_episodes.loc[
+            (greedy_episodes["mk"] == mk) & greedy_episodes["is_hard"],
+            ["greedy_chronic_name", "greedy_survival"],
+        ].set_index("greedy_chronic_name")["greedy_survival"] * 100
+    )
+    if show_greedy and greedy_curve.empty:
+        display(Markdown(f"_No greedy oracle was run at mk{mk} — drawing without the ceiling._"))
+
+    chronics = (
+        model_curve.reindex(HARD_ORDER).sort_values().index.tolist()
+        if order == "model" else HARD_ORDER
+    )
+    bars = [("Do nothing", dn_curve, "#9E9E9E"),
+            (label or describe_run(row), model_curve, "#E45756")]
+    if show_greedy and not greedy_curve.empty:
+        bars.append((f"Greedy oracle @ mk{mk}", greedy_curve, "#54A24B"))
+
+    owns_figure = ax is None
+    if owns_figure:
+        fig, ax = plt.subplots(figsize=(15.0, 5.2))
+    positions = np.arange(len(chronics))
+    width = 0.81 / len(bars)
+    for offset, (bar_label, curve, colour) in zip(
+        (np.arange(len(bars)) - (len(bars) - 1) / 2) * width, bars
+    ):
+        ax.bar(positions + offset, curve.reindex(chronics).to_numpy(),
+               width=width, color=colour, label=bar_label)
+    ax.set_xticks(positions, chronics, rotation=70, ha="right", fontsize=7)
+    ax.set(ylabel="Survival (%)", ylim=(0, 118), title=title or (
+        f"{describe_run(row)} — difficult {row['hard_pct']:.1f}%, "
+        f"capture {row['capture_hard_pct']:.1f}%, "
+        f"{int(row['hard_rescues'])}/{N_HARD} rescues"
+    ))
+    ax.legend(loc="upper center", ncol=len(bars), framealpha=0.95)
+    if owns_figure:
+        fig.tight_layout()
+        if save_as:
+            save_figure(fig, save_as)
+        plt.show()
+
+
+# The canonical §10 figure: the strongest run of any adaptation route.
 best_key = best_per_init["key"].iloc[
     int(np.argmax(best_per_init["hard_pct"].to_numpy()))
 ]
 best_row = runs.loc[runs["key"] == best_key].iloc[0]
-best_mk = int(best_row["mk"])
+plot_difficult_chronic_anatomy(
+    key=best_key,
+    label=f"Best system ({best_row['adaptation']}, mk{int(best_row['mk'])})",
+    title=f"The {N_HARD} difficult chronics: the oracle solves most of what the policy misses",
+    save_as="08_difficult_chronic_anatomy",
+)
+''')
 
-model_curve = (
-    episodes.loc[(episodes["key"] == best_key) & episodes["is_hard"],
-                 ["chronic_name", "survival"]]
-    .set_index("chronic_name")["survival"].reindex(hard_order) * 100
-)
-greedy_curve = (
-    greedy_episodes.loc[
-        (greedy_episodes["mk"] == best_mk) & greedy_episodes["is_hard"],
-        ["greedy_chronic_name", "greedy_survival"],
-    ].set_index("greedy_chronic_name")["greedy_survival"].reindex(hard_order) * 100
-)
-dn_curve = (
-    baseline.loc[baseline["is_hard"], ["chronic_name", "dn_survival"]]
-    .set_index("chronic_name")["dn_survival"].reindex(hard_order) * 100
-)
+md(r"""
+### Draw it for any run you like
 
-fig, ax = plt.subplots(figsize=(15.0, 5.2))
-positions = np.arange(len(hard_order))
-ax.bar(positions - 0.27, dn_curve.to_numpy(), width=0.27, color="#9E9E9E", label="Do nothing")
-ax.bar(positions, model_curve.to_numpy(), width=0.27, color="#E45756",
-       label=f"Best system ({best_row['adaptation']}, mk{best_mk})")
-ax.bar(positions + 0.27, greedy_curve.to_numpy(), width=0.27, color="#54A24B",
-       label=f"Greedy oracle @ mk{best_mk}")
-ax.set_xticks(positions, hard_order, rotation=70, ha="right", fontsize=7)
-ax.set(ylabel="Survival (%)", ylim=(0, 118),
-       title=f"The {N_HARD} difficult chronics: the oracle solves most of what the policy misses")
-ax.legend(loc="upper center", ncol=3, framealpha=0.95)
-fig.tight_layout()
-save_figure(fig, "08_difficult_chronic_anatomy")
-plt.show()
+`plot_difficult_chronic_anatomy(...)` renders the same three-bar chart for any
+run that has per-episode artifacts. Pick one by leaderboard position, by name,
+or by factor:
+
+| call | picks |
+|---|---|
+| `plot_difficult_chronic_anatomy(rank=2)` | second row of the §4 leaderboard |
+| `plot_difficult_chronic_anatomy(adaptation="MAPPO fine-tune", mk=256)` | best fine-tuned run at mk256 |
+| `plot_difficult_chronic_anatomy(variant="NL_tmean_f0_a0h1", heuristic="none")` | that architecture, ungated |
+| `plot_difficult_chronic_anatomy("orig_NL_tmean_f0_a0h1_mk128_lr100")` | run name substring |
+| `plot_difficult_chronic_anatomy(key="<group>/<run>")` | one exact run |
+
+Filters are exact matches on any column of `runs` — `adaptation`, `mk`,
+`heuristic`, `rho`, `variant`, `family`, `pool`, `features`, `head`,
+`checkpoint_step` — and a list matches any of its members. When several runs
+match, the best on `hard_pct` is drawn and the alternatives are listed so the
+selector can be narrowed; `find_runs(...)` returns that same match set without
+plotting, for browsing. The x-axis keeps the shared do-nothing ordering so two
+charts can be read column by column; pass `order="model"` to sort by the chosen
+run instead, `show_greedy=False` to drop the oracle, and `save_as="stem"` to
+write a PNG next to the other exports.
+
+Runs without per-episode artifacts (§2) have no curve to draw and are refused
+with an explicit error rather than a silent empty chart.
+""")
+
+code(r'''
+# Browse first — every scored run of one architecture at one action space.
+display(Markdown("#### Candidates: `find_runs(variant=\"NL_tmean_f0_a0h1\", mk=128)`"))
+display(find_runs(variant="NL_tmean_f0_a0h1", mk=128)[RUN_PREVIEW])
+
+# Then plot whichever ones you want. Here: the same checkpoint at the same
+# action space, gated and ungated — the largest lever in this digest, resolved
+# chronic by chronic. The gated call matches four thresholds, so the best is
+# drawn and the other three are listed.
+plot_difficult_chronic_anatomy(variant="NL_tmean_f0_a0h1", mk=128, heuristic="local rho")
+plot_difficult_chronic_anatomy(variant="NL_tmean_f0_a0h1", mk=128, heuristic="none")
 ''')
 
 code(r'''

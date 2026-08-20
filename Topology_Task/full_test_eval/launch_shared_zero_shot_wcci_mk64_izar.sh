@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Re-evaluate every NL/NLS shared-candidate checkpoint zero-shot on WCCI.
 # ACTION_SIZE defaults to 64; result directories are separated by mk size.
+# CLUSTER selects the SLURM job script: izar (GPU partition, default) or jed
+# (academic CPU partition). Result paths do not depend on the cluster, so a
+# sweep can be split across both.
 
 set -euo pipefail
 
@@ -17,6 +20,29 @@ action_space_rel="outputs/teacher_student_datasets/wcci_full2048a_90_v3/metadata
 action_space_abs="$task_dir/$action_space_rel"
 dry_run="${DRY_RUN:-false}"
 force_results="${FORCE_RESULTS:-false}"
+
+cluster="${CLUSTER:-izar}"
+case "$cluster" in
+  izar)
+    # GPU partition; job_full_test_eval_izar.sh already asks for gres=gpu:1,
+    # and --device auto picks it up.
+    job_script="Topology_Task/full_test_eval/job_full_test_eval_izar.sh"
+    cluster_sbatch=()
+    cluster_eval_args=()
+    ;;
+  jed)
+    # Academic CPU partition. Resources are requested per submission rather
+    # than taken from the job script's 72-CPU header, matching
+    # launch_jed_bus14_nl_evals.sh.
+    job_script="Topology_Task/full_test_eval/job_full_test_eval.sh"
+    cluster_sbatch=("--cpus-per-task=${EVAL_CPUS:-8}" "--mem=${EVAL_MEM:-128G}")
+    cluster_eval_args=(--device cpu)
+    ;;
+  *)
+    echo "CLUSTER must be 'izar' or 'jed', got: $cluster" >&2
+    exit 1
+    ;;
+esac
 save_action_trace="${SAVE_ACTION_TRACE:-false}"
 # Convert either launcher variable into an explicit sbatch command-line option.
 # Some Slurm installations do not honor SBATCH_EXCLUDE from the environment.
@@ -218,6 +244,7 @@ if ! is_true "$dry_run"; then
 fi
 
 echo "========== Shared zero-shot WCCI mk${action_size} =========="
+echo "Cluster:             $cluster ($job_script)"
 echo "Matched:             $matched"
 echo "Skipped existing:    $skipped_existing"
 echo "Planned submissions: ${#plan_labels[@]}"
@@ -237,9 +264,10 @@ for index in "${!plan_labels[@]}"; do
   if [[ -n "$exclude_nodes" ]]; then
     command+=("--exclude=$exclude_nodes")
   fi
+  command+=("${cluster_sbatch[@]+"${cluster_sbatch[@]}"}")
   command+=(
     "--job-name=$label"
-    Topology_Task/full_test_eval/job_full_test_eval_izar.sh
+    "$job_script"
     --checkpoint "$checkpoint"
     --target-env-id bus36_wcci_nomaint
     --target-reduced-action-space "$action_space_rel"
@@ -256,6 +284,7 @@ for index in "${!plan_labels[@]}"; do
     --action-log-dir "$action_dir"
     --output-json "$output"
   )
+  command+=("${cluster_eval_args[@]+"${cluster_eval_args[@]}"}")
 
   if is_true "$dry_run"; then
     printf 'Would submit:'

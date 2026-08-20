@@ -17,21 +17,7 @@ representation reading miscalibrated inputs.
 \section{Why the input distribution matters}
 \label{sec:wcci-why-distribution}
 
-The graph encoder is grid-size independent and can therefore be transferred
-across grids. A conventional action head cannot: it has one output per action
-index, so its shape changes with the agent partitions and action sets. The
-candidate scorer of Section~\ref{sec:candidate-action-scoring} escapes that by
-applying shared weights and action-conditioned pooling to a variable set of
-actions, which makes the action head transferable too. Only the flat centralized
-critic stays grid-specific, its input dimension being set by the grid.
-\\
-\\
-The two input paths must be distinguished. The critic receives the normalized
-flat observation; the transferred actor encoder receives only graph node and
-edge features, for which physical scaling and running standardization are
-disabled here. A frozen \texttt{bus14} encoder therefore reads WCCI's raw graph
-quantities, and whether that matters depends on how closely the two
-distributions match.
+While the centralized critic remains grid-specific, both the graph encoder and the candidate-action scorer (Section~\ref{sec:candidate-action-scoring}) are grid-size independent. This allows the entire actor to be transferred across grids. However, the actor and critic receive different inputs: the critic consumes normalized flat observations, while the transferred actor encoder reads raw graph features (with physical scaling and running standardization initially disabled). A frozen \texttt{bus14} encoder therefore confronts WCCI's raw physical quantities directly. Whether this transfer succeeds depends entirely on how closely the source and target distributions match.
 
 
 \section{Measurement protocol}
@@ -242,20 +228,10 @@ failures it is.}
   \label{fig:wcci-offset-scale}
 \end{figure}
 
-\noindent The actor's node pre-encoder is a linear map followed by ReLU and LayerNorm.
-LayerNorm absorbs much of a uniform change of \emph{scale}: multiplying every
-input channel by a constant leaves the normalized activations largely unchanged.
-It does not absorb an \emph{offset}. Displacing a channel by a constant moves
-the pre-activations to a different region of the ReLU, changing which units fire
-at all, and normalization applied afterwards cannot undo that.
+\noindent The actor's node pre-encoder is a linear map followed by ReLU and LayerNorm. LayerNorm effectively absorbs a uniform change in \emph{scale}, as multiplying inputs by a constant leaves the normalized activations largely unchanged. However, it cannot absorb an \emph{offset}: displacing a channel moves the pre-activations across the ReLU threshold, fundamentally altering which units fire. Post-hoc normalization cannot undo this destroyed activation pattern.
 \\
 \\
-This makes the angle, not the power, the binding problem. \texttt{p} differs in
-width by a factor of $2.54$, which the architecture partially self-corrects,
-though the negative WCCI region reaching $-281$~MW is genuinely unseen territory
-rather than a wider version of something familiar. \texttt{theta} differs by
-$1.86$ pooled standard deviations of displacement, which it does not correct at
-all.
+This makes the angle, not the power, the critical failure point. The power channel \texttt{p} differs in width by a factor of $2.54$, which LayerNorm partially self-corrects (though WCCI's deep negative region remains unseen territory). Conversely, \texttt{theta} is displaced by $1.86$ standard deviations, an offset the architecture cannot correct.
 \\
 \\
 \texttt{rho}, meanwhile, needs no correction at all: scale ratio $1.050$, offset
@@ -366,22 +342,10 @@ that would equalize the two spreads exactly.
 \subsection{The angle displacement is a gauge artifact}
 \label{sec:wcci-angle-representation}
 
-Scaling cannot repair the angle displacement, and the implementation does not
-attempt it: angle channels are divided by a constant $180$, identical on both
-grids, so both sides move together and the displacement is untouched. The
-measurement explains why. An absolute voltage angle is referenced to whichever
-bus is slack, and the two grids do not place theirs alike, so the displacement
-in Figure~\ref{fig:wcci-distributions} --- \texttt{bus14} spanning $[-11.6,1.5]$
-degrees against WCCI's $[-7.1,16.8]$ --- is largely gauge rather than physics. Nothing that rescales or recentres a reference-dependent quantity
-can fix that; the quantity has to be replaced.
+Scaling cannot repair the angle displacement. Absolute voltage angles are referenced to the slack bus, and because the two grids place their slack buses differently, the displacement observed in Figure~\ref{fig:wcci-distributions} is a gauge artifact rather than a physical difference. No rescaling or recentering can fix a reference-dependent quantity; it must be replaced entirely.
 \\
 \\
-The replacement is the angle drop along each line, defined in
-Section~\ref{sec:line-node-angle}. Being a difference it is gauge-invariant, and
-on this schema it lives on the transmission-line node, which is the most
-populous type in the graph, so it also trades a channel owned by a quarter of
-the rows for one owned by a third. This study therefore enables it, alongside
-physical scaling, in both source and target environments.
+The solution is to use the angle drop along each line (Section~\ref{sec:line-node-angle}). As a difference, it is gauge-invariant. On the disaggregated graph, this feature lives on the transmission-line node (the most populous type), gracefully trading a feature owned by a quarter of the rows for one owned by a third. We therefore replace absolute angles with line-angle differences in both environments.
 
 \subsection{The action descriptor must not be normalized per agent}
 \label{sec:wcci-action-descriptor}
@@ -413,15 +377,10 @@ applied to a different input, with the agents as the populations.
   \end{tabular}
 \end{table}
 
-\noindent An action moving three elements therefore reached the shared scorer as
-$0.60$ for agent~$0$ and $0.50$ for agent~$2$, and every agent's busiest action
-reached it as exactly $1.0$ whether it moved five elements or six. On another
-grid the divisors change again. The columns are now divided by a constant,
-selected by \texttt{candidate\_action\_feature\_scaling}; the busiest actions
-then read $1.25$, $1.25$ and $1.5$. This is the only correction here that
-applies within a grid as well as across grids, and it qualifies Screen~E of
-Chapter~\ref{ch:experiments}, whose runs predate it: their \texttt{f1} cells
-appended a descriptor inconsistent between the agents sharing one scorer.
+\noindent An action moving three elements therefore reached the shared scorer as $0.60$ for agent~$0$ and $0.50$ for agent~$2$. Every agent's busiest action reached it as exactly $1.0$, regardless of whether it moved five elements or six. On a new grid, these implicit divisors would shift arbitrarily.
+\\
+\\
+The correction is to divide these counts by a global constant (\texttt{candidate\_action\_feature\_scaling}). Under this fix, the busiest actions read $1.25$, $1.25$ and $1.5$, preserving their true relative scale across agents and grids. This is the only correction that applies \emph{within} a single environment, and it directly explains the outcome of Screen~E (Chapter~\ref{ch:experiments}): the \texttt{f1} cells appended a descriptor that was mutually inconsistent across agents sharing the same scorer, which clarifies why the descriptor-free \texttt{f0} configuration emerged as the robust choice.
 
 \subsection{The corrected distribution}
 \label{sec:wcci-corrected}
