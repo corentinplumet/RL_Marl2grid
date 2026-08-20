@@ -8,6 +8,34 @@ from typing import Any, Dict
 import torch as th
 
 
+def apply_scratch_architecture_overrides(
+    args: Namespace,
+    *,
+    initialization: str,
+    gnn_layers: int | None,
+) -> Dict[str, Dict[str, int]]:
+    """Apply explicitly requested scratch-only architecture changes."""
+    if gnn_layers is None:
+        return {}
+    if initialization != "scratch":
+        raise ValueError(
+            "--scratch-gnn-layers is valid only with --initialization scratch. "
+            "Changing the depth of a warm-start actor would make its checkpoint "
+            "weights incompatible."
+        )
+    if int(gnn_layers) <= 0:
+        raise ValueError("--scratch-gnn-layers must be a positive integer.")
+
+    template_layers = int(getattr(args, "gnn_layers", 0))
+    args.gnn_layers = int(gnn_layers)
+    return {
+        "gnn_layers": {
+            "template": template_layers,
+            "target": int(gnn_layers),
+        }
+    }
+
+
 def build_scratch_actors(
     args: Namespace,
     evaluator: Any,

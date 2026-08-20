@@ -285,6 +285,13 @@ are initialization hyperparameters, not learned checkpoint values. The epoch-0
 metrics are labelled `random initialization baseline` in the log, and the saved
 metadata records `learned_source_weights_loaded=false`.
 
+To test deeper scratch encoders without changing any other model setting, add
+`--scratch-gnn-layers 3` or `--scratch-gnn-layers 4` and use distinct output
+names. This override is intentionally rejected for warm starts because mp2
+weights cannot be loaded into mp3/mp4 encoders. The selected depth is written
+into the checkpoint arguments used by full-test evaluation, and the metadata
+records both the template depth and the target depth.
+
 ## 4. Evaluation
 
 Evaluate the BC checkpoint without a deployment heuristic first:

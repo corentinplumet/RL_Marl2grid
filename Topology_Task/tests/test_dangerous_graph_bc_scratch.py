@@ -8,12 +8,48 @@ from unittest.mock import Mock, patch
 import torch as th
 
 from teacher_student.scratch_initialization import (
+    apply_scratch_architecture_overrides,
     build_scratch_actors,
     scratch_checkpoint_base,
 )
 
 
 class DangerousGraphBCScratchTest(unittest.TestCase):
+    def test_overrides_scratch_message_passing_depth(self):
+        args = Namespace(gnn_layers=2)
+
+        overrides = apply_scratch_architecture_overrides(
+            args,
+            initialization="scratch",
+            gnn_layers=4,
+        )
+
+        self.assertEqual(args.gnn_layers, 4)
+        self.assertEqual(
+            overrides,
+            {"gnn_layers": {"template": 2, "target": 4}},
+        )
+
+    def test_rejects_depth_override_for_warm_start(self):
+        args = Namespace(gnn_layers=2)
+
+        with self.assertRaisesRegex(ValueError, "only with --initialization scratch"):
+            apply_scratch_architecture_overrides(
+                args,
+                initialization="warm_start",
+                gnn_layers=3,
+            )
+
+        self.assertEqual(args.gnn_layers, 2)
+
+    def test_rejects_nonpositive_scratch_depth(self):
+        with self.assertRaisesRegex(ValueError, "positive integer"):
+            apply_scratch_architecture_overrides(
+                Namespace(gnn_layers=2),
+                initialization="scratch",
+                gnn_layers=0,
+            )
+
     def test_builds_fresh_target_actors_without_checkpoint_state(self):
         actor_env = SimpleNamespace(
             observation_space={"agent_0": object(), "agent_1": object()}

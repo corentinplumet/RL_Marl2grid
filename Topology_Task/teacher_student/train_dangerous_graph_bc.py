@@ -62,6 +62,7 @@ from teacher_student.losses import (
     weighted_action_cross_entropy,
 )
 from teacher_student.scratch_initialization import (
+    apply_scratch_architecture_overrides,
     build_scratch_actors,
     scratch_checkpoint_base,
 )
@@ -509,6 +510,16 @@ def parse_args() -> Namespace:
             "fresh actors directly on the dataset environment/action space."
         ),
     )
+    parser.add_argument(
+        "--scratch-gnn-layers",
+        type=int,
+        default=None,
+        help=(
+            "Override gnn_layers while constructing a fresh actor. Valid only "
+            "with --initialization scratch; all other architecture settings "
+            "remain those of the template checkpoint."
+        ),
+    )
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument(
         "--best-output",
@@ -686,6 +697,11 @@ def main() -> None:
     cpu_record = _load_checkpoint(checkpoint_path, th.device("cpu"))
     args = _merge_missing_defaults(_as_namespace(cpu_record["args"]))
     args = _configure_legacy_connected_feature(args, cpu_record)
+    scratch_architecture_overrides = apply_scratch_architecture_overrides(
+        args,
+        initialization=cli.initialization,
+        gnn_layers=cli.scratch_gnn_layers,
+    )
     source_env_id = str(getattr(args, "env_id", ""))
     dataset_env_id = str(metadata.get("env_id", "") or "")
     if not dataset_env_id:
@@ -842,6 +858,12 @@ def main() -> None:
     if cli.initialization == "scratch":
         print(f"Architecture template: {_repo_relative(checkpoint_path)}")
         print("Learned template weights loaded: False")
+        if scratch_architecture_overrides:
+            layer_override = scratch_architecture_overrides["gnn_layers"]
+            print(
+                "GNN message-passing layers: "
+                f"{layer_override['template']} -> {layer_override['target']}"
+            )
     else:
         print(f"Checkpoint: {_repo_relative(checkpoint_path)}")
         print("Learned template weights loaded: True")
@@ -1106,6 +1128,7 @@ def main() -> None:
                 "architecture_template_global_step": int(
                     cpu_record.get("global_step", 0)
                 ),
+                "scratch_architecture_overrides": scratch_architecture_overrides,
                 "source_checkpoint": (
                     str(checkpoint_path) if cli.initialization == "warm_start" else None
                 ),
