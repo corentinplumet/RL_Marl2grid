@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import shutil
+import signal
 import sys
 import time
 from argparse import Namespace
@@ -57,6 +58,18 @@ from teacher_student.dataset import (
     metadata_path,
     shards_dir,
 )
+
+
+class CollectionStopRequested(Exception):
+    """Internal control flow used to flush an intentionally stopped collection."""
+
+    def __init__(self, signal_number: int) -> None:
+        self.signal_number = int(signal_number)
+        try:
+            self.signal_name = signal.Signals(self.signal_number).name
+        except ValueError:
+            self.signal_name = str(self.signal_number)
+        super().__init__(f"collection stop requested by {self.signal_name}")
 
 
 def _current_chronic_info(evaluator: Evaluator) -> Dict[str, str]:
@@ -320,6 +333,8 @@ def _metadata_payload(
     simulation_reduced_action_space: str,
     simulation_action_sizes: Dict[str, int],
     rollout_action_space_label: str,
+    target_episodes: int | None,
+    stop_signal: str | None,
     writer: DangerousGraphBCWriter,
     env_steps: int,
     completed_episodes: int,
@@ -360,6 +375,9 @@ def _metadata_payload(
         "split": cli.split,
         "split_chronics": bool(cli.split_chronics),
         "eval_all_split_chronics": bool(cli.eval_all_split_chronics),
+        "run_until_stopped": bool(cli.run_until_stopped),
+        "target_episodes": target_episodes,
+        "stop_signal": stop_signal,
         "chronic_sample_seed": int(cli.chronic_sample_seed),
         "max_dangerous_states": cli.max_dangerous_states,
         "max_dangerous_states_per_episode": cli.max_dangerous_states_per_episode,
@@ -444,6 +462,15 @@ def parse_args() -> Namespace:
     parser.add_argument("--split-chronics", type=str2bool, default=True)
     parser.add_argument("--eval-all-split-chronics", type=str2bool, default=False)
     parser.add_argument("--max-episodes", type=int, default=None)
+    parser.add_argument(
+        "--run-until-stopped",
+        type=str2bool,
+        default=False,
+        help=(
+            "Ignore the config's eval_episodes fallback and continue cycling "
+            "through the active chronic split until interrupted."
+        ),
+    )
     parser.add_argument("--max-env-steps", type=int, default=None)
     parser.add_argument("--chronic-sample-seed", type=int, default=0)
     parser.add_argument("--max-dangerous-states", type=int, default=None)
@@ -486,6 +513,18 @@ def parse_args() -> Namespace:
 
 def main() -> None:
     cli = parse_args()
+    if cli.run_until_stopped:
+        bounded = {
+            "--max-episodes": cli.max_episodes,
+            "--max-env-steps": cli.max_env_steps,
+            "--max-dangerous-states": cli.max_dangerous_states,
+        }
+        supplied_bounds = [name for name, value in bounded.items() if value is not None]
+        if supplied_bounds:
+            raise ValueError(
+                "--run-until-stopped cannot be combined with global stopping "
+                "bounds: " + ", ".join(supplied_bounds)
+            )
     if cli.local_rho_threshold is None:
         cli.local_rho_threshold = cli.danger_rho_threshold
     if cli.shard_size <= 0:
@@ -703,7 +742,16 @@ def main() -> None:
         }
         for label in action_space_specs
     }
-    target_episodes = int(cli.max_episodes or evaluator.eval_episodes)
+    target_episodes = (
+        None
+        if cli.run_until_stopped
+        else int(cli.max_episodes or evaluator.eval_episodes)
+    )
+    target_episodes_label = (
+        "unbounded (manual stop)"
+        if target_episodes is None
+        else str(target_episodes)
+    )
     if cli.split_chronics and not cli.eval_all_split_chronics:
         evaluator.env.reshuffle_chronics(seed=cli.chronic_sample_seed)
     obs, _ = evaluator.env.reset()
@@ -718,6 +766,16 @@ def main() -> None:
     unique_fingerprints: set[str] = set()
     started = time.perf_counter()
     completed_normally = False
+    stop_signal_name: str | None = None
+
+    previous_signal_handlers = {}
+
+    def request_stop(signal_number: int, _frame: Any) -> None:
+        raise CollectionStopRequested(signal_number)
+
+    for signal_number in (signal.SIGINT, signal.SIGTERM):
+        previous_signal_handlers[signal_number] = signal.getsignal(signal_number)
+        signal.signal(signal_number, request_stop)
 
     print("========== Dangerous-state graph BC collection ==========")
     if checkpoint_path is not None:
@@ -725,7 +783,7 @@ def main() -> None:
     else:
         print(f"Source config (no weights): {_repo_relative(source_config)}")
     print(f"Output: {output_dir}")
-    print(f"Split / episodes: {cli.split} / {target_episodes}")
+    print(f"Split / episodes: {cli.split} / {target_episodes_label}")
     print(
         "Sampling: "
         f"seed={cli.chronic_sample_seed} max_states={cli.max_dangerous_states} "
@@ -742,7 +800,7 @@ def main() -> None:
     print("===========================================================")
 
     try:
-        while completed_episodes < target_episodes:
+        while target_episodes is None or completed_episodes < target_episodes:
             if cli.max_env_steps is not None and env_steps >= cli.max_env_steps:
                 break
             dangerous_states = next(iter(writers.values())).total_states
@@ -947,11 +1005,18 @@ def main() -> None:
                 elapsed = time.perf_counter() - started
                 dangerous_states = next(iter(writers.values())).total_states
                 print(
-                    f"steps={env_steps} episodes={completed_episodes}/{target_episodes} "
+                    f"steps={env_steps} "
+                    f"episodes={completed_episodes}/{target_episodes_label} "
                     f"dangerous={dangerous_states} elapsed={elapsed / 60:.1f}m",
                     flush=True,
                 )
         completed_normally = True
+    except CollectionStopRequested as exc:
+        stop_signal_name = exc.signal_name
+        print(
+            f"Received {stop_signal_name}; flushing the partial dataset...",
+            flush=True,
+        )
     finally:
         metadata_by_space = {}
         for space_label, writer in writers.items():
@@ -982,6 +1047,8 @@ def main() -> None:
                 simulation_reduced_action_space=simulation_action_space,
                 simulation_action_sizes=simulation_action_sizes,
                 rollout_action_space_label=rollout_action_space,
+                target_episodes=target_episodes,
+                stop_signal=stop_signal_name,
                 writer=writer,
                 env_steps=env_steps,
                 completed_episodes=completed_episodes,
@@ -1020,7 +1087,9 @@ def main() -> None:
                         else None
                     ),
                     "paired_action_spaces": metadata_by_space,
+                    "run_until_stopped": bool(cli.run_until_stopped),
                     "target_episodes": target_episodes,
+                    "stop_signal": stop_signal_name,
                     "chronic_sample_seed": cli.chronic_sample_seed,
                     "max_dangerous_states": cli.max_dangerous_states,
                     "max_dangerous_states_per_episode": (
@@ -1030,9 +1099,14 @@ def main() -> None:
                     "n_dangerous_states": next(iter(writers.values())).total_states,
                 },
             )
+        for signal_number, previous_handler in previous_signal_handlers.items():
+            signal.signal(signal_number, previous_handler)
         evaluator.env.close()
 
-    print("========== Collection complete ==========")
+    if stop_signal_name is None:
+        print("========== Collection complete ==========")
+    else:
+        print("========== Collection stopped and flushed ==========")
     for space_label, writer in writers.items():
         print(
             f"{space_label}: dangerous_states={writer.total_states} "

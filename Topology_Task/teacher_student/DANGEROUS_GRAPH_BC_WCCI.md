@@ -109,6 +109,23 @@ dangerous states per chronic, keeps queried states at least 12 environment
 steps apart, and stops at 2500 total dangerous states. Start with the smoke
 test, inspect its simulation rate, then adjust these bounds if needed.
 
+### Unbounded collection with a manual stop
+
+Pass `--run-until-stopped true` and omit `--max-episodes`, `--max-env-steps`,
+and `--max-dangerous-states`. This explicitly disables the TOML
+`eval_episodes` fallback and cycles through the active training split until a
+signal is received. Stop it gracefully with:
+
+```bash
+scancel --signal=INT --full JOB_ID
+```
+
+The collector catches `SIGINT` and `SIGTERM`, writes the partial in-memory
+shard, and regenerates `metadata/metadata.json` with `status="interrupted"`.
+The flushed dataset is immediately usable. The Slurm allocation still has its
+configured wall-time limit, so a deliberate manual stop is safer than waiting
+for the final forced termination.
+
 Do not collect from the 50 held-out test chronics. Select the matching child
 dataset when training an mk64, mk128, or mk256 actor. The trainer rebuilds the
 candidate metadata for that action space and transfers the shared scorer. The
