@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fine-tune a WCCI mk64 graph candidate actor on dangerous-state labels."""
+"""Fine-tune a graph candidate actor on dangerous-state action outcomes."""
 
 from __future__ import annotations
 
@@ -35,7 +35,11 @@ from full_test_eval.evaluate_checkpoint import (
     _resolve_checkpoint_path,
     _resolve_device,
 )
-from teacher_student.dangerous_graph_bc import load_agent_batch
+from teacher_student.dangerous_graph_bc import (
+    chronic_row_split,
+    load_agent_batch,
+    load_candidate_outcome_batch,
+)
 from teacher_student.dataset import (
     list_shards,
     load_metadata,
@@ -46,9 +50,15 @@ from teacher_student.dataset import (
 from teacher_student.losses import (
     classification_counts,
     empty_classification_counts,
+    empty_utility_ranking_counts,
     finalize_classification_counts,
+    finalize_utility_ranking_counts,
     intervention_bce_loss,
+    masked_centered_utility_huber_loss,
     merge_classification_counts,
+    merge_utility_ranking_counts,
+    observed_unsafe_action_loss,
+    utility_ranking_counts,
     weighted_action_cross_entropy,
 )
 
@@ -95,32 +105,92 @@ def _batch_losses(
     obs_np: Dict[str, Any],
     target_np: np.ndarray,
     reference_np: np.ndarray,
+    candidate_np: Dict[str, np.ndarray] | None,
     indices: np.ndarray,
     device: th.device,
     cli: Namespace,
-) -> tuple[th.Tensor, th.Tensor, th.Tensor, th.Tensor, int]:
+) -> tuple[
+    th.Tensor,
+    th.Tensor,
+    th.Tensor,
+    th.Tensor,
+    th.Tensor,
+    th.Tensor,
+    int,
+]:
     obs = _to_tensor_obs(obs_np, indices, device)
     target = th.as_tensor(target_np[indices], dtype=th.long, device=device)
     reference = th.as_tensor(reference_np[indices], dtype=th.float32, device=device)
     logits = actor._actor_logits(obs)
-    action_loss = weighted_action_cross_entropy(
-        logits,
-        target,
-        action0_weight=cli.action0_weight,
-        nonidle_weight=cli.nonidle_weight,
-    )
+    zero = logits.sum() * 0.0
+    if cli.objective == "hard_ce":
+        action_loss = weighted_action_cross_entropy(
+            logits,
+            target,
+            action0_weight=cli.action0_weight,
+            nonidle_weight=cli.nonidle_weight,
+        )
+        utility_loss = zero
+        unsafe_loss = zero
+    else:
+        if candidate_np is None:
+            raise ValueError("utility_regression requires candidate outcomes.")
+        utility = th.as_tensor(
+            candidate_np["utility_vs_noop"][indices],
+            dtype=th.float32,
+            device=device,
+        )
+        trainable_mask = th.as_tensor(
+            candidate_np["trainable_mask"][indices],
+            dtype=th.bool,
+            device=device,
+        )
+        observed_mask = th.as_tensor(
+            candidate_np["observed_mask"][indices],
+            dtype=th.bool,
+            device=device,
+        )
+        action_loss = zero
+        utility_loss = masked_centered_utility_huber_loss(
+            logits,
+            utility,
+            trainable_mask,
+            beta=cli.utility_huber_beta,
+            min_candidates=cli.min_trainable_candidates,
+        )
+        unsafe_loss = observed_unsafe_action_loss(
+            logits,
+            utility,
+            trainable_mask,
+            observed_mask,
+            margin=cli.unsafe_margin,
+        )
     aux_loss = (
         intervention_bce_loss(logits, target, pos_weight=cli.aux_pos_weight)
         if cli.aux_intervention_loss
-        else logits.sum() * 0.0
+        else zero
     )
     distill_loss = (
         _distillation_kl(logits, reference, cli.distill_temperature)
         if cli.distill_weight > 0.0
-        else logits.sum() * 0.0
+        else zero
     )
-    loss = action_loss + cli.aux_weight * aux_loss + cli.distill_weight * distill_loss
-    return loss, action_loss, aux_loss, distill_loss, int(target.numel())
+    loss = (
+        action_loss
+        + cli.utility_weight * utility_loss
+        + cli.unsafe_weight * unsafe_loss
+        + cli.aux_weight * aux_loss
+        + cli.distill_weight * distill_loss
+    )
+    return (
+        loss,
+        action_loss,
+        utility_loss,
+        unsafe_loss,
+        aux_loss,
+        distill_loss,
+        int(target.numel()),
+    )
 
 
 def _accumulate_train_losses(
@@ -128,6 +198,8 @@ def _accumulate_train_losses(
     *,
     loss: th.Tensor,
     action_loss: th.Tensor,
+    utility_loss: th.Tensor,
+    unsafe_loss: th.Tensor,
     aux_loss: th.Tensor,
     distill_loss: th.Tensor,
     n: int,
@@ -136,6 +208,8 @@ def _accumulate_train_losses(
     values["n"] += weight
     values["loss"] += float(loss.detach().cpu()) * weight
     values["action_loss"] += float(action_loss.detach().cpu()) * weight
+    values["utility_loss"] += float(utility_loss.detach().cpu()) * weight
+    values["unsafe_loss"] += float(unsafe_loss.detach().cpu()) * weight
     values["aux_loss"] += float(aux_loss.detach().cpu()) * weight
     values["distill_loss"] += float(distill_loss.detach().cpu()) * weight
 
@@ -176,6 +250,8 @@ def _metric_accumulator() -> Dict[str, float]:
         "n": 0.0,
         "loss": 0.0,
         "action_loss": 0.0,
+        "utility_loss": 0.0,
+        "unsafe_loss": 0.0,
         "aux_loss": 0.0,
         "distill_loss": 0.0,
     }
@@ -196,8 +272,11 @@ def _evaluate(
     device: th.device,
     batch_size: int,
     max_batches: int,
+    cli: Namespace,
+    row_indices_by_shard: Dict[Path, np.ndarray],
 ) -> Dict[str, Dict[str, float]]:
-    sums = {agent: empty_classification_counts() for agent in agent_ids}
+    classification_sums = {agent: empty_classification_counts() for agent in agent_ids}
+    ranking_sums = {agent: empty_utility_ranking_counts() for agent in agent_ids}
     seen = {agent: 0 for agent in agent_ids}
     unlimited = max_batches <= 0
     for actor in actors.values():
@@ -208,22 +287,64 @@ def _evaluate(
                 if not unlimited and seen[agent] >= max_batches:
                     continue
                 obs_np, target_np, _ = load_agent_batch(shard, agent)
-                for start in range(0, len(target_np), batch_size):
+                indices_all = row_indices_by_shard[shard]
+                candidate_np = None
+                if cli.objective == "utility_regression":
+                    candidate_np = load_candidate_outcome_batch(shard, agent)
+                    candidate_mask = candidate_np["trainable_mask"][
+                        indices_all
+                    ] & np.isfinite(candidate_np["utility_vs_noop"][indices_all])
+                    indices_all = indices_all[
+                        candidate_mask.sum(axis=1) >= cli.min_trainable_candidates
+                    ]
+                for start in range(0, len(indices_all), batch_size):
                     if not unlimited and seen[agent] >= max_batches:
                         break
-                    indices = np.arange(start, min(start + batch_size, len(target_np)))
+                    indices = indices_all[start : start + batch_size]
                     obs = _to_tensor_obs(obs_np, indices, device)
                     target = th.as_tensor(
                         target_np[indices], dtype=th.long, device=device
                     )
+                    logits = actors[agent]._actor_logits(obs)
                     merge_classification_counts(
-                        sums[agent],
-                        classification_counts(actors[agent]._actor_logits(obs), target),
+                        classification_sums[agent],
+                        classification_counts(logits, target),
                     )
+                    if candidate_np is not None:
+                        utility = th.as_tensor(
+                            candidate_np["utility_vs_noop"][indices],
+                            dtype=th.float32,
+                            device=device,
+                        )
+                        trainable_mask = th.as_tensor(
+                            candidate_np["trainable_mask"][indices],
+                            dtype=th.bool,
+                            device=device,
+                        )
+                        observed_mask = th.as_tensor(
+                            candidate_np["observed_mask"][indices],
+                            dtype=th.bool,
+                            device=device,
+                        )
+                        merge_utility_ranking_counts(
+                            ranking_sums[agent],
+                            utility_ranking_counts(
+                                logits,
+                                utility,
+                                trainable_mask,
+                                observed_mask,
+                                min_candidates=cli.min_trainable_candidates,
+                            ),
+                        )
                     seen[agent] += 1
     for actor in actors.values():
         actor.train()
-    return {agent: finalize_classification_counts(sums[agent]) for agent in agent_ids}
+    metrics = {}
+    for agent in agent_ids:
+        metrics[agent] = finalize_classification_counts(classification_sums[agent])
+        if cli.objective == "utility_regression":
+            metrics[agent].update(finalize_utility_ranking_counts(ranking_sums[agent]))
+    return metrics
 
 
 def _print_eval_metrics(
@@ -235,31 +356,67 @@ def _print_eval_metrics(
         metrics = eval_metrics[agent]
         loss_prefix = (
             f"loss={train_metrics[agent]['loss']:.5f} "
+            f"util={train_metrics[agent]['utility_loss']:.5f} "
+            f"unsafe={train_metrics[agent]['unsafe_loss']:.5f} "
             if train_metrics is not None
             else ""
         )
-        print(
-            f"{agent}: {loss_prefix}"
-            f"acc={metrics.get('accuracy', float('nan')):.3f} "
-            f"a0_acc={metrics.get('action0_accuracy', float('nan')):.3f} "
-            f"nonidle_acc={metrics.get('nonidle_accuracy', float('nan')):.3f} "
-            f"nonidle_top3={metrics.get('nonidle_top3_accuracy', float('nan')):.3f} "
-            f"nonidle_top5={metrics.get('nonidle_top5_accuracy', float('nan')):.3f} "
-            f"nonidle_rank_top5="
-            f"{metrics.get('nonidle_rank_top5_accuracy', float('nan')):.3f} "
-            f"false_noop={metrics.get('false_noop_rate', float('nan')):.3f} "
-            f"false_intervention="
-            f"{metrics.get('false_intervention_rate', float('nan')):.3f} "
-            f"n/nonidle={int(metrics.get('n', 0))}/"
-            f"{int(metrics.get('nonidle_n', 0))}",
-            flush=True,
-        )
+        if "ranking_rows" in metrics:
+            print(
+                f"{agent}: {loss_prefix}"
+                f"rank_top1={metrics.get('masked_top1_accuracy', float('nan')):.3f} "
+                f"rank_top3={metrics.get('masked_top3_accuracy', float('nan')):.3f} "
+                f"regret={metrics.get('masked_mean_regret', float('nan')):.5f} "
+                f"deploy_safe={metrics.get('deployment_safe_rate', float('nan')):.3f} "
+                f"deploy_best="
+                f"{metrics.get('deployment_best_accuracy', float('nan')):.3f} "
+                f"unsafe_outrank="
+                f"{metrics.get('unsafe_outrank_rate', float('nan')):.3f} "
+                f"hard_acc={metrics.get('accuracy', float('nan')):.3f} "
+                f"rows={int(metrics.get('ranking_rows', 0))}",
+                flush=True,
+            )
+        else:
+            print(
+                f"{agent}: {loss_prefix}"
+                f"acc={metrics.get('accuracy', float('nan')):.3f} "
+                f"a0_acc={metrics.get('action0_accuracy', float('nan')):.3f} "
+                f"nonidle_acc={metrics.get('nonidle_accuracy', float('nan')):.3f} "
+                f"nonidle_top3="
+                f"{metrics.get('nonidle_top3_accuracy', float('nan')):.3f} "
+                f"nonidle_top5="
+                f"{metrics.get('nonidle_top5_accuracy', float('nan')):.3f} "
+                f"nonidle_rank_top5="
+                f"{metrics.get('nonidle_rank_top5_accuracy', float('nan')):.3f} "
+                f"false_noop="
+                f"{metrics.get('false_noop_rate', float('nan')):.3f} "
+                f"false_intervention="
+                f"{metrics.get('false_intervention_rate', float('nan')):.3f} "
+                f"n/nonidle={int(metrics.get('n', 0))}/"
+                f"{int(metrics.get('nonidle_n', 0))}",
+                flush=True,
+            )
 
 
 def _eval_selection_score(
-    eval_metrics: Dict[str, Dict[str, float]], agent_ids: List[str]
+    eval_metrics: Dict[str, Dict[str, float]],
+    agent_ids: List[str],
+    objective: str,
 ) -> float:
-    """Macro balanced accuracy used to retain the best supervised epoch."""
+    """Return the objective-specific score used to retain the best epoch."""
+    if objective == "utility_regression":
+        weighted_score = 0.0
+        total_rows = 0.0
+        for agent in agent_ids:
+            metrics = eval_metrics[agent]
+            rows = float(metrics.get("ranking_rows", 0.0))
+            safe_rate = float(metrics.get("deployment_safe_rate", float("nan")))
+            best_rate = float(metrics.get("deployment_best_accuracy", float("nan")))
+            if rows > 0 and math.isfinite(safe_rate) and math.isfinite(best_rate):
+                weighted_score += rows * (0.7 * best_rate + 0.3 * safe_rate)
+                total_rows += rows
+        return weighted_score / total_rows if total_rows > 0 else float("-inf")
+
     scores = []
     for agent in agent_ids:
         metrics = eval_metrics[agent]
@@ -346,6 +503,20 @@ def parse_args() -> Namespace:
     parser.add_argument("--lr", type=float, default=1e-5)
     parser.add_argument("--weight-decay", type=float, default=0.0)
     parser.add_argument("--max-grad-norm", type=float, default=1.0)
+    parser.add_argument(
+        "--objective",
+        choices=["hard_ce", "utility_regression"],
+        default="hard_ce",
+        help=(
+            "hard_ce reproduces one-hot behavior cloning; utility_regression "
+            "fits all safe candidate utilities and penalizes observed unsafe actions."
+        ),
+    )
+    parser.add_argument("--utility-weight", type=float, default=1.0)
+    parser.add_argument("--utility-huber-beta", type=float, default=0.5)
+    parser.add_argument("--unsafe-weight", type=float, default=0.5)
+    parser.add_argument("--unsafe-margin", type=float, default=1.0)
+    parser.add_argument("--min-trainable-candidates", type=int, default=2)
     parser.add_argument("--balanced-nonidle-frac", type=float, default=0.20)
     parser.add_argument("--action0-weight", type=float, default=1.0)
     parser.add_argument("--nonidle-weight", type=float, default=3.0)
@@ -375,6 +546,16 @@ def parse_args() -> Namespace:
     )
     parser.add_argument("--max-shards", type=int, default=None)
     parser.add_argument(
+        "--validation-chronic-frac",
+        type=float,
+        default=0.0,
+        help=(
+            "Fraction of unique chronic fingerprints held out for model selection. "
+            "Zero evaluates on the training rows for an intentional capacity test."
+        ),
+    )
+    parser.add_argument("--validation-seed", type=int, default=1701)
+    parser.add_argument(
         "--eval-batches",
         type=int,
         default=20,
@@ -396,6 +577,17 @@ def main() -> None:
         raise ValueError("--epochs and --batch-size must be positive.")
     if not 0.0 <= cli.balanced_nonidle_frac <= 1.0:
         raise ValueError("--balanced-nonidle-frac must be in [0, 1].")
+    if not 0.0 <= cli.validation_chronic_frac < 1.0:
+        raise ValueError("--validation-chronic-frac must be in [0, 1).")
+    if cli.min_trainable_candidates < 2:
+        raise ValueError("--min-trainable-candidates must be at least 2.")
+    if (
+        cli.utility_weight < 0.0
+        or cli.utility_huber_beta <= 0.0
+        or cli.unsafe_weight < 0.0
+        or cli.unsafe_margin < 0.0
+    ):
+        raise ValueError("Invalid utility-regression loss weight or scale.")
     if cli.distill_weight < 0.0 or cli.distill_temperature <= 0.0:
         raise ValueError("Invalid distillation weight or temperature.")
 
@@ -403,8 +595,21 @@ def main() -> None:
     metadata = load_metadata(dataset_dir)
     if metadata.get("dataset_mode") != "dangerous_graph_bc":
         raise ValueError("Dataset is not a dangerous_graph_bc dataset.")
+    if cli.objective == "utility_regression" and not bool(
+        metadata.get("has_candidate_outcomes", False)
+    ):
+        raise ValueError(
+            "utility_regression requires a dataset collected with "
+            "--store-candidate-outcomes true."
+        )
     shards = list_shards(dataset_dir, cli.max_shards)
     agent_ids = list(metadata["agent_ids"])
+    (
+        train_rows_by_shard,
+        validation_rows_by_shard,
+        n_train_chronics,
+        n_validation_chronics,
+    ) = chronic_row_split(shards, cli.validation_chronic_frac, cli.validation_seed)
 
     checkpoint_dir = cli.checkpoint_dir.expanduser()
     if not checkpoint_dir.is_absolute():
@@ -599,9 +804,26 @@ def main() -> None:
     print(f"Output: {output_path}")
     print(f"Best output: {best_output_path}")
     print(f"Shards / epochs: {len(shards)} / {cli.epochs}")
+    print(f"Objective: {cli.objective}")
     print(f"Batch / LR: {cli.batch_size} / {cli.lr}")
-    print(f"Balanced nonidle: {cli.balanced_nonidle_frac}")
-    print(f"CE weights action0/nonidle: {cli.action0_weight}/{cli.nonidle_weight}")
+    print(
+        "Chronic split train/validation: "
+        f"{n_train_chronics}/{n_validation_chronics} "
+        f"(validation_fraction={cli.validation_chronic_frac})"
+    )
+    if cli.objective == "hard_ce":
+        print(f"Balanced nonidle: {cli.balanced_nonidle_frac}")
+        print(
+            "CE weights action0/nonidle: " f"{cli.action0_weight}/{cli.nonidle_weight}"
+        )
+    else:
+        print(
+            "Utility/unsafe weights: "
+            f"{cli.utility_weight}/{cli.unsafe_weight} "
+            f"huber_beta={cli.utility_huber_beta} "
+            f"unsafe_margin={cli.unsafe_margin}"
+        )
+        print(f"Minimum trainable candidates: {cli.min_trainable_candidates}")
     print(f"Aux intervention weight: {cli.aux_weight}")
     print(f"Reference-policy KL weight: {cli.distill_weight}")
     print(f"Freeze encoder: {cli.freeze_encoder}")
@@ -618,7 +840,14 @@ def main() -> None:
     optimizer_steps = 0
     print("========== epoch 0 source baseline ==========", flush=True)
     baseline_metrics = _evaluate(
-        actors, shards, agent_ids, device, cli.batch_size, cli.eval_batches
+        actors,
+        shards,
+        agent_ids,
+        device,
+        cli.batch_size,
+        cli.eval_batches,
+        cli,
+        validation_rows_by_shard,
     )
     _print_eval_metrics(baseline_metrics, agent_ids)
     history: List[Dict[str, Any]] = [
@@ -637,22 +866,62 @@ def main() -> None:
             epoch_shards = list(shards)
             rng.shuffle(epoch_shards)
             for shard_index, shard in enumerate(epoch_shards, start=1):
-                arrays = {agent: load_agent_batch(shard, agent) for agent in agent_ids}
+                arrays = {}
+                eligible_indices = {}
+                base_indices = train_rows_by_shard[shard]
+                for agent in agent_ids:
+                    obs_np, target_np, reference_np = load_agent_batch(shard, agent)
+                    candidate_np = (
+                        load_candidate_outcome_batch(shard, agent)
+                        if cli.objective == "utility_regression"
+                        else None
+                    )
+                    indices = base_indices
+                    if candidate_np is not None:
+                        candidate_mask = candidate_np["trainable_mask"][
+                            indices
+                        ] & np.isfinite(candidate_np["utility_vs_noop"][indices])
+                        indices = indices[
+                            candidate_mask.sum(axis=1) >= cli.min_trainable_candidates
+                        ]
+                    arrays[agent] = (
+                        obs_np,
+                        target_np,
+                        reference_np,
+                        candidate_np,
+                    )
+                    eligible_indices[agent] = indices
                 if cli.agent_update_mode == "mixed":
-                    targets_by_agent = {agent: arrays[agent][1] for agent in agent_ids}
-                    for joint_indices in make_joint_agent_minibatches(
-                        targets_by_agent,
+                    sampling_targets = {
+                        agent: arrays[agent][1][eligible_indices[agent]]
+                        for agent in agent_ids
+                        if len(eligible_indices[agent]) > 0
+                    }
+                    for joint_local_indices in make_joint_agent_minibatches(
+                        sampling_targets,
                         cli.batch_size,
                         rng,
-                        balanced_nonidle_frac=cli.balanced_nonidle_frac,
+                        balanced_nonidle_frac=(
+                            cli.balanced_nonidle_frac
+                            if cli.objective == "hard_ce"
+                            else 0.0
+                        ),
                     ):
                         optimizer.zero_grad(set_to_none=True)
-                        active_agents = len(joint_indices)
-                        for agent, indices in joint_indices.items():
-                            obs_np, target_np, reference_np = arrays[agent]
+                        active_agents = len(joint_local_indices)
+                        for agent, local_indices in joint_local_indices.items():
+                            indices = eligible_indices[agent][local_indices]
+                            (
+                                obs_np,
+                                target_np,
+                                reference_np,
+                                candidate_np,
+                            ) = arrays[agent]
                             (
                                 loss,
                                 action_loss,
+                                utility_loss,
+                                unsafe_loss,
                                 aux_loss,
                                 distill_loss,
                                 n,
@@ -661,6 +930,7 @@ def main() -> None:
                                 obs_np=obs_np,
                                 target_np=target_np,
                                 reference_np=reference_np,
+                                candidate_np=candidate_np,
                                 indices=indices,
                                 device=device,
                                 cli=cli,
@@ -670,6 +940,8 @@ def main() -> None:
                                 sums[agent],
                                 loss=loss,
                                 action_loss=action_loss,
+                                utility_loss=utility_loss,
+                                unsafe_loss=unsafe_loss,
                                 aux_loss=aux_loss,
                                 distill_loss=distill_loss,
                                 n=n,
@@ -680,16 +952,29 @@ def main() -> None:
                         optimizer_steps += 1
                 else:
                     for agent in agent_ids:
-                        obs_np, target_np, reference_np = arrays[agent]
-                        for indices in make_minibatches(
+                        (
+                            obs_np,
                             target_np,
+                            reference_np,
+                            candidate_np,
+                        ) = arrays[agent]
+                        available = eligible_indices[agent]
+                        for local_indices in make_minibatches(
+                            target_np[available],
                             cli.batch_size,
                             rng,
-                            balanced_nonidle_frac=cli.balanced_nonidle_frac,
+                            balanced_nonidle_frac=(
+                                cli.balanced_nonidle_frac
+                                if cli.objective == "hard_ce"
+                                else 0.0
+                            ),
                         ):
+                            indices = available[local_indices]
                             (
                                 loss,
                                 action_loss,
+                                utility_loss,
+                                unsafe_loss,
                                 aux_loss,
                                 distill_loss,
                                 n,
@@ -698,6 +983,7 @@ def main() -> None:
                                 obs_np=obs_np,
                                 target_np=target_np,
                                 reference_np=reference_np,
+                                candidate_np=candidate_np,
                                 indices=indices,
                                 device=device,
                                 cli=cli,
@@ -714,6 +1000,8 @@ def main() -> None:
                                 sums[agent],
                                 loss=loss,
                                 action_loss=action_loss,
+                                utility_loss=utility_loss,
+                                unsafe_loss=unsafe_loss,
                                 aux_loss=aux_loss,
                                 distill_loss=distill_loss,
                                 n=n,
@@ -732,14 +1020,23 @@ def main() -> None:
                 agent: _average_metrics(sums[agent]) for agent in agent_ids
             }
             eval_metrics = _evaluate(
-                actors, shards, agent_ids, device, cli.batch_size, cli.eval_batches
+                actors,
+                shards,
+                agent_ids,
+                device,
+                cli.batch_size,
+                cli.eval_batches,
+                cli,
+                validation_rows_by_shard,
             )
             epoch_record = {
                 "epoch": epoch,
                 "optimizer_steps": optimizer_steps,
                 "train": train_metrics,
                 "eval": eval_metrics,
-                "selection_score": _eval_selection_score(eval_metrics, agent_ids),
+                "selection_score": _eval_selection_score(
+                    eval_metrics, agent_ids, cli.objective
+                ),
             }
             history.append(epoch_record)
             _print_eval_metrics(eval_metrics, agent_ids, train_metrics)
@@ -763,15 +1060,23 @@ def main() -> None:
                 "source_obs_stats_discarded": cross_grid_transfer,
                 "agent_update_mode": cli.agent_update_mode,
                 "candidate_scorer_unshared": bool(cli.unshare_candidate_scorer),
-                "selection_metric": "macro_mean_0.5_action0_plus_0.5_nonidle_accuracy",
+                "selection_metric": (
+                    "row_weighted_0.7_deployment_best_plus_0.3_deployment_safe"
+                    if cli.objective == "utility_regression"
+                    else "macro_mean_0.5_action0_plus_0.5_nonidle_accuracy"
+                ),
                 "selection_score": selection_score,
                 "best_selection_score": best_score,
                 "best_epoch": best_epoch,
-                "objective": (
-                    "balanced_weighted_ce_plus_intervention_bce_plus_reference_kl"
-                    if cli.distill_weight > 0.0
+                "objective": cli.objective,
+                "objective_components": (
+                    "centered_standardized_utility_huber_plus_observed_unsafe_"
+                    "margin_plus_intervention_bce"
+                    if cli.objective == "utility_regression"
                     else "balanced_weighted_ce_plus_intervention_bce"
                 ),
+                "n_train_chronics": n_train_chronics,
+                "n_validation_chronics": n_validation_chronics,
                 "args": vars(cli),
                 "history": history,
                 "optimizer_steps": optimizer_steps,

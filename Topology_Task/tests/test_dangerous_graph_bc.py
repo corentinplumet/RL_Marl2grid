@@ -6,6 +6,7 @@ from teacher_student.dangerous_graph_bc import (
     DangerousGraphBCWriter,
     best_action_labels,
     candidate_outcome_vectors,
+    chronic_row_split,
     choose_concerned_agents,
     copy_actor_observation,
     load_agent_batch,
@@ -180,3 +181,25 @@ def test_writer_round_trip(tmp_path: Path):
     candidate_outcomes = load_candidate_outcome_batch(path, "agent_1")
     assert candidate_outcomes["rho_after"].shape == (1, 4)
     assert candidate_outcomes["rank"].tolist() == [[1, 0, -1, -1]]
+
+
+def test_chronic_split_keeps_every_fingerprint_on_one_side(tmp_path: Path):
+    shard_0 = tmp_path / "shard_00000.npz"
+    shard_1 = tmp_path / "shard_00001.npz"
+    np.savez(shard_0, chronic_fingerprint=np.asarray(["a", "a", "b"]))
+    np.savez(shard_1, chronic_fingerprint=np.asarray(["b", "c", "d"]))
+
+    train, validation, n_train, n_validation = chronic_row_split(
+        [shard_0, shard_1], validation_fraction=0.5, seed=7
+    )
+
+    train_fingerprints = set()
+    validation_fingerprints = set()
+    for shard in (shard_0, shard_1):
+        with np.load(shard) as data:
+            values = data["chronic_fingerprint"]
+            train_fingerprints.update(values[train[shard]].tolist())
+            validation_fingerprints.update(values[validation[shard]].tolist())
+    assert train_fingerprints.isdisjoint(validation_fingerprints)
+    assert n_train == len(train_fingerprints) == 2
+    assert n_validation == len(validation_fingerprints) == 2

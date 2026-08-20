@@ -481,6 +481,70 @@ def load_candidate_outcome_batch(
     return available
 
 
+def chronic_row_split(
+    shards: List[Path], validation_fraction: float, seed: int
+) -> Tuple[Dict[Path, np.ndarray], Dict[Path, np.ndarray], int, int]:
+    """Split rows by chronic, stratified by the chronic calendar month."""
+    fingerprints_by_shard: Dict[Path, np.ndarray] = {}
+    all_fingerprints: set[str] = set()
+    month_by_fingerprint: Dict[str, str] = {}
+    for shard in shards:
+        with np.load(shard) as data:
+            fingerprints = np.asarray(data["chronic_fingerprint"], dtype=str)
+            datetimes = (
+                np.asarray(data["chronic_datetime"], dtype=str)
+                if "chronic_datetime" in data.files
+                else np.full(len(fingerprints), "unknown", dtype=str)
+            )
+        fingerprints_by_shard[shard] = fingerprints
+        all_fingerprints.update(fingerprints.tolist())
+        for fingerprint, datetime_value in zip(fingerprints, datetimes):
+            month = (
+                str(datetime_value)[:7] if len(str(datetime_value)) >= 7 else "unknown"
+            )
+            previous = month_by_fingerprint.setdefault(str(fingerprint), month)
+            if previous != month:
+                raise ValueError(
+                    f"Chronic fingerprint {fingerprint!r} spans months "
+                    f"{previous!r} and {month!r}."
+                )
+
+    if validation_fraction <= 0.0:
+        validation_fingerprints: set[str] = set()
+    else:
+        rng = np.random.default_rng(seed)
+        by_month: Dict[str, List[str]] = defaultdict(list)
+        for fingerprint in sorted(all_fingerprints):
+            by_month[month_by_fingerprint.get(fingerprint, "unknown")].append(
+                fingerprint
+            )
+        validation_fingerprints = set()
+        for month in sorted(by_month):
+            ordered = np.asarray(by_month[month], dtype=str)
+            rng.shuffle(ordered)
+            if len(ordered) <= 1:
+                n_validation = 0
+            else:
+                n_validation = int(round(len(ordered) * validation_fraction))
+                n_validation = min(max(n_validation, 1), len(ordered) - 1)
+            validation_fingerprints.update(ordered[:n_validation].tolist())
+
+    train_rows = {}
+    validation_rows = {}
+    for shard, fingerprints in fingerprints_by_shard.items():
+        is_validation = np.isin(fingerprints, list(validation_fingerprints))
+        validation_rows[shard] = np.flatnonzero(is_validation)
+        train_rows[shard] = np.flatnonzero(~is_validation)
+    if not validation_fingerprints:
+        validation_rows = {shard: rows.copy() for shard, rows in train_rows.items()}
+    return (
+        train_rows,
+        validation_rows,
+        len(all_fingerprints) - len(validation_fingerprints),
+        len(validation_fingerprints),
+    )
+
+
 def write_json(path: Path, payload: Dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as handle:

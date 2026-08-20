@@ -135,6 +135,31 @@ choose the weights to adapt and pass `--distill-weight 0`. A later per-model
 recollection is an optional second DAgger round with genuine preservation
 logits.
 
+### Continuous utility regression
+
+Datasets collected with `--store-candidate-outcomes true` can train the actor
+without reducing each state to a one-hot target. Select
+`--objective utility_regression`. The trainer then:
+
+1. keeps only agent rows with at least two safe simulated candidates;
+2. regresses centered actor logits onto the per-state standardized
+   `utility_vs_noop` values with a masked Huber loss;
+3. pushes every observed invalid or terminal candidate below the best safe
+   candidate with an explicit margin loss;
+4. retains the intervention BCE as an auxiliary do-nothing decision;
+5. reports masked top-1/top-3 ranking, utility regret, deployment safety, and
+   unsafe-action outranking rates.
+
+For an intentional capacity/overfit test, set
+`--validation-chronic-frac 0`. For the full dataset, use for example
+`--validation-chronic-frac 0.20`; rows are split by chronic fingerprint rather
+than by adjacent, highly correlated states, and the chronic split is stratified
+by calendar month.
+
+The regression sampler ignores rows without a real candidate comparison.
+Consequently, an agent with almost no locally concerned states contributes
+almost no regression gradient instead of thousands of fabricated no-op rows.
+
 ## 3. Balanced graph-actor fine-tuning
 
 The default objective mirrors the earlier successful naming convention:
