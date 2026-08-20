@@ -4,6 +4,9 @@
 # CLUSTER selects the SLURM job script: izar (GPU partition, default) or jed
 # (academic CPU partition). Result paths do not depend on the cluster, so a
 # sweep can be split across both.
+# RHO_THRESHOLD, if set, evaluates with the local-rho gate at that threshold
+# instead of ungated, and writes to a separate `_localrho` result group so the
+# two conditions never overwrite each other.
 
 set -euo pipefail
 
@@ -45,6 +48,31 @@ case "$cluster" in
     exit 1
     ;;
 esac
+# Empty means ungated, which is the historical behaviour of this launcher.
+rho_threshold="${RHO_THRESHOLD:-}"
+if [[ -n "$rho_threshold" ]]; then
+  rho_tag="$(python - "$rho_threshold" <<'PY'
+import math
+import sys
+
+value = float(sys.argv[1])
+if not math.isfinite(value) or value < 0.0:
+    raise SystemExit(f"RHO_THRESHOLD must be a finite non-negative number, got {value!r}")
+print(f"{round(100.0 * value):03d}")
+PY
+)"
+  gate_args=(--eval-action-heuristic local_rho_threshold
+             --eval-action-rho-threshold "$rho_threshold")
+  gate_group_suffix="_localrho"
+  gate_name_suffix="_lr${rho_tag}"
+  gate_label="local rho ${rho_threshold}"
+else
+  gate_args=(--eval-action-heuristic none)
+  gate_group_suffix=""
+  gate_name_suffix=""
+  gate_label="none (ungated)"
+fi
+
 save_action_trace="${SAVE_ACTION_TRACE:-false}"
 # Convert either launcher variable into an explicit sbatch command-line option.
 # Some Slurm installations do not honor SBATCH_EXCLUDE from the environment.
@@ -91,16 +119,16 @@ for family in NL NLS; do
   if [[ "$family" == NL ]]; then
     checkpoint_dir="checkpoint/no_leak/shared/NL_cas_hl_shared"
     source_prefix="cas_hl_NL_shared"
-    result_group="NL_cas_hl_shared_wcci36_mk${action_size}"
+    result_group="NL_cas_hl_shared_wcci36_mk${action_size}${gate_group_suffix}"
   else
     # This is the scaled Izar family used by the existing mk256 zero-shot run.
     checkpoint_dir="checkpoint/no_leak/shared/NL_cas_hl_scaled_shared_izar"
     source_prefix="cas_hl_NLS_izar_shared"
-    result_group="NLS_cas_hl_izar_shared_wcci36_mk${action_size}"
+    result_group="NLS_cas_hl_izar_shared_wcci36_mk${action_size}${gate_group_suffix}"
   fi
 
   for variant in "${variants[@]}"; do
-    label="zs${action_size}_${family}_${variant}"
+    label="zs${action_size}${gate_name_suffix}_${family}_${variant}"
     if ! matches_filters "$label" "$@"; then
       continue
     fi
@@ -108,8 +136,8 @@ for family in NL NLS; do
 
     source_name="${source_prefix}_${variant}_s0"
     checkpoint="${checkpoint_dir}/best_test_${source_name}.tar"
-    output="outputs/full_test_eval/shared/${result_group}/best_test_${source_name}_mk${action_size}.json"
-    action_dir="outputs/full_test_eval_actions/shared/${result_group}/best_test_${source_name}_mk${action_size}"
+    output="outputs/full_test_eval/shared/${result_group}/best_test_${source_name}_mk${action_size}${gate_name_suffix}.json"
+    action_dir="outputs/full_test_eval_actions/shared/${result_group}/best_test_${source_name}_mk${action_size}${gate_name_suffix}"
 
     if [[ -f "$task_dir/$output" ]] && ! is_true "$force_results"; then
       echo "Skip existing result: $output (FORCE_RESULTS=true to rerun)"
@@ -247,6 +275,7 @@ fi
 
 echo "========== Shared zero-shot WCCI mk${action_size} =========="
 echo "Cluster:             $cluster ($job_script)"
+echo "Evaluation gate:     $gate_label"
 echo "Matched:             $matched"
 echo "Skipped existing:    $skipped_existing"
 echo "Planned submissions: ${#plan_labels[@]}"
@@ -278,7 +307,6 @@ for index in "${!plan_labels[@]}"; do
     --eval-all-split-chronics false
     --eval-episodes 50
     --deterministic-eval true
-    --eval-action-heuristic none
     --obs-normalization disable
     --save-action-summary true
     --save-action-trace "$save_action_trace"
@@ -286,6 +314,7 @@ for index in "${!plan_labels[@]}"; do
     --action-log-dir "$action_dir"
     --output-json "$output"
   )
+  command+=("${gate_args[@]}")
   command+=("${cluster_eval_args[@]+"${cluster_eval_args[@]}"}")
 
   if is_true "$dry_run"; then
