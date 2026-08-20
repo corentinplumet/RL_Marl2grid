@@ -25,6 +25,15 @@ hard labels, local/global rho diagnostics, and the selected action improvement.
 Candidate simulations are not duplicated in the saved children: mk64 and mk128
 labels are derived in memory from the single mk256 simulation pass.
 
+For regression or ranking experiments, pass
+`--store-candidate-outcomes true`. Each agent row then also stores vectors
+aligned with its reduced action indices: next-step rho, utility relative to
+do-nothing, simulation reward, observed/valid/legal/terminal masks, a strict
+training mask, and the zero-based rank of every safe simulated candidate. The
+original hard label is retained, so classification and ranking objectives can
+be compared on the exact same states. Non-idle outcomes are simulated only for
+locally concerned agents; missing outcomes remain explicitly masked.
+
 The primary collection is **checkpoint-free**. A normal WCCI TOML supplies only
 the environment and graph-observation schema; no model weights are loaded. The
 rollout does nothing in safe states and applies the best simulated unilateral

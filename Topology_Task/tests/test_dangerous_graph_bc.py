@@ -5,9 +5,11 @@ import numpy as np
 from teacher_student.dangerous_graph_bc import (
     DangerousGraphBCWriter,
     best_action_labels,
+    candidate_outcome_vectors,
     choose_concerned_agents,
     copy_actor_observation,
     load_agent_batch,
+    load_candidate_outcome_batch,
 )
 
 
@@ -93,6 +95,43 @@ def test_nonterminal_action_rescues_terminal_do_nothing():
     assert labels["agent_0"]["target_improves_do_nothing"] is True
 
 
+def test_candidate_outcomes_keep_continuous_targets_masks_and_ranks():
+    values = candidate_outcome_vectors(
+        action_size=4,
+        do_nothing_outcome={
+            "rho_after": 0.90,
+            "sim_done": False,
+            "sim_reward": 0.0,
+        },
+        outcomes=[
+            _outcome("agent_0", 1, 0.70),
+            _outcome("agent_0", 2, 0.60, done=True),
+            {**_outcome("agent_0", 3, 0.85), "sim_reward": 2.0},
+        ],
+    )
+
+    np.testing.assert_allclose(
+        values["utility_vs_noop"],
+        np.asarray([0.0, 0.20, 0.30, 0.05], dtype=np.float32),
+        atol=1e-7,
+    )
+    assert values["observed_mask"].tolist() == [True, True, True, True]
+    assert values["terminal_mask"].tolist() == [False, False, True, False]
+    assert values["trainable_mask"].tolist() == [True, True, False, True]
+    assert values["rank"].tolist() == [2, 0, -1, 1]
+
+
+def test_candidate_outcomes_mask_unsimulated_nonidle_actions():
+    values = candidate_outcome_vectors(
+        action_size=4,
+        do_nothing_outcome={"rho_after": 0.90, "sim_done": False},
+        outcomes=[],
+    )
+    assert values["observed_mask"].tolist() == [True, False, False, False]
+    assert values["trainable_mask"].tolist() == [True, False, False, False]
+    assert values["rank"].tolist() == [0, -1, -1, -1]
+
+
 def test_writer_round_trip(tmp_path: Path):
     writer = DangerousGraphBCWriter(
         tmp_path, ["agent_0", "agent_1"], shard_size=1, compress=True
@@ -113,6 +152,11 @@ def test_writer_round_trip(tmp_path: Path):
             "do_nothing_sim_done": False,
             "best_action_sim_done": False,
             "improvement_vs_do_nothing": 0.15,
+            "candidate_outcomes": candidate_outcome_vectors(
+                action_size=4,
+                do_nothing_outcome={"rho_after": 0.95, "sim_done": False},
+                outcomes=[_outcome(agent, 1, 0.80)],
+            ),
         }
     path = writer.append(
         row={
@@ -133,3 +177,6 @@ def test_writer_round_trip(tmp_path: Path):
     assert target.tolist() == [1]
     assert logits.shape == (1, 4)
     assert obs["graph"]["node_features"].shape == (1, 3, 2)
+    candidate_outcomes = load_candidate_outcome_batch(path, "agent_1")
+    assert candidate_outcomes["rho_after"].shape == (1, 4)
+    assert candidate_outcomes["rank"].tolist() == [[1, 0, -1, -1]]

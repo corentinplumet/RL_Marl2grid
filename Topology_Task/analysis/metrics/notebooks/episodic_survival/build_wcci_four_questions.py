@@ -812,6 +812,38 @@ display(Markdown(
     f"#### And the gate, controlled the same way — {len(gate_gains)} cells where one "
     f"route x architecture x cap was evaluated both ways"
 ))
+
+# Restored from the earlier draft of this section, but paired: the original drew
+# one line per route from that route's best ungated run to its best gated run,
+# which compared different architectures at each end. Each line here is a single
+# architecture at a single cap, so the slope is the gate and nothing else.
+fig, ax = plt.subplots(figsize=(9.4, 5.6))
+for route, group in gate_gains.groupby("route", observed=True):
+    colour = W.ROUTE_COLORS[route]
+    for row in group.itertuples():
+        ax.plot([0, 1], [row.ungated, row.gated], marker="o", markersize=5,
+                linewidth=1.6, color=colour, alpha=0.75)
+    ax.plot([], [], marker="o", linewidth=2.0, color=colour,
+            label=f"{route} ({len(group)} cells, {group['delta'].median():+.2f} pp median)")
+ax.axhline(DN_OVERALL, color="black", linestyle="--", linewidth=1.4)
+ax.text(-0.055, DN_OVERALL + 0.9, "do nothing", fontsize=9)
+ax.set(xlim=(-0.1, 1.1), xticks=[0, 1], xticklabels=["ungated", "local rho gate"],
+       ylabel="Overall survival (%)",
+       title="What the evaluation gate is worth, holding architecture and cap fixed")
+ax.legend(fontsize=8, loc="lower right")
+fig.tight_layout()
+save_figure(fig, "q4_gate_versus_route")
+plt.show()
+
+gate_by_route = (
+    gate_gains.groupby("route", observed=True)
+    .agg(cells=("delta", "size"), median_pp=("delta", "median"),
+         best_pp=("delta", "max"), worst_pp=("delta", "min"),
+         helps=("delta", lambda s: int((s > 0).sum())))
+    .sort_values("median_pp", ascending=False)
+)
+display(Markdown("#### The gate is worth a different amount to each route"))
+display(gate_by_route)
 display(gate_gains.sort_values("delta", ascending=False))
 display(Markdown(
     f"Median gate gain **{gate_gains['delta'].median():+.2f} pp**, best "
@@ -980,13 +1012,14 @@ exports = {
                                             "overall_pct", "hard_pct", "has_episodes"]],
     "routes_controlled_gains.csv": controlled_gains,
     "gate_controlled_gains.csv": gate_gains,
+    "gate_by_route.csv": gate_by_route.reset_index(),
     "coverage_gated_missing.csv": pd.DataFrame(missing_gated),
     "coverage_no_artifact.csv": no_artifact[["route", "variant", "mk", "gate", "run",
                                              "overall_pct"]],
 }
 for name, frame in exports.items():
     frame.to_csv(EXPORT_DIR / name, index=False)
-print(f"{len(exports)} tables + 9 figures written to:\n{EXPORT_DIR}")
+print(f"{len(exports)} tables + 10 figures written to:\n{EXPORT_DIR}")
 ''')
 
 

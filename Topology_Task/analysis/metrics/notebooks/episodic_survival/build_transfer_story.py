@@ -8,6 +8,7 @@ came later and are handled in `wcci_four_questions.ipynb`.
 """
 
 import json
+import os
 from pathlib import Path
 
 CELLS = []
@@ -38,10 +39,12 @@ Three questions get an answer from that block alone:
 2. **Does physical input scaling (`NLS`) help over the raw inputs (`NL`)?**
 3. **Which architectures actually transfer?**
 
-and the last section puts all three into a single picture.
+and section 4 puts all three into a single picture.
 
-The evaluation gate, the fine-tuned arms and the BC arm are all *later* blocks
-built on the answers below. They are deliberately out of scope here.
+Section 5 then steps outside block 1 to the one *other* place the design is
+complete — the mk64 `NLS` arms trained on the target grid — and answers the
+question block 1 cannot: **does starting from bus14 beat starting from
+scratch?**
 """)
 
 code(r'''
@@ -132,7 +135,8 @@ display(Markdown(f"""
 | **15-16 Aug** | zero-shot sweep | 16 architectures x 5 caps, ungated | Nothing was known, so it was run exhaustively. **This is the block this notebook uses.** |
 | **16-17 Aug** | local-rho gated screen | 38 evaluations on 8 of the 16 architectures, mk64/128/256 only | Launched *because* the sweep showed most architectures collapsing ungated. Only the checkpoints that looked salvageable were gated, and the promising ones got all four thresholds. |
 | **16-18 Aug** | fine-tuning | mk256 aggressive, then mk64 conservative, 2 and 5 architectures | Launched on the architectures the first two blocks selected. |
-| **18 Aug** | BC on greedy labels | 1 architecture at mk64 | Last, on the single cell that looked most promising. |
+| **18 Aug** | BC on greedy labels | 1 architecture at mk64 | On the single cell that looked most promising. |
+| **20 Aug** | conservative fine-tune + from-scratch control | all 8 `NLS` architectures at mk64, gated and ungated | Deliberately complete this time, so the two arms can be compared cell by cell. **This is the block section 5 uses.** |
 
 Each block is a rational response to the one before it, and the cost is that
 **only the first block is a factorial.** Every later block is a conditional
@@ -591,6 +595,193 @@ md(r"""
    than more architectures.
 """)
 
+# ---------------------------------------------------------------- 5. scratch
+md(r"""
+## 5. Transfer against training from scratch
+
+Block 1 cannot answer this, because it contains no model that was trained on the
+target grid. The 20 August batch can: all eight `NLS` architectures at mk64 exist
+in three conditions, gated and ungated —
+
+* **bus14 zero-shot** — the transferred actor, no target-grid gradient;
+* **conservative fine-tune** — the same transferred actor, then **4.98M** WCCI
+  steps;
+* **from scratch** — the identical architecture and action set from random
+  initialisation, **14.97M** WCCI steps, its full budget.
+
+The middle and the last are the clean pair. Same architecture, same cap, same
+seed, same evaluation protocol, same observation handling; the only thing that
+differs is whether the weights started from bus14. Eight architectures, both gate
+settings, no cell missing.
+""")
+
+code(r'''
+ROUTE_ORDER_64 = ["bus14 zero-shot", "MAPPO fine-tune (conservative)", "MAPPO scratch"]
+mk64 = runs.loc[(runs["mk"] == 64) & runs["variant"].str.startswith("NLS")]
+best64 = (
+    mk64.sort_values("overall_pct", ascending=False)
+    .groupby(["variant", "gate", "route"], observed=True).head(1)
+)
+NLS_VARIANTS = sorted(mk64["variant"].unique())
+
+fig, axes = plt.subplots(1, 2, figsize=(14.6, 5.6), sharey=True)
+for ax, gate in zip(axes, ["ungated", "gated"]):
+    subset = best64.loc[best64["gate"] == gate]
+    width = 0.8 / len(ROUTE_ORDER_64)
+    offsets = (np.arange(len(ROUTE_ORDER_64)) - (len(ROUTE_ORDER_64) - 1) / 2) * width
+    for offset, route in zip(offsets, ROUTE_ORDER_64):
+        heights = [
+            subset.loc[(subset["variant"] == v) & (subset["route"] == route), "overall_pct"]
+            for v in NLS_VARIANTS
+        ]
+        heights = [float(h.iloc[0]) if len(h) else np.nan for h in heights]
+        ax.bar(np.arange(len(NLS_VARIANTS)) + offset, heights, width=width,
+               color=W.ROUTE_COLORS[route], edgecolor="white", linewidth=0.9,
+               label=route.replace(" (conservative)", "\n(conservative)"))
+    ax.axhline(DN_OVERALL, color="black", linestyle="--", linewidth=1.4)
+    ax.set_xticks(np.arange(len(NLS_VARIANTS)),
+                  [v.replace("NLS_", "") for v in NLS_VARIANTS], rotation=35, ha="right",
+                  fontsize=8)
+    ax.set(title=f"{gate}", xlabel="")
+axes[0].set_ylabel("Overall survival on the 50 test chronics (%)")
+axes[0].text(-0.6, DN_OVERALL + 0.8, "do nothing", fontsize=9)
+handles, labels = axes[0].get_legend_handles_labels()
+fig.legend(handles, labels, loc="lower center", ncol=3, fontsize=9, frameon=False,
+           bbox_to_anchor=(0.5, -0.10))
+fig.suptitle("mk64, eight NLS architectures: only the transferred-and-fine-tuned arm "
+             "clears the do-nothing floor", y=1.01)
+fig.tight_layout()
+save_figure(fig, "05_transfer_vs_scratch")
+plt.show()
+
+# Restricted to the three routes drawn above; BC exists at this cell too but on
+# a single architecture, which is too thin to sit in the same table.
+floor_rows = []
+for (route, gate), group in best64.loc[
+    best64["route"].isin(ROUTE_ORDER_64)
+].groupby(["route", "gate"], observed=True):
+    floor_rows.append({
+        "route": route, "gate": gate, "architectures": len(group),
+        "median_pct": group["overall_pct"].median(),
+        "best_pct": group["overall_pct"].max(),
+        "above_do_nothing": int((group["overall_pct"] > DN_OVERALL).sum()),
+    })
+display(Markdown("#### How many architectures beat doing nothing at all"))
+display(pd.DataFrame(floor_rows).sort_values(["gate", "median_pct"], ascending=[True, False]))
+''')
+
+code(r'''
+contrasts = []
+for gate in ["ungated", "gated"]:
+    wide = (
+        best64.loc[best64["gate"] == gate]
+        .pivot_table(index="variant", columns="route", values="overall_pct", observed=True)
+    )
+    for challenger in ["bus14 zero-shot", "MAPPO fine-tune (conservative)"]:
+        if challenger not in wide or "MAPPO scratch" not in wide:
+            continue
+        paired = wide[[challenger, "MAPPO scratch"]].dropna()
+        delta = paired[challenger] - paired["MAPPO scratch"]
+        mean_d, lo, hi = W.paired_bootstrap(delta)
+        contrasts.append({
+            "gate": gate, "versus from-scratch": challenger, "architectures": len(paired),
+            "mean_pp": mean_d, "ci_low": lo, "ci_high": hi,
+            "wins": int((delta > 0).sum()), "deltas": delta,
+        })
+
+fig, ax = plt.subplots(figsize=(11.0, 5.0))
+labels, positions = [], []
+for i, row in enumerate(contrasts):
+    positions.append(i)
+    labels.append(f"{row['versus from-scratch'].replace(' (conservative)', '')}\n{row['gate']}")
+    jitter = (np.arange(len(row["deltas"])) - (len(row["deltas"]) - 1) / 2) * 0.055
+    ax.scatter(row["deltas"].to_numpy(), np.full(len(row["deltas"]), i) + jitter,
+               s=55, color="#9EC5E8", edgecolor="white", linewidth=0.7, zorder=2)
+    ax.plot([row["ci_low"], row["ci_high"]], [i, i], color="#333333", linewidth=2.6, zorder=3)
+    ax.scatter([row["mean_pp"]], [i], s=130, color="#E45756", edgecolor="white",
+               linewidth=1.0, zorder=4)
+    ax.annotate(f"{row['mean_pp']:+.2f} pp   {row['wins']}/{row['architectures']} win",
+                (row["mean_pp"], i), xytext=(0, 15), textcoords="offset points",
+                ha="center", fontsize=8.5)
+ax.axvline(0, color="black", linewidth=1.4)
+ax.set_yticks(positions, labels, fontsize=9)
+ax.set_ylim(len(contrasts) - 0.45, -0.65)
+ax.set(xlabel="Overall survival minus the from-scratch model of the same architecture (pp)",
+       title="Transfer alone loses to from-scratch training; transfer plus a third of the "
+             "budget beats it")
+fig.tight_layout()
+save_figure(fig, "06_gain_over_scratch")
+plt.show()
+
+summary = pd.DataFrame(contrasts).drop(columns="deltas")
+display(summary)
+display(Markdown(
+    f"Compute spent on the target grid: "
+    f"**{int(mk64.loc[mk64['route'] == 'MAPPO scratch', 'checkpoint_step'].iloc[0]):,}** steps "
+    f"from scratch against "
+    f"**{int(mk64.loc[mk64['route'] == 'MAPPO fine-tune (conservative)', 'checkpoint_step'].iloc[0]):,}** "
+    f"for the fine-tune — the transferred arm wins while spending about a third as much."
+))
+''')
+
+md(r"""
+### What this says
+
+**Transfer on its own loses. Transfer as an initialisation wins, decisively.**
+
+Ungated, the raw transferred actor is **19.5 pp worse** than a from-scratch model
+of the same architecture, winning only 3 of 8 — because five of those eight
+architectures collapse zero-shot, and a collapsed policy loses to anything. The
+interval is enormous, [−40.2, +1.2], for the same reason. Whatever the bus14
+weights carry, it is not something that survives contact with a new grid
+unaided. Gated, transfer recovers to +5.0 pp on the five architectures that were
+gated, but the interval still spans zero. **Neither of those is a result you can
+lean on.**
+
+The fine-tune contrast is a completely different picture. Against the same
+from-scratch models:
+
+* ungated **+12.39 pp**, CI [+9.20, +15.39], **8 of 8 architectures**;
+* gated **+12.37 pp**, CI [+8.43, +16.34], **8 of 8 architectures**.
+
+The same margin in both gate conditions, on every architecture, with intervals
+nowhere near zero — and spending **4.98M target-grid steps against the scratch
+arm's 14.97M**, roughly a third of the compute.
+
+The first chart makes the practical version unmissable. The do-nothing floor is
+56.00 %, and:
+
+* every one of the 8 ungated from-scratch models lands **below** it, and 7 of 8
+  still do once gated;
+* 5 of 8 ungated zero-shot transfers collapse to near zero;
+* all 8 fine-tuned models clear it, in both gate conditions.
+
+**Training this architecture on WCCI from random initialisation does not produce
+a usable policy at all, even at a full 15M-step budget.** Neither does
+transferring bus14 weights and stopping. The only combination in this dataset
+that beats doing nothing is bus14 initialisation *plus* target-grid training —
+which is the strongest statement about transfer anywhere in these notebooks, and
+it took a complete factorial to see it.
+
+### Two caveats that matter
+
+**The zero-shot column is not evaluated identically to the other two.** The
+transferred runs use `--obs-normalization disable`, because their observation
+statistics were collected on bus14 and do not describe WCCI; the fine-tuned and
+from-scratch runs use their own target-grid `checkpoint_stats`. That is the
+defensible choice for each, but it means *transfer vs scratch* differs in
+observation handling as well as initialisation. **Fine-tune vs scratch does not**
+— it is clean, and it is where the +12.4 pp lives.
+
+**This is `overall_pct`, not the difficult cohort.** The result JSONs point at
+`outputs/full_test_eval_actions/shared/sc64c_scratch/…/episode_summary.csv` and
+those artifacts are not downloaded, so 26 of the 50 chronics are free episodes
+neither arm can win. On the difficult cohort every number above would be roughly
+twice as large — but it cannot be computed until the action artifacts are synced.
+Single seed throughout.
+""")
+
+
 code(r'''
 exports = {
     "grid_hard_pct.csv": HARD.reset_index(),
@@ -599,10 +790,13 @@ exports = {
     "scaling_pairs.csv": pairs,
     "architecture_ranking.csv": ranking.sort_values("hard_mean", ascending=False),
     "coverage.csv": cover_ungated.reset_index(),
+    "transfer_vs_scratch.csv": best64[["variant", "gate", "route", "run", "overall_pct",
+                                       "checkpoint_step"]],
+    "gain_over_scratch.csv": summary,
 }
 for name, table in exports.items():
     table.to_csv(EXPORT_DIR / name, index=False)
-print(f"{len(exports)} tables + 5 figures written to:\n{EXPORT_DIR}")
+print(f"{len(exports)} tables + 7 figures written to:\n{EXPORT_DIR}")
 ''')
 
 
@@ -624,6 +818,28 @@ notebook = {
     "nbformat": 4,
     "nbformat_minor": 5,
 }
+notebook["metadata"]["generated_by"] = "build_transfer_story.py"
+notebook["metadata"]["generated_cell_count"] = len(CELLS)
+
 out = Path(__file__).resolve().parent / "transfer_story.ipynb"
+
+# This builder rewrites the notebook wholesale, so any cell added to the
+# notebook by hand is destroyed. Cells have been appended by hand before
+# (append_cells.py, append_detailed_ft.py, append_deep_dive.py in the repo
+# root), so refuse rather than silently overwrite them.
+if out.is_file() and os.environ.get("FORCE") not in {"1", "true", "yes"}:
+    existing = json.loads(out.read_text(encoding="utf-8"))
+    stamped = existing.get("metadata", {}).get("generated_cell_count")
+    extra = len(existing.get("cells", [])) - (stamped if stamped is not None else len(CELLS))
+    if stamped is None or extra > 0:
+        raise SystemExit(
+            f"Refusing to overwrite {out.name}: it holds "
+            f"{len(existing.get('cells', []))} cells and this builder generates "
+            f"{len(CELLS)}"
+            + (f", so {extra} were added outside it." if extra > 0
+               else ", and it carries no builder stamp.")
+            + "\nMove those cells into this file, or re-run with FORCE=1 to discard them."
+        )
+
 out.write_text(json.dumps(notebook, indent=1), encoding="utf-8")
 print(f"wrote {out} ({len(CELLS)} cells)")

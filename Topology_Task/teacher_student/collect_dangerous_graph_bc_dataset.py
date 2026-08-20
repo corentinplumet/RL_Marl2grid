@@ -45,6 +45,8 @@ from full_test_eval.evaluate_checkpoint import (
 from teacher_student.dangerous_graph_bc import (
     DangerousGraphBCWriter,
     best_action_labels,
+    candidate_outcome_schema,
+    candidate_outcome_vectors,
     choose_concerned_agents,
     copy_actor_observation,
     write_json,
@@ -180,7 +182,9 @@ def _declared_action_count(path: str) -> int:
         payload = json.load(handle)
     total = 0
     for agent_payload in payload.get("agents", {}).values():
-        selected = [int(value) for value in agent_payload.get("selected_action_ids", [])]
+        selected = [
+            int(value) for value in agent_payload.get("selected_action_ids", [])
+        ]
         total += len(set(selected).union({0}))
     if total <= 0:
         raise ValueError(f"No selected actions found in {path}.")
@@ -203,7 +207,9 @@ def _prepare_dataset_dirs(
                 "pass --overwrite true."
             )
         expected = set(labels).union({"metadata", "metadata_exports"})
-        unexpected = [child for child in output_root.iterdir() if child.name not in expected]
+        unexpected = [
+            child for child in output_root.iterdir() if child.name not in expected
+        ]
         if unexpected:
             raise FileExistsError(
                 "Refusing to delete unexpected multi-space output paths: "
@@ -367,6 +373,10 @@ def _metadata_payload(
         "agent_ids": agent_ids,
         "action_sizes": action_sizes,
         "paired_action_space_collection": True,
+        "has_candidate_outcomes": bool(cli.store_candidate_outcomes),
+        "candidate_outcome_schema": (
+            candidate_outcome_schema() if cli.store_candidate_outcomes else None
+        ),
         "label_rule": (
             "best valid non-terminal unilateral action if it rescues terminal "
             "do-nothing or lowers next-step max rho by min_improvement; else action 0"
@@ -375,9 +385,7 @@ def _metadata_payload(
         "n_env_steps": int(env_steps),
         "n_dangerous_states": int(writer.total_states),
         "n_skipped_safe_states": int(skipped_safe_states),
-        "n_skipped_capped_dangerous_states": int(
-            skipped_capped_dangerous_states
-        ),
+        "n_skipped_capped_dangerous_states": int(skipped_capped_dangerous_states),
         "n_skipped_gap_dangerous_states": int(skipped_gap_dangerous_states),
         "n_completed_episodes": int(completed_episodes),
         "n_unique_chronic_fingerprints": int(len(unique_fingerprints)),
@@ -385,7 +393,7 @@ def _metadata_payload(
         "shards": [str(path) for path in writer.paths],
         "agent_summary": metrics,
         "layout": {
-            "version": 2,
+            "version": 3 if cli.store_candidate_outcomes else 2,
             "shards_dir": "shards",
             "metadata_file": "metadata/metadata.json",
         },
@@ -439,9 +447,7 @@ def parse_args() -> Namespace:
     parser.add_argument("--max-env-steps", type=int, default=None)
     parser.add_argument("--chronic-sample-seed", type=int, default=0)
     parser.add_argument("--max-dangerous-states", type=int, default=None)
-    parser.add_argument(
-        "--max-dangerous-states-per-episode", type=int, default=None
-    )
+    parser.add_argument("--max-dangerous-states-per-episode", type=int, default=None)
     parser.add_argument("--min-dangerous-query-gap", type=int, default=1)
     parser.add_argument("--danger-rho-threshold", type=float, default=0.90)
     parser.add_argument("--local-rho-threshold", type=float, default=None)
@@ -461,7 +467,18 @@ def parse_args() -> Namespace:
     parser.add_argument("--overwrite", type=str2bool, default=False)
     parser.add_argument("--shard-size", type=int, default=512)
     parser.add_argument("--compress", type=str2bool, default=True)
-    parser.add_argument("--device", choices=["auto", "cpu", "cuda", "mps"], default="auto")
+    parser.add_argument(
+        "--store-candidate-outcomes",
+        type=str2bool,
+        default=False,
+        help=(
+            "Retain aligned per-action rho, utility, validity masks, and rank "
+            "vectors for later regression/listwise/pairwise training."
+        ),
+    )
+    parser.add_argument(
+        "--device", choices=["auto", "cpu", "cuda", "mps"], default="auto"
+    )
     parser.add_argument("--n-threads", type=int, default=None)
     parser.add_argument("--progress-every", type=int, default=100)
     return parser.parse_args()
@@ -504,9 +521,7 @@ def main() -> None:
             raise FileNotFoundError(f"Config does not exist: {source_config}")
         args = _args_from_config(source_config)
         cli.rollout_policy = (
-            "best_simulated"
-            if cli.rollout_policy == "auto"
-            else cli.rollout_policy
+            "best_simulated" if cli.rollout_policy == "auto" else cli.rollout_policy
         )
         if cli.rollout_policy == "checkpoint":
             raise ValueError(
@@ -529,9 +544,8 @@ def main() -> None:
         and checkpoint_action_space
         and _task_path(path) == _task_path(checkpoint_action_space)
     ]
-    rollout_action_space = (
-        cli.rollout_action_space
-        or (checkpoint_space_matches[0] if checkpoint_space_matches else simulation_label)
+    rollout_action_space = cli.rollout_action_space or (
+        checkpoint_space_matches[0] if checkpoint_space_matches else simulation_label
     )
     if rollout_action_space not in action_space_specs:
         raise ValueError(
@@ -659,9 +673,7 @@ def main() -> None:
         simulation_mapping=simulation_mapping,
     )
     action_sizes = {
-        label: {
-            agent: int(len(space_indices[label][agent])) for agent in agent_ids
-        }
+        label: {agent: int(len(space_indices[label][agent])) for agent in agent_ids}
         for label in action_space_specs
     }
 
@@ -677,6 +689,15 @@ def main() -> None:
                 "dangerous_examples": 0,
                 "concerned": 0,
                 "nonidle_targets": 0,
+                **(
+                    {
+                        "candidate_outcomes_observed": 0,
+                        "candidate_outcomes_trainable": 0,
+                        "candidate_outcomes_terminal": 0,
+                    }
+                    if cli.store_candidate_outcomes
+                    else {}
+                ),
             }
             for agent in agent_ids
         }
@@ -713,9 +734,8 @@ def main() -> None:
     )
     print(f"Danger/local rho: {cli.danger_rho_threshold} / {cli.local_rho_threshold}")
     print(f"Min improvement: {cli.min_improvement}")
-    print(
-        f"Rollout policy/action space: {cli.rollout_policy}/{rollout_action_space}"
-    )
+    print(f"Store candidate outcomes/ranks: {cli.store_candidate_outcomes}")
+    print(f"Rollout policy/action space: {cli.rollout_policy}/{rollout_action_space}")
     print(f"Simulation action space: {simulation_label} {simulation_action_sizes}")
     for label in action_space_specs:
         print(f"Label action space: {label} {action_sizes[label]}")
@@ -760,17 +780,14 @@ def main() -> None:
                 rollout_policy_actions = {agent: 0 for agent in agent_ids}
 
             is_dangerous = bool(
-                np.isfinite(global_rho)
-                and global_rho >= cli.danger_rho_threshold
+                np.isfinite(global_rho) and global_rho >= cli.danger_rho_threshold
             )
             episode_cap_reached = bool(
                 cli.max_dangerous_states_per_episode is not None
-                and episode_dangerous_states
-                >= cli.max_dangerous_states_per_episode
+                and episode_dangerous_states >= cli.max_dangerous_states_per_episode
             )
             gap_satisfied = bool(
-                episode_step - last_dangerous_query_step
-                >= cli.min_dangerous_query_gap
+                episode_step - last_dangerous_query_step >= cli.min_dangerous_query_gap
             )
 
             rollout_actions: Dict[str, Any]
@@ -824,9 +841,7 @@ def main() -> None:
                         target = labels[agent]
                         is_concerned = agent in concerned
                         metrics[space_label][agent]["dangerous_examples"] += 1
-                        metrics[space_label][agent]["concerned"] += int(
-                            is_concerned
-                        )
+                        metrics[space_label][agent]["concerned"] += int(is_concerned)
                         metrics[space_label][agent]["nonidle_targets"] += int(
                             target["target_is_nonidle"]
                         )
@@ -840,6 +855,22 @@ def main() -> None:
                             "local_max_rho": local_rhos.get(agent, float("nan")),
                             **target,
                         }
+                        if cli.store_candidate_outcomes:
+                            candidate_values = candidate_outcome_vectors(
+                                action_size=action_sizes[space_label][agent],
+                                outcomes=target_outcomes[agent],
+                                do_nothing_outcome=do_nothing,
+                            )
+                            agent_values[agent]["candidate_outcomes"] = candidate_values
+                            metrics[space_label][agent][
+                                "candidate_outcomes_observed"
+                            ] += int(candidate_values["observed_mask"].sum())
+                            metrics[space_label][agent][
+                                "candidate_outcomes_trainable"
+                            ] += int(candidate_values["trainable_mask"].sum())
+                            metrics[space_label][agent][
+                                "candidate_outcomes_terminal"
+                            ] += int(candidate_values["terminal_mask"].sum())
                     flushed = writers[space_label].append(
                         row={
                             "state_id": state_id,
@@ -897,7 +928,9 @@ def main() -> None:
                     else {agent: 0 for agent in agent_ids}
                 )
 
-            next_obs, _, terminations, truncations, _ = evaluator.env.step(rollout_actions)
+            next_obs, _, terminations, truncations, _ = evaluator.env.step(
+                rollout_actions
+            )
             done = bool(terminations[agent_ids[0]] or truncations[agent_ids[0]])
             env_steps += 1
             episode_step += 1
@@ -934,9 +967,7 @@ def main() -> None:
                 cli=cli,
                 checkpoint_path=checkpoint_path,
                 checkpoint_step=(
-                    int(record.get("global_step", 0))
-                    if record is not None
-                    else None
+                    int(record.get("global_step", 0)) if record is not None else None
                 ),
                 source_config=source_config,
                 has_policy_logits=bool(actors),
@@ -982,6 +1013,12 @@ def main() -> None:
                         str(source_config) if source_config is not None else None
                     ),
                     "has_policy_logits": bool(actors),
+                    "has_candidate_outcomes": bool(cli.store_candidate_outcomes),
+                    "candidate_outcome_schema": (
+                        candidate_outcome_schema()
+                        if cli.store_candidate_outcomes
+                        else None
+                    ),
                     "paired_action_spaces": metadata_by_space,
                     "target_episodes": target_episodes,
                     "chronic_sample_seed": cli.chronic_sample_seed,

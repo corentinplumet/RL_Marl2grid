@@ -21,6 +21,154 @@ GRAPH_KEYS = (
     "controlled_node_mask",
 )
 
+CANDIDATE_OUTCOME_DTYPES = {
+    "rho_after": np.float32,
+    "utility_vs_noop": np.float32,
+    "sim_reward": np.float32,
+    "observed_mask": bool,
+    "action_valid_mask": bool,
+    "legal_mask": bool,
+    "ambiguous_mask": bool,
+    "exception_mask": bool,
+    "terminal_mask": bool,
+    "finite_rho_mask": bool,
+    "trainable_mask": bool,
+    "rank": np.int32,
+}
+
+
+def candidate_outcome_schema() -> Dict[str, Any]:
+    """Describe the optional dense candidate-outcome vectors saved per agent."""
+    return {
+        "version": 1,
+        "action_axis": (
+            "target reduced-action index; index 0 is the shared do-nothing outcome"
+        ),
+        "fields": {
+            "rho_after": "simulated next-step maximum rho",
+            "utility_vs_noop": ("rho_after_do_nothing - rho_after; larger is better"),
+            "sim_reward": "reward returned by the one-step simulation",
+            "observed_mask": "the candidate was simulated at this state",
+            "action_valid_mask": "Grid2Op action_is_valid flag",
+            "legal_mask": "Grid2Op action_is_legal flag",
+            "ambiguous_mask": "Grid2Op action_is_ambiguous flag",
+            "exception_mask": "the candidate simulation raised an exception",
+            "terminal_mask": "the candidate simulation ended the episode",
+            "finite_rho_mask": "rho_after is finite",
+            "trainable_mask": (
+                "observed, valid, legal, unambiguous, exception-free, "
+                "non-terminal candidate with finite rho"
+            ),
+            "rank": (
+                "zero-based rank by rho_after, then reward, then action index, "
+                "among trainable candidates; -1 otherwise"
+            ),
+        },
+        "missing_float_value": "NaN",
+        "missing_rank_value": -1,
+        "notes": (
+            "Only locally concerned agents have non-idle candidates simulated. "
+            "Do-nothing is observed for every agent. Use trainable_mask for "
+            "continuous or listwise losses and terminal/validity masks for an "
+            "explicit unsafe-action penalty."
+        ),
+    }
+
+
+def candidate_outcome_vectors(
+    *,
+    action_size: int,
+    outcomes: Iterable[Mapping[str, Any]],
+    do_nothing_outcome: Mapping[str, Any],
+) -> Dict[str, np.ndarray]:
+    """Align simulated outcomes to one reduced action space and rank survivors.
+
+    The raw continuous outcomes are retained instead of reducing the state to a
+    single one-hot target. Missing non-idle simulations (normally for agents
+    that are not locally concerned) remain masked rather than being fabricated
+    as do-nothing labels.
+    """
+    action_size = int(action_size)
+    if action_size <= 0:
+        raise ValueError("action_size must be positive.")
+
+    values: Dict[str, np.ndarray] = {
+        "rho_after": np.full(action_size, np.nan, dtype=np.float32),
+        "utility_vs_noop": np.full(action_size, np.nan, dtype=np.float32),
+        "sim_reward": np.full(action_size, np.nan, dtype=np.float32),
+        "observed_mask": np.zeros(action_size, dtype=bool),
+        "action_valid_mask": np.zeros(action_size, dtype=bool),
+        "legal_mask": np.zeros(action_size, dtype=bool),
+        "ambiguous_mask": np.zeros(action_size, dtype=bool),
+        "exception_mask": np.zeros(action_size, dtype=bool),
+        "terminal_mask": np.zeros(action_size, dtype=bool),
+        "finite_rho_mask": np.zeros(action_size, dtype=bool),
+        "trainable_mask": np.zeros(action_size, dtype=bool),
+        "rank": np.full(action_size, -1, dtype=np.int32),
+    }
+
+    def record(action_id: int, outcome: Mapping[str, Any], *, is_noop: bool) -> None:
+        if not 0 <= action_id < action_size:
+            raise ValueError(
+                f"Candidate action index {action_id} is outside [0, {action_size})."
+            )
+        if values["observed_mask"][action_id]:
+            raise ValueError(f"Duplicate simulated candidate action {action_id}.")
+
+        rho_after = float(outcome.get("rho_after", np.nan))
+        sim_reward = float(outcome.get("sim_reward", np.nan))
+        action_valid = bool(outcome.get("action_is_valid", is_noop))
+        legal = bool(outcome.get("action_is_legal", True))
+        ambiguous = bool(outcome.get("action_is_ambiguous", False))
+        exception = bool(outcome.get("simulation_exception", False))
+        terminal = bool(outcome.get("sim_done", False))
+        finite_rho = bool(np.isfinite(rho_after))
+        trainable = bool(
+            action_valid
+            and legal
+            and not ambiguous
+            and not exception
+            and not terminal
+            and finite_rho
+        )
+
+        values["rho_after"][action_id] = rho_after
+        values["sim_reward"][action_id] = sim_reward
+        values["observed_mask"][action_id] = True
+        values["action_valid_mask"][action_id] = action_valid
+        values["legal_mask"][action_id] = legal
+        values["ambiguous_mask"][action_id] = ambiguous
+        values["exception_mask"][action_id] = exception
+        values["terminal_mask"][action_id] = terminal
+        values["finite_rho_mask"][action_id] = finite_rho
+        values["trainable_mask"][action_id] = trainable
+
+    record(0, do_nothing_outcome, is_noop=True)
+    for outcome in outcomes:
+        action_id = int(outcome.get("action_id", -1))
+        if action_id == 0:
+            raise ValueError("Non-idle candidate outcomes must not repeat action 0.")
+        record(action_id, outcome, is_noop=False)
+
+    noop_rho = float(values["rho_after"][0])
+    if np.isfinite(noop_rho):
+        finite = values["finite_rho_mask"]
+        values["utility_vs_noop"][finite] = noop_rho - values["rho_after"][finite]
+
+    def rank_key(action_id: int) -> Tuple[float, float, int]:
+        reward = float(values["sim_reward"][action_id])
+        reward = reward if np.isfinite(reward) else 0.0
+        return (
+            float(values["rho_after"][action_id]),
+            -reward,
+            int(action_id),
+        )
+
+    ranked = sorted(np.flatnonzero(values["trainable_mask"]).tolist(), key=rank_key)
+    for rank, action_id in enumerate(ranked):
+        values["rank"][action_id] = rank
+    return values
+
 
 def copy_actor_observation(value: Mapping[str, Any]) -> Dict[str, Any]:
     """Copy one unbatched graph actor observation into NumPy storage form."""
@@ -37,9 +185,7 @@ def copy_actor_observation(value: Mapping[str, Any]) -> Dict[str, Any]:
         raise KeyError("Graph observation is missing: " + ", ".join(missing))
 
     copied_graph = {
-        key: np.asarray(graph[key]).copy()
-        for key in GRAPH_KEYS
-        if key in graph
+        key: np.asarray(graph[key]).copy() for key in GRAPH_KEYS if key in graph
     }
     flat = np.asarray(value.get("flat", np.empty((0,), dtype=np.float32))).copy()
     return {"flat": flat, "graph": copied_graph}
@@ -146,10 +292,7 @@ def best_action_labels(
         improvement = noop_rho - best_rho if np.isfinite(noop_rho) else float("nan")
         improves = bool(
             noop_done
-            or (
-                np.isfinite(improvement)
-                and improvement >= float(min_improvement)
-            )
+            or (np.isfinite(improvement) and improvement >= float(min_improvement))
         )
         if improves:
             base.update(
@@ -207,14 +350,24 @@ class DangerousGraphBCWriter:
             return None
 
         arrays: Dict[str, Any] = {
-            "state_id": np.asarray([row["state_id"] for row in self.rows], dtype=np.int64),
-            "episode_id": np.asarray([row["episode_id"] for row in self.rows], dtype=np.int64),
-            "episode_step": np.asarray([row["episode_step"] for row in self.rows], dtype=np.int32),
-            "dataset_step": np.asarray([row["dataset_step"] for row in self.rows], dtype=np.int64),
+            "state_id": np.asarray(
+                [row["state_id"] for row in self.rows], dtype=np.int64
+            ),
+            "episode_id": np.asarray(
+                [row["episode_id"] for row in self.rows], dtype=np.int64
+            ),
+            "episode_step": np.asarray(
+                [row["episode_step"] for row in self.rows], dtype=np.int32
+            ),
+            "dataset_step": np.asarray(
+                [row["dataset_step"] for row in self.rows], dtype=np.int64
+            ),
             "global_max_rho": np.asarray(
                 [row["global_max_rho"] for row in self.rows], dtype=np.float32
             ),
-            "chronic_name": np.asarray([row["chronic_name"] for row in self.rows], dtype=str),
+            "chronic_name": np.asarray(
+                [row["chronic_name"] for row in self.rows], dtype=str
+            ),
             "chronic_fingerprint": np.asarray(
                 [row["chronic_fingerprint"] for row in self.rows], dtype=str
             ),
@@ -242,9 +395,7 @@ class DangerousGraphBCWriter:
         for agent in self.agent_ids:
             values = self.agent_rows[agent]
             observations = [value["obs"] for value in values]
-            arrays[f"flat_{agent}"] = np.stack(
-                [obs["flat"] for obs in observations]
-            )
+            arrays[f"flat_{agent}"] = np.stack([obs["flat"] for obs in observations])
             graph_keys = list(observations[0]["graph"])
             for key in graph_keys:
                 arrays[f"graph_{agent}_{key}"] = np.stack(
@@ -257,6 +408,25 @@ class DangerousGraphBCWriter:
                 arrays[f"{key}_{agent}"] = np.asarray(
                     [value[key] for value in values], dtype=dtype
                 )
+
+            has_candidate_outcomes = ["candidate_outcomes" in value for value in values]
+            if any(has_candidate_outcomes) and not all(has_candidate_outcomes):
+                raise ValueError(
+                    f"Candidate outcomes are missing from some rows for {agent}."
+                )
+            if all(has_candidate_outcomes):
+                for key, dtype in CANDIDATE_OUTCOME_DTYPES.items():
+                    try:
+                        stacked = np.stack(
+                            [value["candidate_outcomes"][key] for value in values]
+                        )
+                    except KeyError as exc:
+                        raise KeyError(
+                            f"Candidate outcomes for {agent} are missing {key!r}."
+                        ) from exc
+                    arrays[f"candidate_{agent}_{key}"] = stacked.astype(
+                        dtype, copy=False
+                    )
 
         path = self.output_dir / f"shard_{len(self.paths):05d}.npz"
         if self.compress:
@@ -288,6 +458,27 @@ def load_agent_batch(
         target = np.asarray(data[f"target_action_{agent_id}"], dtype=np.int64)
         logits = np.asarray(data[f"policy_logits_{agent_id}"], dtype=np.float32)
     return obs, target, logits
+
+
+def load_candidate_outcome_batch(
+    shard: Path,
+    agent_id: str,
+) -> Dict[str, np.ndarray]:
+    """Load optional dense candidate outcomes for one agent from a shard."""
+    prefix = f"candidate_{agent_id}_"
+    with np.load(shard) as data:
+        available = {
+            key[len(prefix) :]: np.asarray(data[key])
+            for key in data.files
+            if key.startswith(prefix)
+        }
+    missing = sorted(set(CANDIDATE_OUTCOME_DTYPES).difference(available))
+    if missing:
+        raise KeyError(
+            f"Shard {shard} has no complete candidate-outcome block for "
+            f"{agent_id}; missing: {', '.join(missing)}"
+        )
+    return available
 
 
 def write_json(path: Path, payload: Dict[str, Any]) -> None:
