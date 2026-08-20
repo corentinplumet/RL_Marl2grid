@@ -21,6 +21,7 @@ TASK_DIR = Path(__file__).resolve().parents[1]
 if str(TASK_DIR) not in sys.path:
     sys.path.insert(0, str(TASK_DIR))
 
+from common.readouts import POOLING_AGGREGATIONS
 from common.utils import set_random_seed, str2bool
 from env.eval import Evaluator
 from full_test_eval.evaluate_checkpoint import (
@@ -446,6 +447,10 @@ def _unshare_candidate_scorers(actors: Dict[str, Any]) -> int:
             first = False
             continue
         candidate_scorer.scorer = copy.deepcopy(candidate_scorer.scorer)
+        if candidate_scorer.delta_encoder is not None:
+            candidate_scorer.delta_encoder.token_encoder = copy.deepcopy(
+                candidate_scorer.delta_encoder.token_encoder
+            )
         if candidate_scorer.do_nothing_actor is not None:
             candidate_scorer.do_nothing_actor = copy.deepcopy(
                 candidate_scorer.do_nothing_actor
@@ -518,6 +523,42 @@ def parse_args() -> Namespace:
             "Override gnn_layers while constructing a fresh actor. Valid only "
             "with --initialization scratch; all other architecture settings "
             "remain those of the template checkpoint."
+        ),
+    )
+    parser.add_argument(
+        "--scratch-action-delta-encoder",
+        type=str2bool,
+        default=None,
+        help=(
+            "Enable or disable the counterfactual action-delta encoder on a "
+            "fresh actor. Valid only with --initialization scratch."
+        ),
+    )
+    parser.add_argument(
+        "--scratch-gnn-residual",
+        type=str2bool,
+        default=None,
+        help=(
+            "Enable projected residual GNN layers on a fresh actor. Valid only "
+            "with --initialization scratch."
+        ),
+    )
+    parser.add_argument(
+        "--scratch-gnn-jumping-knowledge",
+        choices=["none", "concat"],
+        default=None,
+        help=(
+            "Select the GNN multi-scale readout on a fresh actor. concat keeps "
+            "the input and every message-passing depth."
+        ),
+    )
+    parser.add_argument(
+        "--scratch-gnn-readout-aggr",
+        choices=list(POOLING_AGGREGATIONS),
+        default=None,
+        help=(
+            "Override graph pooling on a fresh actor, including the dual "
+            "energized_mean_max readout."
         ),
     )
     parser.add_argument("--output", type=Path, required=True)
@@ -701,6 +742,10 @@ def main() -> None:
         args,
         initialization=cli.initialization,
         gnn_layers=cli.scratch_gnn_layers,
+        action_delta_encoder=cli.scratch_action_delta_encoder,
+        gnn_residual=cli.scratch_gnn_residual,
+        gnn_jumping_knowledge=cli.scratch_gnn_jumping_knowledge,
+        gnn_readout_aggr=cli.scratch_gnn_readout_aggr,
     )
     source_env_id = str(getattr(args, "env_id", ""))
     dataset_env_id = str(metadata.get("env_id", "") or "")
@@ -858,11 +903,10 @@ def main() -> None:
     if cli.initialization == "scratch":
         print(f"Architecture template: {_repo_relative(checkpoint_path)}")
         print("Learned template weights loaded: False")
-        if scratch_architecture_overrides:
-            layer_override = scratch_architecture_overrides["gnn_layers"]
+        for name, override in scratch_architecture_overrides.items():
             print(
-                "GNN message-passing layers: "
-                f"{layer_override['template']} -> {layer_override['target']}"
+                f"Architecture override {name}: "
+                f"{override['template']} -> {override['target']}"
             )
     else:
         print(f"Checkpoint: {_repo_relative(checkpoint_path)}")

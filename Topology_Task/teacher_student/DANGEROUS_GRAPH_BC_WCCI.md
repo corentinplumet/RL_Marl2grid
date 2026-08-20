@@ -292,6 +292,29 @@ weights cannot be loaded into mp3/mp4 encoders. The selected depth is written
 into the checkpoint arguments used by full-test evaluation, and the metadata
 records both the template depth and the target depth.
 
+Three further scratch-only architecture controls are available:
+
+- `--scratch-action-delta-encoder true` encodes the exact modified object,
+  operation type, source-substation busbars, and set-bus destination. This
+  distinguishes candidates that touch the same equipment but produce different
+  counterfactual topologies.
+- `--scratch-gnn-residual true --scratch-gnn-jumping-knowledge concat` protects
+  deeper message passing with residual paths and combines the input plus every
+  intermediate depth before pooling.
+- `--scratch-gnn-readout-aggr energized_mean_max` concatenates energized-node
+  mean and max summaries before the learned graph projection.
+
+The controlled 300-epoch one-shard JED sweep submits each component alone plus
+their combined mp4 architecture:
+
+```bash
+Topology_Task/teacher_student/sweep_scratch_architecture_capacity_jed.sh
+```
+
+Set `DRY_RUN=true` to print the four `sbatch` commands without submitting them.
+The baseline mp2, plain mp4, optimizer, seed, one-shard data, loss, and epoch
+budget are unchanged, so the saved best scores can be compared directly.
+
 ## 4. Evaluation
 
 Evaluate the BC checkpoint without a deployment heuristic first:

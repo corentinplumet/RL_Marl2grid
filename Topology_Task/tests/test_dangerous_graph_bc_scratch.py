@@ -30,6 +30,41 @@ class DangerousGraphBCScratchTest(unittest.TestCase):
             {"gnn_layers": {"template": 2, "target": 4}},
         )
 
+    def test_overrides_all_new_scratch_architecture_components(self):
+        args = Namespace(
+            gnn_layers=2,
+            candidate_action_delta_encoder=False,
+            gnn_residual=False,
+            gnn_jumping_knowledge="none",
+            gnn_readout_aggr="energized_mean",
+        )
+
+        overrides = apply_scratch_architecture_overrides(
+            args,
+            initialization="scratch",
+            gnn_layers=4,
+            action_delta_encoder=True,
+            gnn_residual=True,
+            gnn_jumping_knowledge="concat",
+            gnn_readout_aggr="energized_mean_max",
+        )
+
+        self.assertEqual(args.gnn_layers, 4)
+        self.assertTrue(args.candidate_action_delta_encoder)
+        self.assertTrue(args.gnn_residual)
+        self.assertEqual(args.gnn_jumping_knowledge, "concat")
+        self.assertEqual(args.gnn_readout_aggr, "energized_mean_max")
+        self.assertEqual(
+            set(overrides),
+            {
+                "gnn_layers",
+                "candidate_action_delta_encoder",
+                "gnn_residual",
+                "gnn_jumping_knowledge",
+                "gnn_readout_aggr",
+            },
+        )
+
     def test_rejects_depth_override_for_warm_start(self):
         args = Namespace(gnn_layers=2)
 

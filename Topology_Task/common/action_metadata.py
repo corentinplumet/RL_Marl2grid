@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
@@ -20,6 +20,22 @@ ACTION_FEATURE_NAMES = (
     "n_other_changes_scaled",
 )
 
+ACTION_DELTA_FEATURE_NAMES = (
+    "operation_change_bus",
+    "operation_set_bus",
+    "operation_change_line_status",
+    "operation_connect_line",
+    "operation_disconnect_line",
+    "object_line_origin",
+    "object_line_extremity",
+    "object_generator",
+    "object_load",
+    "object_line_status",
+    "has_target_busbar",
+    "target_disconnected",
+    "target_bus_scaled",
+)
+
 
 @dataclass
 class ActionGraphMetadata:
@@ -36,9 +52,17 @@ class ActionGraphMetadata:
     generator_mask: th.Tensor
     substation_ids: th.Tensor
     substation_mask: th.Tensor
+    delta_object_indices: th.Tensor
+    delta_modification_mask: th.Tensor
+    delta_target_busbar_indices: th.Tensor
+    delta_target_busbar_mask: th.Tensor
+    delta_context_busbar_indices: th.Tensor
+    delta_context_busbar_mask: th.Tensor
+    delta_operation_features: th.Tensor
     is_do_nothing: th.Tensor
     original_action_ids: th.Tensor
     action_feature_names: Tuple[str, ...] = ACTION_FEATURE_NAMES
+    action_delta_feature_names: Tuple[str, ...] = ACTION_DELTA_FEATURE_NAMES
 
     @property
     def n_actions(self) -> int:
@@ -94,6 +118,72 @@ class ActionGraphMetadata:
         if int(self.is_do_nothing.sum().item()) != 1:
             raise ValueError("Exactly one exposed action must be do-nothing.")
 
+        delta_shape = tuple(self.delta_object_indices.shape)
+        if len(delta_shape) != 2 or delta_shape[0] != n_actions:
+            raise ValueError(
+                "delta_object_indices must have shape [n_actions, n_modifications]."
+            )
+        if tuple(self.delta_modification_mask.shape) != delta_shape:
+            raise ValueError("delta_modification_mask must match delta_object_indices.")
+        if tuple(self.delta_target_busbar_indices.shape) != delta_shape:
+            raise ValueError(
+                "delta_target_busbar_indices must match delta_object_indices."
+            )
+        if tuple(self.delta_target_busbar_mask.shape) != delta_shape:
+            raise ValueError(
+                "delta_target_busbar_mask must match delta_object_indices."
+            )
+        if (
+            self.delta_context_busbar_indices.dim() != 3
+            or tuple(self.delta_context_busbar_indices.shape[:2]) != delta_shape
+        ):
+            raise ValueError(
+                "delta_context_busbar_indices must have shape "
+                "[n_actions, n_modifications, n_context_busbars]."
+            )
+        if tuple(self.delta_context_busbar_mask.shape) != tuple(
+            self.delta_context_busbar_indices.shape
+        ):
+            raise ValueError(
+                "delta_context_busbar_mask must match " "delta_context_busbar_indices."
+            )
+        if tuple(self.delta_operation_features.shape[:2]) != delta_shape:
+            raise ValueError(
+                "delta_operation_features must start with "
+                "[n_actions, n_modifications]."
+            )
+        if int(self.delta_operation_features.shape[-1]) != len(
+            self.action_delta_feature_names
+        ):
+            raise ValueError("Unexpected action-delta feature dimension.")
+
+        for name, indices, mask in (
+            (
+                "delta object",
+                self.delta_object_indices,
+                self.delta_modification_mask,
+            ),
+            (
+                "delta target busbar",
+                self.delta_target_busbar_indices,
+                self.delta_target_busbar_mask,
+            ),
+            (
+                "delta context busbar",
+                self.delta_context_busbar_indices,
+                self.delta_context_busbar_mask,
+            ),
+        ):
+            active = indices[mask.bool()]
+            if active.numel() and bool(th.any(active < 0)):
+                raise ValueError(f"{name} metadata contains a negative active index.")
+            if (
+                n_nodes is not None
+                and active.numel()
+                and bool(th.any(active >= int(n_nodes)))
+            ):
+                raise ValueError(f"{name} metadata contains an out-of-range index.")
+
 
 @dataclass
 class _DecodedAction:
@@ -108,6 +198,16 @@ class _DecodedAction:
     n_generator_changes: int = 0
     n_load_changes: int = 0
     n_other_changes: int = 0
+    modifications: List["_ActionModification"] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class _ActionModification:
+    operation: str
+    object_kind: str
+    object_id: int
+    substation_ids: Tuple[int, ...]
+    target_bus: int = 0
 
 
 def _as_int_list(value: Any) -> List[int]:
@@ -117,6 +217,21 @@ def _as_int_list(value: Any) -> List[int]:
     if array.size == 0:
         return []
     return [int(item) for item in array.reshape(-1).tolist()]
+
+
+def _object_kind(value: Any) -> str:
+    object_type = str(value or "").strip().lower()
+    if object_type.startswith("line"):
+        if "origin" in object_type or "or" in object_type:
+            return "line_origin"
+        if "extrem" in object_type or "ex" in object_type:
+            return "line_extremity"
+        return "line_status"
+    if object_type in {"generator", "gen", "production"}:
+        return "generator"
+    if object_type == "load":
+        return "load"
+    return "other"
 
 
 def _decode_action(action: Any) -> _DecodedAction:
@@ -132,9 +247,8 @@ def _decode_action(action: Any) -> _DecodedAction:
         section = payload.get(section_name, {}) or {}
         if not isinstance(section, dict):
             continue
-        decoded.substations.update(
-            _as_int_list(section.get("modif_subs_id", []))
-        )
+        operation = "change_bus" if section_name == "change_bus_vect" else "set_bus"
+        decoded.substations.update(_as_int_list(section.get("modif_subs_id", [])))
         for substation_key, objects in section.items():
             try:
                 substation_id = int(substation_key)
@@ -148,14 +262,27 @@ def _decode_action(action: Any) -> _DecodedAction:
                     continue
                 object_id = int(details["id"])
                 object_type = str(details.get("type", "")).strip().lower()
+                object_kind = _object_kind(object_type)
+                target_bus = (
+                    int(details.get("new_bus", 0)) if operation == "set_bus" else 0
+                )
+                decoded.modifications.append(
+                    _ActionModification(
+                        operation=operation,
+                        object_kind=object_kind,
+                        object_id=object_id,
+                        substation_ids=(substation_id,),
+                        target_bus=target_bus,
+                    )
+                )
                 decoded.n_topology_changes += 1
-                if object_type.startswith("line"):
+                if object_kind.startswith("line"):
                     decoded.lines.add(object_id)
                     decoded.n_line_endpoint_changes += 1
-                elif object_type in {"generator", "gen", "production"}:
+                elif object_kind == "generator":
                     decoded.generators.add(object_id)
                     decoded.n_generator_changes += 1
-                elif object_type == "load":
+                elif object_kind == "load":
                     decoded.loads.add(object_id)
                     decoded.n_load_changes += 1
                 else:
@@ -164,15 +291,65 @@ def _decode_action(action: Any) -> _DecodedAction:
     changed_lines = set()
     change_line = payload.get("change_line_status", {}) or {}
     if isinstance(change_line, dict):
-        changed_lines.update(_as_int_list(change_line.get("changed_id", [])))
+        change_ids = _as_int_list(change_line.get("changed_id", []))
+        changed_lines.update(change_ids)
+        for line_id in change_ids:
+            decoded.modifications.append(
+                _ActionModification(
+                    operation="change_line_status",
+                    object_kind="line_status",
+                    object_id=line_id,
+                    substation_ids=(),
+                )
+            )
     set_line = payload.get("set_line_status", {}) or {}
     if isinstance(set_line, dict):
-        changed_lines.update(_as_int_list(set_line.get("connected_id", [])))
-        changed_lines.update(_as_int_list(set_line.get("disconnected_id", [])))
+        connected_ids = _as_int_list(set_line.get("connected_id", []))
+        disconnected_ids = _as_int_list(set_line.get("disconnected_id", []))
+        changed_lines.update(connected_ids)
+        changed_lines.update(disconnected_ids)
+        for operation, line_ids in (
+            ("connect_line", connected_ids),
+            ("disconnect_line", disconnected_ids),
+        ):
+            for line_id in line_ids:
+                decoded.modifications.append(
+                    _ActionModification(
+                        operation=operation,
+                        object_kind="line_status",
+                        object_id=line_id,
+                        substation_ids=(),
+                    )
+                )
     decoded.lines.update(changed_lines)
     decoded.line_status_lines.update(changed_lines)
     decoded.n_line_status_changes = len(changed_lines)
     return decoded
+
+
+def _action_delta_feature_vector(
+    modification: _ActionModification,
+    n_busbar: int,
+) -> np.ndarray:
+    values = np.zeros((len(ACTION_DELTA_FEATURE_NAMES),), dtype=np.float32)
+    feature_index = {
+        name: index for index, name in enumerate(ACTION_DELTA_FEATURE_NAMES)
+    }
+    operation_name = f"operation_{modification.operation}"
+    object_name = f"object_{modification.object_kind}"
+    if operation_name in feature_index:
+        values[feature_index[operation_name]] = 1.0
+    if object_name in feature_index:
+        values[feature_index[object_name]] = 1.0
+    if modification.target_bus > 0:
+        values[feature_index["has_target_busbar"]] = 1.0
+        values[feature_index["target_bus_scaled"]] = float(
+            modification.target_bus
+        ) / float(max(int(n_busbar), 1))
+    elif modification.target_bus < 0:
+        values[feature_index["target_disconnected"]] = 1.0
+        values[feature_index["target_bus_scaled"]] = -1.0
+    return values
 
 
 def _rows_for_ids(
@@ -238,9 +415,7 @@ def _scaled_action_features(
             f"Unsupported action feature scaling '{scaling}'. Use one of: "
             + ", ".join(ACTION_FEATURE_SCALINGS)
         )
-    raw = np.zeros(
-        (len(decoded_actions), len(ACTION_FEATURE_NAMES)), dtype=np.float32
-    )
+    raw = np.zeros((len(decoded_actions), len(ACTION_FEATURE_NAMES)), dtype=np.float32)
     for action_id, decoded in enumerate(decoded_actions):
         raw[action_id] = (
             float(action_id == 0),
@@ -264,6 +439,133 @@ def _scaled_action_features(
         )
         raw[:, column] /= scale
     return th.from_numpy(raw)
+
+
+def _build_action_delta_tensors(
+    decoded_actions: Sequence[_DecodedAction],
+    graph_spec: Dict[str, Any],
+    *,
+    line_or_to_subid: np.ndarray,
+    line_ex_to_subid: np.ndarray,
+    strict: bool,
+) -> Tuple[th.Tensor, ...]:
+    """Encode exact action modifications with transferable physical rows."""
+    busbar_rows = np.asarray(graph_spec["substation_busbar_node_rows"], dtype=np.int64)
+    busbar_id_to_row = np.asarray(graph_spec["busbar_id_to_node_row"], dtype=np.int64)
+    line_rows = np.asarray(graph_spec["line_id_to_node_row"], dtype=np.int64)
+    load_rows = np.asarray(graph_spec["load_id_to_node_row"], dtype=np.int64)
+    generator_rows = np.asarray(graph_spec["gen_id_to_node_row"], dtype=np.int64)
+    n_busbar = int(graph_spec.get("n_busbar", busbar_rows.shape[1]))
+
+    max_modifications = max(
+        1,
+        max((len(decoded.modifications) for decoded in decoded_actions), default=0),
+    )
+    max_context_busbars = max(
+        1,
+        2 * n_busbar,
+        max((int(np.sum(rows >= 0)) for rows in busbar_rows), default=0),
+    )
+    n_actions = len(decoded_actions)
+    object_indices = np.full((n_actions, max_modifications), -1, dtype=np.int64)
+    modification_mask = np.zeros((n_actions, max_modifications), dtype=np.bool_)
+    target_indices = np.full_like(object_indices, -1)
+    target_mask = np.zeros_like(modification_mask)
+    context_indices = np.full(
+        (n_actions, max_modifications, max_context_busbars),
+        -1,
+        dtype=np.int64,
+    )
+    context_mask = np.zeros_like(context_indices, dtype=np.bool_)
+    operation_features = np.zeros(
+        (n_actions, max_modifications, len(ACTION_DELTA_FEATURE_NAMES)),
+        dtype=np.float32,
+    )
+
+    def object_row(modification: _ActionModification) -> int:
+        object_id = int(modification.object_id)
+        if modification.object_kind.startswith("line"):
+            rows = line_rows
+        elif modification.object_kind == "generator":
+            rows = generator_rows
+        elif modification.object_kind == "load":
+            rows = load_rows
+        else:
+            return -1
+        return int(rows[object_id]) if 0 <= object_id < len(rows) else -1
+
+    def context_substations(modification: _ActionModification) -> Tuple[int, ...]:
+        if modification.substation_ids:
+            return modification.substation_ids
+        if modification.object_kind == "line_status":
+            line_id = int(modification.object_id)
+            if 0 <= line_id < len(line_or_to_subid):
+                return (
+                    int(line_or_to_subid[line_id]),
+                    int(line_ex_to_subid[line_id]),
+                )
+        return ()
+
+    for action_id, decoded in enumerate(decoded_actions):
+        for modification_id, modification in enumerate(decoded.modifications):
+            row = object_row(modification)
+            if row < 0:
+                if strict:
+                    raise ValueError(
+                        f"Action {action_id} modification {modification_id} "
+                        f"({modification.object_kind} {modification.object_id}) "
+                        "has no graph-represented object row."
+                    )
+                continue
+            object_indices[action_id, modification_id] = row
+            modification_mask[action_id, modification_id] = True
+            operation_features[action_id, modification_id] = (
+                _action_delta_feature_vector(modification, n_busbar)
+            )
+
+            context_rows: List[int] = []
+            modification_substations = context_substations(modification)
+            for substation_id in modification_substations:
+                if 0 <= substation_id < len(busbar_rows):
+                    context_rows.extend(
+                        int(value)
+                        for value in busbar_rows[substation_id]
+                        if int(value) >= 0
+                    )
+            context_rows = sorted(set(context_rows))
+            if context_rows:
+                context_indices[action_id, modification_id, : len(context_rows)] = (
+                    context_rows
+                )
+                context_mask[action_id, modification_id, : len(context_rows)] = True
+
+            target_bus = int(modification.target_bus)
+            if target_bus > 0 and modification_substations:
+                substation_id = int(modification_substations[0])
+                global_busbar_id = substation_id * n_busbar + (target_bus - 1)
+                target_row = (
+                    int(busbar_id_to_row[global_busbar_id])
+                    if 0 <= global_busbar_id < len(busbar_id_to_row)
+                    else -1
+                )
+                if target_row < 0 and strict:
+                    raise ValueError(
+                        f"Action {action_id} targets busbar {target_bus} of "
+                        f"substation {substation_id}, which is absent from the graph."
+                    )
+                if target_row >= 0:
+                    target_indices[action_id, modification_id] = target_row
+                    target_mask[action_id, modification_id] = True
+
+    return (
+        th.from_numpy(object_indices),
+        th.from_numpy(modification_mask),
+        th.from_numpy(target_indices),
+        th.from_numpy(target_mask),
+        th.from_numpy(context_indices),
+        th.from_numpy(context_mask),
+        th.from_numpy(operation_features),
+    )
 
 
 def build_action_graph_metadata(
@@ -302,14 +604,10 @@ def build_action_graph_metadata(
 
     line_or_to_subid = np.asarray(line_or_to_subid, dtype=np.int64)
     line_ex_to_subid = np.asarray(line_ex_to_subid, dtype=np.int64)
-    busbar_rows = np.asarray(
-        graph_spec["substation_busbar_node_rows"], dtype=np.int64
-    )
+    busbar_rows = np.asarray(graph_spec["substation_busbar_node_rows"], dtype=np.int64)
     line_rows = np.asarray(graph_spec["line_id_to_node_row"], dtype=np.int64)
     load_rows = np.asarray(graph_spec["load_id_to_node_row"], dtype=np.int64)
-    generator_rows = np.asarray(
-        graph_spec["gen_id_to_node_row"], dtype=np.int64
-    )
+    generator_rows = np.asarray(graph_spec["gen_id_to_node_row"], dtype=np.int64)
 
     decoded_actions = [_decode_action(action) for action in actions]
     for decoded in decoded_actions:
@@ -389,14 +687,27 @@ def build_action_graph_metadata(
     load_indices, load_mask = _pad_rows(per_type_rows["load"])
     generator_indices, generator_mask = _pad_rows(per_type_rows["generator"])
     substation_ids, substation_mask = _pad_rows(per_type_rows["substation"])
+    (
+        delta_object_indices,
+        delta_modification_mask,
+        delta_target_busbar_indices,
+        delta_target_busbar_mask,
+        delta_context_busbar_indices,
+        delta_context_busbar_mask,
+        delta_operation_features,
+    ) = _build_action_delta_tensors(
+        decoded_actions,
+        graph_spec,
+        line_or_to_subid=line_or_to_subid,
+        line_ex_to_subid=line_ex_to_subid,
+        strict=strict,
+    )
 
     if original_action_ids is None:
         original_action_ids = list(range(len(actions)))
     original_action_ids = [int(value) for value in original_action_ids]
     if len(original_action_ids) != len(actions):
-        raise ValueError(
-            "original_action_ids must have one entry per exposed action."
-        )
+        raise ValueError("original_action_ids must have one entry per exposed action.")
 
     metadata = ActionGraphMetadata(
         action_features=_scaled_action_features(
@@ -412,6 +723,13 @@ def build_action_graph_metadata(
         generator_mask=generator_mask,
         substation_ids=substation_ids,
         substation_mask=substation_mask,
+        delta_object_indices=delta_object_indices,
+        delta_modification_mask=delta_modification_mask,
+        delta_target_busbar_indices=delta_target_busbar_indices,
+        delta_target_busbar_mask=delta_target_busbar_mask,
+        delta_context_busbar_indices=delta_context_busbar_indices,
+        delta_context_busbar_mask=delta_context_busbar_mask,
+        delta_operation_features=delta_operation_features,
         is_do_nothing=th.arange(len(actions), dtype=th.long) == 0,
         original_action_ids=th.tensor(original_action_ids, dtype=th.long),
     )

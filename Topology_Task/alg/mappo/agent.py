@@ -42,6 +42,121 @@ class CandidateScorerComponents:
     graph_dim: int
     hidden_layers: tuple[int, ...]
     act_fn_name: str
+    delta_token_encoder: Optional[nn.Sequential]
+    delta_token_input_dim: int
+    delta_output_dim: int
+
+
+class CounterfactualActionDeltaEncoder(nn.Module):
+    """Encode exact object/busbar modifications for every candidate action."""
+
+    def __init__(
+        self,
+        node_dim: int,
+        output_dim: int,
+        metadata: ActionGraphMetadata,
+        shared_token_encoder: Optional[nn.Sequential] = None,
+    ) -> None:
+        super().__init__()
+        self.node_dim = int(node_dim)
+        self.output_dim = int(output_dim)
+        self.operation_dim = int(metadata.delta_operation_features.shape[-1])
+        self.token_input_dim = 4 * self.node_dim + self.operation_dim
+
+        for name in (
+            "delta_object_indices",
+            "delta_modification_mask",
+            "delta_target_busbar_indices",
+            "delta_target_busbar_mask",
+            "delta_context_busbar_indices",
+            "delta_context_busbar_mask",
+            "delta_operation_features",
+        ):
+            self.register_buffer(name, getattr(metadata, name).clone())
+
+        if shared_token_encoder is None:
+            self.token_encoder = nn.Sequential(
+                nn.Linear(self.token_input_dim, self.output_dim),
+                nn.ReLU(),
+                nn.Linear(self.output_dim, self.output_dim),
+                nn.ReLU(),
+            )
+        else:
+            first_layer = shared_token_encoder[0]
+            last_linear = shared_token_encoder[-2]
+            if (
+                not isinstance(first_layer, nn.Linear)
+                or not isinstance(last_linear, nn.Linear)
+                or int(first_layer.in_features) != self.token_input_dim
+                or int(last_linear.out_features) != self.output_dim
+            ):
+                raise ValueError(
+                    "Shared action-delta encoder dimensions do not match the "
+                    "target actor metadata."
+                )
+            self.token_encoder = shared_token_encoder
+
+    @staticmethod
+    def _gather_nodes(
+        node_embeddings: th.Tensor,
+        indices: th.Tensor,
+    ) -> th.Tensor:
+        return node_embeddings[:, indices.clamp_min(0), :]
+
+    def forward(self, node_embeddings: th.Tensor) -> th.Tensor:
+        object_context = self._gather_nodes(
+            node_embeddings,
+            self.delta_object_indices,
+        )
+        modification_weights = (
+            self.delta_modification_mask.to(dtype=node_embeddings.dtype)
+            .unsqueeze(0)
+            .unsqueeze(-1)
+        )
+        object_context = object_context * modification_weights
+
+        target_context = self._gather_nodes(
+            node_embeddings,
+            self.delta_target_busbar_indices,
+        )
+        target_weights = (
+            self.delta_target_busbar_mask.to(dtype=node_embeddings.dtype)
+            .unsqueeze(0)
+            .unsqueeze(-1)
+        )
+        target_context = target_context * target_weights
+
+        context_nodes = self._gather_nodes(
+            node_embeddings,
+            self.delta_context_busbar_indices,
+        )
+        context_weights = (
+            self.delta_context_busbar_mask.to(dtype=node_embeddings.dtype)
+            .unsqueeze(0)
+            .unsqueeze(-1)
+        )
+        context_sum = (context_nodes * context_weights).sum(dim=3)
+        context_count = context_weights.sum(dim=3).clamp_min(1.0)
+        substation_context = context_sum / context_count
+
+        operation_features = (
+            self.delta_operation_features.to(dtype=node_embeddings.dtype)
+            .unsqueeze(0)
+            .expand(node_embeddings.shape[0], -1, -1, -1)
+        )
+        token_input = th.cat(
+            [
+                object_context,
+                substation_context,
+                target_context,
+                target_context - substation_context,
+                operation_features,
+            ],
+            dim=-1,
+        )
+        tokens = self.token_encoder(token_input) * modification_weights
+        modification_count = modification_weights.sum(dim=2).clamp_min(1.0)
+        return tokens.sum(dim=2) / th.sqrt(modification_count)
 
 
 class CandidateActionScorer(nn.Module):
@@ -57,6 +172,8 @@ class CandidateActionScorer(nn.Module):
         pool_mode: str = "typed_mean",
         use_action_features: bool = True,
         use_do_nothing_head: bool = True,
+        use_action_delta_encoder: bool = False,
+        action_delta_dim: int = 0,
         attention_scope: str = "affected",
         attention_heads: int = 1,
         attention_dim: int = 0,
@@ -81,6 +198,7 @@ class CandidateActionScorer(nn.Module):
             )
         self.use_action_features = bool(use_action_features)
         self.use_do_nothing_head = bool(use_do_nothing_head)
+        self.use_action_delta_encoder = bool(use_action_delta_encoder)
 
         for name in (
             "action_features",
@@ -96,6 +214,25 @@ class CandidateActionScorer(nn.Module):
             "original_action_ids",
         ):
             self.register_buffer(name, getattr(metadata, name).clone())
+
+        delta_output_dim = int(action_delta_dim) or self.node_dim
+        if self.use_action_delta_encoder:
+            shared_delta_encoder = (
+                shared_components.delta_token_encoder
+                if shared_components is not None
+                else None
+            )
+            self.delta_encoder = CounterfactualActionDeltaEncoder(
+                node_dim=self.node_dim,
+                output_dim=delta_output_dim,
+                metadata=metadata,
+                shared_token_encoder=shared_delta_encoder,
+            )
+            delta_token_input_dim = self.delta_encoder.token_input_dim
+        else:
+            self.delta_encoder = None
+            delta_output_dim = 0
+            delta_token_input_dim = 0
 
         if self.pool_mode == "typed_attention":
             self.pool = CandidateActionAttentionPool(
@@ -124,11 +261,14 @@ class CandidateActionScorer(nn.Module):
         scorer_input_dim = int(graph_dim) + local_dim
         if self.use_action_features:
             scorer_input_dim += metadata.action_feature_dim
+        scorer_input_dim += delta_output_dim
         expected_signature = (
             scorer_input_dim,
             int(graph_dim),
             tuple(int(width) for width in hidden_layers),
             str(act_fn_name),
+            delta_token_input_dim,
+            delta_output_dim,
         )
         if shared_components is None:
             self.scorer = build_mlp_head(
@@ -154,6 +294,8 @@ class CandidateActionScorer(nn.Module):
                 shared_components.graph_dim,
                 shared_components.hidden_layers,
                 shared_components.act_fn_name,
+                shared_components.delta_token_input_dim,
+                shared_components.delta_output_dim,
             )
             if shared_signature != expected_signature:
                 raise ValueError(
@@ -185,8 +327,14 @@ class CandidateActionScorer(nn.Module):
             graph_dim=self._component_signature[1],
             hidden_layers=self._component_signature[2],
             act_fn_name=self._component_signature[3],
+            delta_token_encoder=(
+                self.delta_encoder.token_encoder
+                if self.delta_encoder is not None
+                else None
+            ),
+            delta_token_input_dim=self._component_signature[4],
+            delta_output_dim=self._component_signature[5],
         )
-
 
     def _typed_metadata(self):
         return (
@@ -227,9 +375,7 @@ class CandidateActionScorer(nn.Module):
         if node_embeddings.dim() == 2:
             node_embeddings = node_embeddings.unsqueeze(0)
         if graph_embedding.shape[0] != node_embeddings.shape[0]:
-            raise ValueError(
-                "Graph and node embeddings must have the same batch size."
-            )
+            raise ValueError("Graph and node embeddings must have the same batch size.")
 
         attention_output = self._local_context(
             graph_embedding,
@@ -246,6 +392,8 @@ class CandidateActionScorer(nn.Module):
             scorer_inputs.append(
                 self.action_features.unsqueeze(0).expand(batch_size, -1, -1)
             )
+        if self.delta_encoder is not None:
+            scorer_inputs.append(self.delta_encoder(node_embeddings))
         logits = self.scorer(th.cat(scorer_inputs, dim=-1)).squeeze(-1)
 
         if self.do_nothing_actor is not None:
@@ -272,9 +420,7 @@ class CandidateActionScorer(nn.Module):
         return logits
 
     def init_do_nothing_prior(self, init_p0: float) -> None:
-        prior_logit = float(
-            np.log(init_p0 * (self.n_actions - 1) / (1.0 - init_p0))
-        )
+        prior_logit = float(np.log(init_p0 * (self.n_actions - 1) / (1.0 - init_p0)))
         with th.no_grad():
             shared_output = self.scorer[-1]
             shared_output.weight.zero_()
@@ -302,9 +448,7 @@ class Actor(nn.Module):
 
         agent_id = f"agent_{id}"
         self.encoder_type = getattr(args, "actor_encoder", "mlp")
-        self.actor_action_head = str(
-            getattr(args, "actor_action_head", "mlp")
-        ).lower()
+        self.actor_action_head = str(getattr(args, "actor_action_head", "mlp")).lower()
         if self.actor_action_head not in {"mlp", "candidate_pool"}:
             raise ValueError(
                 "actor_action_head must be 'mlp' or 'candidate_pool', got "
@@ -410,9 +554,7 @@ class Actor(nn.Module):
                     "load": graph_node_type_ids.get("load"),
                     "generator": graph_node_type_ids.get("generator"),
                 }
-                if any(
-                    value is None for value in candidate_node_type_ids.values()
-                ):
+                if any(value is None for value in candidate_node_type_ids.values()):
                     raise ValueError(
                         "Candidate-action attention requires busbar, line, load, "
                         "and generator node type IDs in the graph spec."
@@ -423,24 +565,24 @@ class Actor(nn.Module):
                     hidden_layers=actor_layers,
                     act_fn_name=args.actor_act_fn,
                     metadata=metadata,
-                    pool_mode=getattr(
-                        args, "candidate_action_pool", "typed_mean"
-                    ),
+                    pool_mode=getattr(args, "candidate_action_pool", "typed_mean"),
                     use_action_features=getattr(
                         args, "candidate_action_use_features", True
                     ),
                     use_do_nothing_head=getattr(
                         args, "candidate_action_do_nothing_head", True
                     ),
+                    use_action_delta_encoder=getattr(
+                        args, "candidate_action_delta_encoder", False
+                    ),
+                    action_delta_dim=getattr(args, "candidate_action_delta_dim", 0),
                     attention_scope=getattr(
                         args, "candidate_action_attention_scope", "affected"
                     ),
                     attention_heads=getattr(
                         args, "candidate_action_attention_heads", 1
                     ),
-                    attention_dim=getattr(
-                        args, "candidate_action_attention_dim", 0
-                    ),
+                    attention_dim=getattr(args, "candidate_action_attention_dim", 0),
                     attention_temperature=getattr(
                         args, "candidate_action_attention_temperature", 1.0
                     ),
@@ -492,9 +634,9 @@ class Actor(nn.Module):
             # do-nothing prior dramatically accelerates early learning.
             init_p0 = getattr(args, "init_do_nothing_prob", 0.0)
             if init_p0 > 0.0:
-                assert 0.0 < init_p0 < 1.0, (
-                    f"init_do_nothing_prob must be in (0, 1), got {init_p0}"
-                )
+                assert (
+                    0.0 < init_p0 < 1.0
+                ), f"init_do_nothing_prob must be in (0, 1), got {init_p0}"
                 self._init_do_nothing_prior(init_p0)
 
     def _init_do_nothing_prior(self, init_p0: float) -> None:
@@ -576,9 +718,7 @@ class Actor(nn.Module):
         if selected.numel() and bool(
             th.any((selected < 0) | (selected >= self.n_actions))
         ):
-            raise ValueError(
-                f"action_ids must lie in [0, {self.n_actions - 1}]."
-            )
+            raise ValueError(f"action_ids must lie in [0, {self.n_actions - 1}].")
         action_dim = 0 if logits.dim() == 1 else 1
         result["logits"] = logits.index_select(action_dim, selected)
         weight_action_dim = 0 if logits.dim() == 1 else 1

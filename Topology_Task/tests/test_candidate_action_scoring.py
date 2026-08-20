@@ -43,8 +43,25 @@ def topology_action(substation_id, object_type, object_id):
         {
             "change_bus_vect": {
                 "nb_modif_objects": 1,
+                str(substation_id): {"object": {"type": object_type, "id": object_id}},
+                "nb_modif_subs": 1,
+                "modif_subs_id": [str(substation_id)],
+            }
+        }
+    )
+
+
+def set_bus_action(substation_id, object_type, object_id, new_bus):
+    return MockAction(
+        {
+            "set_bus_vect": {
+                "nb_modif_objects": 1,
                 str(substation_id): {
-                    "object": {"type": object_type, "id": object_id}
+                    "object": {
+                        "type": object_type,
+                        "id": object_id,
+                        "new_bus": new_bus,
+                    }
                 },
                 "nb_modif_subs": 1,
                 "modif_subs_id": [str(substation_id)],
@@ -59,9 +76,7 @@ def make_actions():
         topology_action(0, "line (origin)", 0),
         topology_action(0, "generator", 0),
         topology_action(1, "load", 0),
-        MockAction(
-            {"change_line_status": {"nb_changed": 1, "changed_id": [0]}}
-        ),
+        MockAction({"change_line_status": {"nb_changed": 1, "changed_id": [0]}}),
     ]
 
 
@@ -105,9 +120,7 @@ class ActionGraphMetadataTest(unittest.TestCase):
         return indices[action_id][mask[action_id]].tolist()
 
     def test_graph_spec_exposes_stable_physical_row_maps(self):
-        np.testing.assert_array_equal(
-            self.spec["busbar_id_to_node_row"], [0, 1, 2, 3]
-        )
+        np.testing.assert_array_equal(self.spec["busbar_id_to_node_row"], [0, 1, 2, 3])
         np.testing.assert_array_equal(self.spec["gen_id_to_node_row"], [4])
         np.testing.assert_array_equal(self.spec["load_id_to_node_row"], [5])
         np.testing.assert_array_equal(self.spec["line_id_to_node_row"], [6])
@@ -131,9 +144,7 @@ class ActionGraphMetadataTest(unittest.TestCase):
             [6],
         )
         self.assertEqual(
-            self.active_values(
-                metadata.generator_indices, metadata.generator_mask, 2
-            ),
+            self.active_values(metadata.generator_indices, metadata.generator_mask, 2),
             [4],
         )
         self.assertEqual(
@@ -163,12 +174,33 @@ class ActionGraphMetadataTest(unittest.TestCase):
             line_ex_to_subid=MockGridEnv.line_ex_to_subid,
         )
         self.assertEqual(spec["line_ids"].tolist(), [0])
-        np.testing.assert_array_equal(
-            spec["busbar_id_to_node_row"], [0, 1, -1, -1]
+        np.testing.assert_array_equal(spec["busbar_id_to_node_row"], [0, 1, -1, -1])
+        self.assertEqual(metadata.line_indices[1][metadata.line_mask[1]].tolist(), [3])
+
+    def test_action_delta_preserves_exact_set_bus_destination(self):
+        metadata = build_action_graph_metadata(
+            self.spec,
+            [
+                MockAction({}),
+                set_bus_action(0, "generator", 0, 1),
+                set_bus_action(0, "generator", 0, 2),
+            ],
+            line_or_to_subid=MockGridEnv.line_or_to_subid,
+            line_ex_to_subid=MockGridEnv.line_ex_to_subid,
         )
-        self.assertEqual(
-            metadata.line_indices[1][metadata.line_mask[1]].tolist(), [3]
+
+        # The legacy touched-node features are identical for these two actions.
+        self.assertTrue(
+            th.equal(metadata.action_features[1], metadata.action_features[2])
         )
+        self.assertTrue(
+            th.equal(metadata.busbar_indices[1], metadata.busbar_indices[2])
+        )
+        # The delta encoder sees the actual destination busbar row.
+        self.assertEqual(int(metadata.delta_target_busbar_indices[1, 0]), 0)
+        self.assertEqual(int(metadata.delta_target_busbar_indices[2, 0]), 1)
+        self.assertTrue(bool(metadata.delta_target_busbar_mask[1, 0]))
+        self.assertTrue(bool(metadata.delta_target_busbar_mask[2, 0]))
 
 
 class CandidateActionScorerTest(unittest.TestCase):
@@ -192,9 +224,7 @@ class CandidateActionScorerTest(unittest.TestCase):
     def masked_mean(node_embeddings, indices, mask):
         gathered = node_embeddings[:, indices.clamp_min(0), :]
         weights = mask.to(node_embeddings).unsqueeze(0).unsqueeze(-1)
-        return (gathered * weights).sum(dim=2) / weights.sum(
-            dim=2
-        ).clamp_min(1.0)
+        return (gathered * weights).sum(dim=2) / weights.sum(dim=2).clamp_min(1.0)
 
     def test_pooling_modes_produce_finite_logits_and_gradients(self):
         for pool_mode in ("mean", "typed_mean", "typed_attention"):
@@ -216,6 +246,27 @@ class CandidateActionScorerTest(unittest.TestCase):
                 logits.sum().backward()
                 self.assertIsNotNone(node_embeddings.grad)
                 self.assertGreater(float(node_embeddings.grad.abs().sum()), 0.0)
+
+    def test_counterfactual_action_delta_encoder_is_trainable(self):
+        scorer = CandidateActionScorer(
+            graph_dim=5,
+            node_dim=7,
+            hidden_layers=[9],
+            act_fn_name="relu",
+            metadata=self.metadata,
+            pool_mode="typed_mean",
+            use_action_delta_encoder=True,
+        )
+        graph_embedding = th.randn(3, 5, requires_grad=True)
+        node_embeddings = th.randn(3, 7, 7, requires_grad=True)
+        logits = scorer(graph_embedding, node_embeddings)
+
+        self.assertEqual(tuple(logits.shape), (3, 5))
+        self.assertTrue(bool(th.isfinite(logits).all()))
+        logits.sum().backward()
+        self.assertGreater(float(node_embeddings.grad.abs().sum()), 0.0)
+        for parameter in scorer.delta_encoder.token_encoder.parameters():
+            self.assertIsNotNone(parameter.grad)
 
     def test_existing_mean_modes_match_the_original_pooling_equations(self):
         node_embeddings = th.randn(2, 7, 7)
@@ -281,14 +332,10 @@ class CandidateActionScorerTest(unittest.TestCase):
             self.assertEqual(tuple(weights.shape[:3]), (3, 5, 2))
             outside = ~mask.unsqueeze(0).unsqueeze(2).expand_as(weights)
             outside_weights = weights.masked_select(outside)
-            self.assertTrue(
-                th.equal(outside_weights, th.zeros_like(outside_weights))
-            )
+            self.assertTrue(th.equal(outside_weights, th.zeros_like(outside_weights)))
             expected_sum = mask.any(dim=-1).to(weights).view(1, 5, 1)
             expected_sum = expected_sum.expand(3, 5, 2)
-            self.assertTrue(
-                th.allclose(weights.sum(dim=-1), expected_sum, atol=1e-6)
-            )
+            self.assertTrue(th.allclose(weights.sum(dim=-1), expected_sum, atol=1e-6))
 
         self.assertTrue(
             th.equal(
@@ -360,9 +407,7 @@ class CandidateActionScorerTest(unittest.TestCase):
             indices = attention.node_indices[node_type]
             self.assertEqual(tuple(eligible.shape), tuple(affected.shape))
             self.assertEqual(tuple(indices.shape), tuple(eligible.shape))
-            self.assertTrue(
-                th.equal(weights[:, 0], th.zeros_like(weights[:, 0]))
-            )
+            self.assertTrue(th.equal(weights[:, 0], th.zeros_like(weights[:, 0])))
             if weights.shape[-1]:
                 expected = th.ones_like(weights[:, 1:].sum(dim=-1))
                 self.assertTrue(
@@ -533,6 +578,7 @@ class CandidateActorIntegrationTest(unittest.TestCase):
                 "edge_mask",
                 "edge_type",
                 "controlled_node_mask",
+                "energized_node_mask",
             }
         }
 
@@ -547,9 +593,7 @@ class CandidateActorIntegrationTest(unittest.TestCase):
             edge_pre_encoder=True,
         )
         old_style_embedding = encoder(self.tensor_graph)
-        graph_embedding, node_embeddings = encoder.forward_with_nodes(
-            self.tensor_graph
-        )
+        graph_embedding, node_embeddings = encoder.forward_with_nodes(self.tensor_graph)
         self.assertTrue(th.equal(old_style_embedding, graph_embedding))
         self.assertEqual(tuple(graph_embedding.shape), (6,))
         self.assertEqual(tuple(node_embeddings.shape), (7, 8))
@@ -569,6 +613,27 @@ class CandidateActorIntegrationTest(unittest.TestCase):
         self.assertEqual(tuple(sparse_graph.shape), (6,))
         self.assertEqual(tuple(sparse_nodes.shape), (7, 8))
 
+    def test_residual_jk_dual_readout_is_finite_and_trainable(self):
+        encoder = GraphEncoder(
+            self.spec,
+            hidden_dim=8,
+            out_dim=6,
+            n_layers=4,
+            conv_type="gine",
+            readout_aggr="energized_mean_max",
+            node_pre_encoder=True,
+            edge_pre_encoder=True,
+            residual=True,
+            jumping_knowledge="concat",
+        )
+        graph_embedding, node_embeddings = encoder.forward_with_nodes(self.tensor_graph)
+
+        self.assertEqual(tuple(graph_embedding.shape), (6,))
+        self.assertEqual(tuple(node_embeddings.shape), (7, 8))
+        self.assertTrue(bool(th.isfinite(graph_embedding).all()))
+        graph_embedding.sum().backward()
+        self.assertIsNotNone(encoder.jk_projection.weight.grad)
+
     def test_actor_samples_and_evaluates_candidate_logits(self):
         args = SimpleNamespace(
             actor_encoder="gnn",
@@ -580,6 +645,8 @@ class CandidateActorIntegrationTest(unittest.TestCase):
             candidate_action_pool="typed_attention",
             candidate_action_use_features=True,
             candidate_action_do_nothing_head=True,
+            candidate_action_delta_encoder=True,
+            candidate_action_delta_dim=0,
             candidate_action_attention_scope="all",
             candidate_action_attention_heads=1,
             candidate_action_attention_dim=0,
@@ -593,6 +660,8 @@ class CandidateActorIntegrationTest(unittest.TestCase):
             gnn_hidden_dim=8,
             gnn_out_dim=6,
             gnn_layers=2,
+            gnn_residual=False,
+            gnn_jumping_knowledge="none",
             gnn_heads=1,
             gnn_layer_norm=True,
             gnn_readout_aggr="mean",
@@ -614,8 +683,7 @@ class CandidateActorIntegrationTest(unittest.TestCase):
         )
         actor = Actor(0, env, args, continuous_actions=False)
         batched_graph = {
-            key: th.stack([value, value])
-            for key, value in self.tensor_graph.items()
+            key: th.stack([value, value]) for key, value in self.tensor_graph.items()
         }
         observation = {"graph": batched_graph}
 
@@ -654,11 +722,15 @@ class CandidateActorIntegrationTest(unittest.TestCase):
             candidate_action_pool="typed_mean",
             candidate_action_use_features=True,
             candidate_action_do_nothing_head=True,
+            candidate_action_delta_encoder=True,
+            candidate_action_delta_dim=0,
             gnn_concat_flat=False,
             gnn_type="gine",
             gnn_hidden_dim=8,
             gnn_out_dim=6,
             gnn_layers=2,
+            gnn_residual=False,
+            gnn_jumping_knowledge="none",
             gnn_heads=1,
             gnn_layer_norm=True,
             gnn_readout_aggr="mean",
@@ -680,8 +752,7 @@ class CandidateActorIntegrationTest(unittest.TestCase):
                 for agent_id in ("agent_0", "agent_1")
             },
             action_space={
-                agent_id: gym.spaces.Discrete(5)
-                for agent_id in ("agent_0", "agent_1")
+                agent_id: gym.spaces.Discrete(5) for agent_id in ("agent_0", "agent_1")
             },
             graph_specs={"agent_0": self.spec, "agent_1": second_spec},
         )
@@ -698,6 +769,10 @@ class CandidateActorIntegrationTest(unittest.TestCase):
 
         self.assertIs(first.encoder.graph_encoder, second.encoder.graph_encoder)
         self.assertIs(first.actor.scorer, second.actor.scorer)
+        self.assertIs(
+            first.actor.delta_encoder.token_encoder,
+            second.actor.delta_encoder.token_encoder,
+        )
         self.assertIs(first.actor.do_nothing_actor, second.actor.do_nothing_actor)
         self.assertIs(
             first.actor.do_nothing_logit_bias,
@@ -707,6 +782,10 @@ class CandidateActorIntegrationTest(unittest.TestCase):
         self.assertNotEqual(
             first.actor.action_features.data_ptr(),
             second.actor.action_features.data_ptr(),
+        )
+        self.assertNotEqual(
+            first.actor.delta_encoder.delta_object_indices.data_ptr(),
+            second.actor.delta_encoder.delta_object_indices.data_ptr(),
         )
 
         with th.no_grad():
@@ -740,10 +819,16 @@ class ActionFeatureScalingTest(unittest.TestCase):
 
         return [
             SimpleNamespace(
-                substations={0}, lines=set(), loads=set(), generators=set(),
-                n_topology_changes=c, n_line_status_changes=0,
-                n_line_endpoint_changes=0, n_generator_changes=0,
-                n_load_changes=0, n_other_changes=0,
+                substations={0},
+                lines=set(),
+                loads=set(),
+                generators=set(),
+                n_topology_changes=c,
+                n_line_status_changes=0,
+                n_line_endpoint_changes=0,
+                n_generator_changes=0,
+                n_load_changes=0,
+                n_other_changes=0,
             )
             for c in counts
         ]

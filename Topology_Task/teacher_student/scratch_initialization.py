@@ -12,28 +12,50 @@ def apply_scratch_architecture_overrides(
     args: Namespace,
     *,
     initialization: str,
-    gnn_layers: int | None,
-) -> Dict[str, Dict[str, int]]:
+    gnn_layers: int | None = None,
+    action_delta_encoder: bool | None = None,
+    gnn_residual: bool | None = None,
+    gnn_jumping_knowledge: str | None = None,
+    gnn_readout_aggr: str | None = None,
+) -> Dict[str, Dict[str, Any]]:
     """Apply explicitly requested scratch-only architecture changes."""
-    if gnn_layers is None:
+    requested = {
+        "gnn_layers": gnn_layers,
+        "candidate_action_delta_encoder": action_delta_encoder,
+        "gnn_residual": gnn_residual,
+        "gnn_jumping_knowledge": gnn_jumping_knowledge,
+        "gnn_readout_aggr": gnn_readout_aggr,
+    }
+    requested = {name: value for name, value in requested.items() if value is not None}
+    if not requested:
         return {}
     if initialization != "scratch":
         raise ValueError(
-            "--scratch-gnn-layers is valid only with --initialization scratch. "
-            "Changing the depth of a warm-start actor would make its checkpoint "
-            "weights incompatible."
+            "Scratch architecture overrides are valid only with "
+            "--initialization scratch. Changing a warm-start architecture would "
+            "make its checkpoint weights incompatible."
         )
-    if int(gnn_layers) <= 0:
+    if gnn_layers is not None and int(gnn_layers) <= 0:
         raise ValueError("--scratch-gnn-layers must be a positive integer.")
+    if gnn_jumping_knowledge is not None and str(gnn_jumping_knowledge) not in {
+        "none",
+        "concat",
+    }:
+        raise ValueError("--scratch-gnn-jumping-knowledge must be 'none' or 'concat'.")
 
-    template_layers = int(getattr(args, "gnn_layers", 0))
-    args.gnn_layers = int(gnn_layers)
-    return {
-        "gnn_layers": {
-            "template": template_layers,
-            "target": int(gnn_layers),
-        }
-    }
+    overrides: Dict[str, Dict[str, Any]] = {}
+    for name, target in requested.items():
+        if name == "gnn_layers":
+            target = int(target)
+        elif name in {"candidate_action_delta_encoder", "gnn_residual"}:
+            target = bool(target)
+        elif name in {"gnn_jumping_knowledge", "gnn_readout_aggr"}:
+            target = str(target)
+        template = getattr(args, name, None)
+        setattr(args, name, target)
+        overrides[name] = {"template": template, "target": target}
+
+    return overrides
 
 
 def build_scratch_actors(

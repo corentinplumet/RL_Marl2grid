@@ -2,7 +2,14 @@ from common.imports import *
 from common.utils import get_flat_obs
 
 try:
-    from torch_geometric.nn import GATConv, GCNConv, GINEConv, SAGEConv, global_add_pool, global_max_pool
+    from torch_geometric.nn import (
+        GATConv,
+        GCNConv,
+        GINEConv,
+        SAGEConv,
+        global_add_pool,
+        global_max_pool,
+    )
     from torch_geometric.utils import softmax as pyg_softmax
 except ModuleNotFoundError:
     GATConv = GCNConv = GINEConv = SAGEConv = global_add_pool = global_max_pool = None
@@ -47,6 +54,10 @@ from common.readouts import (  # noqa: E402
 )
 
 
+def _readout_width_multiplier(readout_aggr: str) -> int:
+    return 2 if str(readout_aggr).endswith("energized_mean_max") else 1
+
+
 class _VirtualNodeEncoderBase(nn.Module):
     """Shared runtime construction for virtual-node graph readout."""
 
@@ -79,12 +90,15 @@ class _VirtualNodeEncoderBase(nn.Module):
         # Which substations may host a summary node. This is a property of the
         # partition, fixed for the episode, so it is resolved once here rather
         # than read from the per-step observation.
-        controlled = np.asarray(
-            graph_spec.get(
-                "controlled_node_mask", np.ones(len(node_ids), dtype=np.float32)
-            ),
-            dtype=np.float32,
-        ) > 0
+        controlled = (
+            np.asarray(
+                graph_spec.get(
+                    "controlled_node_mask", np.ones(len(node_ids), dtype=np.float32)
+                ),
+                dtype=np.float32,
+            )
+            > 0
+        )
         self.register_buffer(
             "controlled_substation_ids",
             th.tensor(
@@ -122,16 +136,12 @@ class _VirtualNodeEncoderBase(nn.Module):
             self.substation_node_encoder = nn.Linear(
                 substation_features.shape[1], int(feature_dim)
             )
-            nn.init.normal_(
-                self.substation_node_encoder.weight, mean=0.0, std=0.02
-            )
+            nn.init.normal_(self.substation_node_encoder.weight, mean=0.0, std=0.02)
             nn.init.normal_(self.substation_node_encoder.bias, mean=0.0, std=0.02)
         else:
             self.substation_node_encoder = None
         if self.use_virtual_node:
-            self.virtual_node_embedding = nn.Parameter(
-                th.empty(1, int(feature_dim))
-            )
+            self.virtual_node_embedding = nn.Parameter(th.empty(1, int(feature_dim)))
             nn.init.normal_(self.virtual_node_embedding, mean=0.0, std=0.02)
         else:
             self.register_parameter("virtual_node_embedding", None)
@@ -244,9 +254,7 @@ class _VirtualNodeEncoderBase(nn.Module):
             if n_included_substations < 1:
                 raise ValueError("No busbars are available for substation nodes.")
 
-            substation_graph_ids = graph_ids.repeat_interleave(
-                n_included_substations
-            )
+            substation_graph_ids = graph_ids.repeat_interleave(n_included_substations)
             repeated_substation_ids = included_substation_ids.repeat(batch_size)
             substation_indices = n_real_nodes + th.arange(
                 batch_size * n_included_substations,
@@ -395,6 +403,8 @@ class GraphEncoder(_VirtualNodeEncoderBase):
         add_substation_nodes: bool = False,
         summary_edge_direction: str = "bidirectional",
         virtual_edge_direction: str = "inherit",
+        residual: bool = False,
+        jumping_knowledge: str = "none",
     ) -> None:
         super().__init__()
         if GCNConv is None:
@@ -412,6 +422,10 @@ class GraphEncoder(_VirtualNodeEncoderBase):
         if self.readout_aggr not in POOLING_AGGREGATIONS:
             raise ValueError(f"Unsupported GNN readout aggregation: {readout_aggr}")
         self.edge_dim = int(graph_spec["edge_dim"])
+        self.residual = bool(residual)
+        self.jumping_knowledge = str(jumping_knowledge).lower()
+        if self.jumping_knowledge not in {"none", "concat"}:
+            raise ValueError("gnn_jumping_knowledge must be 'none' or 'concat'.")
         self.edge_feature_names = list(graph_spec.get("edge_feature_names", []))
         self.gcn_edge_weight_feature = str(gcn_edge_weight_feature).lower()
         self.gcn_edge_weight_idx = self._resolve_gcn_edge_weight_idx(graph_spec)
@@ -420,20 +434,20 @@ class GraphEncoder(_VirtualNodeEncoderBase):
             edge_names.index("relation_physical_line")
             if "relation_physical_line" in edge_names
             else (
-                edge_names.index("line_status")
-                if "line_status" in edge_names
-                else None
+                edge_names.index("line_status") if "line_status" in edge_names else None
             )
         )
-        self.register_buffer("edge_index", th.tensor(graph_spec["edge_index"], dtype=th.long))
-        self.register_buffer("node_ids", th.tensor(graph_spec["node_ids"], dtype=th.long))
+        self.register_buffer(
+            "edge_index", th.tensor(graph_spec["edge_index"], dtype=th.long)
+        )
+        self.register_buffer(
+            "node_ids", th.tensor(graph_spec["node_ids"], dtype=th.long)
+        )
 
         node_dim = int(graph_spec["node_dim"])
         self.node_id_embeddings = bool(node_id_embeddings)
         self.n_busbar = int(graph_spec.get("n_busbar", 2))
-        self.node_id_stride = int(
-            graph_spec.get("node_id_stride", self.n_busbar)
-        )
+        self.node_id_stride = int(graph_spec.get("node_id_stride", self.n_busbar))
         self.n_bus_id_embeddings = int(
             graph_spec.get("n_bus_id_embeddings", self.n_busbar)
         )
@@ -451,9 +465,7 @@ class GraphEncoder(_VirtualNodeEncoderBase):
             # structural descriptor instead, so the learned tensor is shaped by
             # the descriptor and a checkpoint stays loadable on any network.
             substation_features = np.asarray(
-                graph_spec.get(
-                    "substation_features", np.zeros((max(1, n_sub), 1))
-                ),
+                graph_spec.get("substation_features", np.zeros((max(1, n_sub), 1))),
                 dtype=np.float32,
             )
             self.register_buffer(
@@ -513,10 +525,40 @@ class GraphEncoder(_VirtualNodeEncoderBase):
             ]
         )
         self.norms = nn.ModuleList(
-            [nn.LayerNorm(hidden_dim) if layer_norm else nn.Identity() for _ in range(n_layers)]
+            [
+                nn.LayerNorm(hidden_dim) if layer_norm else nn.Identity()
+                for _ in range(n_layers)
+            ]
         )
+        self.residual_projections = (
+            nn.ModuleList(
+                [
+                    (
+                        nn.Identity()
+                        if dims[idx] == hidden_dim
+                        else nn.Linear(dims[idx], hidden_dim, bias=False)
+                    )
+                    for idx in range(n_layers)
+                ]
+            )
+            if self.residual
+            else None
+        )
+        if self.jumping_knowledge == "concat":
+            self.jk_input_projection = (
+                nn.Identity()
+                if conv_input_dim == hidden_dim
+                else nn.Linear(conv_input_dim, hidden_dim, bias=False)
+            )
+            self.jk_projection = nn.Linear(hidden_dim * (n_layers + 1), hidden_dim)
+            self.jk_norm = nn.LayerNorm(hidden_dim) if layer_norm else nn.Identity()
+        else:
+            self.jk_input_projection = None
+            self.jk_projection = None
+            self.jk_norm = None
+        readout_input_dim = hidden_dim * _readout_width_multiplier(self.readout_aggr)
         self.readout = nn.Sequential(
-            nn.Linear(hidden_dim, out_dim),
+            nn.Linear(readout_input_dim, out_dim),
             nn.ReLU(),
         )
 
@@ -573,10 +615,7 @@ class GraphEncoder(_VirtualNodeEncoderBase):
             node_mask=node_mask,
             controlled_node_mask=controlled_node_mask,
         )
-        if (
-            energized_node_mask is not None
-            and energized_node_mask.numel() < x.shape[0]
-        ):
+        if energized_node_mask is not None and energized_node_mask.numel() < x.shape[0]:
             energized_node_mask = th.cat(
                 [
                     energized_node_mask,
@@ -589,18 +628,34 @@ class GraphEncoder(_VirtualNodeEncoderBase):
             )
         edge_attr = self.edge_pre_encoder(edge_attr)
 
-        for conv, norm in zip(self.convs, self.norms):
+        multiscale_states = (
+            [self.jk_input_projection(x)]
+            if self.jumping_knowledge == "concat"
+            else None
+        )
+        for layer_index, (conv, norm) in enumerate(zip(self.convs, self.norms)):
+            previous = x
             if self.uses_edge_attr:
-                x = conv(x, edge_index, edge_attr=edge_attr)
+                update = conv(x, edge_index, edge_attr=edge_attr)
             elif self.conv_type == "gcn" and self.gcn_edge_weight_idx is not None:
-                x = conv(
+                update = conv(
                     x,
                     edge_index,
                     edge_weight=self._gcn_edge_weight(edge_attr),
                 )
             else:
-                x = conv(x, edge_index)
-            x = norm(F.relu(x))
+                update = conv(x, edge_index)
+            update = F.relu(update)
+            if self.residual_projections is not None:
+                update = self.residual_projections[layer_index](previous) + update
+            x = norm(update)
+            if multiscale_states is not None:
+                multiscale_states.append(x)
+
+        if multiscale_states is not None:
+            x = self.jk_norm(
+                F.relu(self.jk_projection(th.cat(multiscale_states, dim=-1)))
+            )
 
         batch_size = max(1, n_physical_nodes // n_nodes)
         node_embeddings = x[:n_physical_nodes].reshape(
@@ -668,11 +723,19 @@ class GraphEncoder(_VirtualNodeEncoderBase):
             pooled = global_max_pool(masked_x, batch)
             return th.nan_to_num(pooled, nan=0.0, neginf=0.0, posinf=0.0)
 
+        if base_aggr == "mean_max":
+            masked_x = x.masked_fill(active_mask.unsqueeze(-1) <= 0, -th.inf)
+            pooled_max = global_max_pool(masked_x, batch)
+            pooled_max = th.nan_to_num(pooled_max, nan=0.0, neginf=0.0, posinf=0.0)
+            pooled_sum = global_add_pool(x * active_mask.unsqueeze(-1), batch)
+            denominator = global_add_pool(active_mask.unsqueeze(-1), batch).clamp_min(
+                1.0
+            )
+            return th.cat([pooled_sum / denominator, pooled_max], dim=-1)
+
         pooled = global_add_pool(x * active_mask.unsqueeze(-1), batch)
         if base_aggr == "mean":
-            denom = global_add_pool(
-                active_mask.unsqueeze(-1), batch
-            ).clamp_min(1.0)
+            denom = global_add_pool(active_mask.unsqueeze(-1), batch).clamp_min(1.0)
             pooled = pooled / denom
         return pooled
 
@@ -716,8 +779,12 @@ class GraphEncoder(_VirtualNodeEncoderBase):
 
         base_edge_index = base_edge_index.to(nodes.device)
         edge_index = base_edge_index.unsqueeze(0).repeat(batch_size, 1, 1)
-        offsets = (th.arange(batch_size, device=nodes.device) * n_nodes).view(batch_size, 1, 1)
-        edge_index = (edge_index + offsets).permute(1, 0, 2).reshape(2, batch_size * n_edges)
+        offsets = (th.arange(batch_size, device=nodes.device) * n_nodes).view(
+            batch_size, 1, 1
+        )
+        edge_index = (
+            (edge_index + offsets).permute(1, 0, 2).reshape(2, batch_size * n_edges)
+        )
 
         edge_attr = edge_features.reshape(batch_size * n_edges, self.edge_dim)
         if edge_mask is not None:
@@ -725,7 +792,9 @@ class GraphEncoder(_VirtualNodeEncoderBase):
             edge_index = edge_index[:, keep_edges]
             edge_attr = edge_attr[keep_edges]
 
-        flat_node_mask = None if node_mask is None else node_mask.reshape(batch_size * n_nodes)
+        flat_node_mask = (
+            None if node_mask is None else node_mask.reshape(batch_size * n_nodes)
+        )
         flat_controlled_mask = (
             None
             if controlled_node_mask is None
@@ -754,16 +823,12 @@ class GraphEncoder(_VirtualNodeEncoderBase):
     ) -> th.Tensor:
         if not self.node_id_embeddings:
             return x
-        sub_ids = th.div(
-            node_ids, self.node_id_stride, rounding_mode="floor"
-        ).long()
+        sub_ids = th.div(node_ids, self.node_id_stride, rounding_mode="floor").long()
         bus_ids = th.remainder(node_ids, self.node_id_stride).long()
         return th.cat(
             [
                 x,
-                self.sub_id_embedding(
-                    self.node_id_substation_features[sub_ids]
-                ),
+                self.sub_id_embedding(self.node_id_substation_features[sub_ids]),
                 self.bus_id_embedding(bus_ids),
             ],
             dim=-1,
@@ -819,7 +884,9 @@ class GraphEncoder(_VirtualNodeEncoderBase):
         if self.gcn_edge_weight_feature in {"", "none", "false"}:
             return None
         if self.conv_type != "gcn":
-            raise ValueError("--gcn-edge-weight-feature can only be used with --gnn-type gcn.")
+            raise ValueError(
+                "--gcn-edge-weight-feature can only be used with --gnn-type gcn."
+            )
 
         edge_feature_names = list(graph_spec.get("edge_feature_names", []))
         if not edge_feature_names:
@@ -991,9 +1058,7 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
     ) -> None:
         super().__init__()
         if pyg_softmax is None:
-            raise ImportError(
-                "gnn_type=sparse_transformer requires torch-geometric."
-            )
+            raise ImportError("gnn_type=sparse_transformer requires torch-geometric.")
         if n_layers < 1:
             raise ValueError("Sparse graph transformer needs at least one layer.")
 
@@ -1048,9 +1113,7 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
         node_dim = int(graph_spec["node_dim"])
         self.node_id_embeddings = bool(node_id_embeddings)
         self.n_busbar = int(graph_spec.get("n_busbar", 2))
-        self.node_id_stride = int(
-            graph_spec.get("node_id_stride", self.n_busbar)
-        )
+        self.node_id_stride = int(graph_spec.get("node_id_stride", self.n_busbar))
         self.n_bus_id_embeddings = int(
             graph_spec.get("n_bus_id_embeddings", self.n_busbar)
         )
@@ -1068,9 +1131,7 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
             # structural descriptor instead, so the learned tensor is shaped by
             # the descriptor and a checkpoint stays loadable on any network.
             substation_features = np.asarray(
-                graph_spec.get(
-                    "substation_features", np.zeros((max(1, n_sub), 1))
-                ),
+                graph_spec.get("substation_features", np.zeros((max(1, n_sub), 1))),
                 dtype=np.float32,
             )
             self.register_buffer(
@@ -1133,7 +1194,8 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
             if self.readout_aggr in {"attention", "controlled_attention"}
             else None
         )
-        self.readout = nn.Sequential(nn.Linear(hidden_dim, out_dim), nn.ReLU())
+        readout_input_dim = hidden_dim * _readout_width_multiplier(self.readout_aggr)
+        self.readout = nn.Sequential(nn.Linear(readout_input_dim, out_dim), nn.ReLU())
 
     def forward(
         self,
@@ -1193,10 +1255,7 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
             virtual_edge_type=self.virtual_edge_type,
             controlled_node_mask=controlled_node_mask,
         )
-        if (
-            energized_node_mask is not None
-            and energized_node_mask.numel() < x.shape[0]
-        ):
+        if energized_node_mask is not None and energized_node_mask.numel() < x.shape[0]:
             energized_node_mask = th.cat(
                 [
                     energized_node_mask,
@@ -1280,8 +1339,8 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
         offsets = (th.arange(batch_size, device=nodes.device) * n_nodes).view(
             batch_size, 1, 1
         )
-        edge_index = (edge_index + offsets).permute(1, 0, 2).reshape(
-            2, batch_size * n_edges
+        edge_index = (
+            (edge_index + offsets).permute(1, 0, 2).reshape(2, batch_size * n_edges)
         )
 
         edge_attr = edge_features.reshape(batch_size * n_edges, self.edge_dim)
@@ -1331,16 +1390,12 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
     ) -> th.Tensor:
         if not self.node_id_embeddings:
             return x
-        sub_ids = th.div(
-            node_ids, self.node_id_stride, rounding_mode="floor"
-        ).long()
+        sub_ids = th.div(node_ids, self.node_id_stride, rounding_mode="floor").long()
         bus_ids = th.remainder(node_ids, self.node_id_stride).long()
         return th.cat(
             [
                 x,
-                self.sub_id_embedding(
-                    self.node_id_substation_features[sub_ids]
-                ),
+                self.sub_id_embedding(self.node_id_substation_features[sub_ids]),
                 self.bus_id_embedding(bus_ids),
             ],
             dim=-1,
@@ -1386,6 +1441,17 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
             pooled = global_max_pool(masked_x, batch)
             return th.nan_to_num(pooled, nan=0.0, neginf=0.0, posinf=0.0)
 
+        if base_aggr == "mean_max":
+            masked_x = x.masked_fill(active_mask.unsqueeze(-1) <= 0, -th.inf)
+            pooled_max = global_max_pool(masked_x, batch)
+            pooled_max = th.nan_to_num(pooled_max, nan=0.0, neginf=0.0, posinf=0.0)
+            masked_x = x * active_mask.unsqueeze(-1)
+            pooled_sum = global_add_pool(masked_x, batch)
+            denominator = global_add_pool(active_mask.unsqueeze(-1), batch).clamp_min(
+                1.0
+            )
+            return th.cat([pooled_sum / denominator, pooled_max], dim=-1)
+
         masked_x = x * active_mask.unsqueeze(-1)
         pooled = global_add_pool(masked_x, batch)
         if base_aggr == "mean":
@@ -1412,7 +1478,9 @@ class SparseGraphTransformerEncoder(_VirtualNodeEncoderBase):
         return th.stack(pooled, dim=0)
 
 
-def build_graph_encoder(graph_spec: Dict[str, Any], args: Dict[str, Any]) -> GraphEncoder:
+def build_graph_encoder(
+    graph_spec: Dict[str, Any], args: Dict[str, Any]
+) -> GraphEncoder:
     if str(args.gnn_type).lower() == "sparse_transformer":
         readout_aggr = getattr(args, "sparse_gt_pooling", "")
         if not readout_aggr:
@@ -1450,7 +1518,9 @@ def build_graph_encoder(graph_spec: Dict[str, Any], args: Dict[str, Any]) -> Gra
         out_dim=args.gnn_out_dim,
         n_layers=args.gnn_layers,
         conv_type=args.gnn_type,
-        graphsage_aggr=getattr(args, "graphsage_aggr", getattr(args, "gnn_aggr", "mean")),
+        graphsage_aggr=getattr(
+            args, "graphsage_aggr", getattr(args, "gnn_aggr", "mean")
+        ),
         readout_aggr=getattr(args, "gnn_readout_aggr", "mean"),
         layer_norm=args.gnn_layer_norm,
         heads=args.gnn_heads,
@@ -1463,9 +1533,9 @@ def build_graph_encoder(graph_spec: Dict[str, Any], args: Dict[str, Any]) -> Gra
         summary_edge_direction=getattr(
             args, "gnn_summary_edge_direction", "bidirectional"
         ),
-        virtual_edge_direction=getattr(
-            args, "gnn_virtual_edge_direction", "inherit"
-        ),
+        virtual_edge_direction=getattr(args, "gnn_virtual_edge_direction", "inherit"),
+        residual=getattr(args, "gnn_residual", False),
+        jumping_knowledge=getattr(args, "gnn_jumping_knowledge", "none"),
     )
 
 
@@ -1534,4 +1604,8 @@ class GraphAndFlatEncoder(nn.Module):
         if graph_embedding.dim() == 1:
             graph_embedding = graph_embedding.unsqueeze(0)
         encoded = th.cat([graph_embedding, flat], dim=-1)
-        return encoded.squeeze(0) if obs[graph_key]["node_features"].dim() == 2 else encoded
+        return (
+            encoded.squeeze(0)
+            if obs[graph_key]["node_features"].dim() == 2
+            else encoded
+        )

@@ -156,6 +156,25 @@ def get_alg_args() -> Namespace:
         ),
     )
     parser.add_argument(
+        "--candidate-action-delta-encoder",
+        type=str2bool,
+        default=False,
+        help=(
+            "Encode each candidate as explicit object/source-context/target-"
+            "busbar modification tokens before scoring it. This preserves "
+            "set/change and line-status semantics without action-ID embeddings."
+        ),
+    )
+    parser.add_argument(
+        "--candidate-action-delta-dim",
+        type=int,
+        default=0,
+        help=(
+            "Output width of the counterfactual action-delta encoder. Zero "
+            "uses gnn_hidden_dim."
+        ),
+    )
+    parser.add_argument(
         "--critic-layers",
         nargs="+",
         type=int,
@@ -313,8 +332,7 @@ def get_alg_args() -> Namespace:
         type=float,
         default=1.0,
         help=(
-            "Multiplier on H(gate) when "
-            "--intervention-gate-entropy-mode=separate."
+            "Multiplier on H(gate) when " "--intervention-gate-entropy-mode=separate."
         ),
     )
     parser.add_argument(
@@ -562,6 +580,22 @@ def get_alg_args() -> Namespace:
         help="Number of message-passing layers for thesis-style gnn encoders.",
     )
     parser.add_argument(
+        "--gnn-residual",
+        type=str2bool,
+        default=False,
+        help="Add a projected residual connection around every GNN layer.",
+    )
+    parser.add_argument(
+        "--gnn-jumping-knowledge",
+        type=str,
+        choices=["none", "concat"],
+        default="none",
+        help=(
+            "Multi-scale node representation after message passing. concat "
+            "projects the pre-message and every layer state back to hidden_dim."
+        ),
+    )
+    parser.add_argument(
         "--gnn-heads",
         type=int,
         default=1,
@@ -586,6 +620,8 @@ def get_alg_args() -> Namespace:
             "controlled_energized_mean",
             "controlled_energized_sum",
             "controlled_energized_max",
+            "energized_mean_max",
+            "controlled_energized_mean_max",
             "virtual_node",
         ],
         help=(
@@ -616,6 +652,8 @@ def get_alg_args() -> Namespace:
             "controlled_energized_mean",
             "controlled_energized_sum",
             "controlled_energized_max",
+            "energized_mean_max",
+            "controlled_energized_mean_max",
             "virtual_node",
         ],
         help=(
