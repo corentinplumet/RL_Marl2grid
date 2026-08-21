@@ -226,8 +226,21 @@ class CandidateActionScorerTest(unittest.TestCase):
         weights = mask.to(node_embeddings).unsqueeze(0).unsqueeze(-1)
         return (gathered * weights).sum(dim=2) / weights.sum(dim=2).clamp_min(1.0)
 
+    @staticmethod
+    def masked_max(node_embeddings, indices, mask):
+        gathered = node_embeddings[:, indices.clamp_min(0), :]
+        active = mask.bool().unsqueeze(0).unsqueeze(-1)
+        pooled = gathered.masked_fill(~active, -th.inf).max(dim=2).values
+        return th.where(active.any(dim=2), pooled, th.zeros_like(pooled))
+
     def test_pooling_modes_produce_finite_logits_and_gradients(self):
-        for pool_mode in ("mean", "typed_mean", "typed_attention"):
+        for pool_mode in (
+            "mean",
+            "max",
+            "typed_mean",
+            "typed_max",
+            "typed_attention",
+        ):
             with self.subTest(pool_mode=pool_mode):
                 scorer = CandidateActionScorer(
                     graph_dim=5,
@@ -268,7 +281,7 @@ class CandidateActionScorerTest(unittest.TestCase):
         for parameter in scorer.delta_encoder.token_encoder.parameters():
             self.assertIsNotNone(parameter.grad)
 
-    def test_existing_mean_modes_match_the_original_pooling_equations(self):
+    def test_parameter_free_modes_match_their_pooling_equations(self):
         node_embeddings = th.randn(2, 7, 7)
         typed_metadata = (
             (self.metadata.busbar_indices, self.metadata.busbar_mask),
@@ -288,10 +301,24 @@ class CandidateActionScorerTest(unittest.TestCase):
             th.cat([indices for indices, _ in typed_metadata], dim=1),
             th.cat([mask for _, mask in typed_metadata], dim=1),
         )
+        expected_typed_max = th.cat(
+            [
+                self.masked_max(node_embeddings, indices, mask)
+                for indices, mask in typed_metadata
+            ],
+            dim=-1,
+        )
+        expected_max = self.masked_max(
+            node_embeddings,
+            th.cat([indices for indices, _ in typed_metadata], dim=1),
+            th.cat([mask for _, mask in typed_metadata], dim=1),
+        )
 
         for mode, expected in (
             ("mean", expected_mean),
+            ("max", expected_max),
             ("typed_mean", expected_typed),
+            ("typed_max", expected_typed_max),
         ):
             scorer = CandidateActionScorer(
                 graph_dim=5,
@@ -305,6 +332,9 @@ class CandidateActionScorerTest(unittest.TestCase):
             self.assertTrue(th.equal(output.context, expected))
             self.assertFalse(
                 any(key.startswith("pool.") for key in scorer.state_dict())
+            )
+            self.assertTrue(
+                th.equal(output.context[:, 0], th.zeros_like(output.context[:, 0]))
             )
 
     def test_affected_attention_respects_masks_and_empty_types(self):

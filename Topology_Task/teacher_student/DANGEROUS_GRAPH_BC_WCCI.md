@@ -294,6 +294,10 @@ records both the template depth and the target depth.
 
 Three further scratch-only architecture controls are available:
 
+- `--scratch-candidate-action-pool max` replaces the uniform mean over all
+  physical nodes touched by a candidate with an elementwise max. The
+  `typed_max` option computes one max per busbar/line/load/generator type and
+  concatenates the four contexts, analogously to `typed_mean`.
 - `--scratch-action-delta-encoder true` encodes the exact modified object,
   operation type, source-substation busbars, and set-bus destination. This
   distinguishes candidates that touch the same equipment but produce different

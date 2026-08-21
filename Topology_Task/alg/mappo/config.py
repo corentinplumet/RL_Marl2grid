@@ -66,10 +66,11 @@ def get_alg_args() -> Namespace:
         "--candidate-action-pool",
         type=str,
         default="typed_mean",
-        choices=["mean", "typed_mean", "typed_attention"],
+        choices=["mean", "max", "typed_mean", "typed_max", "typed_attention"],
         help=(
             "Pooling used by candidate_pool over the physical nodes touched "
-            "by each action."
+            "by each action. typed variants retain one context per physical "
+            "node type."
         ),
     )
     parser.add_argument(

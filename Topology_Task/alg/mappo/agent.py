@@ -191,10 +191,16 @@ class CandidateActionScorer(nn.Module):
         self.n_actions = metadata.n_actions
         self.node_dim = int(node_dim)
         self.pool_mode = str(pool_mode).lower()
-        if self.pool_mode not in {"mean", "typed_mean", "typed_attention"}:
+        if self.pool_mode not in {
+            "mean",
+            "max",
+            "typed_mean",
+            "typed_max",
+            "typed_attention",
+        }:
             raise ValueError(
-                "candidate_action_pool must be 'mean', 'typed_mean', or "
-                f"'typed_attention', got {pool_mode!r}."
+                "candidate_action_pool must be 'mean', 'max', 'typed_mean', "
+                f"'typed_max', or 'typed_attention', got {pool_mode!r}."
             )
         self.use_action_features = bool(use_action_features)
         self.use_do_nothing_head = bool(use_do_nothing_head)
@@ -256,7 +262,9 @@ class CandidateActionScorer(nn.Module):
             self.pool = CandidateActionMeanPool(self.pool_mode)
 
         local_dim = self.node_dim * (
-            4 if self.pool_mode in {"typed_mean", "typed_attention"} else 1
+            4
+            if self.pool_mode in {"typed_mean", "typed_max", "typed_attention"}
+            else 1
         )
         scorer_input_dim = int(graph_dim) + local_dim
         if self.use_action_features:

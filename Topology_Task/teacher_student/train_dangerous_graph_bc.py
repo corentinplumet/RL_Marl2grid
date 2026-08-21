@@ -526,6 +526,16 @@ def parse_args() -> Namespace:
         ),
     )
     parser.add_argument(
+        "--scratch-candidate-action-pool",
+        choices=["mean", "max", "typed_mean", "typed_max", "typed_attention"],
+        default=None,
+        help=(
+            "Override pooling across the nodes touched by each candidate action "
+            "while constructing a fresh actor. Valid only with "
+            "--initialization scratch."
+        ),
+    )
+    parser.add_argument(
         "--scratch-action-delta-encoder",
         type=str2bool,
         default=None,
@@ -742,6 +752,7 @@ def main() -> None:
         args,
         initialization=cli.initialization,
         gnn_layers=cli.scratch_gnn_layers,
+        candidate_action_pool=cli.scratch_candidate_action_pool,
         action_delta_encoder=cli.scratch_action_delta_encoder,
         gnn_residual=cli.scratch_gnn_residual,
         gnn_jumping_knowledge=cli.scratch_gnn_jumping_knowledge,

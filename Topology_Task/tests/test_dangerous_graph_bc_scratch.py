@@ -33,6 +33,7 @@ class DangerousGraphBCScratchTest(unittest.TestCase):
     def test_overrides_all_new_scratch_architecture_components(self):
         args = Namespace(
             gnn_layers=2,
+            candidate_action_pool="mean",
             candidate_action_delta_encoder=False,
             gnn_residual=False,
             gnn_jumping_knowledge="none",
@@ -43,6 +44,7 @@ class DangerousGraphBCScratchTest(unittest.TestCase):
             args,
             initialization="scratch",
             gnn_layers=4,
+            candidate_action_pool="max",
             action_delta_encoder=True,
             gnn_residual=True,
             gnn_jumping_knowledge="concat",
@@ -50,6 +52,7 @@ class DangerousGraphBCScratchTest(unittest.TestCase):
         )
 
         self.assertEqual(args.gnn_layers, 4)
+        self.assertEqual(args.candidate_action_pool, "max")
         self.assertTrue(args.candidate_action_delta_encoder)
         self.assertTrue(args.gnn_residual)
         self.assertEqual(args.gnn_jumping_knowledge, "concat")
@@ -58,12 +61,21 @@ class DangerousGraphBCScratchTest(unittest.TestCase):
             set(overrides),
             {
                 "gnn_layers",
+                "candidate_action_pool",
                 "candidate_action_delta_encoder",
                 "gnn_residual",
                 "gnn_jumping_knowledge",
                 "gnn_readout_aggr",
             },
         )
+
+    def test_rejects_invalid_candidate_pool_override(self):
+        with self.assertRaisesRegex(ValueError, "scratch-candidate-action-pool"):
+            apply_scratch_architecture_overrides(
+                Namespace(candidate_action_pool="mean"),
+                initialization="scratch",
+                candidate_action_pool="median",
+            )
 
     def test_rejects_depth_override_for_warm_start(self):
         args = Namespace(gnn_layers=2)

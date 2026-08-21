@@ -21,15 +21,15 @@ class CandidateAttentionOutput:
 
 
 class CandidateActionMeanPool(nn.Module):
-    """The original uniform candidate-node pooling modes."""
+    """Parameter-free mean/max pooling over nodes touched by each action."""
 
     def __init__(self, mode: str) -> None:
         super().__init__()
         self.mode = str(mode).lower()
-        if self.mode not in {"mean", "typed_mean"}:
+        if self.mode not in {"mean", "max", "typed_mean", "typed_max"}:
             raise ValueError(
-                "CandidateActionMeanPool mode must be 'mean' or "
-                f"'typed_mean', got {mode!r}."
+                "CandidateActionMeanPool mode must be 'mean', 'max', "
+                f"'typed_mean', or 'typed_max', got {mode!r}."
             )
 
     @staticmethod
@@ -45,15 +45,39 @@ class CandidateActionMeanPool(nn.Module):
         denominator = weights.sum(dim=2).clamp_min(1.0)
         return summed / denominator
 
+    @staticmethod
+    def _masked_max(
+        node_embeddings: th.Tensor,
+        indices: th.Tensor,
+        mask: th.Tensor,
+    ) -> th.Tensor:
+        safe_indices = indices.clamp_min(0)
+        gathered = node_embeddings[:, safe_indices, :]
+        active = mask.bool().unsqueeze(0).unsqueeze(-1)
+        floor = th.finfo(node_embeddings.dtype).min
+        pooled = gathered.masked_fill(~active, floor).max(dim=2).values
+        has_nodes = active.any(dim=2)
+        return th.where(has_nodes, pooled, th.zeros_like(pooled))
+
+    def _pool(
+        self,
+        node_embeddings: th.Tensor,
+        indices: th.Tensor,
+        mask: th.Tensor,
+    ) -> th.Tensor:
+        if self.mode.endswith("max"):
+            return self._masked_max(node_embeddings, indices, mask)
+        return self._masked_mean(node_embeddings, indices, mask)
+
     def forward(
         self,
         node_embeddings: th.Tensor,
         typed_metadata: TypedActionMetadata,
     ) -> CandidateAttentionOutput:
-        if self.mode == "typed_mean":
+        if self.mode.startswith("typed_"):
             context = th.cat(
                 [
-                    self._masked_mean(node_embeddings, indices, mask)
+                    self._pool(node_embeddings, indices, mask)
                     for _, indices, mask in typed_metadata
                 ],
                 dim=-1,
@@ -63,7 +87,7 @@ class CandidateActionMeanPool(nn.Module):
                 [indices for _, indices, _ in typed_metadata], dim=1
             )
             all_masks = th.cat([mask for _, _, mask in typed_metadata], dim=1)
-            context = self._masked_mean(
+            context = self._pool(
                 node_embeddings,
                 all_indices,
                 all_masks,

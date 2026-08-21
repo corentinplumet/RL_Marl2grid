@@ -13,6 +13,7 @@ def apply_scratch_architecture_overrides(
     *,
     initialization: str,
     gnn_layers: int | None = None,
+    candidate_action_pool: str | None = None,
     action_delta_encoder: bool | None = None,
     gnn_residual: bool | None = None,
     gnn_jumping_knowledge: str | None = None,
@@ -21,6 +22,7 @@ def apply_scratch_architecture_overrides(
     """Apply explicitly requested scratch-only architecture changes."""
     requested = {
         "gnn_layers": gnn_layers,
+        "candidate_action_pool": candidate_action_pool,
         "candidate_action_delta_encoder": action_delta_encoder,
         "gnn_residual": gnn_residual,
         "gnn_jumping_knowledge": gnn_jumping_knowledge,
@@ -37,6 +39,17 @@ def apply_scratch_architecture_overrides(
         )
     if gnn_layers is not None and int(gnn_layers) <= 0:
         raise ValueError("--scratch-gnn-layers must be a positive integer.")
+    if candidate_action_pool is not None and str(candidate_action_pool) not in {
+        "mean",
+        "max",
+        "typed_mean",
+        "typed_max",
+        "typed_attention",
+    }:
+        raise ValueError(
+            "--scratch-candidate-action-pool must be mean, max, typed_mean, "
+            "typed_max, or typed_attention."
+        )
     if gnn_jumping_knowledge is not None and str(gnn_jumping_knowledge) not in {
         "none",
         "concat",
@@ -49,7 +62,11 @@ def apply_scratch_architecture_overrides(
             target = int(target)
         elif name in {"candidate_action_delta_encoder", "gnn_residual"}:
             target = bool(target)
-        elif name in {"gnn_jumping_knowledge", "gnn_readout_aggr"}:
+        elif name in {
+            "candidate_action_pool",
+            "gnn_jumping_knowledge",
+            "gnn_readout_aggr",
+        }:
             target = str(target)
         template = getattr(args, name, None)
         setattr(args, name, target)
