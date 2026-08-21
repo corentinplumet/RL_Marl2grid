@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Submit the NLS max-readout architecture ablation on Izar.
+# Submit the eight-run NLS global-max/action-delta screen on Izar.
 
 set -euo pipefail
 shopt -s nullglob

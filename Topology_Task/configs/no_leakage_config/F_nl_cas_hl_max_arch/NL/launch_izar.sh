@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Submit the NL max-readout architecture ablation on Izar.
+# Submit the eight-run NL global-max/action-delta screen on Izar.
 
 set -euo pipefail
 shopt -s nullglob

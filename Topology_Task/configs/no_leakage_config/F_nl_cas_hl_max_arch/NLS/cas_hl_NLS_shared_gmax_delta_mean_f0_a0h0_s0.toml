@@ -1,8 +1,8 @@
-# Paired max-readout/action-delta architecture ablation, seed 0.
-# Variant: delta_resjk; NL and NLS differ only in input preprocessing.
+# Shared-candidate-scorer global-max/action-delta bus14 run.
+# NL and NLS differ only in their input preprocessing.
 
 [run]
-name = "cas_hl_NLS_shared_max_delta_resjk_f1_a0h0_s0"
+name = "cas_hl_NLS_shared_gmax_delta_mean_f0_a0h0_s0"
 run_dir = "outputs/izar-{config_name}-{job_id}"
 seed_from_slurm_array = false
 extra_args = []
@@ -31,7 +31,7 @@ checkpoint = true
 alg = "MAPPO"
 seed = 0
 verbose = true
-exp_tag = "cas_hl_NLS_shared_max_delta_resjk_f1_a0h0_s0"
+exp_tag = "cas_hl_NLS_shared_gmax_delta_mean_f0_a0h0_s0"
 track = true
 wandb_project = "Grid2Op"
 wandb_entity = "corentin-plumet-epfl"
@@ -62,8 +62,8 @@ chronic_split_seed = 0
 # Shared, grid-size-independent actor encoder
 actor_encoder = "gnn"
 actor_action_head = "candidate_pool"
-candidate_action_pool = "max"
-candidate_action_use_features = true
+candidate_action_pool = "mean"
+candidate_action_use_features = false
 candidate_action_do_nothing_head = false
 candidate_action_delta_encoder = true
 candidate_action_delta_dim = 0
@@ -72,8 +72,8 @@ gnn_type = "gine"
 gnn_hidden_dim = 128
 gnn_out_dim = 128
 gnn_layers = 2
-gnn_residual = true
-gnn_jumping_knowledge = "concat"
+gnn_residual = false
+gnn_jumping_knowledge = "none"
 gnn_heads = 4
 gnn_readout_aggr = "energized_max"
 sparse_gt_pooling = ""
