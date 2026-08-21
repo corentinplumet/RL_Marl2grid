@@ -161,6 +161,29 @@ a property of the WCCI operating regime rather than being confused with an
 ordering failure. Do not lower the threshold until this audit has established
 that the missing months genuinely contain no dangerous states.
 
+### Train from a live collection without stopping it
+
+Do not point the trainer directly at a directory that is still receiving
+shards. Create an immutable snapshot of its completed shards instead:
+
+```bash
+python Topology_Task/teacher_student/snapshot_live_dangerous_graph_bc_dataset.py \
+  --source outputs/teacher_student_datasets/wcci_nomaint_danger090_mk32_rank_balanced \
+  --output outputs/teacher_student_datasets/wcci_nomaint_danger090_mk32_rank_balanced_snapshot_1 \
+  --config teacher_student/configs/wcci_dangerous_graph_collection.toml \
+  --reduced-action-space outputs/teacher_student_datasets/wcci_full2048a_90_v3/metadata/reduced_action_space_wcci_full2048a_90_v3_mk32.json \
+  --min-age-seconds 60 \
+  --mode hardlink
+```
+
+Only the contiguous prefix of shards that is old enough and can be opened is
+included. The in-memory partial shard and any file currently being written are
+excluded. Hard links avoid duplicating shard storage and remain valid if the
+source filename is later removed. The snapshot receives its own inferred
+metadata and is a fixed, reproducible input to the trainer; later live shards
+do not appear in a training process that has already started. Use a new output
+name for each later snapshot.
+
 ### Unbounded collection with a manual stop
 
 Pass `--run-until-stopped true` and omit `--max-episodes`, `--max-env-steps`,
