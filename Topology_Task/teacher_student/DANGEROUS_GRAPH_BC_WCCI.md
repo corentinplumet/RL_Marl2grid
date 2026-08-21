@@ -109,6 +109,58 @@ dangerous states per chronic, keeps queried states at least 12 environment
 steps apart, and stops at 2500 total dangerous states. Start with the smoke
 test, inspect its simulation rate, then adjust these bounds if needed.
 
+### Calendar-balanced mk32 ranking collection
+
+A random chronic order does not imply a balanced state dataset: a difficult
+chronic can contribute hundreds of consecutive dangerous timesteps while an
+easy chronic contributes none. For a calendar-diverse collection, combine all
+three controls:
+
+1. `calendar_round_robin` interleaves chronic paths by named month;
+2. the per-episode cap and query gap reduce within-chronic autocorrelation;
+3. the per-month quota prevents one seasonal regime from dominating accepted
+   rows and avoids simulating candidates after that quota is full.
+
+```bash
+cd /home/plumet/RL_Marl2grid
+
+sbatch --job-name=dang32_rank_balanced \
+  Topology_Task/teacher_student/job_collect_dangerous_graph_bc_jed.sh \
+  --config teacher_student/configs/wcci_dangerous_graph_collection.toml \
+  --split train \
+  --split-chronics true \
+  --eval-all-split-chronics false \
+  --run-until-stopped true \
+  --chronic-order-mode calendar_round_robin \
+  --chronic-sample-seed 0 \
+  --max-dangerous-states-per-episode 24 \
+  --max-dangerous-states-per-month 1500 \
+  --min-dangerous-query-gap 12 \
+  --danger-rho-threshold 0.90 \
+  --local-rho-threshold 0.90 \
+  --min-improvement 0.001 \
+  --outcome-time-step 1 \
+  --rollout-policy best_simulated \
+  --rollout-action-space mk32 \
+  --label-action-space mk32=outputs/teacher_student_datasets/wcci_full2048a_90_v3/metadata/reduced_action_space_wcci_full2048a_90_v3_mk32.json \
+  --store-candidate-outcomes true \
+  --shard-size 512 \
+  --compress true \
+  --obs-normalization disable \
+  --progress-every 100 \
+  --output-dir outputs/teacher_student_datasets/wcci_nomaint_danger090_mk32_rank_balanced \
+  --device cpu \
+  --n-threads 8
+```
+
+Every shard stores `calendar_month`. Progress output shows accepted rows by
+month, and `metadata/metadata.json` records active chronics, started/completed
+episodes, unique chronic fingerprints, accepted dangerous states, and quota
+skips by month. A month with few or zero rho>=0.90 rows is therefore visible as
+a property of the WCCI operating regime rather than being confused with an
+ordering failure. Do not lower the threshold until this audit has established
+that the missing months genuinely contain no dangerous states.
+
 ### Unbounded collection with a manual stop
 
 Pass `--run-until-stopped true` and omit `--max-episodes`, `--max-env-steps`,

@@ -743,6 +743,9 @@ class RecordEpisodeStatistics(gym.Wrapper, gym.utils.RecordConstructorArgs):
     def set_chronic_window(self, start: int, count: int) -> Dict[str, int]:
         return self.env.set_chronic_window(start=start, count=count)
 
+    def set_chronic_order(self, ordered_chronics: List[str]) -> int:
+        return self.env.set_chronic_order(ordered_chronics)
+
     def simulate_action_outcomes(
         self,
         requests: List[Dict[str, Any]],

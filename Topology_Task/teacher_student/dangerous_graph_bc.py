@@ -378,6 +378,13 @@ class DangerousGraphBCWriter:
                 [row["concerned_fallback"] for row in self.rows], dtype=bool
             ),
         }
+        has_calendar_month = ["calendar_month" in row for row in self.rows]
+        if any(has_calendar_month) and not all(has_calendar_month):
+            raise ValueError("Calendar month is missing from some dataset rows.")
+        if all(has_calendar_month):
+            arrays["calendar_month"] = np.asarray(
+                [row["calendar_month"] for row in self.rows], dtype=str
+            )
 
         scalar_dtypes = {
             "policy_action": np.int32,

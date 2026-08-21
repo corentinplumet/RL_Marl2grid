@@ -1395,6 +1395,29 @@ class MAEnvWrapper(Env):
             "wrapped": int(wrapped),
         }
 
+    def set_chronic_order(self, ordered_chronics: List[str]) -> int:
+        """Replace the active split order and reset to its first chronic."""
+        if not self.chronic_split_order:
+            raise RuntimeError("No explicit chronic split order is available.")
+        ordered = [str(chronic) for chronic in ordered_chronics]
+        if len(ordered) != len(self.chronic_split_order):
+            raise ValueError(
+                "A replacement chronic order must contain every active chronic "
+                f"exactly once; expected {len(self.chronic_split_order)}, "
+                f"got {len(ordered)}."
+            )
+        expected = sorted(map(os.path.normpath, self.chronic_split_order))
+        received = sorted(map(os.path.normpath, ordered))
+        if received != expected:
+            raise ValueError(
+                "A replacement chronic order must contain the same chronic paths."
+            )
+        successes = self._set_active_chronic_order(ordered, reset_position=True)
+        if successes == 0:
+            raise RuntimeError("Could not apply the requested chronic order.")
+        self.chronic_split_order = ordered
+        return successes
+
     def set_chronic_id(self, chronic_id: int) -> None:
         """Best-effort request for Grid2Op to use a specific chronic on reset."""
         chronic_id = int(chronic_id)

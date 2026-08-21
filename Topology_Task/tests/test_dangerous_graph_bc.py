@@ -168,7 +168,8 @@ def test_writer_round_trip(tmp_path: Path):
             "global_max_rho": 0.95,
             "chronic_name": "c0",
             "chronic_fingerprint": "fp0",
-            "chronic_datetime": "d0",
+            "chronic_datetime": "2012-04-01 00:00:00",
+            "calendar_month": "04",
             "concerned_fallback": False,
         },
         agent_values=values,
@@ -181,6 +182,8 @@ def test_writer_round_trip(tmp_path: Path):
     candidate_outcomes = load_candidate_outcome_batch(path, "agent_1")
     assert candidate_outcomes["rho_after"].shape == (1, 4)
     assert candidate_outcomes["rank"].tolist() == [[1, 0, -1, -1]]
+    with np.load(path) as data:
+        assert data["calendar_month"].tolist() == ["04"]
 
 
 def test_chronic_split_keeps_every_fingerprint_on_one_side(tmp_path: Path):

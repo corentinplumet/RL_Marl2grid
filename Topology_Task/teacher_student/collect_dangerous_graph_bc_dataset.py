@@ -9,6 +9,7 @@ import signal
 import sys
 import time
 from argparse import Namespace
+from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Tuple
@@ -52,6 +53,11 @@ from teacher_student.dangerous_graph_bc import (
     copy_actor_observation,
     write_json,
 )
+from teacher_student.calendar_balancing import (
+    calendar_month_key,
+    calendar_round_robin,
+    format_month_counts,
+)
 from teacher_student.dataset import (
     export_metadata_file,
     metadata_dir,
@@ -79,6 +85,33 @@ def _current_chronic_info(evaluator: Evaluator) -> Dict[str, str]:
         key: str(info.get(key, "unknown"))
         for key in ("chronic_name", "chronic_fingerprint", "chronic_datetime")
     }
+
+
+def _configure_chronic_order(evaluator: Evaluator, cli: Namespace) -> Dict[str, int]:
+    """Apply the requested seeded or calendar-stratified chronic order."""
+    active_order = list(getattr(evaluator.env.env, "chronic_split_order", None) or [])
+    month_counts = dict(sorted(Counter(map(calendar_month_key, active_order)).items()))
+    if cli.chronic_order_mode == "calendar_round_robin":
+        if not active_order:
+            raise RuntimeError(
+                "--chronic-order-mode calendar_round_robin requires an explicit "
+                "chronic split order. Keep --split-chronics true."
+            )
+        known_months = {month for month in month_counts if month != "unknown"}
+        if len(known_months) < 2:
+            raise RuntimeError(
+                "Calendar round-robin ordering found fewer than two recognizable "
+                f"months in chronic paths: {month_counts}."
+            )
+        ordered, month_counts = calendar_round_robin(
+            active_order,
+            key=calendar_month_key,
+            seed=cli.chronic_sample_seed,
+        )
+        evaluator.env.set_chronic_order(ordered)
+    elif cli.split_chronics and not cli.eval_all_split_chronics:
+        evaluator.env.reshuffle_chronics(seed=cli.chronic_sample_seed)
+    return month_counts
 
 
 def _prepare_output_dir(path: Path, overwrite: bool) -> None:
@@ -341,7 +374,9 @@ def _metadata_payload(
     skipped_safe_states: int,
     skipped_capped_dangerous_states: int,
     skipped_gap_dangerous_states: int,
+    skipped_month_quota_dangerous_states: int,
     unique_fingerprints: set[str],
+    calendar_summary: Dict[str, Any],
     metrics: Dict[str, Dict[str, int]],
 ) -> Dict[str, Any]:
     return {
@@ -379,8 +414,10 @@ def _metadata_payload(
         "target_episodes": target_episodes,
         "stop_signal": stop_signal,
         "chronic_sample_seed": int(cli.chronic_sample_seed),
+        "chronic_order_mode": cli.chronic_order_mode,
         "max_dangerous_states": cli.max_dangerous_states,
         "max_dangerous_states_per_episode": cli.max_dangerous_states_per_episode,
+        "max_dangerous_states_per_month": cli.max_dangerous_states_per_month,
         "min_dangerous_query_gap": int(cli.min_dangerous_query_gap),
         "danger_rho_threshold": float(cli.danger_rho_threshold),
         "local_rho_threshold": float(cli.local_rho_threshold),
@@ -405,8 +442,12 @@ def _metadata_payload(
         "n_skipped_safe_states": int(skipped_safe_states),
         "n_skipped_capped_dangerous_states": int(skipped_capped_dangerous_states),
         "n_skipped_gap_dangerous_states": int(skipped_gap_dangerous_states),
+        "n_skipped_month_quota_dangerous_states": int(
+            skipped_month_quota_dangerous_states
+        ),
         "n_completed_episodes": int(completed_episodes),
         "n_unique_chronic_fingerprints": int(len(unique_fingerprints)),
+        "calendar_balance": calendar_summary,
         "n_shards": int(len(writer.paths)),
         "shards": [str(path) for path in writer.paths],
         "agent_summary": metrics,
@@ -473,8 +514,26 @@ def parse_args() -> Namespace:
     )
     parser.add_argument("--max-env-steps", type=int, default=None)
     parser.add_argument("--chronic-sample-seed", type=int, default=0)
+    parser.add_argument(
+        "--chronic-order-mode",
+        choices=["seeded_random", "calendar_round_robin"],
+        default="seeded_random",
+        help=(
+            "seeded_random preserves the previous behavior. calendar_round_robin "
+            "shuffles within each named calendar month and interleaves months."
+        ),
+    )
     parser.add_argument("--max-dangerous-states", type=int, default=None)
     parser.add_argument("--max-dangerous-states-per-episode", type=int, default=None)
+    parser.add_argument(
+        "--max-dangerous-states-per-month",
+        type=int,
+        default=None,
+        help=(
+            "Online quota for accepted rows in each calendar month. Dangerous "
+            "states beyond a filled month quota are not simulated or written."
+        ),
+    )
     parser.add_argument("--min-dangerous-query-gap", type=int, default=1)
     parser.add_argument("--danger-rho-threshold", type=float, default=0.90)
     parser.add_argument("--local-rho-threshold", type=float, default=None)
@@ -531,7 +590,11 @@ def main() -> None:
         raise ValueError("--shard-size must be positive.")
     if cli.min_improvement < 0:
         raise ValueError("--min-improvement must be non-negative.")
-    for name in ("max_dangerous_states", "max_dangerous_states_per_episode"):
+    for name in (
+        "max_dangerous_states",
+        "max_dangerous_states_per_episode",
+        "max_dangerous_states_per_month",
+    ):
         value = getattr(cli, name)
         if value is not None and value <= 0:
             raise ValueError(f"--{name.replace('_', '-')} must be positive.")
@@ -752,8 +815,7 @@ def main() -> None:
         if target_episodes is None
         else str(target_episodes)
     )
-    if cli.split_chronics and not cli.eval_all_split_chronics:
-        evaluator.env.reshuffle_chronics(seed=cli.chronic_sample_seed)
+    chronic_order_month_counts = _configure_chronic_order(evaluator, cli)
     obs, _ = evaluator.env.reset()
     env_steps = 0
     completed_episodes = 0
@@ -761,9 +823,15 @@ def main() -> None:
     skipped_safe_states = 0
     skipped_capped_dangerous_states = 0
     skipped_gap_dangerous_states = 0
+    skipped_month_quota_dangerous_states = 0
     episode_dangerous_states = 0
     last_dangerous_query_step = -int(cli.min_dangerous_query_gap)
     unique_fingerprints: set[str] = set()
+    unique_fingerprints_by_month: Dict[str, set[str]] = defaultdict(set)
+    dangerous_states_by_month: Counter[str] = Counter()
+    episodes_started_by_month: Counter[str] = Counter()
+    episodes_completed_by_month: Counter[str] = Counter()
+    episode_calendar_month = "unknown"
     started = time.perf_counter()
     completed_normally = False
     stop_signal_name: str | None = None
@@ -786,10 +854,18 @@ def main() -> None:
     print(f"Split / episodes: {cli.split} / {target_episodes_label}")
     print(
         "Sampling: "
-        f"seed={cli.chronic_sample_seed} max_states={cli.max_dangerous_states} "
+        f"order={cli.chronic_order_mode} seed={cli.chronic_sample_seed} "
+        f"max_states={cli.max_dangerous_states} "
         f"per_episode={cli.max_dangerous_states_per_episode} "
+        f"per_month={cli.max_dangerous_states_per_month} "
         f"min_gap={cli.min_dangerous_query_gap}"
     )
+    if chronic_order_month_counts:
+        print(
+            "Active chronic months: "
+            + format_month_counts(chronic_order_month_counts),
+            flush=True,
+        )
     print(f"Danger/local rho: {cli.danger_rho_threshold} / {cli.local_rho_threshold}")
     print(f"Min improvement: {cli.min_improvement}")
     print(f"Store candidate outcomes/ranks: {cli.store_candidate_outcomes}")
@@ -811,7 +887,16 @@ def main() -> None:
                 break
 
             chronic = _current_chronic_info(evaluator)
+            calendar_month = calendar_month_key(
+                chronic["chronic_datetime"], chronic["chronic_name"]
+            )
+            if episode_step == 0:
+                episode_calendar_month = calendar_month
+                episodes_started_by_month[episode_calendar_month] += 1
             unique_fingerprints.add(chronic["chronic_fingerprint"])
+            unique_fingerprints_by_month[calendar_month].add(
+                chronic["chronic_fingerprint"]
+            )
             global_rho = float(evaluator.env.get_current_max_rho())
             local_rhos = {
                 agent: float(value)
@@ -847,9 +932,19 @@ def main() -> None:
             gap_satisfied = bool(
                 episode_step - last_dangerous_query_step >= cli.min_dangerous_query_gap
             )
+            month_quota_reached = bool(
+                cli.max_dangerous_states_per_month is not None
+                and dangerous_states_by_month[calendar_month]
+                >= cli.max_dangerous_states_per_month
+            )
 
             rollout_actions: Dict[str, Any]
-            if is_dangerous and not episode_cap_reached and gap_satisfied:
+            if (
+                is_dangerous
+                and not episode_cap_reached
+                and gap_satisfied
+                and not month_quota_reached
+            ):
                 concerned, used_fallback = choose_concerned_agents(
                     local_rhos, cli.local_rho_threshold
                 )
@@ -936,6 +1031,7 @@ def main() -> None:
                             "episode_step": episode_step,
                             "dataset_step": env_steps,
                             "global_max_rho": global_rho,
+                            "calendar_month": calendar_month,
                             "concerned_fallback": used_fallback,
                             **chronic,
                         },
@@ -948,6 +1044,7 @@ def main() -> None:
                             flush=True,
                         )
                 episode_dangerous_states += 1
+                dangerous_states_by_month[calendar_month] += 1
                 last_dangerous_query_step = episode_step
 
                 if cli.rollout_policy == "best_simulated":
@@ -978,6 +1075,8 @@ def main() -> None:
                     skipped_safe_states += 1
                 elif episode_cap_reached:
                     skipped_capped_dangerous_states += 1
+                elif month_quota_reached:
+                    skipped_month_quota_dangerous_states += 1
                 else:
                     skipped_gap_dangerous_states += 1
                 rollout_actions = (
@@ -994,6 +1093,7 @@ def main() -> None:
             episode_step += 1
             if done:
                 completed_episodes += 1
+                episodes_completed_by_month[episode_calendar_month] += 1
                 obs, _ = evaluator.env.reset()
                 episode_step = 0
                 episode_dangerous_states = 0
@@ -1007,7 +1107,9 @@ def main() -> None:
                 print(
                     f"steps={env_steps} "
                     f"episodes={completed_episodes}/{target_episodes_label} "
-                    f"dangerous={dangerous_states} elapsed={elapsed / 60:.1f}m",
+                    f"dangerous={dangerous_states} "
+                    f"months={format_month_counts(dangerous_states_by_month)} "
+                    f"elapsed={elapsed / 60:.1f}m",
                     flush=True,
                 )
         completed_normally = True
@@ -1018,6 +1120,18 @@ def main() -> None:
             flush=True,
         )
     finally:
+        calendar_summary = {
+            "chronic_order_month_counts": dict(chronic_order_month_counts),
+            "dangerous_states_by_month": dict(sorted(dangerous_states_by_month.items())),
+            "episodes_started_by_month": dict(sorted(episodes_started_by_month.items())),
+            "episodes_completed_by_month": dict(
+                sorted(episodes_completed_by_month.items())
+            ),
+            "unique_chronic_fingerprints_by_month": {
+                month: len(fingerprints)
+                for month, fingerprints in sorted(unique_fingerprints_by_month.items())
+            },
+        }
         metadata_by_space = {}
         for space_label, writer in writers.items():
             final_shard = writer.flush()
@@ -1055,7 +1169,11 @@ def main() -> None:
                 skipped_safe_states=skipped_safe_states,
                 skipped_capped_dangerous_states=skipped_capped_dangerous_states,
                 skipped_gap_dangerous_states=skipped_gap_dangerous_states,
+                skipped_month_quota_dangerous_states=(
+                    skipped_month_quota_dangerous_states
+                ),
                 unique_fingerprints=unique_fingerprints,
+                calendar_summary=calendar_summary,
                 metrics=metrics[space_label],
             )
             meta_path = metadata_path(dataset_dirs[space_label])
@@ -1091,12 +1209,20 @@ def main() -> None:
                     "target_episodes": target_episodes,
                     "stop_signal": stop_signal_name,
                     "chronic_sample_seed": cli.chronic_sample_seed,
+                    "chronic_order_mode": cli.chronic_order_mode,
                     "max_dangerous_states": cli.max_dangerous_states,
                     "max_dangerous_states_per_episode": (
                         cli.max_dangerous_states_per_episode
                     ),
+                    "max_dangerous_states_per_month": (
+                        cli.max_dangerous_states_per_month
+                    ),
                     "min_dangerous_query_gap": cli.min_dangerous_query_gap,
                     "n_dangerous_states": next(iter(writers.values())).total_states,
+                    "n_skipped_month_quota_dangerous_states": (
+                        skipped_month_quota_dangerous_states
+                    ),
+                    "calendar_balance": calendar_summary,
                 },
             )
         for signal_number, previous_handler in previous_signal_handlers.items():
