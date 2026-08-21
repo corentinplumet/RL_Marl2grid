@@ -36,6 +36,17 @@ VARIANTS = (
 )
 PREFIXES = {"finetune": "ft{cap}c", "scratch": "sc{cap}c"}
 
+# The two input conditions differ in exactly four things. NL configs are derived
+# from the NLS ones rather than from the mk256 originals so that both families
+# inherit the same conservative recipe, verbatim.
+NL_SUBSTITUTIONS = (
+    ('gnn_angle_representation = "edge_diff"', 'gnn_angle_representation = "node"'),
+    ("gnn_physical_scaling = true", "gnn_physical_scaling = false"),
+    ("# Input preprocessing: corrected encoder inputs", "# Input preprocessing factors"),
+)
+NLS_CHECKPOINT_DIR = "checkpoint/no_leak/shared/NL_cas_hl_scaled_shared_izar"
+NL_CHECKPOINT_DIR = "checkpoint/no_leak/shared/NL_cas_hl_shared"
+
 
 def replace_all(text: str, old: str, new: str, expected: int | None = None) -> str:
     count = text.count(old)
@@ -44,7 +55,19 @@ def replace_all(text: str, old: str, new: str, expected: int | None = None) -> s
     return text.replace(old, new)
 
 
-def recap(text: str, variant: str, regime: str, cap: int) -> str:
+def to_nl(text: str, variant: str) -> str:
+    """Turn a scaled (NLS) config into its raw-input (NL) twin."""
+    for old, new in NL_SUBSTITUTIONS:
+        text = replace_all(text, old, new, expected=1)
+    text = replace_all(
+        text,
+        f"{NLS_CHECKPOINT_DIR}/best_test_cas_hl_NLS_izar_shared_{variant}_s0.tar",
+        f"{NL_CHECKPOINT_DIR}/best_test_cas_hl_NL_shared_{variant}_s0.tar",
+    ) if NLS_CHECKPOINT_DIR in text else text
+    return replace_all(text, "_NLS_", "_NL_")
+
+
+def recap(text: str, variant: str, regime: str, cap: int, family: str = "NLS") -> str:
     source = f"{PREFIXES[regime].format(cap=SOURCE_CAP)}_NLS_{variant}_s0"
     target = f"{PREFIXES[regime].format(cap=cap)}_NLS_{variant}_s0"
 
@@ -54,9 +77,15 @@ def recap(text: str, variant: str, regime: str, cap: int) -> str:
     text = replace_all(text, f'exp_tag = "{source}"', f'exp_tag = "{target}"', expected=1)
     # Header and section comments carry the cap; rewrite them so a config never
     # describes a campaign it is not part of.
+    # Inherited from the Izar mk64 campaign; these configs run on either cluster,
+    # so the run directory should not claim one.
+    text = replace_all(text, 'run_dir = "outputs/izar-{config_name}-{job_id}"',
+                       'run_dir = "outputs/{config_name}-{job_id}"', expected=1)
     text = replace_all(text, f"mk{SOURCE_CAP}", f"mk{cap}")
     if f"mk{SOURCE_CAP}" in text:
         raise ValueError(f"{target}: stale mk{SOURCE_CAP} reference left behind")
+    if family == "NL":
+        text = to_nl(text, variant)
     return text
 
 
@@ -65,6 +94,9 @@ def main() -> None:
     parser.add_argument("cap", type=int, help="per-agent action cap, e.g. 32")
     parser.add_argument("--regime", choices=("finetune", "scratch"), action="append",
                         help="restrict to one regime (repeatable); default is both")
+    parser.add_argument("--family", choices=("NLS", "NL", "both"), default="NLS",
+                        help="input condition: NLS (physical scaling, default), NL (raw "
+                             "inputs), or both")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
@@ -82,19 +114,28 @@ def main() -> None:
     output_dir = CONFIG_ROOT / f"W_wcci_cas_hl_shared_mk{args.cap}_seed0"
     regimes = args.regime or list(PREFIXES)
 
+    families = ["NLS", "NL"] if args.family == "both" else [args.family]
     written = []
-    for regime in regimes:
-        for variant in VARIANTS:
-            source_name = f"{PREFIXES[regime].format(cap=SOURCE_CAP)}_NLS_{variant}_s0"
-            source_path = source_dir / f"{source_name}.toml"
-            if not source_path.is_file():
-                raise FileNotFoundError(f"Missing source config: {source_path}")
-            target = f"{PREFIXES[regime].format(cap=args.cap)}_NLS_{variant}_s0"
-            text = recap(source_path.read_text(encoding="utf-8"), variant, regime, args.cap)
-            if not args.dry_run:
-                output_dir.mkdir(parents=True, exist_ok=True)
-                (output_dir / f"{target}.toml").write_text(text, encoding="utf-8")
-            written.append(target)
+    for family in families:
+        for regime in regimes:
+            for variant in VARIANTS:
+                source_name = f"{PREFIXES[regime].format(cap=SOURCE_CAP)}_NLS_{variant}_s0"
+                source_path = source_dir / f"{source_name}.toml"
+                if not source_path.is_file():
+                    raise FileNotFoundError(f"Missing source config: {source_path}")
+                target = f"{PREFIXES[regime].format(cap=args.cap)}_{family}_{variant}_s0"
+                text = recap(source_path.read_text(encoding="utf-8"), variant, regime,
+                             args.cap, family)
+                if regime == "finetune":
+                    marker = 'transfer_encoder_checkpoint = "'
+                    start = text.index(marker) + len(marker)
+                    checkpoint = TASK_DIR / text[start:text.index('"', start)]
+                    if not checkpoint.is_file():
+                        raise FileNotFoundError(f"{target}: missing source {checkpoint}")
+                if not args.dry_run:
+                    output_dir.mkdir(parents=True, exist_ok=True)
+                    (output_dir / f"{target}.toml").write_text(text, encoding="utf-8")
+                written.append(target)
 
     verb = "Would write" if args.dry_run else "Wrote"
     print(f"{verb} {len(written)} config(s) to {output_dir.relative_to(TASK_DIR)}")

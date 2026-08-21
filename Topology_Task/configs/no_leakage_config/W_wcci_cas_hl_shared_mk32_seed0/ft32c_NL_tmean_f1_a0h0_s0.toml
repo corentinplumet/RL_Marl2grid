@@ -1,10 +1,10 @@
 # WCCI mk32 shared-candidate campaign, seed 0.
-# architecture=NLS_mean_f0_a0h1; initialization=scratch
-# Optimization recipe: bus14 15M scratch.
-# Actor source: random initialization
+# architecture=NLS_tmean_f1_a0h0; initialization=finetune
+# Optimization recipe: conservative 5M adaptation.
+# Actor source: checkpoint/no_leak/shared/NL_cas_hl_shared/best_test_cas_hl_NL_shared_tmean_f1_a0h0_s0.tar
 
 [run]
-name = "sc32c_NLS_mean_f0_a0h1_s0"
+name = "ft32c_NL_tmean_f1_a0h0_s0"
 run_dir = "outputs/{config_name}-{job_id}"
 seed_from_slurm_array = false
 extra_args = []
@@ -33,7 +33,7 @@ checkpoint = true
 alg = "MAPPO"
 seed = 0
 verbose = true
-exp_tag = "sc32c_NLS_mean_f0_a0h1_s0"
+exp_tag = "ft32c_NL_tmean_f1_a0h0_s0"
 track = true
 wandb_project = "Grid2Op"
 wandb_entity = "corentin-plumet-epfl"
@@ -65,9 +65,9 @@ chronic_split_seed = 0
 # Shared, grid-size-independent actor encoder
 actor_encoder = "gnn"
 actor_action_head = "candidate_pool"
-candidate_action_pool = "mean"
-candidate_action_use_features = false
-candidate_action_do_nothing_head = true
+candidate_action_pool = "typed_mean"
+candidate_action_use_features = true
+candidate_action_do_nothing_head = false
 critic_encoder = "mlp"
 gnn_type = "gine"
 gnn_hidden_dim = 128
@@ -110,37 +110,37 @@ sparse_gt_dropout = 0.0
 sparse_gt_attention_dropout = 0.0
 sparse_gt_ffn_multiplier = 4
 
-# Input preprocessing: corrected encoder inputs
-gnn_angle_representation = "edge_diff"
-gnn_physical_scaling = true
+# Input preprocessing factors
+gnn_angle_representation = "node"
+gnn_physical_scaling = false
 gnn_running_norm = false
 gnn_power_scale_mw = 0.0
 gnn_norm_clip = 10.0
 
-# 15M-step bus14-recipe WCCI mk32 scratch budget
-total_timesteps = 15000000
+# 5M-step conservative WCCI mk32 fine-tuning budget
+total_timesteps = 5000000
 n_steps = 576
 eval_freq = 82944
 actor_layers = [128, 128]
 critic_layers = [256, 256, 256]
 actor_act_fn = "relu"
 critic_act_fn = "relu"
-actor_lr = 0.0001
+actor_lr = 0.00003
 critic_lr = 0.0001
 anneal_lr = true
-# Match the bus14 recipe: anneal both learning rates to zero.
-lr_final_frac = 0.0
+# Retain 10% of both learning rates at the end of fine-tuning.
+lr_final_frac = 0.1
 gamma = 0.9
 gae_lambda = 0.95
-update_epochs = 10
+update_epochs = 5
 n_minibatches = 16
 max_grad_norm = 1.0
-target_kl = 0.02
+target_kl = 0.01
 norm_adv = true
-clip_coef = 0.2
+clip_coef = 0.1
 clip_vfloss = true
-entropy_coef = 0.01
-entropy_coef_final = 0.01
+entropy_coef = 0.001
+entropy_coef_final = 0.0001
 vf_coef = 0.5
 optimize_critic_updates = true
 init_do_nothing_prob = 0.0
@@ -152,6 +152,14 @@ deterministic_eval = true
 eval_episodes = 10
 eval_all_split_chronics = false
 eval_train_chronics = true
+
+# Fine-tune the exact candidate actor used by the zero-shot arm.
+# The target critic and WCCI observation statistics still start fresh.
+transfer_encoder_checkpoint = "checkpoint/no_leak/shared/NL_cas_hl_shared/best_test_cas_hl_NL_shared_tmean_f1_a0h0_s0.tar"
+transfer_freeze_encoder = false
+transfer_action_head = true
+transfer_action_head_source_agent = "agent_0"
+transfer_freeze_action_head = false
 
 # No intervention mechanism is mixed into the representation screen
 intervention_gate = false

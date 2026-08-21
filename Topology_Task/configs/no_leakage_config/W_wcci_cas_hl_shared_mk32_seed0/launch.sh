@@ -22,8 +22,17 @@ exclude_nodes="${EXCLUDE_NODES:-${SBATCH_EXCLUDE:-}}"
 
 cluster="${CLUSTER:-jed}"
 case "$cluster" in
-  jed)  job_script="job_jed.sh" ;;
-  izar) job_script="job_izar.sh" ;;
+  jed)
+    # job_jed.sh allows 3-12:00:00 (5040 min) against the config's Izar-sized
+    # guard of 4260. TIME_LIMIT maps onto the `time_limit` arg in
+    # run_from_config.py, matching the other JED launchers in this tree.
+    job_script="job_jed.sh"
+    cluster_sbatch=("--export=ALL,TIME_LIMIT=${TIME_LIMIT:-4980}")
+    ;;
+  izar)
+    job_script="job_izar.sh"
+    cluster_sbatch=()
+    ;;
   *) echo "CLUSTER must be 'jed' or 'izar', got: $cluster" >&2; exit 1 ;;
 esac
 
@@ -91,6 +100,7 @@ cd "$repo_dir"
 
 echo "========== NLS WCCI mk32 seed-0 campaign =========="
 echo "Cluster:         $cluster ($job_script)"
+[[ "$cluster" == jed ]] && echo "Wall clock:      TIME_LIMIT=${TIME_LIMIT:-4980} min"
 echo "Configs:         $script_dir"
 echo "Action space:    $action_space_rel"
 echo "Skip active:     $skip_active"
@@ -137,6 +147,7 @@ for config_path in "${configs[@]}"; do
   if [[ -n "$exclude_nodes" ]]; then
     command+=("--exclude=$exclude_nodes")
   fi
+  command+=("${cluster_sbatch[@]+"${cluster_sbatch[@]}"}")
   command+=(
     "--job-name=$label"
     "$job_script"
@@ -155,7 +166,7 @@ done
 
 if [[ $selected -eq 0 ]]; then
   echo "No configs matched filters: $*" >&2
-  echo "Examples: ft32c  sc32c  mean_f0_a0h0  tmean" >&2
+  echo "Examples: ft32c  sc32c  _NL_  _NLS_  mean_f0_a0h0  tmean" >&2
   exit 1
 fi
 

@@ -5,7 +5,7 @@
 
 [run]
 name = "ft32c_NLS_tmean_f0_a0h1_s0"
-run_dir = "outputs/izar-{config_name}-{job_id}"
+run_dir = "outputs/{config_name}-{job_id}"
 seed_from_slurm_array = false
 extra_args = []
 

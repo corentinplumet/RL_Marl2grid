@@ -4,7 +4,7 @@
 # Actor source: random initialization
 
 [run]
-name = "sc32c_NLS_mean_f0_a0h1_s0"
+name = "sc32c_NL_mean_f0_a0h1_s0"
 run_dir = "outputs/{config_name}-{job_id}"
 seed_from_slurm_array = false
 extra_args = []
@@ -33,7 +33,7 @@ checkpoint = true
 alg = "MAPPO"
 seed = 0
 verbose = true
-exp_tag = "sc32c_NLS_mean_f0_a0h1_s0"
+exp_tag = "sc32c_NL_mean_f0_a0h1_s0"
 track = true
 wandb_project = "Grid2Op"
 wandb_entity = "corentin-plumet-epfl"
@@ -110,9 +110,9 @@ sparse_gt_dropout = 0.0
 sparse_gt_attention_dropout = 0.0
 sparse_gt_ffn_multiplier = 4
 
-# Input preprocessing: corrected encoder inputs
-gnn_angle_representation = "edge_diff"
-gnn_physical_scaling = true
+# Input preprocessing factors
+gnn_angle_representation = "node"
+gnn_physical_scaling = false
 gnn_running_norm = false
 gnn_power_scale_mw = 0.0
 gnn_norm_clip = 10.0
