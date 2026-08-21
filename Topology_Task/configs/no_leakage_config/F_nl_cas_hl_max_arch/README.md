@@ -37,6 +37,9 @@ Validate without submitting from the repository root:
 ```bash
 DRY_RUN=true bash Topology_Task/configs/no_leakage_config/F_nl_cas_hl_max_arch/NL/launch_izar.sh
 DRY_RUN=true bash Topology_Task/configs/no_leakage_config/F_nl_cas_hl_max_arch/NLS/launch_izar.sh
+
+DRY_RUN=true bash Topology_Task/configs/no_leakage_config/F_nl_cas_hl_max_arch/NL/launch_jed.sh
+DRY_RUN=true bash Topology_Task/configs/no_leakage_config/F_nl_cas_hl_max_arch/NLS/launch_jed.sh
 ```
 
 Remove `DRY_RUN=true` to submit all eight runs in a family. Each launcher also
