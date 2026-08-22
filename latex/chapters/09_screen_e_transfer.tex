@@ -1,0 +1,203 @@
+\chapter{Transferring the Screen~E Actor to WCCI}
+\label{ch:screen-e-transfer}
+
+Chapter~\ref{ch:wcci-transfer} ended on two facts about the Screen~E
+configuration that point the same way. Retrained from scratch on WCCI it is the
+only screened design that produces a usable policy, and it is the only one whose
+actor---not merely its encoder---can be moved to another grid at all, because its
+head scores a variable-length candidate set with shared weights rather than
+indexing a fixed action list.
+
+This chapter takes that portability seriously and asks how much of it can be
+realised. It holds the architecture family fixed and varies what crosses the
+grid boundary and what is retrained on the far side.
+
+\section{Experiment design}
+\label{sec:wcci-design}
+
+Four settings of the Screen~E actor are varied factorially: the input condition
+(raw features and absolute angles, or physical scaling with the angle drop), the
+touched-node pooling (joint or type-separated mean), the static action descriptor
+(off or on), and the idle action (shared or dedicated scorer). Each of the
+sixteen cells runs in two arms.
+In the \emph{fine-tuned} arm the encoder and the candidate scorer are both
+loaded from the paired \texttt{bus14} run and both keep training; in the
+\emph{scratch} arm the same configuration starts from random initialization.
+Every other setting is copied from the corresponding \texttt{bus14}
+configuration, which is what makes the weights loadable at all.
+\\
+\\
+Transferring the scorer as well as the encoder is what the candidate head makes
+possible. Its parameters do not depend on the action count, so one agent's
+scorer, \texttt{agent\_0} here, can initialize every agent on the target grid.
+\\
+\\
+Loading needs care in one place. The encoder registers its edge index and node
+identifiers as persistent buffers, so they appear in the saved state dictionary
+at source-grid shape. They describe the source graph and are supplied per agent
+from the target environment's own specification at call time, so they are
+dropped during the load, while any other shape disagreement is treated as an
+architecture mismatch and raises rather than leaving part of the encoder
+randomly initialized.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Transfer study design. The two arms of a pair differ only in the two
+  transfer settings.}
+  \label{tab:wcci-transfer-design}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{L{0.26\textwidth}L{0.66\textwidth}}
+    \toprule
+    Component & Setting \\
+    \midrule
+    Environment & \texttt{bus36\_wcci\_nomaint}, difficulty 0, topology actions, 80/20 split with split seed 0 \\
+    Action space & Reduced at $k=256$, giving 77 / 256 / 127 / 256 actions per agent \\
+    Actor & Shared candidate-scoring head on the disaggregated line-node graph, \texttt{share\_actor\_gnn} \\
+    Factors & Input condition $\times$ touched-node pooling $\times$ descriptor $\times$ idle scorer, $2^4=16$ cells \\
+    Arms & Fine-tuned encoder and scorer from the paired \texttt{bus14} run, both trainable; identical configuration from scratch \\
+    Seeds & 0 \\
+    Budget & 15M steps, matching the \texttt{bus14} source runs \\
+    Inputs & Both conditions are run: raw features with absolute angles, and physical scaling with \texttt{edge\_diff} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\noindent Running both input conditions rather than only the corrected one is deliberate.
+Comparing the scratch arms with and without the correction isolates whether it
+helps or harms on the target grid at all, independently of any transfer effect
+and on otherwise identical settings; comparing each scratch arm against its
+fine-tuned partner isolates the transfer.
+
+% \section{First transfer results}
+% \label{sec:wcci-first-results}
+
+% The runs reported here are the first arm described above: the eight launched
+% before the input analysis was complete, one seed each, with physical scaling and
+% running standardization both disabled and the original angle representation. They
+% are therefore the uncorrected-input condition, which is the one
+% Section~\ref{sec:wcci-interpretation} predicts should be hardest on a frozen
+% encoder. The corrected runs of Table~\ref{tab:wcci-transfer-design} are still
+% training.
+
+% Each value below is a deterministic evaluation of a run's best checkpoint over 50
+% held-out WCCI chronics. The reference to beat is the do-nothing policy, which
+% survives 56\% of those episodes; on this grid inaction is a far stronger baseline
+% than on \texttt{bus14}, where it survives about 20\%.
+
+% \begin{figure}[H]
+%   \centering
+%   \includegraphics[width=0.92\linewidth]{figures/tr_wcci_full_test_bars.png}
+%   \caption{50-episode full-test survival of the best checkpoint, by architecture
+%   and training arm, with uncorrected inputs and one seed. The dashed line is the
+%   do-nothing policy at 56\%.}
+%   \label{fig:wcci-transfer-bars}
+% \end{figure}
+
+% \begin{table}[H]
+%   \centering
+%   \small
+%   \caption{50-episode full-test survival and the step at which each run's best
+%   checkpoint was saved. One seed per cell, uncorrected inputs.}
+%   \label{tab:wcci-transfer-results}
+%   \setlength{\tabcolsep}{5pt}
+%   \begin{tabular}{lrrrrr}
+%     \toprule
+%     Architecture & Scratch (\%) & Frozen (\%) & $\Delta$ (pp) &
+%     Scratch ckpt (M) & Frozen ckpt (M) \\
+%     \midrule
+%     \texttt{e0n0v0} (bus) & 47.62 & 30.48 & $-17.13$ & 7.38 & 0.58 \\
+%     \texttt{e1n0v0} (bus) & 51.31 & 13.94 & $-37.37$ & 4.31 & 13.02 \\
+%     \texttt{gb2a\_la2b} & 52.32 & 52.60 & $+0.27$ & 7.38 & 14.68 \\
+%     \texttt{gb2a\_lb2a} & \textbf{54.46} & 54.37 & $-0.09$ & 7.38 & 10.12 \\
+%     \midrule
+%     Do-nothing policy & \multicolumn{2}{c}{56.0} & & & \\
+%     \bottomrule
+%   \end{tabular}
+% \end{table}
+
+% \begin{figure}[H]
+%   \centering
+%   \includegraphics[width=\linewidth]{figures/tr_wcci_frozen_vs_scratch_curves.png}
+%   \caption{Test episodic survival during training, one panel per architecture,
+%   frozen transfer against training from scratch. The dashed line is the
+%   do-nothing reference at 57.2\% on the training-time evaluation split.}
+%   \label{fig:wcci-transfer-curves}
+% \end{figure}
+
+% \noindent\textbf{No arm beats doing nothing.} The best of the eight runs reaches
+% 54.5\% against 56.0\% for a policy that never acts, and in
+% Figure~\ref{fig:wcci-transfer-curves} the curves cross the reference only in
+% transient peaks. Whatever the graph representation contributes on
+% \texttt{bus14}, it does not yet produce a useful controller here, and every
+% comparison below is between policies that are all worse than inaction.
+% \\
+% \\
+% \textbf{Freezing is neutral on the disaggregated schema and destructive on the
+% bus schema.} The two heterogeneous architectures match their scratch
+% counterparts to within 0.3 points, so the transferred encoder neither helps nor
+% obstructs. The two bus architectures lose 17.1 and 37.4 points. This is the
+% deficit Section~\ref{sec:wcci-interpretation} warned would be confounded, and the
+% confound is real: with uncorrected inputs a frozen \texttt{bus14} encoder is
+% reading displaced power and angle channels, so the loss cannot be attributed to
+% the representation failing to generalize. The asymmetry between the schemas is
+% the part worth pursuing. In the bus graph every node carries the power and angle
+% channels, because generator and load values are aggregated onto their busbar,
+% so a frozen encoder meets the miscalibrated quantities on every node it reads.
+% In the disaggregated graph those channels are non-zero only on asset nodes,
+% which are a minority of the node set, while busbars carry cooldown and
+% connectivity, and \texttt{rho} rides on the edges where
+% Section~\ref{sec:wcci-interpretation} measured it as already comparable across
+% grids. That is a hypothesis this experiment does not test, but it is the one the
+% corrected runs will separate.
+% \\
+% \\
+% \textbf{The bus architectures are also the unstable ones.} Their end-of-training
+% survival, 10\% and 18\% on the smoothed curve, is far below their own best
+% checkpoints at 47.6\% and 51.3\%: both peak early and decay for the rest of
+% training. The disaggregated runs end near 47\% and 51\%, close to their best
+% checkpoints, so their endpoint numbers describe a policy that still exists at
+% the end of training rather than one that was passed through. The gap is worth
+% keeping in view whenever a best-checkpoint statistic is quoted for this
+% environment.
+% \\
+% \\
+% \textbf{The \texttt{bus14} ordering partly survives.} The two disaggregated
+% architectures finish above the two bus ones, and \texttt{gb2a\_lb2a}, the
+% direction pair that won the message-direction screen, is the best of the four
+% here as well. That is consistent with Chapter~\ref{ch:experiments} without being
+% evidence for it: one seed per cell and 2.1 points between the two disaggregated
+% architectures cannot separate them.
+% \\
+% \\
+% \textbf{What is still open.} One seed per condition, uncorrected inputs, and an
+% encoder frozen for all 15M steps rather than unfrozen after a warm start, which
+% tests reuse without adaptation and not the only useful form of transfer. The
+% first thing the corrected runs have to establish is not the transfer question at
+% all, but whether any arm can clear 56\%.
+
+
+% \section{What this chapter establishes}
+% \label{sec:wcci-summary}
+
+% Independently of how the two arms eventually compare, three findings hold.
+
+% \begin{itemize}
+%   \item \textbf{The encoder is portable; its inputs are not.} Parameter shapes
+%   cross grids unchanged once the grid-shaped buffers are dropped. What does not
+%   cross is the distribution those parameters were calibrated on, and nothing in
+%   the training configuration was correcting it.
+
+%   \item \textbf{Per-feature standardization can be actively harmful when a
+%   channel is a mixture.} Standardizing a channel that is 85\,\% structural zeros
+%   aligns its moments and misplaces its most frequent value, degrading every
+%   channel it touches. This is not specific to power grids: it applies to any
+%   graph representation in which a node feature exists only for nodes carrying a
+%   particular kind of asset.
+
+%   \item \textbf{For gauge-dependent quantities, representation beats
+%   normalization.} The single largest mismatch measured here was an artifact of
+%   the voltage-angle reference. No choice of scaling addresses it, whereas
+%   expressing the angle as a difference across each line removes it by
+%   construction and makes the channel dense at the same time.
+% \end{itemize}

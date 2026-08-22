@@ -428,6 +428,45 @@ not cleanly order themselves.
 \\
 \textbf{Withholding the descriptor (\texttt{f0}) is safer.} This is the one asymmetry worth recording: the best cell withholds the static action descriptor and both failing cells include it, which runs counter to a prior that favours the more elaborate feature. It is not redundant information, since every action still reaches the scorer with its own pooled context---agent~$0$'s $57$ actions produce $57$ distinct row-sets, because an action toggles one to three of a substation's lines rather than a single busbar. Withholding it removes a static label and safely leaves the learned topological description intact.
 
+\subsection{Why the descriptor hurt: a normalization defect}
+\label{sec:screen-e-descriptor-scaling}
+
+The \texttt{f1} result has a concrete cause, and it lies in how the descriptor
+was built rather than in the information it carries. Its count columns were
+divided by the largest value in that agent's \emph{own} action set.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Divisors applied to the action count descriptors under the previous
+  per-agent rule, \texttt{bus14}.}
+  \label{tab:action-descriptor-divisors}
+  \setlength{\tabcolsep}{7pt}
+  \begin{tabular}{lrrr}
+    \toprule
+    Agent & Actions & Topology changes & Line endpoints \\
+    \midrule
+    0 & 57 & 5 & 3 \\
+    1 & 51 & 5 & 4 \\
+    2 & 83 & 6 & 3 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\noindent An action moving three elements therefore reached the shared scorer as $0.60$ for
+agent~$0$ and $0.50$ for agent~$2$, and every agent's busiest action reached it
+as exactly $1.0$ whether it moved five elements or six. Because one scorer serves
+all agents, it was shown mutually inconsistent encodings of the same quantity,
+and on another grid the implicit divisors would shift again.
+\\
+\\
+The correction is to divide these counts by a global constant
+(\texttt{candidate\_action\_feature\_scaling}), under which the busiest actions
+read $1.25$, $1.25$ and $1.5$ and keep their true relative scale across agents
+and grids. Chapter~\ref{ch:encoder-inputs} finds the same per-population
+normalization defect in the node features, where the populations are grids
+rather than agents.
+
 \subsection{Replication with Improved Graph Features}
 \label{sec:screen-e-nls}
 
@@ -474,7 +513,7 @@ MLP and optional idle head; this tests preprocessing, not scorer sharing.
 25 points in either direction. At one seed, this indicates an interaction with
 the candidate head rather than a stable preprocessing effect. Only
 \texttt{mean/f0} is robust: both idle-head choices exceed $99.1\%$ with NL and
-$99.4\%$ with NLS. Chapter~\ref{ch:wcci-transfer} separately studies transfer
+$99.4\%$ with NLS. Chapter~\ref{ch:screen-e-transfer} separately studies transfer
 with a scorer shared across agents.
 \\
 \\

@@ -1,37 +1,44 @@
 \chapter{Establishing a Baseline}
 \label{ch:baseline}
 
-This chapter establishes a robust MLP actor baseline for the IEEE 14-bus task.
+This chapter builds a solid MLP actor baseline for the IEEE 14-bus task.
 
 \section{Evaluation Protocol}
 \label{sec:results-evaluation-protocol}
 
-All experiments use an 80/20 train/test chronic split. The 80\% training split is used for policy updates, while the 20\% test split estimates generalization. Evaluation rollouts run periodically during training using 10 episodes per split. 
+All experiments use an 80/20 train/test chronic split. The 80\% training split is used for policy updates, while the 20\% test split measures how well the policy generalizes. Evaluation rollouts run periodically during training using 10 episodes per split. 
 \\
 \\
-The primary performance metric is test episodic survival (expressed as a percentage), representing the fraction of evaluation timestep where the agent survives and successfully prevents a blackout. Results are reported using seed-aggregated mean curves, with shaded regions indicating variability. Final evaluations report the performance of the checkpoint that achieved the highest training survival.
+The main metric is test episodic survival (as a percentage): the fraction of
+evaluation timesteps where the agent keeps the grid alive. Results are reported
+as mean curves across seeds, with shaded regions showing the spread. Final
+evaluations report the checkpoint with the highest test survival.
 
 \section{IEEE 14-Bus Experiments}
 \label{sec:bus14-results}
 
-The initial MAPPO baseline from the MARL2Grid framework lead to unstable policies and low survival rates on the IEEE 14-bus topology-control task. The following experiments test training and architectural modifications to establish a high-performing baseline.
+The initial MAPPO baseline from the MARL2Grid framework led to unstable policies
+and low survival rates on the IEEE 14-bus topology-control task. The experiments
+below test changes to the training and to the architecture, in order to build a
+strong baseline.
 
 \subsection{MLP Baseline}
 \label{subsec:a0-core-reruns}
 
 \paragraph{Question.}
-Which changes are needed to obtain a stable MLP MAPPO baseline on the 14-bus
+Which changes are needed to get a stable MLP MAPPO baseline on the 14-bus
 task?
 
 \paragraph{Baseline and changes.}
-We start from the MLP MAPPO baseline of the MARL2Grid framework and test several main
-stabilization choices:
+We start from the MLP MAPPO baseline of the MARL2Grid framework and test several
+main changes meant to stabilize training:
 
 \begin{itemize}
   \item using reward normalization;
   \item changing the critic update so that the critic is updated once for the
   whole batch instead of once per agent;
-  \item tuning of optimization hyperparameters to stabilize the training, as summarized in Table~\ref{tab:new-hyperparameters}.
+  \item tuning the optimization hyperparameters to stabilize training, as
+  summarized in Table~\ref{tab:new-hyperparameters}.
 \end{itemize}
 
 \begin{table}[H]
@@ -64,7 +71,15 @@ ablations. Figure~\ref{fig:rerun-a0-all} overlays all
 core MLP baseline curves.
 
 \paragraph{Interpretation.}
-The \texttt{Optimized MLP Baseline}, which combines reward normalization and an optimized critic update, achieves the best performance and convergence speed, yielding the highest and most stable final survival (\(\sim\)93\%). Removing or reducing any of these three elements, using a smaller architecture, disabling reward normalization, or reverting to a non-optimized critic update, results in a drop in either learning speed or final survival. The original unoptimized baseline fails entirely to learn a competitive policy. Because the \texttt{Optimized MLP Baseline} consistently outperforms the ablations, it is established as the standard reference for all subsequent comparisons.
+The \texttt{Optimized MLP Baseline}, which combines reward normalization and an
+optimized critic update, reaches the best performance and the fastest
+convergence, with the highest and most stable final survival (\(\sim\)93\%).
+Removing or reducing any of these three elements --- using a smaller
+architecture, disabling reward normalization, or going back to a non-optimized
+critic update --- lowers either learning speed or final survival. The original
+unoptimized baseline fails entirely to learn a competitive policy. Because the
+\texttt{Optimized MLP Baseline} consistently beats the ablations, it is used as
+the reference for all later comparisons.
 
 \begin{table}[H]
   \centering
@@ -86,8 +101,6 @@ The \texttt{Optimized MLP Baseline}, which combines reward normalization and an 
     true & 0.0 & true & Uses a smaller MLP actor and critic \\
     \texttt{Disable reward normalization} & \(3\times256\) / \(3\times256\) &
     false & 0.0 & true & Disables reward normalization \\
-    \texttt{Old baseline (no val)} & \(3\times256\) / \(3\times256\) &
-    true & 0.3 & false & Uses action-0 bias 0.3 and non-optimized critic updates \\
     \texttt{Initial Bias 50\%} & \(3\times256\) / \(3\times256\) &
     true & 0.5 & true & Uses action-0 bias 0.5 \\
     \texttt{Initial Bias 70\%} & \(3\times256\) / \(3\times256\) &
@@ -134,7 +147,8 @@ The \texttt{Optimized MLP Baseline}, which combines reward normalization and an 
 
 \paragraph{Question.}
 Does biasing the initial policy toward action 0, the do-nothing action, help or
-hurt learning? In theory, a do-nothing bias makes sense because in reality, human operators most often do not operate the grid (i.e., they take no action) under normal conditions.
+hurt learning? The idea makes sense: under normal conditions, human operators
+usually leave the grid alone and take no action.
 
 \paragraph{Baseline and changes.}
 Our baseline uses no initial do-nothing bias in this rerun set. The bias
@@ -145,8 +159,10 @@ assigned to action 0.
 \paragraph{Implementation detail.}
 The bias is applied only at initialization: it changes the starting action
 distribution before learning, without changing the reward, architecture, or PPO
-objective. This is implemented by artificially increasing the initial pre-softmax logits for the do-nothing action, such that the policy initially selects this safe action with a higher probability before any learning updates occur. This makes the ablation a test of exploration bias rather than a test
-of representational capacity.
+objective. It is implemented by raising the initial pre-softmax logits of the do-nothing
+action, so that the policy picks this safe action more often before any learning
+update happens. This makes the ablation a test of exploration bias rather than a
+test of model capacity.
 
 \paragraph{Evidence.}
 Table~\ref{tab:a0-bias-summary} and Figure~\ref{fig:rerun-a0-bias} compare the
@@ -154,10 +170,14 @@ zero-bias baseline with \texttt{Initial Bias 50\%} and
 \texttt{Initial Bias 70\%}.
 
 \paragraph{Interpretation.}
-The effect of the action-0 bias is large and non-monotonic. The 0.5-bias curve
-remains unstable and substantially below the zero-bias baseline, whereas the
-0.7-bias curve eventually reaches the highest final survival in this comparison.
-The current conclusion is that adding an initialization bias is generally hurtful or highly unstable for the models. Instead of aiding exploration, a strong initialization prior appears to restrict the agent's ability to reliably discover diverse beneficial actions and should be treated cautiously as a first-order ablation variable.
+The effect of the action-0 bias is large, and a stronger bias is not simply
+better or worse. The 0.5-bias curve remains unstable and well below the
+zero-bias baseline, while the 0.7-bias curve eventually reaches the highest
+final survival in this comparison. The current conclusion is that adding an
+initialization bias is generally harmful or very unstable for the models.
+Instead of helping exploration, a strong initial prior seems to stop the agent
+from reliably finding a wide range of useful actions. It should be treated with
+care as a main ablation variable.
 
 \begin{table}[H]
   \centering
@@ -192,13 +212,13 @@ The current conclusion is that adding an initialization bias is generally hurtfu
     \item \textbf{MLP optimization:} Hyperparameter tuning, reward normalization,
     and optimized critic updates raise the flat MLP baseline to roughly 93\%
     survival.
-    \item \textbf{Do-nothing initialization:} The effect is large but
-    non-monotonic; it is not a reliable substitute for learning when to
+    \item \textbf{Do-nothing initialization:} The effect is large but goes in
+    both directions; it is not a reliable substitute for learning when to
     intervene.
 \end{itemize}
 \vspace{0.35cm}
 \textbf{Conclusion:} The tuned flat actor is a strong survival baseline. The
 next step is to ask whether it can behave more like an operator by intervening
-less often without losing that survival, which is the subject of
+less often without losing that survival. That is the subject of
 Chapter~\ref{ch:sparse-control}.
 \end{tcolorbox}

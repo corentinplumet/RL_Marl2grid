@@ -1,4 +1,4 @@
-\chapter{Transfer to the 36-Substation WCCI Grid}
+\chapter{The WCCI Grid and the Design Carried Onto It}
 \label{ch:wcci-transfer}
 
 The controlled method comparisons so far were developed on \texttt{bus14}.
@@ -95,9 +95,6 @@ chronics and a do-nothing policy in both settings.
   \end{tabular}
 \end{table}
 
-\noindent Removing maintenance increases mean survival by 30.0 percentage points and
-episode completion by 45.8 points, confirming that maintenance substantially
-changes the baseline difficulty of the target grid.
 
 
 \subsection{Action space}
@@ -174,208 +171,130 @@ strong reference.
 \label{sec:wcci-corrected-inputs}
 
 Chapter~\ref{ch:encoder-inputs} measures the encoder's inputs on both grids and
-settles two corrections, both applied in every run below. Power channels are
-divided by each grid's own maximum generator rating, which leaves the structural
-zeros in place and is fixed at construction rather than estimated online
-(Section~\ref{sec:wcci-physical-scaling}). The absolute voltage angle is
-replaced by the drop along each line, which removes a displacement that is a
-property of the slack reference rather than of the grid state
+settles two corrections, both applied in every run below: the power channels are
+divided by each grid's own maximum generator rating
+(Section~\ref{sec:wcci-physical-scaling}), and the absolute voltage angle is
+replaced by the drop along each line
 (Section~\ref{sec:wcci-angle-representation}). Running standardization is left
-off: Section~\ref{sec:wcci-running-norm} measures it degrading three of the four
-channels it touches by a factor of five or more. Together these bring the angle
-channel into the band occupied by
+off. Together these bring the angle channel into the band occupied by
 \texttt{rho} and the power spreads to within 15\,\% of parity
 (Table~\ref{tab:wcci-corrected}).
 
 
-\section{Transfer experiment design}
-\label{sec:wcci-design}
+\section{Which screened design to carry forward}
+\label{sec:wcci-architecture-choice}
 
-The transferred model is the shared candidate-scoring actor of
-Section~\ref{sec:candidate-action-scoring} on the disaggregated line-node graph,
-the configuration Screen~E selected on \texttt{bus14}. Four of its settings are
-varied factorially: the input condition (raw features and absolute angles, or
-physical scaling with the angle drop), the touched-node pooling (joint or
-type-separated mean), the static action descriptor (off or on), and the idle
-action (shared or dedicated scorer). Each of the sixteen cells runs in two arms.
-In the \emph{fine-tuned} arm the encoder and the candidate scorer are both
-loaded from the paired \texttt{bus14} run and both keep training; in the
-\emph{scratch} arm the same configuration starts from random initialization.
-Every other setting is copied from the corresponding \texttt{bus14}
-configuration, which is what makes the weights loadable at all.
+Chapter~\ref{ch:experiments} settled five design questions on \texttt{bus14},
+each producing a configuration worth keeping. Screens~A and~B fixed the encoder
+depth, width and pooling, giving the plain busbar graph
+\texttt{bus\_e0n0v0}. Screen~C augmented it, and the augmentation that paid was
+an edge between busbars of the same substation, \texttt{bus\_e1n0v0}. Screen~D
+moved to the heterogeneous representation and screened message direction, where
+\texttt{het\_ga2b\_lb2a} and the baseline \texttt{het\_gbi\_lbi} came out
+ahead. Screen~E was a different line of attack --- heterogeneous with line nodes,
+and an action head that scores each candidate from the nodes it touches instead
+of from a fixed-width layer over an action index --- and it worked well enough on
+\texttt{bus14} to keep.
 \\
 \\
-Transferring the scorer as well as the encoder is what the candidate head makes
-possible. Its parameters do not depend on the action count, so one agent's
-scorer, \texttt{agent\_0} here, can initialize every agent on the target grid.
-\\
-\\
-Loading needs care in one place. The encoder registers its edge index and node
-identifiers as persistent buffers, so they appear in the saved state dictionary
-at source-grid shape. They describe the source graph and are supplied per agent
-from the target environment's own specification at call time, so they are
-dropped during the load, while any other shape disagreement is treated as an
-architecture mismatch and raises rather than leaving part of the encoder
-randomly initialized.
+Which of them should the transfer study use? The question is answerable directly,
+without any appeal to transfer: re-instantiate each on
+\texttt{bus36\_wcci\_nomaint} and train it there from scratch.
+Table~\ref{tab:wcci-proxy-test} does that under one protocol --- $k=64$, 15M
+steps, random initialisation, no transferred weights anywhere.
 
 \begin{table}[H]
   \centering
   \small
-  \caption{Transfer study design. The two arms of a pair differ only in the two
-  transfer settings.}
-  \label{tab:wcci-transfer-design}
+  \caption{Each screen's surviving configuration, retrained from scratch on WCCI
+  at $k=64$, against the \texttt{bus14} survival of the identical model.
+  \texttt{het\_gbi\_lbi} is the one cell of Screen~D's $3\times3$ factorial
+  without a rerun under the corrected graph construction, so its \texttt{bus14}
+  entry is empty rather than filled from the pre-correction screen. One seed per
+  cell; Screens~A--D were also run at $k=256$ with the same outcome.}
+  \label{tab:wcci-proxy-test}
   \setlength{\tabcolsep}{5pt}
-  \begin{tabular}{L{0.26\textwidth}L{0.66\textwidth}}
-    \toprule
-    Component & Setting \\
-    \midrule
-    Environment & \texttt{bus36\_wcci\_nomaint}, difficulty 0, topology actions, 80/20 split with split seed 0 \\
-    Action space & Reduced at $k=256$, giving 77 / 256 / 127 / 256 actions per agent \\
-    Actor & Shared candidate-scoring head on the disaggregated line-node graph, \texttt{share\_actor\_gnn} \\
-    Factors & Input condition $\times$ touched-node pooling $\times$ descriptor $\times$ idle scorer, $2^4=16$ cells \\
-    Arms & Fine-tuned encoder and scorer from the paired \texttt{bus14} run, both trainable; identical configuration from scratch \\
-    Seeds & 0 \\
-    Budget & 15M steps, matching the \texttt{bus14} source runs \\
-    Inputs & Both conditions are run: raw features with absolute angles, and physical scaling with \texttt{edge\_diff} \\
-    \bottomrule
-  \end{tabular}
+  \input{tables/wcci_proxy_test}
 \end{table}
 
-\noindent Running both input conditions rather than only the corrected one is deliberate.
-Comparing the scratch arms with and without the correction isolates whether it
-helps or harms on the target grid at all, independently of any transfer effect
-and on otherwise identical settings; comparing each scratch arm against its
-fine-tuned partner isolates the transfer.
-
-% \section{First transfer results}
-% \label{sec:wcci-first-results}
-
-% The runs reported here are the first arm described above: the eight launched
-% before the input analysis was complete, one seed each, with physical scaling and
-% running standardization both disabled and the original angle representation. They
-% are therefore the uncorrected-input condition, which is the one
-% Section~\ref{sec:wcci-interpretation} predicts should be hardest on a frozen
-% encoder. The corrected runs of Table~\ref{tab:wcci-transfer-design} are still
-% training.
-
-% Each value below is a deterministic evaluation of a run's best checkpoint over 50
-% held-out WCCI chronics. The reference to beat is the do-nothing policy, which
-% survives 56\% of those episodes; on this grid inaction is a far stronger baseline
-% than on \texttt{bus14}, where it survives about 20\%.
-
-% \begin{figure}[H]
-%   \centering
-%   \includegraphics[width=0.92\linewidth]{figures/tr_wcci_full_test_bars.png}
-%   \caption{50-episode full-test survival of the best checkpoint, by architecture
-%   and training arm, with uncorrected inputs and one seed. The dashed line is the
-%   do-nothing policy at 56\%.}
-%   \label{fig:wcci-transfer-bars}
-% \end{figure}
-
-% \begin{table}[H]
-%   \centering
-%   \small
-%   \caption{50-episode full-test survival and the step at which each run's best
-%   checkpoint was saved. One seed per cell, uncorrected inputs.}
-%   \label{tab:wcci-transfer-results}
-%   \setlength{\tabcolsep}{5pt}
-%   \begin{tabular}{lrrrrr}
-%     \toprule
-%     Architecture & Scratch (\%) & Frozen (\%) & $\Delta$ (pp) &
-%     Scratch ckpt (M) & Frozen ckpt (M) \\
-%     \midrule
-%     \texttt{e0n0v0} (bus) & 47.62 & 30.48 & $-17.13$ & 7.38 & 0.58 \\
-%     \texttt{e1n0v0} (bus) & 51.31 & 13.94 & $-37.37$ & 4.31 & 13.02 \\
-%     \texttt{gb2a\_la2b} & 52.32 & 52.60 & $+0.27$ & 7.38 & 14.68 \\
-%     \texttt{gb2a\_lb2a} & \textbf{54.46} & 54.37 & $-0.09$ & 7.38 & 10.12 \\
-%     \midrule
-%     Do-nothing policy & \multicolumn{2}{c}{56.0} & & & \\
-%     \bottomrule
-%   \end{tabular}
-% \end{table}
-
-% \begin{figure}[H]
-%   \centering
-%   \includegraphics[width=\linewidth]{figures/tr_wcci_frozen_vs_scratch_curves.png}
-%   \caption{Test episodic survival during training, one panel per architecture,
-%   frozen transfer against training from scratch. The dashed line is the
-%   do-nothing reference at 57.2\% on the training-time evaluation split.}
-%   \label{fig:wcci-transfer-curves}
-% \end{figure}
-
-% \noindent\textbf{No arm beats doing nothing.} The best of the eight runs reaches
-% 54.5\% against 56.0\% for a policy that never acts, and in
-% Figure~\ref{fig:wcci-transfer-curves} the curves cross the reference only in
-% transient peaks. Whatever the graph representation contributes on
-% \texttt{bus14}, it does not yet produce a useful controller here, and every
-% comparison below is between policies that are all worse than inaction.
-% \\
-% \\
-% \textbf{Freezing is neutral on the disaggregated schema and destructive on the
-% bus schema.} The two heterogeneous architectures match their scratch
-% counterparts to within 0.3 points, so the transferred encoder neither helps nor
-% obstructs. The two bus architectures lose 17.1 and 37.4 points. This is the
-% deficit Section~\ref{sec:wcci-interpretation} warned would be confounded, and the
-% confound is real: with uncorrected inputs a frozen \texttt{bus14} encoder is
-% reading displaced power and angle channels, so the loss cannot be attributed to
-% the representation failing to generalize. The asymmetry between the schemas is
-% the part worth pursuing. In the bus graph every node carries the power and angle
-% channels, because generator and load values are aggregated onto their busbar,
-% so a frozen encoder meets the miscalibrated quantities on every node it reads.
-% In the disaggregated graph those channels are non-zero only on asset nodes,
-% which are a minority of the node set, while busbars carry cooldown and
-% connectivity, and \texttt{rho} rides on the edges where
-% Section~\ref{sec:wcci-interpretation} measured it as already comparable across
-% grids. That is a hypothesis this experiment does not test, but it is the one the
-% corrected runs will separate.
-% \\
-% \\
-% \textbf{The bus architectures are also the unstable ones.} Their end-of-training
-% survival, 10\% and 18\% on the smoothed curve, is far below their own best
-% checkpoints at 47.6\% and 51.3\%: both peak early and decay for the rest of
-% training. The disaggregated runs end near 47\% and 51\%, close to their best
-% checkpoints, so their endpoint numbers describe a policy that still exists at
-% the end of training rather than one that was passed through. The gap is worth
-% keeping in view whenever a best-checkpoint statistic is quoted for this
-% environment.
-% \\
-% \\
-% \textbf{The \texttt{bus14} ordering partly survives.} The two disaggregated
-% architectures finish above the two bus ones, and \texttt{gb2a\_lb2a}, the
-% direction pair that won the message-direction screen, is the best of the four
-% here as well. That is consistent with Chapter~\ref{ch:experiments} without being
-% evidence for it: one seed per cell and 2.1 points between the two disaggregated
-% architectures cannot separate them.
-% \\
-% \\
-% \textbf{What is still open.} One seed per condition, uncorrected inputs, and an
-% encoder frozen for all 15M steps rather than unfrozen after a warm start, which
-% tests reuse without adaptation and not the only useful form of transfer. The
-% first thing the corrected runs have to establish is not the transfer question at
-% all, but whether any arm can clear 56\%.
+\textbf{Screen~E is the only one that produces a usable policy.} It clears the
+do-nothing floor on the difficult cohort in $5$ of its $8$ cells, with a median
+of $9.61\,\%$, a best of $18.46\,\%$ and two chronics carried to the end.
+Screens~A--D clear it in $0$ of $4$, with a best of $6.80\,\%$ and no rescues at
+all --- across every evaluation of those four configurations, including their
+best-test checkpoints, not one of the 24 difficult chronics is completed. They do
+not merely underperform: they break what do-nothing preserves, keeping a median
+of $7.5$ of the 26 easy chronics.
+\\
+\\
+\textbf{\texttt{bus14} score does not explain the gap.} Screens~A--D span
+$95.45$--$99.12\,\%$ there and Screen~E spans $93.40$--$100.00\,\%$: overlapping
+ranges, opposite outcomes on the target grid. The ranking is informative only
+\emph{within} a design --- inside Screen~E, \texttt{bus14} rank orders the WCCI
+result at Spearman $+0.74$ ($p=0.037$), and its best \texttt{bus14} cell is also
+its best on WCCI --- and carries nothing \emph{between} designs.
+\\
+\\
+\textbf{Screen~E is also the only one that can be transferred whole.}
+Screens~A--D use an action head with one output per action index, a shape fixed
+by a single grid's action list; their encoders can cross a grid boundary but
+their actors cannot. Screen~E's head applies shared weights to a variable-length
+candidate set, so its parameters do not depend on the action count and
+\texttt{agent\_0}'s scorer can initialise every agent on any grid.
+\\
+\\
+Those two properties are independent --- one is measured in
+Table~\ref{tab:wcci-proxy-test}, the other follows from parameter shapes --- and
+they point the same way. The remainder of this chapter therefore studies
+Screen~E alone, and asks how far its portability can actually be exploited.
+\\
+\\
+Two gaps are worth recording. \texttt{het\_gbi\_lbi} has no corrected
+\texttt{bus14} number and is the best of the four Screens~A--D configurations on
+WCCI, so the one cell that cannot be anchored is the one carrying most weight
+above. And the two classes differ in graph schema as well as action head, because
+\texttt{common/action\_metadata.py} requires
+\texttt{gnn\_graph\_type = "heterogeneous\_line"} for candidate scoring; the
+comparison is therefore between configurations, not between action heads in
+isolation.
 
 
-% \section{What this chapter establishes}
-% \label{sec:wcci-summary}
-
-% Independently of how the two arms eventually compare, three findings hold.
-
-% \begin{itemize}
-%   \item \textbf{The encoder is portable; its inputs are not.} Parameter shapes
-%   cross grids unchanged once the grid-shaped buffers are dropped. What does not
-%   cross is the distribution those parameters were calibrated on, and nothing in
-%   the training configuration was correcting it.
-
-%   \item \textbf{Per-feature standardization can be actively harmful when a
-%   channel is a mixture.} Standardizing a channel that is 85\,\% structural zeros
-%   aligns its moments and misplaces its most frequent value, degrading every
-%   channel it touches. This is not specific to power grids: it applies to any
-%   graph representation in which a node feature exists only for nodes carrying a
-%   particular kind of asset.
-
-%   \item \textbf{For gauge-dependent quantities, representation beats
-%   normalization.} The single largest mismatch measured here was an artifact of
-%   the voltage-angle reference. No choice of scaling addresses it, whereas
-%   expressing the angle as a difference across each line removes it by
-%   construction and makes the channel dense at the same time.
-% \end{itemize}
+\begin{tcolorbox}[
+  colframe=red!75!black,
+  colback=red!5!white,
+  title=Chapter 8 Summary: The WCCI Grid and the Design Carried Onto It]
+\textbf{Purpose:} To define the target environment precisely enough that a
+transfer result is attributable, and to decide --- on the target grid itself,
+without appealing to transfer --- which screened design is worth studying there.
+\\
+\\
+\textbf{Content:} WCCI is $2.6\times$ \texttt{bus14} in substations and
+$3\times$ in lines, over four unequal agent regions. Maintenance is removed
+rather than invented for \texttt{bus14}, and the action space is reduced from
+nearly $67{,}000$ topology actions ($65{,}642$ on one agent alone) to $k=256$
+per agent. Every configuration surviving Screens~A--E is then retrained directly
+on WCCI from random initialisation, $k=64$, 15M steps, no transferred weights.
+\\
+\\
+\textbf{Findings:}
+\begin{itemize}
+  \item Only Screen~E produces a usable policy: above the do-nothing floor on
+  the difficult chronics in $5$ of $8$ cells, median $9.61\,\%$, best
+  $18.46\,\%$. Screens~A--D manage $0$ of $4$, best $6.80\,\%$, and never carry
+  a chronic to the end.
+  \item A \texttt{bus14} score does not explain the gap: the two classes occupy
+  overlapping ranges ($95.45$--$99.12\,\%$ against $93.40$--$100.00\,\%$) and
+  land on opposite sides of the floor. The ranking orders results only
+  \emph{within} a design (Spearman $+0.74$ inside Screen~E).
+  \item Screen~E is also the only design transferable whole: the others index a
+  fixed action list, so their encoders can cross a grid boundary but their
+  actors cannot.
+\end{itemize}
+\textbf{Takeaway:} The best learner on the target grid and the only portable
+design are the same configuration, and the two facts are independent --- one
+measured, one following from parameter shapes. Chapter~\ref{ch:screen-e-transfer}
+therefore studies Screen~E alone. Two gaps stand: \texttt{het\_gbi\_lbi} has no
+corrected \texttt{bus14} number despite being the best of Screens~A--D on WCCI,
+and the graph schema moves with the action head, so the comparison is between
+configurations rather than action heads.
+\end{tcolorbox}

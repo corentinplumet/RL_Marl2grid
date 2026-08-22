@@ -64,6 +64,10 @@ ROUTE_COLORS = {
 SCALING_COLORS = {"raw inputs": "#4C78A8", "physical scaling": "#F58518"}
 GATE_COLORS = {"ungated": "#9EC5E8", "gated": "#E45756"}
 
+# Checkpoints are saved under a selection prefix; the campaign name follows it.
+SELECTION_RE = re.compile(r"^(?P<selection>best_test|final)_(?P<rest>.+)$")
+CONSERVATIVE_RE = re.compile(r"^ft\d+c")
+SCRATCH_RE = re.compile(r"^sc\d+c")
 VARIANT_RE = re.compile(r"_(?P<pool>tmean|typed_mean|mean)_f(?P<features>[01])_a0h(?P<head>[01])")
 SHORT_VARIANT_RE = re.compile(r"_(?P<pool>tm|m)f(?P<features>[01])h(?P<head>[01])(?:_|$)")
 MK_RE = re.compile(r"_mk(\d+)")
@@ -119,24 +123,41 @@ def _parse_variant(*sources):
     return "unknown", -1, -1
 
 
+def split_selection(checkpoint_stem):
+    """Separate the checkpoint-selection prefix from the campaign name.
+
+    A run writes several checkpoints — `best_test_<label>`, `final_<label>` and
+    the rolling `<label>` — and which one was evaluated is a factor in its own
+    right, not part of the model's identity. Keeping them apart also stops the
+    prefix from hiding the campaign from the route classifier.
+    """
+    match = SELECTION_RE.match(checkpoint_stem)
+    if match:
+        return match.group("selection").replace("_", " "), match.group("rest")
+    return "last", checkpoint_stem
+
+
 def _classify_route(checkpoint, checkpoint_stem, haystack):
     """Adaptation route, with the two fine-tuning protocols kept apart.
 
-    `ft64c_*` is the conservative protocol: annealed actor learning rate, more
-    conservative PPO updates, less exploration, shorter budget, mk64. The
-    earlier `ft_*` / `trcas_*` mk256 runs restarted the actor at 1e-4 with the
-    whole network unfrozen, which the config note itself calls aggressive
-    warm-start retraining rather than fine-tuning. Averaging the two would hide
-    the only "what kind of fine-tuning" contrast the data contains.
+    `ft<cap>c_*` is the conservative protocol: annealed actor learning rate,
+    more conservative PPO updates, less exploration, shorter budget. The earlier
+    `ft_*` / `trcas_*` mk256 runs restarted the actor at 1e-4 with the whole
+    network unfrozen, which the config note itself calls aggressive warm-start
+    retraining rather than fine-tuning. Averaging the two would hide the only
+    "what kind of fine-tuning" contrast the data contains. The cap is read from
+    the evaluation, not from the campaign prefix, so `ft32c` and `ft64c` are the
+    same route at different action spaces.
     """
-    if "dangerous_graph_bc" in haystack or checkpoint_stem.startswith("bcg"):
-        detail = "direct from bus14" if "direct_bus14" in checkpoint_stem else "on top of MAPPO fine-tune"
+    _, label = split_selection(checkpoint_stem)
+    if "dangerous_graph_bc" in haystack or label.startswith("bcg"):
+        detail = "direct from bus14" if "direct_bus14" in label else "on top of MAPPO fine-tune"
         return "BC on greedy labels", detail
-    if "sc64c" in checkpoint_stem:
+    if SCRATCH_RE.match(label):
         return "MAPPO scratch", "random init"
-    if checkpoint_stem.startswith("ft64c"):
-        return "MAPPO fine-tune (conservative)", "annealed lr, mk64, short budget"
-    if "finetune" in checkpoint.lower() or checkpoint_stem.startswith(("ft", "trcas")):
+    if CONSERVATIVE_RE.match(label):
+        return "MAPPO fine-tune (conservative)", "annealed lr, short budget"
+    if "finetune" in checkpoint.lower() or label.startswith(("ft", "trcas")):
         return "MAPPO fine-tune (aggressive)", "actor lr restarted at 1e-4, fully unfrozen"
     return "bus14 zero-shot", "no target-grid gradient"
 
@@ -190,6 +211,7 @@ def _classify_result(task_dir, result_path):
         "rho": rho,
         "checkpoint": checkpoint,
         "checkpoint_stem": checkpoint_stem,
+        "selection": split_selection(checkpoint_stem)[0],
         "checkpoint_step": payload.get("checkpoint_global_step"),
         "physical_scaling_flag": payload.get("gnn_physical_scaling_effective"),
         "reported_overall_pct": payload.get("survival_percent"),
@@ -434,3 +456,112 @@ def paired_bootstrap(deltas, n_boot=20_000, seed=20260820):
     deltas = np.asarray(deltas, dtype=float)
     draws = deltas[rng.integers(0, len(deltas), size=(n_boot, len(deltas)))].mean(axis=1)
     return deltas.mean(), float(np.quantile(draws, 0.025)), float(np.quantile(draws, 0.975))
+
+
+# --- the from-scratch architecture screen (X_wcci_scratch_arch) -------------
+# These encoders were trained on WCCI directly, with an MLP head over the
+# reduced action list rather than the shared candidate scorer, so they are a
+# separate arm from everything `load()` returns and are kept in their own table.
+WSC_SCHEMA_LABELS = {
+    "bus_e0n0v0": "busbar, no augmentation",
+    "bus_e1n0v0": "busbar + same-substation edges",
+    "bus_e0n1v0": "busbar + substation summary nodes",
+    "het_ga2b_lb2a": "disaggregated, gen a2b / load b2a",
+    "het_gbi_lbi": "disaggregated, both bidirectional",
+}
+# bus14 full-test survival of the byte-identical encoder, from the corrected
+# screens (`nl_s2em`, `nl_hmdem`). `het_gbi_lbi` has no corrected bus14 rerun;
+# the pre-correction `gs_hmd` number is not comparable and is deliberately
+# omitted rather than substituted.
+WSC_BUS14_SOURCE = {
+    "bus_e0n0v0": ("nl_s2em_bus_n0_none_e0n0v0_s0", 95.45),
+    "bus_e1n0v0": ("nl_s2em_bus_n0_none_e1n0v0_s0", 97.19),
+    "het_ga2b_lb2a": ("nl_hmdem_hetero_n0_none_ga2b_lb2a_s0", 99.12),
+}
+WSC_RE = re.compile(r"wsc_(?P<schema>bus_e\d n\d v\d |het_[a-z0-9_]+?)_mk(?P<mk>\d+)_s(?P<seed>\d+)$".replace(" ", ""))
+
+
+def load_wsc(reference):
+    """Load the from-scratch architecture screen against `reference` from `load()`.
+
+    Applies the same artifact verification: a result whose episode CSV does not
+    reproduce the survival in its own JSON is rejected. That matters here — the
+    best-test and final checkpoints of each run were evaluated into the *same*
+    action-log directory, so one of each pair is mis-attributed on disk.
+    """
+    task_dir = Path(reference["task_dir"])
+    root = task_dir / "outputs" / "full_test_eval" / "wsc"
+    baseline = reference["baseline"]
+    hard_fingerprints = set(baseline.loc[baseline["is_hard"], "chronic_fingerprint"])
+
+    rows, frames, rejected = [], [], []
+    for path in sorted(root.glob("*.json")):
+        payload = load_json(path)
+        if payload.get("target_env_id") != TARGET_ENV or payload.get("eval_episodes") != N_EPISODES:
+            continue
+        stem = Path(str(payload.get("checkpoint", ""))).stem
+        match = WSC_RE.search(stem)
+        if match is None:
+            continue
+        artifact = (payload.get("action_artifacts") or {}).get("episode_summary_csv")
+        artifact_path = _local_path(task_dir, artifact) if artifact else None
+        row = {
+            "key": path.stem,
+            "run": stem,
+            "checkpoint_kind": "best test" if stem.startswith("best_test_") else "final",
+            "schema": match.group("schema"),
+            "schema_label": WSC_SCHEMA_LABELS.get(match.group("schema"), match.group("schema")),
+            "mk": int(match.group("mk")),
+            "checkpoint_step": payload.get("checkpoint_global_step"),
+            "reported_overall_pct": payload.get("survival_percent"),
+            "episode_csv": str(artifact_path) if artifact_path else None,
+        }
+        if not (artifact_path and artifact_path.is_file()):
+            rejected.append({**row, "reason": "artifact missing"})
+            continue
+        frame = pd.read_csv(artifact_path).merge(
+            baseline, on="chronic_fingerprint", validate="one_to_one", suffixes=("", "_baseline"),
+        )
+        if len(frame) != N_EPISODES:
+            rejected.append({**row, "reason": f"{len(frame)} episodes"})
+            continue
+        if not np.isclose(100 * frame["survival"].mean(), row["reported_overall_pct"],
+                          rtol=0, atol=1e-6):
+            rejected.append({**row, "reason": "artifact does not reproduce its own JSON"})
+            continue
+        frame["key"] = row["key"]
+        frames.append(frame)
+        rows.append(row)
+
+    runs = pd.DataFrame(rows)
+    episodes = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+    if not episodes.empty:
+        episodes["is_hard"] = episodes["chronic_fingerprint"].isin(hard_fingerprints)
+        episodes["full_survival"] = np.isclose(episodes["survival"], 1.0)
+        episodes["delta_pp"] = 100 * (episodes["survival"] - episodes["dn_survival"])
+
+        def summarise(group):
+            hard = group.loc[group["is_hard"]]
+            easy = group.loc[~group["is_hard"]]
+            return pd.Series({
+                "overall_pct": 100 * group["survival"].mean(),
+                "hard_pct": 100 * hard["survival"].mean(),
+                "hard_rescues": int(hard["full_survival"].sum()),
+                "hard_wins": int((hard["delta_pp"] > 1e-9).sum()),
+                "hard_losses": int((hard["delta_pp"] < -1e-9).sum()),
+                "easy_kept": int(easy["full_survival"].sum()),
+            })
+
+        runs = runs.merge(
+            episodes.groupby("key", sort=False).apply(summarise, include_groups=False).reset_index(),
+            on="key", how="left",
+        )
+        runs["capture_hard_pct"] = 100 * (
+            (runs["hard_pct"] - reference["dn_hard"])
+            / (runs["mk"].map(reference["greedy_hard"]) - reference["dn_hard"])
+        )
+        runs["bus14_pct"] = runs["schema"].map(
+            {k: v[1] for k, v in WSC_BUS14_SOURCE.items()}
+        )
+        runs["collapsed"] = runs["hard_pct"] < 0.5
+    return Bunch(runs=runs, episodes=episodes, rejected=pd.DataFrame(rejected))

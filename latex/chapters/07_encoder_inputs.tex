@@ -4,20 +4,19 @@
 One encoder serves every agent, and the same encoder is what a transfer study
 moves between grids. Its inputs are raw physical quantities, so before either
 form of sharing can be interpreted the inputs themselves have to be measured.
-This chapter does that: it establishes what the encoder consumes, how far those
-distributions differ between two grids, which of the differences a network
-absorbs and which it does not, and what corrections follow.
+This chapter establishes what the encoder consumes, how far those distributions
+differ between two grids, which of the differences a network absorbs and which
+it does not, and what corrections follow. Without those measurements, a deficit
+under transfer could not be told apart from a representation reading
+miscalibrated inputs. Chapter~\ref{ch:wcci-transfer} applies the corrections and
+Chapter~\ref{ch:screen-e-transfer} runs the transfer.
 \\
 \\
-Chapter~\ref{ch:wcci-transfer} then applies the corrections and runs the
-transfer. The measurements here are the reason that study is interpretable at
-all: without them, a deficit under transfer could not be told apart from a
-representation reading miscalibrated inputs.
-
-\section{Why the input distribution matters}
-\label{sec:wcci-why-distribution}
-
-While the centralized critic remains grid-specific, both the graph encoder and the candidate-action scorer (Section~\ref{sec:candidate-action-scoring}) are grid-size independent. This allows the entire actor to be transferred across grids. However, the actor and critic receive different inputs: the critic consumes normalized flat observations, while the transferred actor encoder reads raw graph features (with physical scaling and running standardization initially disabled). A frozen \texttt{bus14} encoder therefore confronts WCCI's raw physical quantities directly. Whether this transfer succeeds depends entirely on how closely the source and target distributions match.
+The actor and the critic do not face the same problem. The critic consumes the
+normalized flat observation and is grid-specific in any case; the encoder reads
+raw graph features, with physical scaling and running standardization initially
+disabled, so a transferred \texttt{bus14} encoder meets WCCI's raw physical
+quantities directly. Only that second distribution is at issue here.
 
 
 \section{Measurement protocol}
@@ -45,43 +44,23 @@ $\sigma_A,\sigma_B$, and $\sigma_p=\sqrt{(\sigma_A^2+\sigma_B^2)/2}$ for their
 pooled spread:
 \begin{align}
   \text{offset} &= \frac{\mu_B-\mu_A}{\sigma_p},
-  &\text{scale ratio} &= \frac{\sigma_B}{\sigma_A}, \label{eq:offset-scale} \\
-  \mathrm{KS} &= \sup_x |F_A(x)-F_B(x)|,
-  &W_1/\sigma_p &= \frac{1}{\sigma_p}\int_0^1 |F_A^{-1}(q)-F_B^{-1}(q)|\,\mathrm{d}q .
+  &\text{scale ratio} &= \frac{\sigma_B}{\sigma_A},
+  &\mathrm{KS} &= \sup_x |F_A(x)-F_B(x)| . \label{eq:offset-scale}
 \end{align}
 {\color{clarif}
-\paragraph{Reading the equations.} $A$ is always \texttt{bus14}, the source grid,
-and $B$ always WCCI, the target: an offset is therefore positive when WCCI sits
-higher, and a scale ratio above one means WCCI is the wider of the two. $F_A$
-and $F_B$ are the two \emph{empirical cumulative distribution functions}, one
-per grid, built from the samples of Section~\ref{sec:wcci-protocol}: $F_A(x)$ is
-the fraction of \texttt{bus14}'s sampled values that fall at or below $x$, so it
-rises from $0$ to $1$ as $x$ sweeps the axis. Its inverse $F_A^{-1}(q)$ runs the
-other way, returning the value below which a fraction $q$ of the sample lies ---
-$F_A^{-1}(0.5)$ is the median. The two definitions are what let the last two
-statistics compare the same pair of samples from perpendicular directions: KS
-measures the gap between the curves vertically at fixed $x$, $W_1$ between their
-inverses horizontally at fixed $q$. Their names: $\mathrm{KS}$ is the
-Kolmogorov--Smirnov statistic, the largest vertical gap between the two
-empirical cumulative distribution functions. It lies in $[0,1]$, reaching $0$
-when the distributions coincide and $1$ when their supports are disjoint, and
-the last panel of Figure~\ref{fig:wcci-distributions} draws the gap it measures.
-$W_1$ is the
-$1$-Wasserstein distance, also called the earth mover's distance: the average
-horizontal gap between the two quantile functions, or equivalently the least
-mass$\,\times\,$distance needed to rearrange one distribution into the other.
-The subscript is the exponent applied to that displacement --- $W_2$ would
-square it and so weigh far excursions more heavily --- and this work uses
-$p=1$ throughout. Because $W_1$ carries the units of the feature, it is reported
-in pooled standard deviations so that channels measured in MW and in degrees
-stay comparable.}
+\paragraph{Conventions.} $A$ is always \texttt{bus14} and $B$ always WCCI, so an
+offset is positive when WCCI sits higher and a scale ratio above one means WCCI
+is the wider of the two. $F_A$ and $F_B$ are the empirical CDFs built from the
+samples of Section~\ref{sec:wcci-protocol}, and the Kolmogorov--Smirnov
+statistic is the largest gap between them: it lies in $[0,1]$ and is drawn in
+the last panel of Figure~\ref{fig:wcci-distributions}.}
 \\
 \\
 The pairing is deliberate: the offset is blind to a change in spread and the
 scale ratio is blind to a displacement, so a channel is only unproblematic when
-both sit near their neutral values. KS measures disagreement in the bulk and is
-comparatively insensitive to tails, which $W_1$ does weigh.
-Section~\ref{sec:wcci-interpretation} shows why the two failures need separating.
+both sit near their neutral values, and KS summarises whatever disagreement
+remains. Section~\ref{sec:wcci-interpretation} shows why the two failures need
+separating.
 
 
 \section{What the encoder reads}
@@ -104,13 +83,11 @@ statistic taken over all rows therefore mixes a measurement with the zeros of
 three other node types, which is why every channel below is reported twice.
 \\
 \\
-Two channels are constant in this sample rather than sparse. The two cooldown
-columns are exactly zero only because the policy is do-nothing; under control a
-topology change sets the substation cooldown to 3 and a reconnection sets the
-line cooldown to 3. \texttt{timestep\_overflow} is zero on all but a handful of
-rows. One channel is dimensionless by construction: \texttt{rho} divides each
-line's flow by that line's own thermal limit, while every other physical channel
-carries the units of the grid it came from.
+Three channels are constant or near-constant in this sample rather than sparse:
+the two cooldown columns, which a do-nothing policy never triggers, and
+\texttt{timestep\_overflow}. One channel is dimensionless by construction:
+\texttt{rho} divides each line's flow by that line's own thermal limit, while
+every other physical channel carries the units of the grid it came from.
 
 
 \section{Results}
@@ -118,8 +95,8 @@ carries the units of the grid it came from.
 
 Table~\ref{tab:wcci-shift} reports the shift statistics twice: over all sampled
 rows, and over only the node type that carries the channel. The two readings
-differ because a shared column is a point mass at zero, contributed by the three
-types that do not own it, mixed with the measurement of the type that does.
+differ for the reason given above --- a shared column mixes a point mass at zero
+with the measurement of the type that owns it.
 
 \begin{table}[H]
   \centering
@@ -197,18 +174,12 @@ cosmetic, because the architecture responds to the two axes differently.
 
 {\color{clarif}
 \paragraph{Reading the axes.} Each point is one channel, placed by the two
-statistics of Equation~\eqref{eq:offset-scale} taken over all sampled entries. The horizontal axis
-is the \emph{magnitude} of the offset, $|\mu_B-\mu_A|/\sigma_p$, in pooled
-standard deviations: how far the two distributions have moved apart, with the
-sign discarded because only the size of a displacement matters here. The
-vertical axis is the scale ratio $\sigma_B/\sigma_A$, WCCI over \texttt{bus14}:
-how much wider or narrower WCCI's spread is, with $1$ meaning identical spread.
-It is drawn on a logarithmic scale so that halving and doubling sit the same
-distance from $1$, which a linear axis would misrepresent. A channel needing no
-correction sits at the origin of this reading --- near-zero offset and ratio
-near $1$ --- so distance from the bottom-left corner is distance from
-comparability, and the direction of that distance names which of the two
-failures it is.}
+statistics of Equation~\eqref{eq:offset-scale} over all sampled entries:
+horizontally the offset magnitude $|\mu_B-\mu_A|/\sigma_p$, vertically the scale
+ratio $\sigma_B/\sigma_A$ on a log axis so that halving and doubling sit
+equidistant from $1$. A channel needing no correction sits at the bottom left,
+so distance from that corner is distance from comparability and its direction
+names which of the two failures is at work.}
 \\
 \\
 
@@ -285,15 +256,18 @@ apart (Table~\ref{tab:wcci-running-norm}).
 \end{table}
 
 \noindent The cause is the shared-column structure of
-Section~\ref{sec:wcci-features}. Each channel is a point mass at zero,
-contributed by the three node types that do not own it, plus the measurement of
-the type that does. Subtracting a per-grid mean moves that point mass to a
-grid-dependent location. Since three quarters of all rows are zeros for
-\texttt{p} and \texttt{theta}, the encoder's single most frequent input stops
-meaning the same thing on the two grids, which is a larger mismatch than the
-displacement being corrected. On \texttt{theta} it is starker still: a row that
-does not own the channel reads $+0.481$ on \texttt{bus14} and $-0.143$ on WCCI,
-so the same absence lands on opposite sides of zero.
+Section~\ref{sec:wcci-features}. Subtracting a per-grid mean moves each channel's
+point mass at zero to a grid-dependent location, and since three quarters of all
+rows are zeros for \texttt{p} and \texttt{theta}, the encoder's single most
+frequent input stops meaning the same thing on the two grids --- a larger
+mismatch than the displacement being corrected. On \texttt{theta} a row that does
+not own the channel reads $+0.481$ on \texttt{bus14} and $-0.143$ on WCCI, so the
+same absence lands on opposite sides of zero.
+\\
+\\
+The same defect, with agents rather than grids as the populations, affected the
+static action descriptor; it is diagnosed alongside Screen~E in
+Section~\ref{sec:screen-e-descriptor-scaling}.
 \\
 \\
 Two further properties rule the mechanism out independently of these numbers.
@@ -347,41 +321,6 @@ Scaling cannot repair the angle displacement. Absolute voltage angles are refere
 \\
 The solution is to use the angle drop along each line (Section~\ref{sec:line-node-angle}). As a difference, it is gauge-invariant. On the disaggregated graph, this feature lives on the transmission-line node (the most populous type), gracefully trading a feature owned by a quarter of the rows for one owned by a third. We therefore replace absolute angles with line-angle differences in both environments.
 
-\subsection{The action descriptor must not be normalized per agent}
-\label{sec:wcci-action-descriptor}
-
-The same error appears once more, on an input this chapter has not otherwise
-considered, and with the agents rather than the grids as the populations. One
-input reaches the actor without passing through the encoder: the
-candidate-action head of Section~\ref{sec:candidate-action-scoring} appends a
-static descriptor of each action to the pooled node context. Its count columns
-were divided by the largest value in that agent's \emph{own} action set --- the
-construction Section~\ref{sec:wcci-running-norm} rejects for node features,
-applied to a different input, with the agents as the populations.
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Divisors applied to the action count descriptors under the previous
-  per-agent rule, \texttt{bus14}.}
-  \label{tab:action-descriptor-divisors}
-  \setlength{\tabcolsep}{7pt}
-  \begin{tabular}{lrrr}
-    \toprule
-    Agent & Actions & Topology changes & Line endpoints \\
-    \midrule
-    0 & 57 & 5 & 3 \\
-    1 & 51 & 5 & 4 \\
-    2 & 83 & 6 & 3 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\noindent An action moving three elements therefore reached the shared scorer as $0.60$ for agent~$0$ and $0.50$ for agent~$2$. Every agent's busiest action reached it as exactly $1.0$, regardless of whether it moved five elements or six. On a new grid, these implicit divisors would shift arbitrarily.
-\\
-\\
-The correction is to divide these counts by a global constant (\texttt{candidate\_action\_feature\_scaling}). Under this fix, the busiest actions read $1.25$, $1.25$ and $1.5$, preserving their true relative scale across agents and grids. This is the only correction that applies \emph{within} a single environment, and it directly explains the outcome of Screen~E (Chapter~\ref{ch:experiments}): the \texttt{f1} cells appended a descriptor that was mutually inconsistent across agents sharing the same scorer, which clarifies why the descriptor-free \texttt{f0} configuration emerged as the robust choice.
-
 \subsection{The corrected distribution}
 \label{sec:wcci-corrected}
 
@@ -432,15 +371,13 @@ that offsets, not scale errors, are what the architecture cannot absorb, so this
 moves \texttt{p} onto the axis that binds.
 \\
 \\
-The exchange is still favourable on the evidence available: the worst
-displacement across all channels falls from $1.864$ to $0.808$, every scale
-ratio ends inside the band, and no channel remains outside both bounds at once.
-But it is an exchange, not an elimination. A divisor reflecting typical rather
-than peak generation would plausibly do better on both axes;
-Table~\ref{tab:wcci-normalizer} tested four candidates against the scale ratio
-alone, and selecting one against the offset as well is left open. The transfer
-results of Chapter~\ref{ch:wcci-transfer} are the test of whether the residual
-displacement matters in practice, and the design of
+The exchange is still favourable: the worst displacement across all channels
+falls from $1.864$ to $0.808$, every scale ratio ends inside the band, and no
+channel remains outside both bounds at once. But it is an exchange, not an
+elimination --- a divisor reflecting typical rather than peak generation would
+plausibly do better on both axes, and selecting one against the offset as well as
+the scale ratio is left open. Chapter~\ref{ch:screen-e-transfer} is the test of
+whether the residual displacement matters in practice, and
 Section~\ref{sec:wcci-design} runs both input conditions precisely so that
 question can be answered.
 
@@ -455,3 +392,41 @@ question can be answered.
 \end{figure}
 
 
+\begin{tcolorbox}[
+  colframe=red!75!black,
+  colback=red!5!white,
+  title=Chapter 7 Summary: What the Shared Encoder Reads]
+\textbf{Purpose:} To measure what the shared encoder actually reads on both
+grids, so that a deficit under transfer can be told apart from a representation
+reading miscalibrated inputs.
+\\
+\\
+\textbf{Content:} Do-nothing rollouts on both grids ($426{,}000$ and
+$1{,}236{,}000$ node observations) compared channel by channel on offset, scale
+ratio and KS. The pre-encoder's LayerNorm absorbs a change in
+\emph{scale} but not an \emph{offset}, which moves pre-activations across the
+ReLU threshold --- so the two axes are not equally serious.
+\\
+\\
+\textbf{Findings:}
+\begin{itemize}
+  \item \texttt{rho} needs no correction (ratio $1.05$, offset $-0.26$): it is
+  already in per-unit terms.
+  \item \texttt{theta} is displaced by $1.864\sigma$, a gauge artifact of each
+  grid's slack bus. The gauge-invariant angle drop takes it from
+  $\mathrm{KS}=0.678$ to $0.230$.
+  \item Physical scaling of \texttt{p} is an exchange, not a repair: spread
+  $2.54\to0.89$, but offset $-0.158\to-0.808$. The worst displacement overall
+  still falls from $1.864$ to $0.808$.
+  \item Running standardization is rejected: it aligns the moments exactly yet
+  triples KS on \texttt{p} ($0.042\to0.773$), because a per-grid mean displaces
+  the point mass at zero that three quarters of all rows carry.
+  \item The action descriptor was normalized per agent, so the same action read
+  $0.60$ for one agent and $0.50$ for another --- which explains why the
+  descriptor-free \texttt{f0} cells were robust in Screen~E.
+\end{itemize}
+\textbf{Takeaway:} Deterministic physical scaling and the edge-difference angle
+are adopted, running standardization is not. Since the power correction trades a
+scale error for a displacement, both input conditions are carried forward for
+Chapter~\ref{ch:screen-e-transfer} to test.
+\end{tcolorbox}
