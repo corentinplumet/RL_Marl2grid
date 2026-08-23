@@ -49,6 +49,7 @@ HEURISTIC_LABELS = {
 }
 ROUTE_ORDER = [
     "bus14 zero-shot",
+    "bus14 zero-shot + AIB",
     "MAPPO fine-tune (aggressive)",
     "MAPPO fine-tune (conservative)",
     "BC on greedy labels",
@@ -56,6 +57,7 @@ ROUTE_ORDER = [
 ]
 ROUTE_COLORS = {
     "bus14 zero-shot": "#4C78A8",
+    "bus14 zero-shot + AIB": "#72B7B2",
     "MAPPO fine-tune (aggressive)": "#F58518",
     "MAPPO fine-tune (conservative)": "#E4A11B",
     "BC on greedy labels": "#B279A2",
@@ -67,6 +69,8 @@ GATE_COLORS = {"ungated": "#9EC5E8", "gated": "#E45756"}
 # Checkpoints are saved under a selection prefix; the campaign name follows it.
 SELECTION_RE = re.compile(r"^(?P<selection>best_test|final)_(?P<rest>.+)$")
 CONSERVATIVE_RE = re.compile(r"^ft\d+c")
+AIB_RE = re.compile(r"^aibcas")
+AIB_TARGET_RE = re.compile(r"_d(\d{3})_")
 SCRATCH_RE = re.compile(r"^sc\d+c")
 VARIANT_RE = re.compile(r"_(?P<pool>tmean|typed_mean|mean)_f(?P<features>[01])_a0h(?P<head>[01])")
 SHORT_VARIANT_RE = re.compile(r"_(?P<pool>tm|m)f(?P<features>[01])h(?P<head>[01])(?:_|$)")
@@ -153,6 +157,14 @@ def _classify_route(checkpoint, checkpoint_stem, haystack):
     if "dangerous_graph_bc" in haystack or label.startswith("bcg"):
         detail = "direct from bus14" if "direct_bus14" in label else "on top of MAPPO fine-tune"
         return "BC on greedy labels", detail
+    if AIB_RE.match(label):
+        # Same shared-candidate actor, trained on bus14 with the adaptive
+        # intervention budget active. It transfers zero-shot like the plain
+        # cas_hl arm, but it is a different training recipe and must not join
+        # that arm's factorial.
+        target = AIB_TARGET_RE.search(label)
+        budget = f"intervention budget {int(target.group(1)) / 100:.2f}" if target else "adaptive intervention budget"
+        return "bus14 zero-shot + AIB", budget
     if SCRATCH_RE.match(label):
         return "MAPPO scratch", "random init"
     if CONSERVATIVE_RE.match(label):
