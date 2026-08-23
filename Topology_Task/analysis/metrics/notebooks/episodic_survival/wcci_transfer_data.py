@@ -15,7 +15,7 @@ is the factor decomposition the transfer study was actually designed around
 
 and the adaptation route, split by fine-tuning protocol rather than lumped:
 aggressive warm-start retraining at mk256 versus the conservative annealed
-protocol at mk64 (`CONSERVATIVE_FINETUNING_MK64.md`).
+protocol evaluated at mk64 and mk32 (`CONSERVATIVE_FINETUNING_MK64.md`).
 """
 
 from pathlib import Path
@@ -27,9 +27,9 @@ import pandas as pd
 
 TARGET_ENV = "bus36_wcci_nomaint"
 N_EPISODES = 50
-# Display order for the reduced action spaces. mk32 has a greedy ceiling but no
-# transfer evaluations yet; notebooks derive the caps they plot from the runs
-# themselves, so a new cap appears automatically once its results land.
+# Display order for the reduced action spaces. Notebooks derive the caps they
+# plot from the runs themselves, so a new cap appears automatically once its
+# results land.
 MK_ORDER = [32, 64, 128, 256, 512, 1024]
 
 
@@ -198,8 +198,11 @@ def _classify_result(task_dir, result_path):
         or MK_RE.search(result_path.parent.name)
         or MK_RE.search(stem)
     )
-    artifact = (payload.get("action_artifacts") or {}).get("episode_summary_csv")
+    artifacts = payload.get("action_artifacts") or {}
+    artifact = artifacts.get("episode_summary_csv")
     artifact_path = _local_path(task_dir, artifact) if artifact else None
+    action_summary = artifacts.get("action_summary_json")
+    action_summary_path = _local_path(task_dir, action_summary) if action_summary else None
 
     return {
         "key": f"{result_path.parent.name}/{stem}",
@@ -231,6 +234,43 @@ def _classify_result(task_dir, result_path):
         "eval_episodes": payload.get("eval_episodes"),
         "episode_csv": str(artifact_path) if artifact_path else None,
         "has_episodes": bool(artifact_path and artifact_path.is_file()),
+        "action_summary_json": str(action_summary_path) if action_summary_path else None,
+        "has_action_summary": bool(action_summary_path and action_summary_path.is_file()),
+    }
+
+
+def _summarise_action_artifact(path):
+    """Compact policy/execution statistics from one action-summary artifact."""
+    payload = load_json(path)
+    agents = payload.get("agents") or {}
+    total_agent_steps = sum(int(values.get("n_steps", 0)) for values in agents.values())
+    executed_nonidle = sum(int(values.get("nonidle_count", 0)) for values in agents.values())
+    policy_nonidle = 0
+    blocked_nonidle = 0
+    distinct_executed_nonidle = 0
+    for values in agents.values():
+        policy_counts = values.get("policy_action_counts") or {}
+        executed_counts = values.get("action_counts") or {}
+        policy_nonidle += sum(
+            int(count) for action, count in policy_counts.items() if int(action) != 0
+        )
+        blocked_nonidle += int(values.get("heuristic_blocked_nonidle_count", 0))
+        distinct_executed_nonidle += sum(
+            int(count) > 0 for action, count in executed_counts.items() if int(action) != 0
+        )
+    scale = 1000.0 / total_agent_steps if total_agent_steps else np.nan
+    return {
+        "action_eval_steps": int(payload.get("n_eval_steps", 0)),
+        "agent_steps": total_agent_steps,
+        "executed_nonidle": executed_nonidle,
+        "policy_nonidle": policy_nonidle,
+        "blocked_nonidle": blocked_nonidle,
+        "executed_nonidle_per_1k": executed_nonidle * scale,
+        "policy_nonidle_per_1k": policy_nonidle * scale,
+        "blocked_policy_nonidle_pct": (
+            100.0 * blocked_nonidle / policy_nonidle if policy_nonidle else 0.0
+        ),
+        "distinct_executed_nonidle": distinct_executed_nonidle,
     }
 
 
@@ -331,6 +371,20 @@ def load(task_dir=None):
     )
     inventory = inventory.loc[comparable].reset_index(drop=True)
     inventory["route"] = pd.Categorical(inventory["route"], categories=ROUTE_ORDER, ordered=True)
+
+    # --- compact action-behaviour metrics ------------------------------------
+    # Keep these beside the survival metrics so notebooks can explain *how* a
+    # rho gate changed a policy, rather than only reporting the final score.
+    action_rows = []
+    for row in inventory.loc[inventory["has_action_summary"]].itertuples():
+        action_rows.append({
+            "key": row.key,
+            **_summarise_action_artifact(row.action_summary_json),
+        })
+    if action_rows:
+        inventory = inventory.merge(
+            pd.DataFrame(action_rows), on="key", how="left", validate="one_to_one"
+        )
 
     # --- per-episode artifacts, verified against each run's own JSON ----------
     # A result may point at another evaluation's artifact directory; loading it
