@@ -57,6 +57,25 @@ def strip_graph_settings(text: str) -> str:
     return "".join(kept)
 
 
+# Any setting line that still mentions a graph after the strip. `share_actor_gnn`
+# taught this lesson: the prefix filter alone is not enough, because the flag
+# that gates the shared graph encoder is not named after one.
+ALLOWED_GRAPH_LINES = {"share_actor_gnn = false"}
+
+
+def _assert_no_graph_settings(text: str, target: str) -> None:
+    offenders = [
+        line.strip()
+        for line in text.splitlines()
+        if line.strip()
+        and not line.lstrip().startswith("#")
+        and re.search(r"gnn|graph", line, re.IGNORECASE)
+        and line.strip() not in ALLOWED_GRAPH_LINES
+    ]
+    if offenders:
+        raise ValueError(f"{target}: graph settings survived the strip: {offenders}")
+
+
 def generate(cap: int) -> tuple[str, str]:
     source_path = SOURCE_DIR / f"wsc_bus_e0n0v0_mk{SOURCE_CAP}_s0.toml"
     if not source_path.is_file():
@@ -69,6 +88,11 @@ def generate(cap: int) -> tuple[str, str]:
     text = replace_once(text, f'exp_tag = "wsc_bus_e0n0v0_mk{SOURCE_CAP}_s0"',
                         f'exp_tag = "{target}"')
     text = replace_once(text, 'actor_encoder = "gnn"', 'actor_encoder = "mlp"')
+    # Not caught by GRAPH_KEY_RE: the name starts with `share_`, not `gnn_`.
+    # core.py rejects share_actor_gnn=true unless actor_encoder == "gnn".
+    text = replace_once(
+        text, "share_actor_gnn = true",
+        "# No graph encoder exists to share.\nshare_actor_gnn = false")
     text = replace_once(text, 'run_dir = "outputs/izar-{config_name}-{job_id}"',
                         'run_dir = "outputs/{config_name}-{job_id}"')
     text = strip_graph_settings(text)
@@ -84,7 +108,9 @@ def generate(cap: int) -> tuple[str, str]:
     body_start = text.find("\n\n")
     if body_start < 0:
         raise ValueError("Source config lacks a header paragraph")
-    return target, header + text[body_start + 2:]
+    text = header + text[body_start + 2:]
+    _assert_no_graph_settings(text, target)
+    return target, text
 
 
 def main() -> None:

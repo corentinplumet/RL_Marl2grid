@@ -71,7 +71,8 @@ chronic_split_seed = 0
 # Shared, grid-size-independent actor encoder
 actor_encoder = "mlp"
 critic_encoder = "mlp"
-share_actor_gnn = true
+# No graph encoder exists to share.
+share_actor_gnn = false
 
 # Relation directions (held at the backwards-compatible baseline)
 
