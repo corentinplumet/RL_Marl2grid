@@ -10,7 +10,7 @@ implemented around the `best_00` MAPPO/GNN setup:
 - adaptive Lagrangian intervention budgets (`aib_*` and `aibm_*`).
 
 The common goal is to make decentralized topology-control agents more
-operator-like:
+operator-like:  
 
 ```text
 act rarely,
