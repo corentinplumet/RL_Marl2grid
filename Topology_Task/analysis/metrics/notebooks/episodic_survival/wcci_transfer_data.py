@@ -18,6 +18,7 @@ aggressive warm-start retraining at mk256 versus the conservative annealed
 protocol evaluated at mk64 and mk32 (`CONSERVATIVE_FINETUNING_MK64.md`).
 """
 
+from functools import lru_cache
 from pathlib import Path
 import json
 import re
@@ -100,17 +101,70 @@ class Bunch(dict):
     __getattr__ = dict.__getitem__
 
 
+ARTIFACT_ROOT = Path("outputs") / "full_test_eval_actions"
+ARTIFACT_NAMES = {"episode_summary.csv", "action_summary.json", "action_distribution.csv"}
+# Filled by `_relocate`, reset at the top of `load()`, and returned to the
+# caller so a notebook can show which artifacts were not where their own JSON
+# said they were rather than discovering it as a silent gap.
+_RELOCATED = []
+
+
+@lru_cache(maxsize=8)
+def _artifact_index(task_dir):
+    """`(run dir, evaluation dir, filename) -> paths` for every artifact on disk.
+
+    An evaluation writes its artifacts under whatever root the *job* used, and
+    the path recorded in the result JSON is that root. Synced onto a checkout
+    they can land under a different one — the `ft32c_NL` batch declares
+    `full_test_eval_actions/wcci_nomaint_new_checkpoints/...` but arrived under
+    `full_test_eval_actions/shared/...`. The last three components are stable
+    across roots, so they are the key.
+    """
+    index = {}
+    root = Path(task_dir) / ARTIFACT_ROOT
+    if root.is_dir():
+        for path in root.rglob("*"):
+            if path.name in ARTIFACT_NAMES and path.is_file():
+                index.setdefault(
+                    (path.parent.parent.name, path.parent.name, path.name), []
+                ).append(path)
+    return index
+
+
+def _relocate(task_dir, declared):
+    """The artifact `declared` points at, found under a different sync root.
+
+    Only an unambiguous match is accepted: if two roots hold the same
+    `run/evaluation/file` tail there is no way to tell which one this result
+    wrote, so the artifact stays missing. Whatever this returns is still checked
+    against the result's own `survival_percent` before it is used, so a wrong
+    match is rejected rather than mis-attributed.
+    """
+    if len(declared.parts) < 3:
+        return None
+    key = (declared.parent.parent.name, declared.parent.name, declared.name)
+    matches = _artifact_index(task_dir).get(key, [])
+    if len(matches) != 1:
+        return None
+    _RELOCATED.append({"declared": str(declared), "found": str(matches[0])})
+    return matches[0]
+
+
 def _local_path(task_dir, path_string):
     """Map a cluster-side artifact path onto this checkout."""
     path = Path(path_string)
     if path.is_file():
         return path.resolve()
     if path.parts and path.parts[0] == "outputs":
-        return task_dir / path
-    if "Topology_Task" in path.parts:
+        mapped = task_dir / path
+    elif "Topology_Task" in path.parts:
         index = path.parts.index("Topology_Task")
-        return task_dir.joinpath(*path.parts[index + 1:])
-    return task_dir / path
+        mapped = task_dir.joinpath(*path.parts[index + 1:])
+    else:
+        mapped = task_dir / path
+    if mapped.is_file():
+        return mapped
+    return _relocate(task_dir, mapped) or mapped
 
 
 def _parse_variant(*sources):
@@ -310,6 +364,7 @@ def _align_greedy_to_baseline(frame, baseline, summary_path):
 def load(task_dir=None):
     """Load every comparable WCCI evaluation, the do-nothing floor and the greedy ceiling."""
     task_dir = Path(task_dir) if task_dir else find_task_dir()
+    _RELOCATED.clear()
     wcci_root = task_dir / "outputs" / "full_test_eval" / "shared" / "wcci"
     bus14_root = task_dir / "outputs" / "full_test_eval" / "shared" / "bus14"
     greedy_root = task_dir / "outputs" / "greedy_wcci_nomaint_50"
@@ -482,6 +537,7 @@ def load(task_dir=None):
         greedy_hard=greedy_hard,
         greedy_overall=greedy_overall,
         rejected_artifacts=pd.DataFrame(rejected),
+        relocated_artifacts=pd.DataFrame(_RELOCATED),
         n_hard=len(hard_fingerprints),
         n_easy=N_EPISODES - len(hard_fingerprints),
         n_episodes=N_EPISODES,
