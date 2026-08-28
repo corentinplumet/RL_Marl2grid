@@ -1474,6 +1474,36 @@ set, but gives it an empty context that never occurs for non-idle actions. A
 dedicated scorer instead treats ``do nothing'' as a global safety decision, at
 the cost of extra parameters and a different scoring mechanism.
 
+\subsection{Global-maximum and action-delta extension}
+\label{subsec:candidate-gmax-delta}
+
+The Gmax-delta variant keeps the candidate scorer above but changes two inputs.
+First, $\mathbf z_a$ is obtained by a component-wise maximum over energized node
+states instead of a mean. Second, each exact modification in action $j$ is
+encoded from the modified object, the mean state of its substation busbars, the
+target busbar, their difference, and static operation flags. The modification
+tokens are combined into $\boldsymbol\delta_j$ and appended to the scorer input.
+Figure~\ref{fig:candidate-action-gmax-delta-pipeline} summarizes the resulting
+architecture. It uses the current graph embeddings only: it does not construct
+the post-action graph or simulate the candidate.
+
+\begin{figure}[H]
+  \centering
+  \resizebox{0.99\linewidth}{!}{%
+    \input{figures/candidate_action_gmax_delta_pipeline.tex}%
+  }
+  \caption[Gmax-delta candidate-action architecture]{Gmax-delta extension of
+  Figure~\ref{fig:candidate-action-scoring-pipeline}. The shared GINE encoder
+  returns node states $\mathbf H$. The upper branch builds the global vector by
+  maximum pooling over energized nodes; the middle branch keeps the original
+  touched-node context $\mathbf c_j$; and the lower branch encodes each exact
+  object modification and aggregates the resulting tokens into
+  $\boldsymbol\delta_j$. The shared scorer receives all three state-dependent
+  contexts and, optionally, the static descriptor $\boldsymbol\phi_j$. No
+  post-action graph or power flow is computed.}
+  \label{fig:candidate-action-gmax-delta-pipeline}
+\end{figure}
+
 \subsection{Cost and current limits}
 \label{subsec:candidate-configuration}
 

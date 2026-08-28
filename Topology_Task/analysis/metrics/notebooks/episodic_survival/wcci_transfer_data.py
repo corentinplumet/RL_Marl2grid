@@ -687,3 +687,136 @@ def load_wsc(reference):
         )
         runs["collapsed"] = runs["hard_pct"] < 0.5
     return Bunch(runs=runs, episodes=episodes, rejected=pd.DataFrame(rejected))
+
+
+# --- the flat-MLP target-grid controls (V_wcci_mlp_scratch) -----------------
+WMLP_RE = re.compile(r"wmlp_mk(?P<mk>\d+)_s(?P<seed>\d+)$")
+
+
+def load_wmlp(reference):
+    """Load the WCCI MLP controls with the same cohort checks as ``load()``.
+
+    The folder contains final and best-test checkpoints, each evaluated with
+    and without the local-rho heuristic.  They are kept separate so the report
+    can use final checkpoints in the main comparison and leave checkpoint
+    selection sensitivity to the appendix.
+    """
+    task_dir = Path(reference["task_dir"])
+    root = task_dir / "outputs" / "full_test_eval" / "wmlp"
+    baseline = reference["baseline"]
+    hard_fingerprints = set(
+        baseline.loc[baseline["is_hard"], "chronic_fingerprint"]
+    )
+
+    rows, frames, rejected = [], [], []
+    for path in sorted(root.rglob("*.json")):
+        payload = load_json(path)
+        if (
+            payload.get("target_env_id") != TARGET_ENV
+            or payload.get("eval_episodes") != N_EPISODES
+        ):
+            continue
+
+        checkpoint_stem = Path(str(payload.get("checkpoint", ""))).stem
+        selection, run_stem = split_selection(checkpoint_stem)
+        match = WMLP_RE.search(run_stem)
+        if match is None:
+            continue
+
+        heuristic_raw = str(
+            payload.get("eval_action_heuristic", "none") or "none"
+        )
+        gate = "ungated" if heuristic_raw == "none" else "gated"
+        rho = float(payload.get("eval_action_rho_threshold", np.nan))
+        if gate == "ungated":
+            rho = np.nan
+
+        artifacts = payload.get("action_artifacts") or {}
+        episode_artifact = artifacts.get("episode_summary_csv")
+        episode_path = (
+            _local_path(task_dir, episode_artifact) if episode_artifact else None
+        )
+        action_artifact = artifacts.get("action_summary_json")
+        action_path = (
+            _local_path(task_dir, action_artifact) if action_artifact else None
+        )
+
+        row = {
+            "key": f"{path.parent.name}/{path.stem}",
+            "run": run_stem,
+            "checkpoint_stem": checkpoint_stem,
+            "selection": selection,
+            "gate": gate,
+            "rho": rho,
+            "mk": int(match.group("mk")),
+            "seed": int(match.group("seed")),
+            "checkpoint_step": payload.get("checkpoint_global_step"),
+            "reported_overall_pct": payload.get("survival_percent"),
+            "episode_csv": str(episode_path) if episode_path else None,
+            "action_summary_json": str(action_path) if action_path else None,
+        }
+
+        if not (episode_path and episode_path.is_file()):
+            rejected.append({**row, "reason": "artifact missing"})
+            continue
+
+        frame = pd.read_csv(episode_path).merge(
+            baseline,
+            on="chronic_fingerprint",
+            validate="one_to_one",
+            suffixes=("", "_baseline"),
+        )
+        if len(frame) != N_EPISODES:
+            rejected.append({**row, "reason": f"{len(frame)} episodes"})
+            continue
+        if not np.isclose(
+            100 * frame["survival"].mean(),
+            row["reported_overall_pct"],
+            rtol=0,
+            atol=1e-6,
+        ):
+            rejected.append(
+                {**row, "reason": "artifact does not reproduce its own JSON"}
+            )
+            continue
+
+        frame["key"] = row["key"]
+        frames.append(frame)
+        if action_path and action_path.is_file():
+            row.update(_summarise_action_artifact(action_path))
+        rows.append(row)
+
+    runs = pd.DataFrame(rows)
+    episodes = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+    if not episodes.empty:
+        episodes["is_hard"] = episodes["chronic_fingerprint"].isin(
+            hard_fingerprints
+        )
+        episodes["full_survival"] = np.isclose(episodes["survival"], 1.0)
+        episodes["delta_pp"] = 100 * (
+            episodes["survival"] - episodes["dn_survival"]
+        )
+
+        def summarise(group):
+            hard = group.loc[group["is_hard"]]
+            easy = group.loc[~group["is_hard"]]
+            return pd.Series(
+                {
+                    "overall_pct": 100 * group["survival"].mean(),
+                    "hard_pct": 100 * hard["survival"].mean(),
+                    "hard_rescues": int(hard["full_survival"].sum()),
+                    "hard_wins": int((hard["delta_pp"] > 1e-9).sum()),
+                    "hard_losses": int((hard["delta_pp"] < -1e-9).sum()),
+                    "easy_kept": int(easy["full_survival"].sum()),
+                }
+            )
+
+        runs = runs.merge(
+            episodes.groupby("key", sort=False)
+            .apply(summarise, include_groups=False)
+            .reset_index(),
+            on="key",
+            how="left",
+        )
+
+    return Bunch(runs=runs, episodes=episodes, rejected=pd.DataFrame(rejected))

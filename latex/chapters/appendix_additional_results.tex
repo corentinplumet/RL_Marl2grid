@@ -2,8 +2,8 @@
 \label{app:additional-screening-results}
 
 This appendix collects detailed result tables and diagnostic figures that
-support Chapters~\ref{ch:sparse-control} and~\ref{ch:experiments}. The main
-chapters retain the compact comparisons needed for the discussion.
+support the experiment and transfer chapters. The main chapters retain the
+compact comparisons needed for the discussion.
 
 \section{Sparse Intervention Control}
 \label{app:sparse-control-full-test-tables}
@@ -335,3 +335,92 @@ of divisors, including the discrete counters, is below.
     \bottomrule
   \end{tabular}
 \end{table}
+
+\clearpage
+\section{WCCI Result Atlas}
+\label{app:wcci-result-atlas}
+
+This section gives the detailed results behind Chapters~\ref{ch:wcci-transfer}
+and~\ref{ch:screen-e-transfer}. Every survival value uses the same 50 WCCI
+chronics and the easy/difficult split defined in
+Section~\ref{sec:wcci-evaluation-protocol}.
+
+\subsection{Evaluation coverage}
+
+Figure~\ref{fig:wcci-appendix-coverage} shows which result files are currently
+available. It is included so that incomplete blocks are visible rather than
+silently removed.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{figures/wcci_appendix_coverage.png}
+  \caption{Coverage of the WCCI evaluation matrix at the time of writing.}
+  \label{fig:wcci-appendix-coverage}
+\end{figure}
+
+The core zero-shot block is complete: 16 architectures, four action-space
+sizes, and both gate conditions. The Gmax-delta and adaptive-budget blocks are
+also complete within their 15-architecture designs.
+
+\subsection{Zero-shot matrices}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{figures/wcci_appendix_zero_shot_matrix.png}
+  \caption{Zero-shot difficult-cohort survival across input, pooling,
+  descriptor, idle-head and action-space choices.}
+  \label{fig:wcci-appendix-zero-shot-matrix}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{figures/wcci_appendix_aib_matrix.png}
+  \caption{Difficult-cohort survival with the adaptive intervention budget.}
+  \label{fig:wcci-appendix-aib-matrix}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{figures/wcci_appendix_gmax_matrix.png}
+  \caption{Difficult-cohort survival with the Gmax-delta action feature.}
+  \label{fig:wcci-appendix-gmax-matrix}
+\end{figure}
+
+\subsection{Target-trained controls}
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Flat-MLP control results. \emph{Easy kept} counts complete episodes
+  among the 26 chronics completed by do nothing.}
+  \label{tab:wcci-wmlp-results}
+  \resizebox{\linewidth}{!}{\input{tables/wcci_wmlp_results}}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Fixed-list GNN controls trained directly on WCCI.}
+  \label{tab:wcci-wsc-results}
+  \resizebox{\linewidth}{!}{\input{tables/wcci_wsc_results}}
+\end{table}
+
+\begin{landscape}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.88\linewidth]{figures/wcci_appendix_target_board.png}
+  \caption{Detailed comparison of target-trained WCCI controls.}
+  \label{fig:wcci-appendix-target-board}
+\end{figure}
+\end{landscape}
+
+\begin{landscape}
+\subsection{Per-chronic diagnostic}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.88\linewidth]{figures/wcci_appendix_chronics.png}
+  \caption{Per-chronic survival for selected policies on the difficult cohort,
+  with do nothing and the greedy reference.}
+  \label{fig:wcci-appendix-chronics}
+\end{figure}
+\end{landscape}

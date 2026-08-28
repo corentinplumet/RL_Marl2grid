@@ -1,50 +1,28 @@
-\chapter{The WCCI Grid and the Design Carried Onto It}
+\chapter{WCCI36: Target Environment and Controls}
 \label{ch:wcci-transfer}
 
-The controlled method comparisons so far were developed on \texttt{bus14}.
-That grid is small enough to iterate on but too small to claim anything about
-scale: fourteen substations, twenty lines, and three agents. The preliminary
-WCCI stress test of Section~\ref{sec:sparse-wcci-stress-test} reproduced several
-sparse-control mechanisms with an MLP actor on the larger grid, but even the
-matched baseline was weak. Because that pilot changed grid size, action space,
-and maintenance at once, it could not identify the source of failure.
-\\
-\\
-This chapter turns that pilot into a controlled transfer study. It moves to the
-L2RPN WCCI 2020 grid, more than twice as many substations and three times as many
-lines, and asks the question that motivates a graph encoder in the first place.
-If the actor reads the grid as a graph rather than as a flat vector, its weights
-are independent of how many substations exist, and a representation learned on
-\texttt{bus14} should carry over.
-\\
-\\
-Before interpreting that transfer, the two environments have to be made
-comparable and the encoder's inputs have to be checked. This chapter does both.
-The comparison turns out to matter more than expected: the graph features the
-encoder consumes are raw physical quantities, and they do not follow the same
-distribution on the two grids.
+The experiments now move from \texttt{bus14} to the larger WCCI 2020 grid.
+This chapter defines the target setting and checks which models can learn on it
+before testing transfer.
 
-\section{The target environment}
+\section{Target environment}
 \label{sec:wcci-environment}
 
-Table~\ref{tab:wcci-env-comparison} contrasts the source and target grids. The
-agent partitions follow the same principle in both cases, contiguous electrical
-areas, but WCCI is split into four regions rather than three, and the regions
-are markedly unequal: one agent controls seventeen substations while another
-controls five.
+WCCI has more substations, lines and agents than \texttt{bus14}
+(Table~\ref{tab:wcci-env-comparison}). The agents still control separate areas,
+but their areas are not equal in size.
 
 \begin{table}[H]
   \centering
   \small
   \caption{Source and target environments. Both use topology actions,
-  decentralized agents and an 80/20 train/test chronic split with split seed 0.}
+  decentralized agents and the same train/test split rule.}
   \label{tab:wcci-env-comparison}
   \setlength{\tabcolsep}{6pt}
   \begin{tabular}{L{0.30\textwidth}L{0.28\textwidth}L{0.30\textwidth}}
     \toprule
     & \texttt{bus14} & \texttt{bus36\_wcci\_nomaint} \\
     \midrule
-    Grid2Op environment & \texttt{l2rpn\_case14\_sandbox} & \texttt{l2rpn\_wcci\_2020} \\
     Substations & 14 & 36 \\
     Lines & 20 & 59 \\
     Agents & 3 & 4 \\
@@ -55,32 +33,24 @@ controls five.
   \end{tabular}
 \end{table}
 
-
 \subsection{Removing maintenance}
 \label{sec:wcci-nomaint}
 
-Of the environments Grid2Op distributes, \texttt{l2rpn\_case14\_sandbox} is the
-only one above the toy scale that ships without scheduled maintenance. Every
-larger environment, WCCI 2020 included, injects planned line outages. That is a
-problem for a transfer study: a policy trained without maintenance and evaluated
-with it faces a hazard it has never seen, and the two observation spaces differ
-as well, since the maintenance countdown features are only present when
-maintenance exists.
-\\
-\\
-The two settings are therefore aligned by removing maintenance from WCCI rather
-than inventing a schedule for \texttt{bus14}, for which Grid2Op provides no
-specification.
-\\
-\\
-The effect is measured on the complete held-out test split using the same 576
-chronics and a do-nothing policy in both settings.
+The WCCI environment normally includes scheduled line maintenance, while
+\texttt{bus14} does not. Maintenance is disabled here so that a transferred
+policy is not tested on a hazard absent from its source environment. This also
+keeps the observation spaces aligned.
+
+On the full WCCI test split, removing maintenance raises do-nothing mean
+survival from $27.3\%$ to $57.3\%$ (Table~\ref{tab:wcci-maintenance-effect}).
+The change is large enough that maintenance-on and maintenance-off results
+should not be compared directly.
 
 \begin{table}[H]
   \centering
   \small
-  \caption{Do-nothing performance on the full WCCI test split. The chronics and
-  policy are identical; only scheduled maintenance differs.}
+  \caption{Do-nothing performance on the full WCCI test split. The 576
+  chronics are the same in both rows.}
   \label{tab:wcci-maintenance-effect}
   \setlength{\tabcolsep}{7pt}
   \begin{tabular}{lrrr}
@@ -89,212 +59,106 @@ chronics and a do-nothing policy in both settings.
     \midrule
     Maintenance enabled  & 27.3\% & 12.1\%  & 39/576 (6.8\%) \\
     Maintenance disabled & 57.3\% & 100.0\% & 303/576 (52.6\%) \\
-    \midrule
-    Difference            & +30.0 pp & +87.9 pp & +264 (+45.8 pp) \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-
-
-\subsection{Action space}
+\subsection{Reduced action spaces}
 \label{sec:wcci-action-space}
 
-The unreduced WCCI action space is not trainable. Enumerating topology actions over each agent's region gives the sizes in
-the first column of Table~\ref{tab:wcci-action-space}: nearly 67{,}000 actions in
-total, of which agent~1 alone accounts for 65{,}642. All experiments therefore
-use the reduced action space obtained by the brute-force outcome procedure, at
-$k=256$ per agent.
+The full decentralized action space contains almost 67{,}000 actions and is
+strongly unbalanced across agents. The candidate-action models are therefore
+evaluated with reduced spaces of $k\in\{32,64,128,256\}$. Here, $k$ is a cap:
+agents with fewer valid actions keep their complete list.
 
 \begin{table}[H]
   \centering
   \small
-  \caption{Per-agent action-space sizes on \texttt{bus36\_wcci\_nomaint}. Agents
-  0 and 2 are already exhaustive at $k=256$, so the reduction only binds on
-  agents 1 and 3.}
+  \caption{Per-agent action counts on \texttt{bus36\_wcci\_nomaint}.}
   \label{tab:wcci-action-space}
   \setlength{\tabcolsep}{8pt}
   \begin{tabular}{lrrr}
     \toprule
-    Agent & Substations & Full & Reduced ($k=256$) \\
+    Agent & Substations & Full list & At $k=256$ \\
     \midrule
-    \texttt{agent\_0} & 5  & 77     & 77  \\
+    \texttt{agent\_0} & 5  & 77       & 77  \\
     \texttt{agent\_1} & 5  & 65{,}642 & 256 \\
-    \texttt{agent\_2} & 9  & 127    & 127 \\
+    \texttt{agent\_2} & 9  & 127      & 127 \\
     \texttt{agent\_3} & 17 & 1{,}119  & 256 \\
     \midrule
-    Total             & 36 & 66{,}965 & 716 \\
+    Total & 36 & 66{,}965 & 716 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-\noindent The choice of $k$ was made by evaluating a one-step simulator-greedy policy over
-each candidate reduction on the same fifty chronics
-(Table~\ref{tab:wcci-greedy-sizes}). Performance saturates at $k=256$: the
-difference between $k=256$ and $k=1024$ is four chronics won against three lost,
-which is noise, while both clearly beat $k \le 128$. Since $k=256$ is the
-smallest reduction in the saturated group, it gives the smallest action heads
-for no measurable loss in what the action set can achieve.
+A one-step greedy policy is used only as a reference for what each reduced
+space contains. Its difficult-cohort survival rises from $33.1\%$ at $k=32$ to
+$94.9\%$ at $k=256$. A larger action list therefore gives more useful choices,
+but it also gives the learned policy a harder selection problem. This trade-off
+is measured in Chapter~\ref{ch:screen-e-transfer}.
 
-\begin{table}[H]
-  \centering
-  \small
-  \caption{One-step simulator-greedy policy over each reduced action space, on
-  the same fifty held-out chronics of \texttt{bus36\_wcci\_nomaint}. The
-  do-nothing row is the common reference; no reduction was evaluated against a
-  different chronic set.}
-  \label{tab:wcci-greedy-sizes}
-  \setlength{\tabcolsep}{8pt}
-  \begin{tabular}{lrrr}
-    \toprule
-    Policy & Mean survival & Full-episode survival & Episodes worse than do-nothing \\
-    \midrule
-    Do nothing        & 0.560 & 52\% & --- \\
-    Greedy, $k=32$    & 0.679 & 60\% & 5 \\
-    Greedy, $k=64$    & 0.819 & 64\% & 3 \\
-    Greedy, $k=128$   & 0.847 & 76\% & 3 \\
-    Greedy, $k=256$   & \textbf{0.976} & \textbf{92\%} & 0 \\
-    Greedy, $k=512$   & 0.883 & 82\% & 2 \\
-    Greedy, $k=1024$  & 0.953 & 90\% & 0 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+\section{Evaluation protocol}
+\label{sec:wcci-evaluation-protocol}
 
-\noindent These two rows bracket the transfer experiments. A learned policy that lands
-near 0.56 mean survival has learned nothing beyond doing nothing; one
-approaching 0.9 is doing real work. The greedy row is not a strict upper bound,
-since it queries the simulator at every decision step and is myopic, but it is a
-strong reference.
+All reported transfer evaluations use the same 50 WCCI chronics. Do nothing
+finishes 26 of them. These 26 form the \emph{easy} cohort; the remaining 24 form
+the \emph{difficult} cohort. Do-nothing mean survival is $56.0\%$ overall and
+$8.34\%$ on the difficult cohort.
 
+Reporting both values separates two goals: preserving cases that already need
+no action and improving cases where inaction fails. The number of difficult
+chronics completed is reported as \emph{rescues}. The one-step greedy policy is
+a strong reference, not an upper bound, because it queries the simulator at
+every step.
 
-\section{Corrected inputs}
+\section{Inputs used for transfer}
 \label{sec:wcci-corrected-inputs}
 
-Chapter~\ref{ch:encoder-inputs} measures the encoder's inputs on both grids and
-settles two corrections, both applied in every run below: the power channels are
-divided by each grid's own maximum generator rating
-(Section~\ref{sec:wcci-physical-scaling}), and the absolute voltage angle is
-replaced by the drop along each line
-(Section~\ref{sec:wcci-angle-representation}). Running standardization is left
-off. Together these bring the angle channel into the band occupied by
-\texttt{rho} and the power spreads to within 15\,\% of parity
-(Table~\ref{tab:wcci-corrected}).
+Chapter~\ref{ch:encoder-inputs} found two input changes that make the graph
+features more comparable across grids. Power is divided by the largest
+installed generator on each grid, and voltage angle is represented by the
+difference across each line. Running standardization is not used. The study
+keeps both the original inputs (NL) and these corrected inputs (NLS) so that the
+effect of preprocessing can be measured.
 
-
-\section{Which screened design to carry forward}
+\section{Controls trained on WCCI}
 \label{sec:wcci-architecture-choice}
 
-Chapter~\ref{ch:experiments} settled five design questions on \texttt{bus14},
-each producing a configuration worth keeping. Screens~A and~B fixed the encoder
-depth, width and pooling, giving the plain busbar graph
-\texttt{bus\_e0n0v0}. Screen~C augmented it, and the augmentation that paid was
-an edge between busbars of the same substation, \texttt{bus\_e1n0v0}. Screen~D
-moved to the heterogeneous representation and screened message direction, where
-\texttt{het\_ga2b\_lb2a} and the baseline \texttt{het\_gbi\_lbi} came out
-ahead. Screen~E was a different line of attack --- heterogeneous with line nodes,
-and an action head that scores each candidate from the nodes it touches instead
-of from a fixed-width layer over an action index --- and it worked well enough on
-\texttt{bus14} to keep.
-\\
-\\
-Which of them should the transfer study use? The question is answerable directly,
-without any appeal to transfer: re-instantiate each on
-\texttt{bus36\_wcci\_nomaint} and train it there from scratch.
-Table~\ref{tab:wcci-proxy-test} does that under one protocol --- $k=64$, 15M
-steps, random initialisation, no transferred weights anywhere.
+Figure~\ref{fig:wcci-target-controls} compares three controls trained directly
+on WCCI: a flat MLP, fixed-list GNN actors from the earlier screens, and the
+candidate-action scorer. Final checkpoints are used and the local heuristic is
+disabled.
 
-\begin{table}[H]
+\begin{figure}[H]
   \centering
-  \small
-  \caption{Each screen's surviving configuration, retrained from scratch on WCCI
-  at $k=64$, against the \texttt{bus14} survival of the identical model.
-  \texttt{het\_gbi\_lbi} is the one cell of Screen~D's $3\times3$ factorial
-  without a rerun under the corrected graph construction, so its \texttt{bus14}
-  entry is empty rather than filled from the pre-correction screen. One seed per
-  cell; Screens~A--D were also run at $k=256$ with the same outcome.}
-  \label{tab:wcci-proxy-test}
-  \setlength{\tabcolsep}{5pt}
-  \input{tables/wcci_proxy_test}
-\end{table}
+  \includegraphics[width=\linewidth]{figures/wcci_target_controls.png}
+  \caption{WCCI controls trained from scratch. Each point is one model; colours
+  show the reduced action-space size. Short black lines show medians when
+  several models share a setting. The dashed line is do nothing.}
+  \label{fig:wcci-target-controls}
+\end{figure}
 
-\textbf{Screen~E is the only one that produces a usable policy.} It clears the
-do-nothing floor on the difficult cohort in $5$ of its $8$ cells, with a median
-of $9.61\,\%$, a best of $18.46\,\%$ and two chronics carried to the end.
-Screens~A--D clear it in $0$ of $4$, with a best of $6.80\,\%$ and no rescues at
-all --- across every evaluation of those four configurations, including their
-best-test checkpoints, not one of the 24 difficult chronics is completed. They do
-not merely underperform: they break what do-nothing preserves, keeping a median
-of $7.5$ of the 26 easy chronics.
-\\
-\\
-\textbf{\texttt{bus14} score does not explain the gap.} Screens~A--D span
-$95.45$--$99.12\,\%$ there and Screen~E spans $93.40$--$100.00\,\%$: overlapping
-ranges, opposite outcomes on the target grid. The ranking is informative only
-\emph{within} a design --- inside Screen~E, \texttt{bus14} rank orders the WCCI
-result at Spearman $+0.74$ ($p=0.037$), and its best \texttt{bus14} cell is also
-its best on WCCI --- and carries nothing \emph{between} designs.
-\\
-\\
-\textbf{Screen~E is also the only one that can be transferred whole.}
-Screens~A--D use an action head with one output per action index, a shape fixed
-by a single grid's action list; their encoders can cross a grid boundary but
-their actors cannot. Screen~E's head applies shared weights to a variable-length
-candidate set, so its parameters do not depend on the action count and
-\texttt{agent\_0}'s scorer can initialise every agent on any grid.
-\\
-\\
-Those two properties are independent --- one is measured in
-Table~\ref{tab:wcci-proxy-test}, the other follows from parameter shapes --- and
-they point the same way. The remainder of this chapter therefore studies
-Screen~E alone, and asks how far its portability can actually be exploited.
-\\
-\\
-Two gaps are worth recording. \texttt{het\_gbi\_lbi} has no corrected
-\texttt{bus14} number and is the best of the four Screens~A--D configurations on
-WCCI, so the one cell that cannot be anchored is the one carrying most weight
-above. And the two classes differ in graph schema as well as action head, because
-\texttt{common/action\_metadata.py} requires
-\texttt{gnn\_graph\_type = "heterogeneous\_line"} for candidate scoring; the
-comparison is therefore between configurations, not between action heads in
-isolation.
+The flat MLP and fixed-list GNNs remain below do nothing overall. The fixed-list
+GNNs also stay below it on the difficult cohort and produce no rescues. The
+candidate scorer is more promising: at $k=64$, its median is $9.61\%$ on the
+difficult cohort and its best cell reaches $18.46\%$. However, its overall score
+stays below do nothing because it loses some easy chronics.
 
+The candidate scorer is also the only graph actor here whose complete policy
+can cross grids. Its shared scorer is applied to each candidate, so its output
+size does not depend on the number of agents or actions. A fixed-list head has
+one output per action index and cannot be reused unchanged on WCCI.
+
+Exact flat-MLP and fixed-list GNN results are given in
+Appendix~\ref{app:wcci-result-atlas}.
 
 \begin{tcolorbox}[
   colframe=red!75!black,
   colback=red!5!white,
-  title=Chapter 8 Summary: The WCCI Grid and the Design Carried Onto It]
-\textbf{Purpose:} To define the target environment precisely enough that a
-transfer result is attributable, and to decide --- on the target grid itself,
-without appealing to transfer --- which screened design is worth studying there.
-\\
-\\
-\textbf{Content:} WCCI is $2.6\times$ \texttt{bus14} in substations and
-$3\times$ in lines, over four unequal agent regions. Maintenance is removed
-rather than invented for \texttt{bus14}, and the action space is reduced from
-nearly $67{,}000$ topology actions ($65{,}642$ on one agent alone) to $k=256$
-per agent. Every configuration surviving Screens~A--E is then retrained directly
-on WCCI from random initialisation, $k=64$, 15M steps, no transferred weights.
-\\
-\\
-\textbf{Findings:}
-\begin{itemize}
-  \item Only Screen~E produces a usable policy: above the do-nothing floor on
-  the difficult chronics in $5$ of $8$ cells, median $9.61\,\%$, best
-  $18.46\,\%$. Screens~A--D manage $0$ of $4$, best $6.80\,\%$, and never carry
-  a chronic to the end.
-  \item A \texttt{bus14} score does not explain the gap: the two classes occupy
-  overlapping ranges ($95.45$--$99.12\,\%$ against $93.40$--$100.00\,\%$) and
-  land on opposite sides of the floor. The ranking orders results only
-  \emph{within} a design (Spearman $+0.74$ inside Screen~E).
-  \item Screen~E is also the only design transferable whole: the others index a
-  fixed action list, so their encoders can cross a grid boundary but their
-  actors cannot.
-\end{itemize}
-\textbf{Takeaway:} The best learner on the target grid and the only portable
-design are the same configuration, and the two facts are independent --- one
-measured, one following from parameter shapes. Chapter~\ref{ch:screen-e-transfer}
-therefore studies Screen~E alone. Two gaps stand: \texttt{het\_gbi\_lbi} has no
-corrected \texttt{bus14} number despite being the best of Screens~A--D on WCCI,
-and the graph schema moves with the action head, so the comparison is between
-configurations rather than action heads.
+  title=Chapter 8 Summary]
+WCCI is evaluated without maintenance and with reduced action spaces. Results
+are split into easy and difficult chronics so that preserving safe cases is not
+confused with solving hard ones. Among the graph actors, only candidate-action
+scoring is both useful on the difficult cohort and fully portable across grids.
+Chapter~\ref{ch:screen-e-transfer} therefore studies this actor.
 \end{tcolorbox}

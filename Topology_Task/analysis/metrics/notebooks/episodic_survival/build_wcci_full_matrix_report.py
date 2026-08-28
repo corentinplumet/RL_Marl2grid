@@ -201,6 +201,7 @@ def matrix_panel(
     means = {n: bases[n].mean() for n in names}
     counts = {n: bases[n].notna().sum() for n in names}
     heights = counts if marginal == "count" else means
+    any_partial = False
     stacked = pd.concat(list(heights.values())).dropna() if marginal else pd.Series(dtype=float)
     low = min(0.0, float(stacked.min()) * 1.20) if len(stacked) else 0.0
     high = max(float(stacked.max()) * 1.20 if len(stacked) else 1.0, (floor or 0.0) * 1.20, 1e-9)
@@ -270,6 +271,7 @@ def matrix_panel(
             if marginal == "mean" and count < len(order):
                 bar.set_hatch("///")
                 bar.set_edgecolor("#555555")
+                any_partial = True
             if value is None or (isinstance(value, float) and np.isnan(value)):
                 ax_top.annotate("n/a", (centre, 0), xytext=(0, 4), textcoords="offset points",
                                 ha="center", fontsize=7, color="#888888")
@@ -306,7 +308,9 @@ def matrix_panel(
     if floor is not None and marginal == "mean":
         handles.append(Line2D([], [], color="black", linestyle="--",
                               label=floor_label or f"do nothing ({floor:.1f}%)"))
-    if marginal == "mean":
+    if marginal == "mean" and any_partial:
+        # Only advertise the hatch when a bar actually carries it: a legend entry
+        # for a mark that is not on the figure sends the reader looking for it.
         handles.append(Patch(facecolor="white", edgecolor="#555555", hatch="///",
                              label="marginal resting on fewer cells than the panel has rows"))
     elif marginal == "count":
@@ -431,18 +435,17 @@ plt.show()
 md(r"""
 ### What this says
 
-Three blocks are complete rectangles and can carry their own marginals — and all
-three are now fully scored on the difficult cohort:
+Three blocks are complete rectangles in both gate conditions, and all three are
+fully scored on the difficult cohort:
 
-* **zero-shot `cas_hl`, ungated** — 16 architectures x 6 caps;
+* **zero-shot `cas_hl`** — 16 architectures x 4 caps, *both* gate conditions;
 * **gmax-delta**, both gates — 15 architectures x 4 caps;
 * **AIB**, both gates — 15 architectures x 4 caps.
 
-Everything else is a lead that was followed: the gated `cas_hl` screen covers a
-handful of cells at 1–4 rho thresholds each, and each target-trained route
-exists at one or two caps for a subset of the architectures. Those arms get
-matrices too, but with their holes left visible and no marginals drawn across
-them.
+Everything else is a lead that was followed: each target-trained route exists at
+one or two caps for a subset of the architectures, and the aggressive fine-tune
+is a rho screen rather than a grid. Those arms get matrices too, but with their
+holes left visible and no marginals drawn across them.
 
 Only **one** evaluation in the whole directory cannot be placed on the difficult
 cohort, and it is refused rather than missing: one `dangerous_graph_bc` run
@@ -456,10 +459,13 @@ md(r"""
 ## 2. The balanced core — `cas_hl` zero-shot, 16 architectures x 4 caps
 
 This is the block everything else is measured against: one evaluation per cell,
-no target-grid gradient, no gate. The gated panel beside it is the **local-rho
-0.95** screen, the one threshold applied broadly enough to be worth a panel —
-and it is sparse, so its holes are left blank and its marginals are hatched
-wherever they rest on fewer than 16 architectures.
+no target-grid gradient, no gate. The gated panel beside it is the same 16 x 4
+at the **local-rho 0.95** threshold — as of the `origin_localrho_complete`
+batch it is complete too, so both panels are full rectangles and the gate
+contrast is a clean 64-cell paired comparison rather than an opportunistic
+screen. Other thresholds (0.85, 0.90, 1.00) exist at a handful of cells and are
+deliberately excluded: folding them in with a `max` would make the gate look
+better than any single deployable threshold is.
 
 `mk512` and `mk1024` were evaluated but are **not plotted**. Every architecture
 collapses at those caps, no other arm reaches them, so the two columns add no
@@ -1328,9 +1334,9 @@ if len(data.rejected_artifacts):
     display(data.rejected_artifacts)
 
 balanced = pd.DataFrame([
-    {"block": "cas_hl zero-shot, ungated", "architectures": len(CORE_ORDER),
-     "caps": len(CORE_CAPS), "cells": len(CORE_ORDER) * len(CORE_CAPS),
-     "complete": bool(CORE_HARD["ungated"].notna().all().all()),
+    {"block": "cas_hl zero-shot, both gates", "architectures": len(CORE_ORDER),
+     "caps": len(CORE_CAPS), "cells": 2 * len(CORE_ORDER) * len(CORE_CAPS),
+     "complete": bool(all(m.notna().all().all() for m in CORE_HARD.values())),
      "metric": "hard_pct"},
     {"block": "AIB, both gates", "architectures": len(AIB_ORDER), "caps": len(AIB_CAPS),
      "cells": 2 * len(AIB_ORDER) * len(AIB_CAPS),
