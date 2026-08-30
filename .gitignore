@@ -13,3 +13,7 @@ latex/figures/*
 !latex/figures/graph_*.png
 !latex/figures/graph_*.tex
 !latex/figures/graph_*.drawio
+!latex/assets/
+latex/assets/*
+!latex/assets/nus_logo.png
+!latex/assets/epfl_logo_print.png

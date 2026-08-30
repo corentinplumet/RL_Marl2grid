@@ -8,8 +8,10 @@ This chapter establishes what the encoder consumes, how far those distributions
 differ between two grids, which of the differences a network absorbs and which
 it does not, and what corrections follow. Without those measurements, a deficit
 under transfer could not be told apart from a representation reading
-miscalibrated inputs. Chapter~\ref{ch:wcci-transfer} applies the corrections and
-Chapter~\ref{ch:screen-e-transfer} runs the transfer.
+miscalibrated inputs. \latestrevision{Chapter~\ref{ch:wcci-transfer} defines the
+target controls, Chapter~\ref{ch:encoder-transfer-bridge} tests frozen
+fixed-head encoders with original and corrected preprocessing, and
+Chapter~\ref{ch:screen-f-transfer} tests complete-policy transfer.}
 \\
 \\
 The actor and the critic do not face the same problem. The critic consumes the
@@ -265,11 +267,6 @@ not own the channel reads $+0.481$ on \texttt{bus14} and $-0.143$ on WCCI, so th
 same absence lands on opposite sides of zero.
 \\
 \\
-The same defect, with agents rather than grids as the populations, affected the
-static action descriptor; it is diagnosed alongside Screen~E in
-Section~\ref{sec:screen-e-descriptor-scaling}.
-\\
-\\
 Two further properties rule the mechanism out independently of these numbers.
 Standardization is scale-invariant, so it erases any scaling applied before it
 --- dividing by a constant and then standardizing reproduces standardizing alone
@@ -376,10 +373,11 @@ falls from $1.864$ to $0.808$, every scale ratio ends inside the band, and no
 channel remains outside both bounds at once. But it is an exchange, not an
 elimination --- a divisor reflecting typical rather than peak generation would
 plausibly do better on both axes, and selecting one against the offset as well as
-the scale ratio is left open. Chapter~\ref{ch:screen-e-transfer} is the test of
-whether the residual displacement matters in practice, and
-Section~\ref{sec:wcci-design} runs both input conditions precisely so that
-question can be answered.
+the scale ratio is left open. \latestrevision{The two transfer branches test
+whether the residual displacement matters in practice. Chapter~\ref{ch:encoder-transfer-bridge}
+compares frozen source encoders trained with the two input conditions, while
+Section~\ref{sec:wcci-design} repeats the comparison for the complete
+candidate-action policy.}
 
 \begin{figure}[H]
   \centering
@@ -423,10 +421,12 @@ ReLU threshold --- so the two axes are not equally serious.
   the point mass at zero that three quarters of all rows carry.
   \item The action descriptor was normalized per agent, so the same action read
   $0.60$ for one agent and $0.50$ for another --- which explains why the
-  descriptor-free \texttt{f0} cells were robust in Screen~E.
+  descriptor-free \texttt{f0} cells were robust in \latestrevision{Screen~F}.
 \end{itemize}
 \textbf{Takeaway:} Deterministic physical scaling and the edge-difference angle
-are adopted, running standardization is not. Since the power correction trades a
-scale error for a displacement, both input conditions are carried forward for
-Chapter~\ref{ch:screen-e-transfer} to test.
+are adopted, running standardization is not. \latestrevision{Since the power
+correction trades a scale error for a displacement, both input conditions are
+carried into the frozen-encoder experiment of
+Chapter~\ref{ch:encoder-transfer-bridge} and the complete-policy experiment of
+Chapter~\ref{ch:screen-f-transfer}.}
 \end{tcolorbox}

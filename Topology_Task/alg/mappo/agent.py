@@ -687,6 +687,21 @@ class Actor(nn.Module):
             return self.actor(graph_embedding, node_embeddings)
         return self.actor(self._encode(x))
 
+    def get_eval_action_scores(self, x: th.Tensor) -> th.Tensor:
+        """Return comparable scores for every final discrete action."""
+        if not self.intervention_gate:
+            return self._actor_logits(x)
+        gate_dist, nonidle_dist = self._gated_distributions(x)
+        gate_log_probs = th.log_softmax(gate_dist.logits, dim=-1)
+        nonidle_log_probs = th.log_softmax(nonidle_dist.logits, dim=-1)
+        return th.cat(
+            [
+                gate_log_probs[..., :1],
+                gate_log_probs[..., 1:2] + nonidle_log_probs,
+            ],
+            dim=-1,
+        )
+
     def get_candidate_attention(
         self,
         x: th.Tensor,
@@ -891,15 +906,7 @@ class Actor(nn.Module):
                 nonidle_action,
             )
 
-        gate_log_probs = th.log_softmax(gate_dist.logits, dim=-1)
-        nonidle_log_probs = th.log_softmax(nonidle_dist.logits, dim=-1)
-        final_log_probs = th.cat(
-            [
-                gate_log_probs[..., :1],
-                gate_log_probs[..., 1:2] + nonidle_log_probs,
-            ],
-            dim=-1,
-        )
+        final_log_probs = self.get_eval_action_scores(x)
         return th.argmax(final_log_probs, dim=-1)
 
     def get_continuous_action(

@@ -83,6 +83,15 @@ available checkpoint.
 - `--eval-action-heuristic checkpoint|none|rho_threshold|local_rho_threshold`:
   keep the checkpoint setting by default, or override it for evaluation.
 - `--eval-action-rho-threshold 0.90`: threshold for the evaluation heuristic.
+- `--eval-solver-lookahead true`: enable policy-guided one-step power-flow
+  look-ahead during evaluation.
+- `--eval-solver-top-k 3`: simulate the three highest-scoring joint policy
+  actions on each triggered step.
+- `--eval-solver-rho-threshold 0.95`: do nothing below this global pre-action
+  maximum loading and activate look-ahead at or above it.
+- `--eval-solver-include-noop true`: also simulate do-nothing as a safe
+  fallback, so a top-3 evaluation uses at most four simulations per triggered
+  step.
 - `--intervention-gate-eval-mode checkpoint|final_action_map|hierarchical_greedy`:
   keep or override the deterministic rule for gated actors.
 - `--deterministic-eval true`: greedy evaluation by default.
@@ -100,6 +109,49 @@ The default JSON summary is written under:
 ```text
 Topology_Task/outputs/full_test_eval/
 ```
+
+## Policy-guided solver look-ahead
+
+The look-ahead evaluator works with flat MLP, fixed-list GNN and
+candidate-scoring actors. It converts each actor's scores into a factorized
+joint policy, retains the highest-scoring joint actions and simulates each
+complete multi-agent action. It does not select actions independently per
+agent. Invalid actions and simulated game-over outcomes are rejected; valid
+actions are ranked by overloaded-line count, maximum rho, total overload and
+then intervention count. The policy score breaks remaining ties.
+
+For a three-candidate evaluation with a global rho trigger of 0.95:
+
+```bash
+sbatch Topology_Task/full_test_eval/job_full_test_eval.sh \
+  --checkpoint checkpoint/no_leak/example.tar \
+  --eval-solver-lookahead true \
+  --eval-solver-top-k 3 \
+  --eval-solver-rho-threshold 0.95 \
+  --eval-solver-include-noop true \
+  --deterministic-eval true
+```
+
+This is a one-step Grid2Op power-flow look-ahead, not an OPF that jointly
+optimizes redispatch. Aggregate solver counts and the selected policy ranks are
+stored in the result JSON.
+
+The four-model WCCI pilot (flat MLP, fixed-list GNN, zero-shot candidate
+scorer and fine-tuned candidate scorer, all with the mk64 action space) can be
+previewed and submitted on Jed with:
+
+```bash
+DRY_RUN=true EVAL_EPISODES=1 \
+  Topology_Task/full_test_eval/launch_solver_topk_pilot_jed.sh
+
+EVAL_EPISODES=1 \
+  Topology_Task/full_test_eval/launch_solver_topk_pilot_jed.sh
+
+EVAL_EPISODES=50 \
+  Topology_Task/full_test_eval/launch_solver_topk_pilot_jed.sh
+```
+
+Pilot and full results use different `ep1` and `ep50` output directories.
 
 ## Shared-candidate zero-shot WCCI evaluation with 64 actions
 

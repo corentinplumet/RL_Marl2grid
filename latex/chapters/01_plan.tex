@@ -1,6 +1,6 @@
-\chapter{Thesis Plan}
+\chapter{Research Questions and Contributions}
 
-\section{Working Title}
+\section{Thesis Title}
 \label{sec:plan-title}
 
 \textbf{Graph Neural Networks for Decentralized Multi-Agent Reinforcement
@@ -9,61 +9,67 @@ Learning in Power-Grid Topology Control}
 \section{Central Thesis Question}
 \label{sec:plan-question}
 
-\textbf{How can graph neural networks help decentralized
-reinforcement learning agents learn reliable power-grid topology control
-policies that keep survival performance while scaling to larger environemnt?}
-\\
-\\
-Three terms define what the thesis has to measure:
-
-\begin{itemize}
-  \item \textbf{Reliable} is episodic survival on the chronics.
-  \item \textbf{Decentralized} means each agent owns a fixed group of
-  substations, observes a local subgraph, and acts on its own discrete topology
-  actions without seeing what the other agents do. Only the critic is
-  centralized.
-  \item \textbf{Scaling} means larger grids, with more substations, loads and generators.
-\end{itemize}
+\latestrevision{\textbf{Which graph architecture and action-selection design
+provide the most effective representation and control performance for
+decentralized policies, and to what extent can a policy trained on a small grid
+retain useful performance on a larger grid?}}
 
 \section{Research Questions}
 \label{sec:plan-research-questions}
 
 \begin{enumerate}
-  \item \textbf{How should the grid be represented for a local
-  actor?} Is a graph representation useful for learning? If yes, how fine the nodes are, which relations to use, what to add at
-  substation level, and how the graph is read out are all design choices.
-  Chapter~\ref{ch:methods} defines them and Chapter~\ref{ch:experiments}
-  measures which ones change survival.
+  \item \textbf{Baseline learning:} Which training changes are needed for
+  stable decentralized MAPPO topology control on \texttt{bus14}?
+  Chapter~\ref{ch:baseline} establishes the reference through the training,
+  initialization, and initial-action-bias experiments.
 
-  % \item \textbf{Can the agents learn to intervene sparsely without losing survival?}
-  % Evaluation-time rho overrides, an intervention-gated actor, fixed non-idle
-  % penalties, and adaptive Lagrangian intervention budgets are all measured on
-  % two axes at once: survival and intervention rate. (Chapter~\ref{ch:sparse-control}.)
+  \item \textbf{Sparse intervention:} Can the agents reduce unnecessary
+  topology interventions without sacrificing source-grid survival?
+  Chapter~\ref{ch:sparse-control} compares evaluation-time heuristics, a
+  learned intervention gate, action penalties, adaptive budgets, and behavioral
+  cloning on both survival and intervention frequency.
 
-  \item \textbf{Is there a transfer possible between a smaller and a larger grid?} Moving from
-  \texttt{bus14} to the 36-substation WCCI grid without chainging the weights of a model tests whether a graph encoder
-  transfers in practice and not only in parameter shape. 
-  (Chapters~\ref{ch:wcci-transfer} and~\ref{ch:screen-e-transfer}.)
+  \item \textbf{Graph representation:} Which graph representation,
+  message-passing, graph-readout, and candidate-action design choices produce a
+  useful local actor? Chapter~\ref{ch:methods} defines these choices and
+  Chapter~\ref{ch:experiments} evaluates them on \texttt{bus14}.
+
+  \newpage
+  \item \textbf{Cross-grid transfer and adaptation:} To what extent do
+  graph-actor weights learned on \texttt{bus14} retain useful performance on
+  WCCI, and when zero-shot transfer is insufficient, does source initialization
+  improve target-grid learning over training from scratch?
+  {\color{red}Chapters~\ref{ch:encoder-inputs}--\ref{ch:screen-f-transfer}
+  diagnose input compatibility, define the target protocol, test whether a
+  frozen source encoder remains useful after replacing its action heads, and
+  finally compare complete-policy zero-shot transfer with scratch training and
+  fine-tuning.}
 \end{enumerate}
 
-\section{Expected Contributions}
+\section{Contributions}
 \label{sec:plan-contributions}
 
 \begin{itemize}
-  \item \textbf{A tuned decentralized MAPPO baseline on \texttt{bus14}.} The
-  original framework trained unstably. The training and initialization changes
-  that fix it are tested one at a time.
+  \item \textbf{A stabilized decentralized MAPPO reference on
+  \texttt{bus14}.} Chapter~\ref{ch:baseline} isolates the training and
+  initialization changes used by the later experiments.
 
-  \item \textbf{An ablation of sparse intervention mechanisms,} reported
-  together on survival and intervention frequency. This links the learned
-  behavior to what a control room would accept: act rarely, act locally, and
-  act when the grid is unsafe.
+  \item \textbf{A source-grid study of sparse intervention.}
+  Chapter~\ref{ch:sparse-control} evaluates several mechanisms under the joint
+  criteria of survival and intervention frequency rather than survival alone.
 
-  \item \textbf{A shared GNN actor and a screened local graph design.} The GNN
-  first matches the tuned MLP. Three representations are then compared. Encoder depth and width, message-passing operator, readout, and
-  structural augmentations are screened.
+  \item \textbf{A shared graph actor with size-independent candidate-action
+  scoring.} Chapters~\ref{ch:methods} and~\ref{ch:experiments} define the local
+  graph, score actions from the nodes they affect, and screen representation,
+  message-passing, graph-readout, and action-scoring choices.
 
-  \item \textbf{A model for action scoring that does not
-  depend on grid size or action space size.} A candidate-action head scores each action from the
-  encoded nodes it changes.
+  \item \textbf{A diagnosis and correction of cross-grid input mismatch.}
+  Chapter~\ref{ch:encoder-inputs} measures what the shared encoder receives on
+  both grids and motivates physically compatible power and angle inputs.
+
+  \item \textbf{A controlled WCCI transfer and adaptation study.}
+  {\color{red}Chapters~\ref{ch:wcci-transfer}--\ref{ch:screen-f-transfer}
+  separate encoder-only transfer from complete-policy transfer, compare
+  original and corrected input preprocessing, and evaluate zero-shot
+  deployment, WCCI training from scratch, and source-initialized adaptation.}
 \end{itemize}

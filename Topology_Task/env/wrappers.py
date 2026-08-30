@@ -759,6 +759,17 @@ class RecordEpisodeStatistics(gym.Wrapper, gym.utils.RecordConstructorArgs):
             num_workers=num_workers,
         )
 
+    def simulate_joint_action_outcome(
+        self,
+        actions: Dict[str, Any],
+        *,
+        time_step: int = 1,
+    ) -> Dict[str, Any]:
+        return self.env.simulate_joint_action_outcome(
+            actions,
+            time_step=time_step,
+        )
+
     def step(self, action):
         """Steps through the environment, recording the episode statistics."""
         (

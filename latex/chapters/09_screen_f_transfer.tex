@@ -1,14 +1,18 @@
-\chapter{Zero-Shot Transfer and Target Adaptation}
-\label{ch:screen-e-transfer}
+\chapter{\texorpdfstring{\latestrevision{Complete-Policy Transfer and Target Adaptation}}{Complete-Policy Transfer and Target Adaptation}}
+\label{ch:screen-f-transfer}
 
-This chapter tests whether the shared candidate-action actor learned on
-\texttt{bus14} can control WCCI. It first evaluates the actor without target
-training, then studies small policy changes and fine-tuning.
+\latestrevision{Chapter~\ref{ch:encoder-transfer-bridge} tested whether a source
+encoder remains useful after its incompatible action heads are replaced. This
+chapter asks the stricter question: can the shared candidate-action actor
+learned on \texttt{bus14} control WCCI while retaining both its encoder and its
+action-selection interface? It first evaluates the complete actor without
+target training, then studies decision-time changes and target adaptation.}
 
 \section{Comparison rules}
 \label{sec:wcci-design}
 
-The actor varies along four binary choices: original or corrected inputs, mean
+\latestrevision{The transferred object is the complete candidate-action actor,
+not only its graph encoder.} The actor varies along four binary choices: original or corrected inputs, mean
 or typed-mean candidate pooling, action descriptor off or on, and a shared or
 dedicated idle-action head. Table~\ref{tab:wcci-transfer-design} defines the
 three training routes.
@@ -31,7 +35,9 @@ three training routes.
 \end{table}
 
 Final checkpoints are used for actors trained on WCCI. Zero-shot evaluation
-uses the source checkpoint selected on \texttt{bus14}. The optional heuristic
+uses the source checkpoint selected on \texttt{bus14} \revision{by mean survival
+over the 20 training-split chronics in each periodic rollout, with the chronic
+set changing between evaluations}. The optional heuristic
 blocks an agent's action when its local maximum line loading is below $0.95$.
 Every comparison uses the same 50 chronics and seed 0.
 
@@ -64,16 +70,17 @@ crediting a policy simply because it receives a larger candidate list.
 \end{figure}
 
 The distributions show that absolute and feasible-relative performance answer
-different questions. With the heuristic, median full-test survival is $62.5\%$
-at $k=32$ and about $54.5\%$ for the larger action spaces; median
-difficult-cohort survival falls from $21.9\%$ to roughly $11\%$. Relative to the
+different questions. With the heuristic, the \revision{median of the models'
+full-test mean-survival scores} is $62.5\%$ at $k=32$ and about $54.5\%$ for the
+larger action spaces; the \revision{median difficult-cohort mean survival across
+models} falls from $21.9\%$ to roughly $11\%$. Relative to the
 same-$k$ greedy reference, the median recovers $54.6\%$ of the available gain at
 $k=32$, but only $5.8\%$, $5.2\%$ and $2.9\%$ at $k=64,128,256$. The gate helps,
 but the actors exploit a smaller fraction of what becomes feasible as the action
 set grows. Ungated median performance remains below do nothing at every $k$.
 
 Figure~\ref{fig:wcci-zero-shot-architecture} then separates the architecture
-effects by gate condition. Typed-mean pooling is the clearest positive effect:
+effects by gate condition. Typed-mean \revision{candidate pooling} is the clearest positive effect:
 $+5.4$ points ungated and $+8.7$ points gated. Physical scaling adds about one
 point in both cases. The descriptor is small on average, while the dedicated
 idle head is negative ungated and nearly neutral gated.
@@ -96,8 +103,29 @@ establish a final architecture ranking.
 Two changes are tested around the zero-shot actor. The first uses the
 global-maximum readout and exact action-delta encoder of
 Figure~\ref{fig:candidate-action-gmax-delta-pipeline}. The second uses an
-adaptive intervention budget. Figure~\ref{fig:wcci-intervention-gate} reports
-their matched effect and the effect of the local-$\rho$ heuristic.
+adaptive intervention budget. Figure~\ref{fig:wcci-policy-change-performance}
+first shows their absolute performance in one view. Each action-space cluster
+contains four distributions: the two policy changes, with and without the
+local-$\rho$ heuristic.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{figures/wcci_policy_change_absolute_performance.png}
+  \caption{Absolute performance of the Gmax-delta and adaptive-budget actors
+  at each action-space size, with four distributions per cluster. Boxes and
+  points summarize the architecture cells for ungated and local-$\rho=0.95$
+  evaluation. The dashed line marks do-nothing; the green reference gives the
+  greedy ceiling or, in the relative panel, its full attainable gain.}
+  \label{fig:wcci-policy-change-performance}
+\end{figure}
+
+The absolute view shows whether a positive change is large enough to produce a
+useful policy. On difficult chronics, ungated Gmax-delta falls from a $19.1\%$
+median at $k=32$ to $5.1\%$ at $k=256$, whereas the adaptive budget retains
+$12.7\%$ at $k=256$. With the heuristic, both modified actors remain above the
+do-nothing reference at every $k$. Figure~\ref{fig:wcci-intervention-gate} then
+isolates the matched change from the plain actor and the effect of the
+local-$\rho$ heuristic.
 
 \begin{figure}[H]
   \centering
@@ -119,11 +147,11 @@ The plain block contains all 64 matched architecture--$k$ pairs. Gmax-delta and
 the adaptive budget each contain 60 pairs because their complete designs use 15
 architectures rather than 16.
 
-\section{Does target training help?}
+\section{Does candidate-policy target training help?}
 
 Figure~\ref{fig:wcci-adaptation} compares the same eight NLS architectures at
 $k=64$. The left panel tracks each architecture across zero-shot, scratch and
-fine-tuned routes. The right panel shows the main trade-off: survival on the
+fine-tuned routes. The right panel shows the main trade-off: \revision{mean survival} on the
 difficult cohort against the number of easy chronics kept.
 
 \begin{figure}[H]
@@ -138,7 +166,7 @@ difficult cohort against the number of easy chronics kept.
 Fine-tuning is the most consistent route. It beats training from scratch on
 seven of the eight difficult-cohort comparisons, with a mean gain of $7.9$
 points. It also beats zero-shot transfer in all eight cells, by $12.0$ points on
-average. The median difficult-cohort survival rises from $5.7\%$ zero-shot to
+average. The \revision{median difficult-cohort mean survival across architectures} rises from $5.7\%$ zero-shot to
 $9.6\%$ from scratch and $18.1\%$ after fine-tuning.
 
 The right panel adds an important qualification. Some actors improve difficult
@@ -159,11 +187,47 @@ provided in Appendix~\ref{app:wcci-result-atlas}.
 \begin{tcolorbox}[
   colframe=red!75!black,
   colback=red!5!white,
-  title=Chapter 9 Summary]
-Zero-shot transfer works best with a small candidate set and typed-mean pooling,
-but it is not yet reliable by itself. In the complete plain matrix, the local
-heuristic improves 58 of 64 cells, although its benefit falls as the action set
-grows and remains policy-dependent. The strongest result is target fine-tuning:
-it improves the transferred actor in all eight matched comparisons against
-zero-shot and usually beats the same architecture trained from scratch.
+  title=Chapter 10 Summary: Complete-Policy Transfer and Adaptation]
+\textbf{Purpose:} \latestrevision{To determine how well the complete shared
+candidate-action actor learned on \texttt{bus14} transfers to WCCI, identify
+which architectural and decision-time choices improve zero-shot behavior, and
+measure whether WCCI training benefits more from source initialization than
+from random weights.}
+\\
+\\
+\textbf{Content:} \latestrevision{Unlike Chapter~\ref{ch:encoder-transfer-bridge},
+the source action interface is not replaced.} We evaluate 16 NL/NLS architecture cells over
+$k\in\{32,64,128,256\}$, with and without a local-$\rho=0.95$ gate, using both
+absolute \revision{mean survival} and progress from do nothing to the same-$k$ greedy reference.
+We then test Gmax-delta and adaptive-budget policy changes before comparing the
+same eight NLS architectures at $k=64$ under zero-shot transfer, training from
+scratch and target fine-tuning.
+\\
+\\
+\textbf{Findings:}
+\begin{itemize}
+  \item Zero-shot transfer is strongest with the smallest action set. With the
+  gate, $k=32$ reaches $62.5\%$ overall and $21.9\%$ on difficult chronics,
+  recovering $54.6\%$ of the available same-$k$ gain; the recovered fraction
+  falls to $2.9\%$ at $k=256$. Ungated medians remain below do nothing.
+  \item Typed-mean \revision{candidate pooling} is the clearest positive architecture effect,
+  adding $5.4$ \revision{difficult-cohort mean-survival points} ungated and $8.7$ gated. Physical
+  scaling adds about one point, while the descriptor is small on average and a
+  dedicated idle head is harmful ungated and nearly neutral gated.
+  \item Gmax-delta and the adaptive budget add $4.6$ and $6.0$ matched points
+  without the gate. The gate improves 58 of 64 plain cells and adds $7.2$ points
+  on average, but it hurts the scratch scorer and flat MLP; it is therefore
+  policy-dependent rather than a universal safety mechanism.
+  \item Fine-tuning is the strongest adaptation route. It beats zero-shot in
+  all eight matched cells by $12.0$ points on average and beats scratch in seven
+  cells by $7.9$ points. \revision{Median difficult-cohort mean survival across architectures} progresses from
+  $5.7\%$ zero-shot to $9.6\%$ scratch and $18.1\%$ fine-tuned.
+\end{itemize}
+\textbf{Takeaway:} Reliable transfer requires controlling the action-selection
+problem, not merely enlarging the available action set. Small candidate sets
+and typed-mean \revision{candidate pooling} are the most robust zero-shot choices; local gating must
+be validated per policy; and conservative target fine-tuning is more effective
+than either zero-shot deployment or training the same actor from scratch. These
+conclusions are based on one seed and 50 chronics, so matched effects are more
+credible than small gaps between unrelated cells.
 \end{tcolorbox}

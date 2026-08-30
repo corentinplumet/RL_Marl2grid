@@ -510,6 +510,11 @@ def _apply_eval_overrides(args: Namespace, cli: Namespace) -> Namespace:
     if cli.eval_action_rho_threshold is not None:
         args.eval_action_rho_threshold = float(cli.eval_action_rho_threshold)
 
+    args.eval_solver_lookahead = bool(cli.eval_solver_lookahead)
+    args.eval_solver_top_k = int(cli.eval_solver_top_k)
+    args.eval_solver_rho_threshold = float(cli.eval_solver_rho_threshold)
+    args.eval_solver_include_noop = bool(cli.eval_solver_include_noop)
+
     if cli.intervention_gate_eval_mode != "checkpoint":
         args.intervention_gate_eval_mode = cli.intervention_gate_eval_mode
 
@@ -791,6 +796,34 @@ def parse_args() -> Namespace:
         help="Override the rho threshold used by evaluation heuristics.",
     )
     parser.add_argument(
+        "--eval-solver-lookahead",
+        type=str2bool,
+        default=False,
+        help=(
+            "Use policy-guided one-step solver look-ahead. Below the solver "
+            "rho threshold all agents do nothing; otherwise the highest-scoring "
+            "joint actions are simulated and the safest valid outcome is used."
+        ),
+    )
+    parser.add_argument(
+        "--eval-solver-top-k",
+        type=int,
+        default=3,
+        help="Number of policy-ranked joint actions simulated on triggered steps.",
+    )
+    parser.add_argument(
+        "--eval-solver-rho-threshold",
+        type=float,
+        default=0.95,
+        help="Global pre-action max-rho threshold that activates look-ahead.",
+    )
+    parser.add_argument(
+        "--eval-solver-include-noop",
+        type=str2bool,
+        default=True,
+        help="Always simulate do-nothing as a fallback in addition to policy top-k.",
+    )
+    parser.add_argument(
         "--intervention-gate-eval-mode",
         type=str,
         default="checkpoint",
@@ -908,6 +941,14 @@ def main() -> None:
         raise ValueError("--eval-episodes must be positive when provided.")
     if cli.n_threads is not None and cli.n_threads <= 0:
         raise ValueError("--n-threads must be positive when provided.")
+    if cli.eval_solver_top_k <= 0:
+        raise ValueError("--eval-solver-top-k must be positive.")
+    if cli.eval_solver_rho_threshold < 0.0:
+        raise ValueError("--eval-solver-rho-threshold must be non-negative.")
+    if cli.eval_solver_lookahead and not cli.deterministic_eval:
+        raise ValueError(
+            "--eval-solver-lookahead requires --deterministic-eval true."
+        )
 
     checkpoint_dir = cli.checkpoint_dir.expanduser()
     if not checkpoint_dir.is_absolute():
@@ -1023,6 +1064,13 @@ def main() -> None:
     print(f"Eval heuristic: {getattr(args, 'eval_action_heuristic', 'none')}")
     if getattr(args, "eval_action_heuristic", "none") != "none":
         print(f"Eval rho threshold: {getattr(args, 'eval_action_rho_threshold', 0.90)}")
+    if getattr(args, "eval_solver_lookahead", False):
+        print(
+            "Solver look-ahead: "
+            f"top_k={args.eval_solver_top_k}, "
+            f"rho_threshold={args.eval_solver_rho_threshold}, "
+            f"include_noop={args.eval_solver_include_noop}"
+        )
     if action_log_dir is not None:
         print(f"Action artifacts: {_repo_relative(action_log_dir)}")
         print(f"Exact action trace: {bool(cli.save_action_trace)}")
@@ -1067,6 +1115,19 @@ def main() -> None:
         "eval_action_heuristic": getattr(args, "eval_action_heuristic", "none"),
         "eval_action_rho_threshold": float(
             getattr(args, "eval_action_rho_threshold", 0.90)
+        ),
+        "eval_solver_lookahead": bool(
+            getattr(args, "eval_solver_lookahead", False)
+        ),
+        "eval_solver_top_k": int(getattr(args, "eval_solver_top_k", 3)),
+        "eval_solver_rho_threshold": float(
+            getattr(args, "eval_solver_rho_threshold", 0.95)
+        ),
+        "eval_solver_include_noop": bool(
+            getattr(args, "eval_solver_include_noop", True)
+        ),
+        "solver_lookahead_summary": getattr(
+            evaluator, "last_solver_summary", {}
         ),
         "intervention_gate": bool(getattr(args, "intervention_gate", False)),
         "intervention_gate_eval_mode": getattr(

@@ -18,6 +18,10 @@ from common.explainability import (
 )
 from common.imports import *
 from common.logger import Logger
+from common.solver_lookahead import (
+    build_joint_action_candidates,
+    choose_best_simulated_candidate,
+)
 from common.utils import cast_np_to_tensors, stack_agent_obs_by_env
 from .utils import MAEnvWrapper
 from .wrappers import RecordEpisodeStatistics
@@ -92,6 +96,24 @@ class Evaluator:
         self.eval_action_rho_threshold = float(
             getattr(args, "eval_action_rho_threshold", 0.90)
         )
+        self.eval_solver_lookahead = bool(
+            getattr(args, "eval_solver_lookahead", False)
+        )
+        self.eval_solver_top_k = int(getattr(args, "eval_solver_top_k", 3))
+        self.eval_solver_rho_threshold = float(
+            getattr(args, "eval_solver_rho_threshold", 0.95)
+        )
+        self.eval_solver_include_noop = bool(
+            getattr(args, "eval_solver_include_noop", True)
+        )
+        if self.eval_solver_top_k <= 0:
+            raise ValueError("eval_solver_top_k must be positive.")
+        if self.eval_solver_rho_threshold < 0.0:
+            raise ValueError("eval_solver_rho_threshold must be non-negative.")
+        if self.eval_solver_lookahead and not self.deterministic_eval:
+            raise ValueError(
+                "Solver look-ahead is deterministic; use deterministic_eval=true."
+            )
         self.eval_episodes = getattr(args, "eval_episodes", 10)
         self._eval_base_seed = int(getattr(args, "seed", 0))
         self.trace_rollout_actions = bool(
@@ -135,6 +157,7 @@ class Evaluator:
         )
         self.last_action_artifacts: Dict[str, str] = {}
         self.last_action_summary: Dict[str, Any] = {}
+        self.last_solver_summary: Dict[str, Any] = {}
         # if self.use_heuristic: self.env.set_n_rewards(len(self.reward_tags))
 
     def _should_rotate_eval_chronics(self, eval_ep: int) -> bool:
@@ -336,6 +359,77 @@ class Evaluator:
             return th.zeros_like(action)
         return 0
 
+    def _solver_lookahead_decision(
+        self,
+        actors: Dict[str, Any],
+        obs: Dict[str, Any],
+        agent_ids: List[str],
+        baseline_actions: Dict[str, int],
+        force_noop: Dict[str, bool],
+    ) -> Tuple[Dict[str, int], Dict[str, Any]]:
+        """Rerank the policy's best joint actions with one-step simulation."""
+        current_rho = float(self.env.get_current_max_rho())
+        decision = {
+            "rho_before": current_rho,
+            "triggered": False,
+            "safe_noop": False,
+            "simulations_attempted": 0,
+            "valid_simulations": 0,
+            "selected_noop": False,
+            "selected_policy_rank": None,
+            "selected_rho_after": float("nan"),
+            "predicted_rho_reduction": float("nan"),
+            "changed_from_baseline": False,
+        }
+        if not np.isfinite(current_rho):
+            return dict(baseline_actions), decision
+        if current_rho < self.eval_solver_rho_threshold:
+            selected = {agent_id: 0 for agent_id in agent_ids}
+            decision["safe_noop"] = True
+            decision["selected_noop"] = True
+            decision["changed_from_baseline"] = selected != baseline_actions
+            return selected, decision
+
+        decision["triggered"] = True
+        with th.no_grad():
+            scores_by_agent = {
+                agent_id: actors[agent_id].get_eval_action_scores(obs[agent_id])
+                for agent_id in agent_ids
+            }
+        candidates = build_joint_action_candidates(
+            scores_by_agent,
+            agent_ids,
+            top_k=self.eval_solver_top_k,
+            force_noop=force_noop,
+            include_noop=self.eval_solver_include_noop,
+        )
+        for candidate in candidates:
+            candidate["outcome"] = self.env.simulate_joint_action_outcome(
+                candidate["actions"], time_step=1
+            )
+
+        decision["simulations_attempted"] = len(candidates)
+        decision["valid_simulations"] = sum(
+            bool(candidate["outcome"].get("action_is_valid", False))
+            and not bool(candidate["outcome"].get("sim_done", False))
+            and np.isfinite(float(candidate["outcome"].get("rho_after", np.nan)))
+            for candidate in candidates
+        )
+        selected_candidate = choose_best_simulated_candidate(candidates)
+        if selected_candidate is None:
+            selected = {agent_id: 0 for agent_id in agent_ids}
+            decision["selected_noop"] = True
+        else:
+            selected = dict(selected_candidate["actions"])
+            selected_outcome = selected_candidate["outcome"]
+            selected_rho = float(selected_outcome["rho_after"])
+            decision["selected_noop"] = bool(selected_candidate["is_noop"])
+            decision["selected_policy_rank"] = selected_candidate["policy_rank"]
+            decision["selected_rho_after"] = selected_rho
+            decision["predicted_rho_reduction"] = current_rho - selected_rho
+        decision["changed_from_baseline"] = selected != baseline_actions
+        return selected, decision
+
     @staticmethod
     def _csv_value(value: Any) -> Any:
         if isinstance(value, (list, tuple, set)):
@@ -428,6 +522,7 @@ class Evaluator:
         heuristic_blocked_nonidle_counts: Dict[str, int],
         worst_line_counts: Counter,
         episode_rows: List[Dict[str, Any]],
+        solver_summary: Dict[str, Any],
     ) -> None:
         if not self.full_test_save_action_summary:
             return
@@ -526,6 +621,7 @@ class Evaluator:
             "agents": {},
             "worst_line_counts": self._safe_counter_dict(worst_line_counts),
             "most_common_worst_line": self._most_common_key(worst_line_counts),
+            "solver_lookahead": solver_summary,
         }
         for agent in agent_ids:
             total = sum(action_counts[agent].values())
@@ -619,6 +715,16 @@ class Evaluator:
         heuristic_any_force_noop_steps = 0
         heuristic_all_force_noop_steps = 0
         heuristic_max_rhos = {agent: [] for agent in agent_ids}
+        solver_stats = {
+            "triggered_steps": 0,
+            "safe_noop_steps": 0,
+            "simulations_attempted": 0,
+            "valid_simulations": 0,
+            "selected_noop_steps": 0,
+            "changed_from_baseline_steps": 0,
+            "selected_rank_counts": Counter(),
+            "predicted_rho_reductions": [],
+        }
         explain_eval_arrays = None
         n_eval_steps = 0
         trace_records = []
@@ -694,6 +800,48 @@ class Evaluator:
                             action[agent] = self._zero_action_like(action[agent])
                         heuristic_policy_nonidle_counts[agent] += int(
                             policy_action_ids[agent] != 0
+                        )
+
+                if self.eval_solver_lookahead:
+                    baseline_action_ids = {
+                        agent: tensor_scalar_to_int(action[agent])
+                        for agent in agent_ids
+                    }
+                    selected_actions, solver_decision = (
+                        self._solver_lookahead_decision(
+                            actors,
+                            obs,
+                            agent_ids,
+                            baseline_action_ids,
+                            force_noop,
+                        )
+                    )
+                    action.update(selected_actions)
+                    solver_stats["triggered_steps"] += int(
+                        solver_decision["triggered"]
+                    )
+                    solver_stats["safe_noop_steps"] += int(
+                        solver_decision["safe_noop"]
+                    )
+                    solver_stats["simulations_attempted"] += int(
+                        solver_decision["simulations_attempted"]
+                    )
+                    solver_stats["valid_simulations"] += int(
+                        solver_decision["valid_simulations"]
+                    )
+                    solver_stats["selected_noop_steps"] += int(
+                        solver_decision["selected_noop"]
+                    )
+                    solver_stats["changed_from_baseline_steps"] += int(
+                        solver_decision["changed_from_baseline"]
+                    )
+                    selected_rank = solver_decision["selected_policy_rank"]
+                    if selected_rank is not None:
+                        solver_stats["selected_rank_counts"][str(selected_rank)] += 1
+                    rho_reduction = solver_decision["predicted_rho_reduction"]
+                    if np.isfinite(rho_reduction):
+                        solver_stats["predicted_rho_reductions"].append(
+                            float(rho_reduction)
                         )
 
                 action_ids = {
@@ -950,6 +1098,34 @@ class Evaluator:
             sum(r) / eval_ep for r in zip(*ep_returns_per_step)
         ]
 
+        reductions = np.asarray(
+            solver_stats["predicted_rho_reductions"], dtype=np.float64
+        )
+        solver_summary = {
+            "enabled": bool(self.eval_solver_lookahead),
+            "top_k": int(self.eval_solver_top_k),
+            "rho_threshold": float(self.eval_solver_rho_threshold),
+            "include_noop": bool(self.eval_solver_include_noop),
+            "total_steps": int(n_eval_steps),
+            "triggered_steps": int(solver_stats["triggered_steps"]),
+            "triggered_fraction": solver_stats["triggered_steps"]
+            / max(n_eval_steps, 1),
+            "safe_noop_steps": int(solver_stats["safe_noop_steps"]),
+            "simulations_attempted": int(solver_stats["simulations_attempted"]),
+            "valid_simulations": int(solver_stats["valid_simulations"]),
+            "selected_noop_steps": int(solver_stats["selected_noop_steps"]),
+            "changed_from_baseline_steps": int(
+                solver_stats["changed_from_baseline_steps"]
+            ),
+            "selected_policy_rank_counts": self._safe_counter_dict(
+                solver_stats["selected_rank_counts"]
+            ),
+            "mean_predicted_rho_reduction": (
+                float(reductions.mean()) if reductions.size else float("nan")
+            ),
+        }
+        self.last_solver_summary = solver_summary
+
         self._write_action_artifacts(
             glob_step=glob_step,
             eval_label=eval_label,
@@ -962,6 +1138,7 @@ class Evaluator:
             heuristic_blocked_nonidle_counts=heuristic_blocked_nonidle_counts,
             worst_line_counts=worst_line_counts,
             episode_rows=episode_rows,
+            solver_summary=solver_summary,
         )
 
         # Log the metrics if logger is available
@@ -1078,6 +1255,16 @@ class Evaluator:
             print(
                 f"{eval_label} evaluation finished: {eval_ep} chronics, "
                 f"mean_survival={avg_survival * 100:.3f}%",
+                flush=True,
+            )
+        if self.eval_solver_lookahead:
+            print(
+                "Solver look-ahead: "
+                f"triggered={solver_summary['triggered_steps']}/"
+                f"{solver_summary['total_steps']}, "
+                f"simulations={solver_summary['simulations_attempted']}, "
+                f"selected_noop={solver_summary['selected_noop_steps']}, "
+                f"changed={solver_summary['changed_from_baseline_steps']}",
                 flush=True,
             )
         print(

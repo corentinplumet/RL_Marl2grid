@@ -16,6 +16,12 @@
 % Clarifications added in answer to review questions. Distinct from the
 % blue/red/green/orange review markup and from darkred.
 \definecolor{clarif}{rgb}{0.00,0.42,0.42}
+% Revisions requested from 28 August 2026 onward are displayed in red.
+\newcommand{\revision}[1]{{\color{red}#1}}
+% New revisions added after the Chapters 1--5 colour reset remain visible.
+\newcommand{\newrevision}[1]{{\color{red}#1}}
+% Latest structural revisions remain red even where earlier markup is accepted.
+\newcommand{\latestrevision}[1]{{\color{red}#1}}
 \usepackage{subcaption}
 \usepackage{pdflscape}
 \usepackage{amsmath}
@@ -24,6 +30,8 @@
 \usepackage{soul}
 \usepackage{tcolorbox}
 \usepackage[backend=biber,style=ieee]{biblatex}
+\usepackage{tikz}
+\usetikzlibrary{decorations.pathreplacing}
 
 \addbibresource{references.bib}
 
@@ -32,7 +40,7 @@
   linkcolor=blue,
   citecolor=blue,
   urlcolor=blue,
-  pdftitle={Thesis Plan},
+  pdftitle={Graph Neural Networks for Decentralized Multi-Agent Reinforcement Learning in Power-Grid Topology Control},
   pdfauthor={Corentin Plumet}
 }
 
@@ -50,46 +58,149 @@
 \newcommand{\pendingplot}[2][0.20\textheight]{%
   \setlength{\fboxrule}{0.7pt}%
   \fbox{\begin{minipage}[c][#1][c]{0.90\linewidth}%
-    \centering\small\itshape\color{gray}#2%
+    \centering\small\itshape\color{red}#2%
   \end{minipage}}%
 }
-\newcommand{\pending}[1]{{\color{gray}\itshape[pending: #1]}}
+\newcommand{\pending}[1]{{\color{red}\itshape[pending: #1]}}
 \setlist[itemize]{topsep=0.25em,itemsep=0.15em}
 \setlist[enumerate]{topsep=0.25em,itemsep=0.15em}
 
-\title{Thesis Plan\\\large Decentralized Multi-Agent Reinforcement Learning for Power Grid Topology Control}
+\title{Graph Neural Networks for Decentralized Multi-Agent Reinforcement Learning in Power-Grid Topology Control}
 \author{Corentin Plumet}
-\date{\today}
+\date{August 2026}
 
 \begin{document}
 
 \pagenumbering{roman}
 \hypersetup{pageanchor=false}
-\maketitle
+\begin{titlepage}
+  \thispagestyle{empty}
+  \centering
+
+  \begin{minipage}[t]{0.46\textwidth}
+    \raggedright
+    \vspace{0pt}
+    \includegraphics[width=0.78\linewidth]{assets/nus_logo.png}
+  \end{minipage}%
+  \hfill
+  \begin{minipage}[t]{0.46\textwidth}
+    \raggedleft
+    \vspace{0pt}
+    \includegraphics[width=0.78\linewidth]{assets/epfl_logo_print.png}
+  \end{minipage}
+
+  \vspace{2.2cm}
+
+  {\large\scshape Master Thesis\par}
+
+  \vspace{1.2cm}
+
+  {\fontsize{22}{28}\selectfont\bfseries
+    Graph Neural Networks for Decentralized\\[0.18cm]
+    Multi-Agent Reinforcement Learning in\\[0.18cm]
+    Power-Grid Topology Control\par
+  }
+
+  \vspace{1.1cm}
+  {\color{darkred}\rule{0.18\textwidth}{1.2pt}\par}
+
+  \vspace{1.1cm}
+  {\large\textbf{Corentin Plumet}\par}
+
+  \vfill
+
+  {\normalsize\textbf{Supervisors}\par}
+  \vspace{0.35cm}
+  {\large
+    Prof. Fink\\[0.12cm]
+    Prof. Peng\\[0.12cm]
+    Dr. Nejjar\par
+  }
+
+  \vfill
+
+  {\large August 2026\par}
+\end{titlepage}
+\setcounter{page}{1}
 \hypersetup{pageanchor=true}
+
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+Power-grid topology control can relieve congestion by reconfiguring substation
+busbars, but fixed-width centralized actors scale poorly: their inputs and
+outputs grow with the grid and its combinatorial action space. Transmission
+systems are also organized into regions whose operators possess detailed local
+information and authority. Fully decentralized execution follows this
+structure, limits each actor to local observation and action spaces, and avoids
+a central coordinator. This thesis asks whether shared graph policies trained
+on the IEEE 14-bus system (\texttt{bus14}) can remain useful on the larger WCCI
+2020 grid.
+\\
+\\
+Using centralized-training, decentralized-execution MAPPO, we study sparse
+intervention, shared local graph encoders, and a grid-size-independent
+candidate-action scorer. We correct cross-grid input mismatch, use reduced WCCI
+action spaces, and compare zero-shot transfer, training from scratch, and
+fine-tuning. \textcolor{red}{To separate the source of transfer, we distinguish
+encoder-only transfer, where the grid-specific action heads are replaced and
+relearned on WCCI, from complete-policy transfer, where the candidate-action
+actor is reused without changing its output interface.}
+\\
+\\
+On \texttt{bus14}, the strongest graph architectures exceed $98\%$ mean
+survival, showing that the GNN actors can learn effective source-grid control.
+This does not imply that the same model family learns equally well when
+retrained on a larger grid. On the 24 difficult WCCI chronics, do nothing
+reaches $8.34\%$ mean survival, while matched actors trained from scratch reach
+a median of only $9.6\%$ at $k=64$. In contrast, the architecture designed for
+weight transfer retains meaningful zero-shot performance: the best evaluated
+transferred graph actor, using the local safety gate, reaches $25.8\%$, about
+three times the do-nothing result. Transfer is therefore incomplete, but
+substantially more effective than retraining the same model family from
+scratch.
+\\
+\\
+The main limitations are single-seed screens, 50 primary WCCI chronics,
+disabled WCCI maintenance, and one source--target grid pair. Graph encoders and
+candidate-action scoring remove the dimensional barrier to policy reuse, but
+structural compatibility alone does not ensure reliable control. Transfer also
+requires compatible inputs, compact action sets, policy-specific intervention
+control, and target-grid adaptation.
+\par
+
+\clearpage
 \tableofcontents
 \clearpage
 
 \pagenumbering{arabic}
+% Review markup in Chapters 1--5 has been accepted and is now black.
+\renewcommand{\revision}[1]{#1}
+\renewcommand{\newrevision}[1]{#1}
+\renewcommand{\latestrevision}[1]{#1}
 \input{chapters/01_plan}
 \input{chapters/02_introduction}
 \input{chapters/03_baseline}
 \input{chapters/04_sparse_control}
 \input{chapters/05_methods}
+\renewcommand{\revision}[1]{{\color{red}#1}}
+\renewcommand{\newrevision}[1]{{\color{red}#1}}
+\renewcommand{\latestrevision}[1]{{\color{red}#1}}
 \input{chapters/06_experiments}
 \input{chapters/07_encoder_inputs}
 \input{chapters/08_wcci_transfer}
-\input{chapters/09_screen_e_transfer}
+\input{chapters/09_encoder_transfer_bridge}
+\input{chapters/09_screen_f_transfer}
 
 \appendix
 \input{chapters/appendix_additional_results}
 
-\chapter{GINE Graph-Actor Architecture}
+\chapter{\texorpdfstring{\latestrevision{Graph-Policy Implementation Details}}{Graph-Policy Implementation Details}}
 \label{app:gine-architecture}
 
-This appendix specifies the complete edge-aware actor used in the graph
-experiments: the shared input and encoder pipeline, the GINE message-passing
-update, the graph readout, and the agent-specific action head.
+\latestrevision{This appendix is the implementation reference for the graph
+policy used throughout the experiments. It brings together the shared encoder,
+exact feature inventories, candidate-action metadata, graph construction,
+masking, augmentations, and decentralized information boundaries.}
 
 \section{Shared input and encoder pipeline}
 
@@ -161,10 +272,10 @@ softmax competition between neighbors. The edge embedding changes what is
 sent; the number of incoming messages and their vector sum determine the
 aggregate.
 
-\section{Pooling and graph output}
+\section{\texorpdfstring{\revision{Graph readout and output}}{Graph readout and output}}
 \label{sec:gnn-pooling-action}
 
-With mean pooling, the graph representation after the second message-passing
+With a \revision{mean graph readout}, the graph representation after the second message-passing
 layer is
 \begin{equation}
   \overline{\mathbf{h}}_G =
@@ -186,11 +297,11 @@ An inactive contextual candidate contributes neither to the numerator nor to
 the denominator. The ordinary GINE mean readout includes visible context;
 \texttt{controlled\_mean} replaces $m_v$ by the product of the visibility and
 controlled-node masks. Visible context can still influence controlled nodes
-through message passing, but it is not aggregated directly. Sum and maximum
-pooling, including their \texttt{controlled\_*} variants, change only the
+through message passing, but it is not aggregated directly. \revision{Sum and maximum
+graph readouts}, including their \texttt{controlled\_*} variants, change only the
 readout and do not change message passing or the information boundary.
 
-The pooled 128-dimensional vector then passes through the shared graph output
+The \revision{read-out} 128-dimensional vector then passes through the shared graph output
 projection
 \begin{equation}
   \mathbf{z}_a =
@@ -233,10 +344,88 @@ Equation~\ref{eq:gnn-action-head} is the default head. The optional
 candidate-action head of Section~\ref{sec:candidate-action-scoring} keeps this
 pipeline up to $\mathbf{z}_a$ and additionally consumes the
 post-message-passing node states $\mathbf{h}^{(K)}_v$, which are the same
-states that Equation~\ref{eq:gnn-mean-pooling} averages.
+states that Equation~\ref{eq:gnn-mean-pooling} \revision{reduces through the graph readout}.
+
+{\color{red}
+\section{Candidate-action scorer implementation}
+\label{app:candidate-scorer-details}
+
+A Grid2Op topology action lists the topology-vector entries that it changes.
+Each entry belongs to a known line endpoint, generator, or load, so the graph
+builder can map the action once to the node rows used by the scorer. When an
+action changes a substation, all of its busbar rows are included so that both
+the current and destination contexts are available. A boundary action includes
+only the shared line node and controlled endpoint rows already present in the
+local graph.
+
+\begin{table}[H]
+  \color{red}
+  \captionsetup{labelfont={color=red},textfont={color=red}}
+  \centering
+  \small
+  \caption{One action, from Grid2Op to node rows: moving the origin end of
+  line~4 onto the other busbar of substation~6. Row indices are illustrative.}
+  \label{tab:candidate-metadata-example}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{L{0.28\textwidth}L{0.62\textwidth}}
+    \toprule
+    Step & Result for this action \\
+    \midrule
+    Objects the action changes & Substation 6, line 4 \\
+    Their rows in the graph & Both busbars of substation 6, here 12 and 13, and the line node of line 4, here 22 \\
+    Stored for scoring & Busbar $[12,13]$, line $[22]$, generator and load empty \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Candidate actions may involve different numbers of nodes. Their node-index
+lists are therefore padded to the maximum list length, and a Boolean mask
+excludes padding during aggregation. This fixed tensor shape allows all
+candidate embeddings to be gathered and processed in parallel.
+
+The optional 12-dimensional descriptor $\boldsymbol\phi_j$ describes the
+operation rather than the current grid state. Its indicators are binary, and
+its counts are divided by the largest value in the agent's action space.
+
+\begin{table}[H]
+  \color{red}
+  \captionsetup{labelfont={color=red},textfont={color=red}}
+  \centering
+  \small
+  \caption{The static action-feature vector $\boldsymbol{\phi}_j$.}
+  \label{tab:candidate-action-features}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{L{0.36\textwidth}L{0.54\textwidth}}
+    \toprule
+    Entry & Meaning \\
+    \midrule
+    \multicolumn{2}{l}{\emph{Indicators}} \\
+    \texttt{is\_do\_nothing} & The action is the idle action \\
+    \texttt{has\_busbar\_context} & It modifies at least one substation \\
+    \texttt{has\_line} & It touches at least one line \\
+    \texttt{has\_load} & It touches at least one load \\
+    \texttt{has\_generator} & It touches at least one generator \\
+    \midrule
+    \multicolumn{2}{l}{\emph{Scaled counts}} \\
+    \texttt{n\_substations} & Substations modified \\
+    \texttt{n\_topology\_changes} & Topology-vector entries changed \\
+    \texttt{n\_line\_status\_changes} & Lines connected or disconnected \\
+    \texttt{n\_line\_endpoint\_changes} & Line endpoints moved to another busbar \\
+    \texttt{n\_generator\_changes} & Generators moved to another busbar \\
+    \texttt{n\_load\_changes} & Loads moved to another busbar \\
+    \texttt{n\_other\_changes} & Changed objects of any other type \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+}
 
 \section{Exact node inputs by representation}
 \label{sec:gnn-node-input-inventory}
+
+\latestrevision{This section consolidates the exact feature inventories moved
+out of Chapter~\ref{ch:methods}. It is the implementation-level reference for
+the busbar, disaggregated, and disaggregated line-node schemas.}
 
 All node types of one representation receive the same feature columns. Columns
 not listed for a node type are zero. Type identity reaches GINE through
@@ -256,6 +445,9 @@ from readout.
   edge, while the disaggregated line-node graph writes it on the transmission-line row
   as \texttt{theta\_diff} (Section~\ref{sec:line-node-angle}).}
   \label{tab:gine-gat-node-inventory}
+  \label{tab:graph-node-features}
+  \label{tab:heterogeneous-node-features}
+  \label{tab:heterogeneous-line-node-features}
   \setlength{\tabcolsep}{3pt}
   \begin{tabular}{L{0.18\textwidth}L{0.17\textwidth}L{0.56\textwidth}}
     \toprule
@@ -281,6 +473,10 @@ from readout.
 \section{Exact edge inputs by representation}
 \label{sec:gnn-edge-input-inventory}
 
+\latestrevision{The table below likewise consolidates the physical edge blocks,
+typed attachment relations, and zero-filled structural relations previously
+listed separately in Chapter~\ref{ch:methods}.}
+
 The edge vector contains all edge information consumed by GINE.
 Inactive candidates are filtered out before the vectors in
 Table~\ref{tab:gine-gat-edge-inventory} reach a convolution.
@@ -296,6 +492,9 @@ Table~\ref{tab:gine-gat-edge-inventory} reach a convolution.
   unchanged, because there the drop is a line-node feature and the attachment
   edges stay free of physical channels.}
   \label{tab:gine-gat-edge-inventory}
+  \label{tab:graph-edge-features}
+  \label{tab:heterogeneous-edge-features}
+  \label{tab:heterogeneous-line-edge-features}
   \setlength{\tabcolsep}{3pt}
   \begin{tabular}{L{0.18\textwidth}L{0.28\textwidth}L{0.45\textwidth}}
     \toprule
@@ -326,15 +525,16 @@ example, generator-to-busbar from busbar-to-generator and origin from
 extremity line attachments. These distinctions matter directly to an
 edge-aware model such as GINE, which folds the edge vector into every message.
 
-\chapter{Graph Construction Details}
+\section{\texorpdfstring{\latestrevision{Graph Construction and Local Boundaries}}{Graph Construction and Local Boundaries}}
 \label{app:graph-construction}
 
-{\color{blue}This appendix collects the construction and sizing details of the three graph
-schemas of Section~\ref{sec:graph-representation}: how large each candidate
-graph is, how inactive candidates are neutralized, and how a local actor graph
-is cut out of the full grid. None of it changes the representations themselves.
+{\color{red}This section collects the construction and sizing details of the
+three graph schemas of Section~\ref{sec:graph-representation}: how large each
+candidate graph is, how inactive candidates are neutralized, and how a local
+actor graph is cut out of the full grid. None of it changes the
+representations themselves.
 
-\section{Candidate graph sizes}
+\subsection{Candidate graph sizes}
 \label{app:graph-sizes}
 
 Let $S$ be the number of included substations, $B$ the busbars per substation,
@@ -383,7 +583,7 @@ $SB$ directed edges for \texttt{toward\_summary} or $2SB$ for
 \texttt{bidirectional}; and one virtual node, with $N_{\mathrm{bus}}$ or
 $2N_{\mathrm{bus}}$ edges, or $S$ or $2S$ when summary nodes are also enabled.
 
-\section{Indexing and masking conventions}
+\subsection{Indexing and masking conventions}
 \label{app:graph-indexing}
 
 Grid2Op numbers busbars from one in its topology vector; those identifiers are
@@ -400,7 +600,51 @@ Every incident physical or structural edge is deactivated. The row therefore
 participates in neither message passing nor graph readout; a mean readout
 excludes it from both numerator and denominator.
 
-\section{Local actor graphs}
+{\color{red}
+\subsection{Substation augmentation details}
+\label{app:graph-augmentation-details}
+
+Figure~\ref{fig:substation-augmentation-by-representation} shows where the
+direct busbar relation and substation-summary node are inserted in each graph
+schema. Both augmentations remain restricted to controlled substations.
+
+\begin{figure}[H]
+  \color{red}
+  \captionsetup{labelfont={color=red},textfont={color=red}}
+  \centering
+  \resizebox{0.98\linewidth}{!}{%
+    \input{figures/graph_augmentation_by_representation.tex}%
+  }
+  \caption{Placement of the two augmentations when $e=n=1$. In every graph
+  representation, the direct relation and summary node attach only to
+  controlled busbars. Equipment and line nodes retain their ordinary busbar
+  relations, and no augmentation is added in the contextual domain.}
+  \label{fig:substation-augmentation-by-representation}
+\end{figure}
+
+\begin{table}[H]
+  \color{red}
+  \captionsetup{labelfont={color=red},textfont={color=red}}
+  \centering
+  \small
+  \caption{Node and edge features introduced by the direct same-substation
+  augmentation. ``None'' means that the augmentation neither adds nodes nor
+  changes the features of existing nodes.}
+  \label{tab:same-substation-augmentation-features}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{L{0.20\textwidth}L{0.16\textwidth}L{0.54\textwidth}}
+    \toprule
+    Graph schema & Added node features & Feature values on each added directed edge \\
+    \midrule
+    Busbar & None & Every entry is $0$: this schema has no relation columns. An active physical line always carries \texttt{line\_status}$=1$, so an all-zero row is itself the signature of a structural relation. \\
+    Disaggregated & None & \texttt{relation\_same\_substation\_busbar}$=1$; every other entry is $0$. \\
+    Disaggregated line-node & None & \texttt{relation\_same\_substation\_busbar}$=1$; every other entry is $0$. \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+}
+
+\subsection{Local actor graphs}
 \label{app:local-graphs}
 
 A local actor graph always contains the controlled substations and every line
@@ -411,12 +655,31 @@ direct disaggregated graph contains the same far-end busbar, but never
 its generator or load nodes. The disaggregated line-node graph represents
 the shared line itself and therefore constructs no neighboring busbar or
 private asset and no far-end attachment edge. The centralized state graph is
-intentionally unrestricted for centralized training. Ordinary pooling
-aggregates all visible nodes, whereas \texttt{controlled\_*} pooling restricts
+intentionally unrestricted for centralized training. The \revision{ordinary graph readout}
+aggregates all visible nodes, whereas the \texttt{controlled\_*} \revision{graph readout} restricts
 readout to action-domain nodes; neither choice changes the construction
 boundary.
 
-\section{Boundary verification}
+\begin{table}[H]
+  \color{red}
+  \captionsetup{labelfont={color=red},textfont={color=red}}
+  \centering
+  \small
+  \caption{Information from another agent's domain visible to a local actor.}
+  \label{tab:local-information-boundary}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{L{0.24\textwidth}L{0.64\textwidth}}
+    \toprule
+    Representation & Neighbor information available \\
+    \midrule
+    busbar & Shared-line edge and attached far-end busbar, including aggregated generator/load power and angles \\
+    disaggregated & Shared-line edge and attached far-end busbar; no neighboring generator/load nodes or private-asset state \\
+    disaggregated line-node & Shared-line node only; no neighboring busbar, equipment, or far-end attachment \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Boundary verification}
 
 The regression suite checks that contextual visibility follows a live busbar
 attachment, moves when the attachment is switched, and disappears after a
@@ -429,159 +692,7 @@ adding far-end equipment. Controlled-readout tests verify both that the pooled
 set is fixed and that gradients can still reach visible context through message
 passing.}
 
-\chapter{Experiment Configurations}
-\label{app:experiment-configurations}
-
-This appendix provides the complete run configurations for the GINE encoder and heavy GINE ablations.
-
-\begin{landscape}
-\begin{table}[p]
-  \centering
-  \scriptsize
-  \caption{GINE rerun configuration summary. The reference run is
-  \texttt{Heavy GINE Baseline}.}
-  \label{tab:gine-run-configurations}
-  \setlength{\tabcolsep}{2.4pt}
-  \renewcommand{\arraystretch}{1.12}
-  \begin{tabular}{L{0.18\linewidth}L{0.075\linewidth}L{0.065\linewidth}L{0.095\linewidth}L{0.050\linewidth}L{0.060\linewidth}L{0.050\linewidth}L{0.065\linewidth}L{0.070\linewidth}L{0.19\linewidth}}
-    \toprule
-    Run & Actor/critic encoder & GNN hidden/layers & Actor/critic heads &
-    Concat flat & Edge pre-enc. & Entropy & Init action-0 & Opt. critic &
-    Difference from \texttt{Heavy GINE Baseline} \\
-    \midrule
-    \texttt{Heavy GINE Baseline} & \texttt{gnn} / \texttt{gnn} & 128 / 2 &
-    \(3\times256\) / \(3\times256\) & true & true & 0.02 & 0.7 & false &
-    Baseline: heavy concat-flat GINE actor, GNN critic, and legacy critic updates \\
-    \texttt{Light GINE (Concat, MLP Critic)} & \texttt{gnn} / \texttt{mlp} & 64 / 1 &
-    \(2\times128\) / \(2\times128\) & true & false & 0.02 & 0.7 & true &
-    Light GINE actor, MLP critic, smaller heads, no edge pre-encoder, optimized critic updates \\
-    \texttt{Heavy GINE (No Bias)} & \texttt{gnn} / \texttt{gnn} & 128 / 2 &
-    \(3\times256\) / \(3\times256\) & true & true & 0.02 & 0.0 & false &
-    Bias ablation: same as baseline, but the initial do-nothing prior is 0.0 \\
-    \texttt{No Bias, Opt Critic} & \texttt{gnn} / \texttt{gnn} & 128 / 2 &
-    \(3\times256\) / \(3\times256\) & true & true & 0.02 & 0.0 & true &
-    Bias 0.0 plus optimized critic updates; otherwise heavy concat-flat GINE with GNN critic \\
-    \texttt{Optimized Heavy GINE} & \texttt{gnn} / \texttt{gnn} & 128 / 2 &
-    \(3\times256\) / \(3\times256\) & true & true & 0.01 & 0.0 & true &
-    Optimized heavy GINE: bias 0.0, lower entropy 0.01, optimized critic updates \\
-    \texttt{Optimized Light GINE} & \texttt{gnn} / \texttt{mlp} & 64 / 1 &
-    \(2\times128\) / \(2\times128\) & false & false & 0.01 & 0.0 & true &
-    Light optimized GINE: MLP critic, no concat-flat, lower entropy 0.01, bias 0.0, optimized critic updates \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-\end{landscape}
-
-\begin{landscape}
-\begin{table}[p]
-  \centering
-  \tiny
-  \caption{Heavy-GINE parameter comparison from
-  \texttt{configs/gine\_s0\_s1\_s2}.}
-  \label{tab:heavy-gine-configurations}
-  \setlength{\tabcolsep}{2pt}
-  \renewcommand{\arraystretch}{1.12}
-  \begin{tabular}{L{0.10\linewidth}L{0.18\linewidth}L{0.045\linewidth}L{0.060\linewidth}L{0.050\linewidth}L{0.075\linewidth}L{0.045\linewidth}L{0.045\linewidth}L{0.045\linewidth}L{0.045\linewidth}L{0.060\linewidth}L{0.045\linewidth}L{0.055\linewidth}}
-    \toprule
-    Run & Main change from baseline & GNN & GNN size & Critic &
-    Actor/critic heads & Concat & Shared & Edge pre. & Node ID & Entropy &
-    Init action-0 & Opt. critic \\
-    \midrule
-    \texttt{No Flat Concat} & Removes flat-observation concatenation &
-    \texttt{gine} & \(2\times128\) & \texttt{gnn} & \(3\times256\) / \(3\times256\) &
-    no & yes & yes & yes & 0.02--0.02 & 0.7 & no \\
-    \texttt{Heavy GINE Baseline} & Reference: heavy concat-flat GINE with GNN critic &
-    \texttt{gine} & \(2\times128\) & \texttt{gnn} & \(3\times256\) / \(3\times256\) &
-    yes & yes & yes & yes & 0.02--0.02 & 0.7 & no \\
-    \texttt{Opt. Critic Updates} & Enables optimized critic updates &
-    \texttt{gine} & \(2\times128\) & \texttt{gnn} & \(3\times256\) / \(3\times256\) &
-    yes & yes & yes & yes & 0.02--0.02 & 0.7 & yes \\
-    \texttt{MLP Critic} & Replaces the GNN critic with an MLP critic &
-    \texttt{gine} & \(2\times128\) & \texttt{mlp} & \(3\times256\) / \(3\times256\) &
-    yes & yes & yes & yes & 0.02--0.02 & 0.7 & no \\
-    \texttt{Unshared Actor} & Uses non-shared actor GNN weights &
-    \texttt{gine} & \(2\times128\) & \texttt{gnn} & \(3\times256\) / \(3\times256\) &
-    yes & no & yes & yes & 0.02--0.02 & 0.7 & no \\
-    \texttt{Light GINE Encoder} & Uses a lighter GINE encoder &
-    \texttt{gine} & \(1\times64\) & \texttt{gnn} & \(3\times256\) / \(3\times256\) &
-    yes & yes & yes & yes & 0.02--0.02 & 0.7 & no \\
-    \texttt{Zero Entropy Decay} & Decays entropy from 0.02 to 0.0 &
-    \texttt{gine} & \(2\times128\) & \texttt{gnn} & \(3\times256\) / \(3\times256\) &
-    yes & yes & yes & yes & 0.02--0.00 & 0.7 & no \\
-    \texttt{No Node-ID Embs} & Removes learned node-ID embeddings &
-    \texttt{gine} & \(2\times128\) & \texttt{gnn} & \(3\times256\) / \(3\times256\) &
-    yes & yes & yes & no & 0.02--0.02 & 0.7 & no \\
-    \texttt{GAT Message Passing} & Replaces GINE with GAT message passing &
-    \texttt{gat} & \(2\times128\) & \texttt{gnn} & \(3\times256\) / \(3\times256\) &
-    yes & yes & yes & yes & 0.02--0.02 & 0.7 & no \\
-    \texttt{Weighted GCN} & Replaces GINE with weighted GCN message passing &
-    \texttt{gcn} & \(2\times128\) & \texttt{gnn} & \(3\times256\) / \(3\times256\) &
-    yes & yes & yes & yes & 0.02--0.02 & 0.7 & no \\
-    \texttt{Light GINE (No Concat, MLP Critic)} & Light no-concat GINE with MLP critic and optimized critic updates &
-    \texttt{gine} & \(1\times64\) & \texttt{mlp} & \(2\times128\) / \(2\times128\) &
-    no & yes & no & yes & 0.02--0.02 & 0.7 & yes \\
-    \texttt{Light GINE (Concat, MLP Critic)} & Light concat-flat GINE with MLP critic and optimized critic updates &
-    \texttt{gine} & \(1\times64\) & \texttt{mlp} & \(2\times128\) / \(2\times128\) &
-    yes & yes & no & yes & 0.02--0.02 & 0.7 & yes \\
-    \texttt{No Initial Bias} & Removes the initial do-nothing bias &
-    \texttt{gine} & \(2\times128\) & \texttt{gnn} & \(3\times256\) / \(3\times256\) &
-    yes & yes & yes & yes & 0.02--0.02 & 0.0 & no \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-\end{landscape}
-
-\chapter{Full-Test Checkpoint Registry}
-\label{app:full-test-checkpoint-registry}
-
-Table~\ref{tab:full-test-checkpoint-steps} reports the checkpoint step used for
-each full-test result table. The values are the
-\path{checkpoint_global_step} fields stored in the corresponding JSON files
-under \path{Topology_Task/outputs/full_test_eval}. The do-nothing policy has
-no learned checkpoint. For the behavioral cloning students, the stored step is
-the student checkpoint's optimizer-step count rather than a MAPPO environment
-step.
-
-\begin{landscape}
-\begin{table}[htbp]
-  \centering
-  \small
-  \caption{Checkpoint steps used for the full-test evaluations.}
-  \label{tab:full-test-checkpoint-steps}
-  \setlength{\tabcolsep}{5pt}
-  \resizebox{\linewidth}{!}{%
-  \begin{tabular}{L{0.54\linewidth}rrr}
-    \toprule
-    Run type & Seed 0 checkpoint step & Seed 1 checkpoint step &
-    Seed 2 checkpoint step \\
-    \midrule
-    Do-nothing policy & -- & -- & -- \\
-    Baseline flat policy & 13{,}600{,}000 & 13{,}040{,}000 & 13{,}760{,}000 \\
-    Global rho heuristic, \(\rho_{safe}=0.90\) & 13{,}920{,}000 & 14{,}320{,}000 & 14{,}800{,}000 \\
-    Local rho heuristic, \(\rho_{safe}=0.90\) & 14{,}160{,}000 & 14{,}400{,}000 & 14{,}160{,}000 \\
-    Intervention gate, final-action MAP & 12{,}000{,}000 & 12{,}720{,}000 & 13{,}760{,}000 \\
-    Intervention gate, hierarchical greedy & 7{,}120{,}000 & 14{,}720{,}000 & 13{,}760{,}000 \\
-    Flat Sparse16, \(\lambda_{fixed}=0.000\) & 9{,}600{,}000 & 12{,}160{,}000 & 7{,}920{,}000 \\
-    Flat Sparse16, \(\lambda_{fixed}=0.001\) & 10{,}640{,}000 & 11{,}520{,}000 & 11{,}600{,}000 \\
-    Flat Sparse16, \(\lambda_{fixed}=0.003\) & 12{,}000{,}000 & 12{,}960{,}000 & 12{,}480{,}000 \\
-    Flat Sparse16, \(\lambda_{fixed}=0.010\) & 8{,}960{,}000 & 5{,}760{,}000 & 12{,}560{,}000 \\
-    Gated Sparse16, \(\lambda_{fixed}=0.000\) & 8{,}480{,}000 & 4{,}320{,}000 & 6{,}000{,}000 \\
-    Gated Sparse16, \(\lambda_{fixed}=0.001\) & 5{,}760{,}000 & 7{,}600{,}000 & 3{,}280{,}000 \\
-    Gated Sparse16, \(\lambda_{fixed}=0.003\) & 8{,}960{,}000 & 7{,}120{,}000 & 7{,}600{,}000 \\
-    Gated Sparse16, \(\lambda_{fixed}=0.010\) & 12{,}000{,}000 & 7{,}840{,}000 & 7{,}920{,}000 \\
-    Flat local-safe AIB, \(d=0.20\) & 13{,}120{,}000 & 9{,}360{,}000 & 12{,}160{,}000 \\
-    Flat local-safe AIB, \(d=0.10\) & 12{,}880{,}000 & 13{,}200{,}000 & 12{,}720{,}000 \\
-    Flat local-safe AIB, \(d=0.35\) & 12{,}800{,}000 & 5{,}360{,}000 & 11{,}520{,}000 \\
-    Gated local-safe AIB, \(d=0.20\), hierarchical greedy & 14{,}960{,}000 & 5{,}280{,}000 & 16{,}800{,}000 \\
-    Flat non-idle AIB, \(d=0.20\) & 12{,}480{,}000 & 14{,}880{,}000 & 11{,}920{,}000 \\
-    Teacher: MAPPO with local rho heuristic & 14{,}160{,}000 & 14{,}400{,}000 & 14{,}160{,}000 \\
-    Student BC, balanced non-idle 0.50, weight 5, aux 0.50 & 12{,}375 & 14{,}994 & 13{,}617 \\
-    Student BC, balanced non-idle 0.20, weight 3, aux 0.25 & 12{,}375 & 14{,}994 & 13{,}617 \\
-    \bottomrule
-  \end{tabular}
-  }
-\end{table}
-\end{landscape}
+\input{chapters/appendix_reproducibility}
 
 \nocite{*}
 \printbibliography

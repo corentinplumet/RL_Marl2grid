@@ -4,211 +4,212 @@
 \section{Topology control}
 \label{sec:intro-topology-control}
 
-A transmission grid is not a fixed graph. Inside a substation, every connected
-element --- each transmission line, generator, and load --- is attached to one
-of several busbars. An operator can move an element from one busbar to another,
-or split a substation into two electrically separate nodes. Doing so changes
-which paths the power actually flows through, and therefore redistributes
-loading across the network. This is topology control.
+Although a transmission grid is often represented as a fixed graph, operators
+can change its topology. Inside each substation, transmission lines, generators,
+and loads are connected to one or more busbars. Moving an element from one
+busbar to another, or splitting a substation into two separate electrical nodes,
+changes the paths available to the power flow. The loading of the lines changes
+as a result. This type of reconfiguration is called topology control.
 \\
 \\
-Its appeal is economic. Congestion is usually relieved in one of two ways.
-Redispatching generation or curtailing renewable production costs money at every
-intervention; building new lines costs a great deal once and takes years.
-Topology control uses assets that already exist and switching equipment that is
-already installed, so the cost of one more action is close to
-zero~\cite{fisher2008ots}. The energy transition makes this a practical need and
-not just an elegant idea: variable renewable generation makes flows less
-predictable and pushes existing corridors closer to their thermal limits.
+This flexibility is attractive because it can reduce congestion without adding
+new infrastructure. The usual alternatives are to redispatch generation,
+curtail renewable production, or build new transmission lines. Redispatch and
+curtailment cost money whenever they are used, while new lines are expensive
+and take years to build. Topology control instead uses switching equipment that
+is already installed, so the marginal cost of an action is close to
+zero~\cite{fisher2008ots}. This option becomes even more useful as renewable
+production increases, since variable generation makes power flows less
+predictable and pushes existing lines closer to their limits.
 \\
 \\
-The catch is that topology control is hard to use well. Operators use it, but
-mostly through a small set of remedial actions built from experience and offline
-study. As a result, a large part of the available flexibility is never
-searched~\cite{viebahn2022ai}.
+Its low operating cost does not make topology control easy to use. In practice,
+operators rely on a limited set of remedial actions prepared from experience and
+offline studies. Searching every possible configuration during operation is not
+realistic, which means that much of the available flexibility remains
+unused~\cite{viebahn2022ai}.
 
-\section{Why it has to be automated}
+\section{Why topology control should be automated}
 \label{sec:intro-automation}
 
-Two main properties make manual search impractical.
-\\
-\\
-First, the action space is combinatorial. A substation with $d$ connected
-elements and two busbars has $2^{d}$ possible assignments, and the number of
-joint configurations of a grid is the product over its substations. Even the
-small IEEE 14-bus benchmark used throughout this thesis has $178$ distinct
-unitary topology actions. The 36-substation grid of
-Chapter~\ref{ch:wcci-transfer} has more than $66\,000$, which is why it has to be
-reduced offline before an agent can be trained on it at all
+Two features of the problem make manual search difficult. The first is the
+number of possible actions. If a substation has $d$ connected elements and two
+busbars, it already has $2^{d}$ possible assignments. Considering several
+substations together makes this number grow very quickly. Even the IEEE 14-bus
+system used in this thesis has $178$ distinct unitary topology actions, while
+the 36-substation WCCI grid in Chapter~\ref{ch:wcci-transfer} has more than
+$66\,000$. Its action space must therefore be reduced before training
 (Section~\ref{sec:wcci-action-space-reduction}).
 \\
 \\
-Second, the decision is sequential and time-constrained. An action taken now
-changes which contingencies are survivable later. Cooldown periods forbid
-acting on the same substation twice in quick succession, and an operator has
-minutes to decide what to do.
+The second difficulty is that these decisions are linked over time. An action
+taken now changes the grid state and may affect which contingencies can be
+handled later. Cooldown rules can also prevent another action at the same
+substation for several time steps. The operator must therefore choose quickly
+without considering only the immediate effect of an action.
 \\
 \\
-These are the conditions under which reinforcement learning is a reasonable
-candidate: a sequential decision problem, a simulator that is expensive but
-available, no optimum that can be computed directly, and a clear success signal
---- the grid does not black out. The Learning to Run a Power Network (L2RPN)
-competition series was created by RTE to open exactly this problem to
-machine-learning research. The Grid2Op simulator provides the environment, the
-chronics of load and generation, and the operational rules that go with
-it~\cite{donnot2020grid2op,marot2021l2rpn}.
+Together, these properties make reinforcement learning (RL) a reasonable method
+to investigate. An RL agent learns through repeated interaction with a
+simulator, where each decision changes the next state and produces feedback.
+There is no simple formula for the best action, but the objective is clear: keep
+the grid operating and avoid a blackout. RTE created the Learning to Run a
+Power Network (L2RPN) competitions to study this problem. Grid2Op supports these
+experiments by providing the simulator, the load and generation time series,
+and the operating rules~\cite{donnot2020grid2op,marot2021l2rpn}.
 
-\section{Why decentralized agents}
+\section{Why use decentralized agents}
 \label{sec:intro-decentralized}
 
-Most published work treats the grid as a single agent controlling everything.
-Real grids are not operated that way. Transmission system operators divide the
-network into regions, each with its own control centre and its own operators,
-who act on their own substations with a detailed view of their own area and a
-much less detailed view of the rest~\cite{viebahn2022ai}. A decentralized setup
-is therefore closer to how the job is actually done. It is also closer to how
-any automated assistant would eventually be deployed: as support inside one
-control room, not as a single controller over the whole network.
+Most published methods use one agent to control the full grid, but this is not
+how large power systems are usually operated. The network is divided into
+regions, and each control centre has detailed information about its own area
+and a less complete view of the rest of the system~\cite{viebahn2022ai}. A
+decentralized model follows this organization more closely: each actor receives
+local observations, controls the substations in its region, and can operate
+without a central controller at execution time.
 \\
 \\
-It is also the setup that scales. A single controller over the whole grid has to
-represent the joint action space, which multiplies with every extra substation.
-Splitting the grid into regions and giving each region its own policy replaces
-that product by a sum: each agent chooses among its own local actions only. This
-is the standard argument for decentralized multi-agent reinforcement learning,
-and it comes with the standard cost~\cite{tan1993independent}. Because every
-agent learns while the others are also changing, each one faces an environment
-that is non-stationary from its own point of view. Each agent also observes only
-part of the grid, so agents can take individually sensible actions that are
-jointly harmful.
+The same organization also helps with scalability. A central actor must process
+the full grid and produce scores for all available actions, so both its input
+and output grow with the network. In a multi-agent system, each actor chooses
+only among the actions of its own region. Adding another region therefore does
+not require every actor to represent the full joint action space.
 \\
 \\
-The usual answer is \emph{centralized training with decentralized execution}: a
-critic is allowed to see the global state during training, while each actor
-sees only what it will have access to at deployment
-time~\cite{lowe2017maddpg,yu2022mappo}. This thesis uses that setting throughout.
+Decentralization does not remove the difficulty of the problem; it changes its
+nature. Because all agents update their policies during training, the
+environment appears non-stationary from the point of view of any one
+agent~\cite{tan1993independent}. Local observations also hide part of the grid,
+so two actions that appear safe separately may be harmful when applied together.
+\\
+\\
+Centralized training with decentralized execution helps address these issues.
+During training, a critic can use the global state to evaluate the joint
+behaviour of the agents, while each actor sees only the information that will be
+available in its region at deployment time
+~\cite{lowe2017maddpg,yu2022mappo}. The critic is removed after training, leaving
+actors that operate independently. This is the setting used throughout the
+thesis.
 
 \section{Reinforcement learning for topology control}
 \label{sec:intro-related-work}
 
-Work on RL for topology control falls into four broad groups. A wider survey of
-graph-based RL for power systems is given by~\textcite{hassouna2024survey}.
+Previous RL work on topology control can be grouped into four main approaches.
+A broader review of graph-based RL for power systems is provided
+by~\textcite{hassouna2024survey}.
 
 \paragraph{Single-agent policies.}
-The first approaches train one agent to control the whole grid.
-\textcite{subramanian2021exploring} showed that deep RL over a hand-picked action
-set can beat a do-nothing policy on L2RPN benchmarks. SMAAC, winner of the L2RPN
-WCCI 2020 challenge, combines actor--critic learning over \emph{afterstates} ---
-configurations after an action but before the physics resolves --- with a
-hierarchical choice of where and how to act~\cite{yoon2021smaac}. These methods
-share one obstacle: the action space must be reduced, curated, or factorized
-before learning is feasible.
+The earliest approaches train one agent to control the whole grid.
+\textcite{subramanian2021exploring} showed that deep RL with a selected action
+set can outperform a do-nothing policy on L2RPN benchmarks. SMAAC, the winner
+of the L2RPN WCCI 2020 challenge, combines actor--critic learning over
+\emph{afterstates} with a hierarchical decision about where and how to
+act~\cite{yoon2021smaac}. These methods can perform well, but the action space
+must first be reduced, selected, or factorized.
 
-\paragraph{Learned policies wrapped in heuristics.}
-A second group wraps learned policies in rules, most commonly querying the
-agent only when the maximum line loading $\rho_{\max}$ indicates stress and
-doing nothing otherwise. PowRL combined an RL policy with an overload manager
-and reduced action set to win the L2RPN NeurIPS 2020 robustness
-track~\cite{chauhan2023powrl}.
-\textcite{lehna2023comparative} found similar survival for advanced rule-based
-and RL agents, with much cheaper execution for RL. Beating a well-engineered
-heuristic is therefore not automatic; such heuristics are now standard practice
-and are also used in this thesis.
+\paragraph{Policies combined with heuristics.}
+A second approach uses simple rules around a learned policy. A common choice is
+to query the agent only when the maximum line loading $\rho_{\max}$ becomes
+high, and to do nothing while the grid remains safe. PowRL combined this rule
+with an overload manager and a reduced action set to win the L2RPN NeurIPS 2020
+robustness track~\cite{chauhan2023powrl}. \textcite{lehna2023comparative} found
+similar survival for advanced rule-based and RL agents, although RL was cheaper
+at execution time.
 
 \paragraph{Hierarchical and centrally coordinated multi-agent methods.}
-A third group divides the decision but retains a coordinator.
-\textcite{manczak2023hrl} separate whether, where, and how to act;
-\textcite{vandersar2023hmarl} place substation agents under a higher-level
-selector; and \textcite{demol2025ccma} use a central agent to choose among
-regional proposals. These methods retain much of the scalability of
-factorization, but they still include a component that sees the whole grid and
-decides for everyone. They therefore do not answer whether purely local policies
-are enough.
+A third family of methods divides the decision between several components while
+keeping a central coordinator. \textcite{manczak2023hrl} separate the decisions
+of when, where, and how to act. \textcite{vandersar2023hmarl} use substation
+agents under a higher-level selector, while \textcite{demol2025ccma} use a
+central agent to choose between regional proposals. These methods reduce the
+size of each decision, but a component still observes the full grid and
+coordinates the agents. They therefore do not show whether local policies can
+operate on their own.
 
 \paragraph{Decentralized multi-agent control.}
-Whether agents can operate a grid from local observations, without coordination
-or communication, remains less explored and is the focus of this thesis. The
-MARL2Grid-TR benchmark targets this gap because earlier work ``focused on
-single-agent settings, neglecting the often decentralized, multi-agent nature
-of grid control''~\cite{marchesini2026marl2grid}.
+Fully decentralized control has received less attention. Here, agents use local
+observations and act without communication or a central selector, which is the
+setting studied in this thesis. MARL2Grid-TR addresses the same gap because
+earlier research mainly considered single-agent control and did not represent
+the decentralized organization of grid operation
+~\cite{marchesini2026marl2grid}.
 
 \paragraph{Graph representations.}
-Across all four groups, the grid representation also matters. Flat vectors
-discard topology and fix the policy to one grid size. Graph neural networks
-preserve topology and have a parameter count independent of the number of
-substations, enabling transfer between
-grids~\cite{kipf2017gcn,velickovic2018gat,xu2018how}. Yet standard homogeneous
-graphs encode current connections but not those an action could create, an issue
-called \emph{busbar information asymmetry}; heterogeneous representations
-address it~\cite{dejong2025gnntopo}. Chapters~\ref{ch:methods}
-and~\ref{ch:experiments} study this representation choice.
+Regardless of the control structure, the representation of the grid matters. A
+flat vector hides the network structure and has a size tied to one grid. A graph
+neural network (GNN) follows the grid connections and can use the same
+parameters on networks of different sizes
+~\cite{kipf2017gcn,velickovic2018gat,xu2018how}. However, a homogeneous graph may
+omit connections that a topology action could create. Heterogeneous graphs can
+reduce this \emph{busbar information asymmetry}~\cite{dejong2025gnntopo}.
+Chapters~\ref{ch:methods} and~\ref{ch:experiments} compare these choices.
 
 \section{Starting point: MARL2Grid and MAPPO}
 \label{sec:intro-marl2grid}
 
-This thesis builds on MARL2Grid~\cite{marchesini2026marl2grid}, the multi-agent
-successor to RL2Grid~\cite{marchesini2025rl2grid}. It wraps Grid2Op in a
-multi-agent interface and supplies the region split, observation and action
-spaces, reward, and training loop modified in this work.
+This work builds on MARL2Grid~\cite{marchesini2026marl2grid}, the multi-agent
+extension of RL2Grid~\cite{marchesini2025rl2grid}. MARL2Grid connects Grid2Op to
+a multi-agent training pipeline and defines the regions, observations, action
+spaces, rewards, and training loop used as the starting point of this thesis.
 
-\paragraph{How the grid is split.}
-The grid is divided in advance into one non-overlapping region per agent. In the
-IEEE 14-bus environment (\texttt{bus14}, 14 substations and 20 lines), three
-agents own substations $\{0,1,2,4\}$, $\{3,6,7,8\}$, and
-$\{5,9,\ldots,13\}$, with $52$, $50$, and $76$ non-idle actions respectively.
-These are the $178$ actions of the full grid, split rather than multiplied. Each
-agent observes only quantities belonging to its region, chooses among actions
-at its substations, and acts simultaneously without knowing the other agents'
-choices. Action $0$ is always do-nothing.
+\paragraph{Grid partition.}
+The grid is divided in advance into fixed, non-overlapping regions, with one
+agent assigned to each region. In the IEEE 14-bus environment
+(\texttt{bus14}), the three agents control substations $\{0,1,2,4\}$,
+$\{3,6,7,8\}$, and $\{5,9,\ldots,13\}$. These regions contain $52$, $50$, and
+$76$ non-idle actions, which together form the $178$ unitary actions of the full
+grid. Each agent observes its own region and chooses an action at one of its
+substations. The agents then act at the same time without seeing each other's
+choices, and action $0$ always means do nothing.
 
-\paragraph{Reward.}
-A flat $+1$ per surviving step dominates the training reward, with an additional
-overload term, so the objective is essentially to keep the episode alive. The
-reported metric is episodic survival: the fraction of evaluation episodes
-completed without blackout.
+\paragraph{Reward and evaluation metric.}
+The reward is mainly based on survival, with $+1$ given for each survived step
+and an additional term that penalizes overloads. Training therefore encourages
+the agents to keep the episode alive. For one chronic, survival is defined as
+the number of survived time steps divided by the maximum episode length, and
+mean survival is this value averaged over the evaluated chronics.
 
 \paragraph{MAPPO.}
-Multi-agent PPO~\cite{yu2022mappo} extends PPO~\cite{schulman2017ppo} to
-centralized training with decentralized execution. Each agent $i$ has a
-stochastic policy $\pi_{\theta_i}(a_i \mid o_i)$ over its discrete local action
-space, updated with the clipped surrogate objective
-\[
-  L^{\text{CLIP}}(\theta_i)
-  = \hat{\mathbb{E}}_t\!\left[
-      \min\!\Big(
-        r_t(\theta_i)\,\hat{A}_t,\;
-        \operatorname{clip}\big(r_t(\theta_i),\,1-\epsilon,\,1+\epsilon\big)\,
-        \hat{A}_t
-      \Big)
-    \right],
-  \qquad
-  r_t(\theta_i)
-  = \frac{\pi_{\theta_i}(a_{i,t} \mid o_{i,t})}
-         {\pi_{\theta_i^{\text{old}}}(a_{i,t} \mid o_{i,t})},
-\]
-where $\hat{A}_t$ is a generalized advantage estimate from a single centralized
-value function trained on the global state. That state is available in
-simulation but never given to the actors. Only the actors remain at execution
-time, making deployment decentralized.
+Multi-agent PPO (MAPPO)~\cite{yu2022mappo} extends
+PPO~\cite{schulman2017ppo} to centralized training with decentralized
+execution. Each actor maps its local observation to a probability distribution
+over its local actions. During training, PPO limits the size of each policy
+update so that the actors do not change too abruptly. A centralized value
+function can use the global state to evaluate the agents and estimate the
+advantage of their actions. This global information is never given to the
+actors, which continue to use only their local observations. Once training is
+complete, the centralized value function is no longer needed and deployment
+remains decentralized.
 
-\paragraph{What this thesis starts from.}
-The starting baseline uses flat multilayer-perceptron actors and a critic trained
-on \texttt{bus14}. It is unstable at low survival out of the box. It is also tied
-to one grid: the MLP input width depends on the number of substations, so nothing
-it learns can be reused elsewhere. The following chapters address these
-limitations in order: stabilize training, make interventions more operator-like,
-then replace the fixed-width representation.
+\paragraph{Initial baseline.}
+The initial model uses flat multilayer-perceptron actors and one critic trained
+on \texttt{bus14}. Without further tuning, this baseline is unstable and has low
+survival. It is also tied to one grid because the actor input size depends on
+the number of substations, so its weights cannot be used directly on a larger
+network. The next chapters address these limitations in sequence: they first
+stabilize training, then reduce unnecessary interventions, and finally replace
+the fixed-size actor with a graph-based model.
 
 \section{Outline}
 \label{sec:intro-outline}
 
-Chapter~\ref{ch:baseline} tunes the flat baseline until it trains stably.
-Chapter~\ref{ch:sparse-control} then changes the objective and asks whether the
-same agents can keep their survival while intervening rarely. Its early WCCI
-pilot shows the limits of keeping a fixed-width MLP actor.
-Chapter~\ref{ch:methods} therefore defines size-independent graph inputs:
-feature scaling, three grid representations, substation-level augmentations,
-the readout, and the candidate-action head. Chapter~\ref{ch:experiments} first
-checks that a shared graph encoder remains competitive, then screens those
-design choices. Chapter~\ref{ch:wcci-transfer} moves to the 36-substation WCCI
-grid and tests what actually transfers.
+\newrevision{The thesis is organized in two stages. Chapters~\ref{ch:baseline}
+and~\ref{ch:sparse-control} first focus on learning a reliable decentralized
+controller on \texttt{bus14}. Chapter~\ref{ch:baseline} establishes a stable
+flat MAPPO baseline, and Chapter~\ref{ch:sparse-control} studies how to reduce
+unnecessary interventions. Its preliminary WCCI stress test also reveals the
+limitations of applying a fixed-size actor to a larger grid.}
+\\
+\\
+{\color{red}Chapters~\ref{ch:methods}--\ref{ch:screen-f-transfer} then develop
+and evaluate cross-grid transfer. Chapter~\ref{ch:methods} introduces the graph
+actor and candidate-action scorer, and Chapter~\ref{ch:experiments} evaluates
+their main design choices on \texttt{bus14}. Chapter~\ref{ch:encoder-inputs}
+makes the physical inputs more comparable across grids, while
+Chapter~\ref{ch:wcci-transfer} defines the WCCI environment and evaluation
+protocol. Chapter~\ref{ch:encoder-transfer-bridge} tests whether the encoders
+selected by Screens A--E remain useful when their grid-specific action heads
+are replaced. Chapter~\ref{ch:screen-f-transfer} then studies the stricter case
+in which the complete candidate-action policy is transferred, with and without
+target adaptation.}

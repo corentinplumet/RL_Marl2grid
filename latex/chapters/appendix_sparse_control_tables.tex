@@ -1,3 +1,57 @@
+{\color{red}
+\subsection{Additional method details}
+\label{app:sparse-control-method-details}
+
+The intervention-gated actor uses two deterministic decoders. The
+\texttt{final\_action\_map} decoder selects the most likely final executed
+action:
+\[
+  P(a_i=0)=P(g_i=0),\qquad
+  P(a_i=a>0)=P(g_i=1)P(b_i=a\mid g_i=1).
+\]
+The \texttt{hierarchical\_greedy} decoder first chooses the most likely gate
+decision and selects the most likely non-idle action only when the gate chooses
+intervention. The original coupled entropy is
+\[
+  H_i=H(g_i)+P(g_i=1)H(b_i),
+\]
+whereas the separated variant used by the gate-plus-budget diagnostic is
+\[
+  H_i=\alpha_{gate}H(g_i)+\alpha_{nonidle}H(b_i).
+\]
+Separating the terms avoids rewarding intervention merely because a larger
+$P(g_i=1)$ exposes more non-idle entropy.
+
+The fixed-penalty experiment crosses
+\[
+  \text{actor}\in\{\text{flat},\text{gated}\},\qquad
+  \lambda_{fixed}\in\{0.0,0.001,0.003,0.01\},\qquad
+  \text{seed}\in\{0,1,2\},
+\]
+for $2\times4\times3=24$ runs. The state-dependent safety penalty is disabled
+in every condition, so this penalty is not rho-weighted.
+
+For AIB, the multiplier settings are:
+\begin{itemize}
+  \item \texttt{intervention\_budget\_lr}: $0.02$;
+  \item \texttt{intervention\_budget\_init\_lambda}: $0.0$;
+  \item \texttt{intervention\_budget\_max\_lambda}: $10.0$.
+\end{itemize}
+The five main conditions are flat local-safe AIB with
+$d\in\{0.10,0.20,0.35\}$; gated local-safe AIB with $d=0.20$,
+hierarchical-greedy evaluation, and separated entropy; and flat plain non-idle
+AIB with $d=0.20$.
+
+For the teacher-student diagnostic, the teacher is a MAPPO policy evaluated
+with the local rho heuristic. The student is trained by behavioral cloning to
+match the teacher's executed actions and is then evaluated without the
+heuristic. Two balancing settings address the strong action-0 class imbalance;
+their exact outcomes are reported in
+Table~\ref{tab:teacher-student-full-test}.
+}
+
+\subsection{\texorpdfstring{\latestrevision{Exact bus14 results}}{Exact bus14 results}}
+
 The following tables report average full-test episodic survival and action-0
 fractions over the three evaluated seeds. The all-agent value is the arithmetic
 mean of the three per-agent fractions. The do-nothing row is a reference policy
@@ -144,3 +198,54 @@ that always selects action 0.
   \end{tabular}
   }
 \end{table}
+
+{\color{red}
+\subsection{Preliminary maintenance-enabled WCCI pilot}
+\label{app:sparse-control-wcci-pilot}
+
+Representative sparse-control mechanisms were retrained from scratch with an
+MLP actor on the maintenance-enabled WCCI grid. No \texttt{bus14} weights were
+transferred. All runs use the same reduced action space, three seeds, 60M
+training steps, and learning-rate schedule. The values below are the final
+deterministic test evaluation, averaged over seeds and ten held-out episodes
+per seed; they are not full-test estimates.
+
+\begin{table}[H]
+  \color{red}
+  \captionsetup{labelfont={color=red},textfont={color=red}}
+  \centering
+  \small
+  \caption{Preliminary WCCI stress test with scheduled maintenance at the final
+  training-time test evaluation.}
+  \label{tab:sparse-wcci-stress-test}
+  \setlength{\tabcolsep}{7pt}
+  \begin{tabular}{L{0.50\textwidth}rr}
+    \toprule
+    Method & Mean survival (\%) & Action-0 fraction \\
+    \midrule
+    Matched MLP baseline & $23.75\pm7.70$ & 0.168 \\
+    Global rho heuristic, $\rho_{safe}=0.90$ & $28.35\pm11.06$ & 0.974 \\
+    Local rho heuristic, $\rho_{safe}=0.90$ & $9.46\pm3.54$ & 0.995 \\
+    Intervention gate, final-action MAP & $25.92\pm10.69$ & 0.400 \\
+    Flat fixed penalty, $\lambda_{fixed}=0.010$ & $27.00\pm12.13$ & 0.489 \\
+    Flat local-safe AIB, $d=0.20$ & $21.65\pm2.21$ & 0.927 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[H]
+  \color{red}
+  \captionsetup{labelfont={color=red},textfont={color=red}}
+  \centering
+  \includegraphics[width=0.76\linewidth]{figures/sparse_control_wcci_tradeoff.png}
+  \caption{Action-0/mean-survival trade-off for the early maintenance-enabled
+  WCCI runs. Each point is a seed-aggregated run variant. No method combines
+  high sparsity with strong survival on this larger grid.}
+  \label{fig:sparse-wcci-action-survival-tradeoff}
+\end{figure}
+
+The local rho heuristic and AIB are highly sparse but remain weak controllers,
+which suggests that sparsity transfers more easily than control quality. Since
+the pilot changes grid size, action space, and maintenance simultaneously, it
+cannot identify the cause of the weak result.
+}

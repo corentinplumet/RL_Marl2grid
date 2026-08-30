@@ -1,0 +1,212 @@
+\chapter{\texorpdfstring{\latestrevision{Encoder-Only Transfer Across Grids}}{Encoder-Only Transfer Across Grids}}
+\label{ch:encoder-transfer-bridge}
+
+\begingroup
+\color{red}
+
+Screens A--E identify graph encoders that solve the fixed \texttt{bus14}
+control problem well, but their action heads cannot be moved to WCCI: each
+output row names one action from the source action list. This chapter isolates
+the reusable part of those policies. The \texttt{bus14} encoder is retained and
+frozen, its action heads are discarded, and new WCCI heads are learned. Screen
+F and Chapter~\ref{ch:screen-f-transfer} address the stricter case in which the
+encoder and action-selection interface are transferred together.
+
+\section{Question and hypotheses}
+\label{sec:encoder-transfer-question}
+
+The main question is whether a graph encoder learned on \texttt{bus14} provides
+more useful WCCI features than a target encoder without source training. A
+second question is whether the corrected inputs of
+Chapter~\ref{ch:encoder-inputs} make those features more reusable. The study
+therefore separates three effects:
+
+\begin{enumerate}
+  \item source pretraining versus random encoder features;
+  \item original inputs (NL) versus corrected inputs (NLS);
+  \item frozen source features versus an architecture trained end to end on WCCI.
+\end{enumerate}
+
+The four transferred representations come directly from Screens D and E:
+\texttt{e0n0v0}, \texttt{e1n0v0}, \texttt{gbi\_lbi}, and
+\texttt{ga2b\_lb2a}. They share the decisions retained from Screens A--C:
+GINE, two message-passing layers, width 128, and energized/max global readout.
+The two Screen-D variants test whether same-substation edges improve reuse; the
+two Screen-E variants test whether bidirectional or asymmetric asset relations
+produce more reusable representations.
+
+\section{Transferred components and controls}
+\label{sec:encoder-transfer-design}
+
+The frozen block contains the node and edge input projections, type embeddings
+when present, GINE layers, normalization layers, and any learned representation
+projection before the grid-specific action head. The source action heads are
+removed. Each WCCI agent receives a newly initialized head with the target
+action dimension. The centralized critic is also newly initialized and remains
+trainable because it is target-specific.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{\textcolor{red}{Training routes for the encoder-only transfer study.}}
+  \label{tab:encoder-transfer-routes}
+  \setlength{\tabcolsep}{5pt}
+  \color{red}
+  \begin{tabular}{L{0.22\textwidth}L{0.25\textwidth}L{0.25\textwidth}L{0.18\textwidth}}
+    \toprule
+    Route & Encoder initialization & Trainable actor parameters on WCCI & Purpose \\
+    \midrule
+    Target scratch & Random & Encoder and new heads & Target-learning reference \\
+    Random frozen & Random & New heads only & Frozen-feature control \\
+    NL frozen transfer & Existing NL \texttt{bus14} checkpoint & New heads only & Original-input encoder reuse \\
+    NLS frozen transfer & Retrained NLS \texttt{bus14} checkpoint & New heads only & Corrected-input encoder reuse \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The random-frozen route is the key diagnostic for representation transfer. A
+source-frozen actor may learn something through its new heads even if the
+encoder features are arbitrary. The source encoder provides evidence of reuse
+only when it improves on that control. The fully trainable scratch route gives
+the target performance available when the same architecture is allowed to
+adapt end to end.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{\textcolor{red}{Protocol fields to complete before running the matched WCCI
+  experiment. Every route must use the same target values.}}
+  \label{tab:encoder-transfer-protocol}
+  \setlength{\tabcolsep}{6pt}
+  \color{red}
+  \begin{tabular}{L{0.31\textwidth}L{0.57\textwidth}}
+    \toprule
+    Field & Fixed value \\
+    \midrule
+    WCCI reduced action space & \pending{action cap and dataset path} \\
+    WCCI training budget & \pending{environment steps} \\
+    Source and target seeds & \pending{seed set} \\
+    Head optimizer and learning rate & \pending{matched head-training recipe} \\
+    Checkpoint selection & \pending{selection score and rollout frequency} \\
+    Final evaluation & 50 fixed test chronics; 24 difficult chronics \\
+    Maintenance and heuristic & Maintenance disabled; \pending{gate condition} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The NL route uses the preprocessing under which the existing Screens A--E
+checkpoints were trained. The NLS route retrains the same \texttt{bus14}
+architectures with the corrected physical inputs, then uses exactly that NLS
+preprocessing on WCCI. Scaling is never switched only at deployment, because a
+frozen encoder must receive the input convention on which its weights were
+learned.
+
+\section{Results}
+\label{sec:encoder-transfer-results}
+
+\subsection{Learning dynamics}
+
+\begin{figure}[H]
+  \centering
+  \pendingplot[0.24\textheight]{Replace with matched WCCI learning curves for
+  target scratch, random frozen, NL frozen transfer, and NLS frozen transfer.
+  Use one panel per representation or a clearly faceted common plot.}
+  \caption{\textcolor{red}{Learning dynamics of the encoder-transfer routes. Curves should use
+  the same WCCI training budget and report the checkpoint-selection score at
+  the same evaluation steps.}}
+  \label{fig:encoder-transfer-learning-curves}
+\end{figure}
+
+The learning curves will first test sample efficiency. An NLS source encoder
+that reaches useful survival earlier than both target scratch and random frozen
+provides evidence that source training supplies reusable features, even if a
+fully trainable scratch actor later catches up.
+
+\subsection{Full-test comparison}
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{\textcolor{red}{Primary endpoint for encoder-only transfer: mean survival on the 24
+  difficult WCCI chronics. All entries are placeholders until the matched
+  evaluations are complete.}}
+  \label{tab:encoder-transfer-difficult}
+  \setlength{\tabcolsep}{4.5pt}
+  \color{red}
+  \begin{tabular}{L{0.18\textwidth}L{0.15\textwidth}L{0.15\textwidth}L{0.15\textwidth}L{0.15\textwidth}}
+    \toprule
+    Representation & Target scratch & Random frozen & NL frozen & NLS frozen \\
+    \midrule
+    \texttt{e0n0v0}       & \textit{TBD} & \textit{TBD} & \textit{TBD} & \textit{TBD} \\
+    \texttt{e1n0v0}       & \textit{TBD} & \textit{TBD} & \textit{TBD} & \textit{TBD} \\
+    \texttt{gbi\_lbi}     & \textit{TBD} & \textit{TBD} & \textit{TBD} & \textit{TBD} \\
+    \texttt{ga2b\_lb2a}   & \textit{TBD} & \textit{TBD} & \textit{TBD} & \textit{TBD} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[H]
+  \centering
+  \pendingplot[0.25\textheight]{Replace with the final encoder-transfer
+  comparison. Show difficult-chronic mean survival together with overall mean
+  survival, difficult rescues, and the number of easy chronics retained.}
+  \caption{\textcolor{red}{Final WCCI comparison of the four source representations and four
+  training routes. Do nothing and the matching scratch controls should remain
+  visible as references.}}
+  \label{fig:encoder-transfer-endpoints}
+\end{figure}
+
+\noindent\textbf{Finding.} \pending{state whether either pretrained frozen
+encoder beats random frozen, whether NLS improves over NL within each
+representation, and how close the best frozen encoder comes to target scratch}
+
+\section{Interpretation rules}
+\label{sec:encoder-transfer-interpretation}
+
+The result is interpreted through matched comparisons rather than the largest
+single endpoint:
+
+\begin{itemize}
+  \item If both NL and NLS frozen encoders beat random frozen, the source GNN
+  has learned reusable features; an NLS advantage then measures the additional
+  effect of corrected preprocessing.
+  \item If only NLS beats random frozen, compatible preprocessing is necessary
+  for the learned representation to cross grids in frozen form.
+  \item If a pretrained frozen encoder beats random frozen but remains below
+  target scratch, the representation transfers partially but still benefits
+  from target adaptation.
+  \item If pretrained frozen and random frozen are indistinguishable while
+  target scratch learns, the architecture can fit WCCI but the source features
+  show no useful frozen transfer under this protocol.
+\end{itemize}
+
+With one training seed, these statements remain descriptive. The strongest
+claim should be based on the matched difference from random frozen and on
+consistent learning-curve behavior, not on a small difference between
+unrelated endpoints.
+
+\begin{tcolorbox}[
+  colframe=red!75!black,
+  colback=red!5!white,
+  title=Chapter 9 Summary: Encoder-Only Transfer]
+\color{red}
+\textbf{Purpose:} To test whether graph representations selected on
+\texttt{bus14} remain useful on WCCI after replacing the incompatible
+fixed-index action heads.
+\\
+\\
+\textbf{Content:} Four source encoders from Screens D and E are transferred
+with frozen weights. Existing NL checkpoints are compared with matched NLS
+retraining, a random-frozen diagnostic, and WCCI training from scratch.
+\\
+\\
+\textbf{Finding:} \pending{insert the matched NL/NLS, random-frozen, and scratch
+results, including difficult-cohort survival and learning speed}
+\\
+\\
+\textbf{Takeaway:} \pending{state whether the source encoder transfers, whether
+corrected inputs are required, and whether the remaining limitation lies in
+representation adaptation or in the grid-specific action interface}
+\end{tcolorbox}
+
+\endgroup

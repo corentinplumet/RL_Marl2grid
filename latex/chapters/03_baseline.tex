@@ -6,19 +6,26 @@ This chapter builds a solid MLP actor baseline for the IEEE 14-bus task.
 \section{Evaluation Protocol}
 \label{sec:results-evaluation-protocol}
 
-All experiments use an 80/20 train/test chronic split. The 80\% training split is used for policy updates, while the 20\% test split measures how well the policy generalizes. Evaluation rollouts run periodically during training using 10 episodes per split. 
+All experiments use an 80/20 train/test chronic split. The 80\% training split
+is used for policy updates, while the 20\% test split measures how well the
+policy generalizes. \revision{During training, checkpoint evaluation uses 20
+chronics from the training split. Each evaluation is a new rollout, so these 20
+chronics change from one evaluation to the next rather than forming a fixed
+subset. The checkpoint-selection score is mean survival over the 20 chronics in
+the current rollout.}
 \\
 \\
-The main metric is test episodic survival (as a percentage): the fraction of
-evaluation timesteps where the agent keeps the grid alive. Results are reported
-as mean curves across seeds, with shaded regions showing the spread. Final
-evaluations report the checkpoint with the highest test survival.
+\revision{For one chronic, survival is the number of survived time steps divided
+by that chronic's maximum episode length. Mean survival is the unweighted mean
+of these normalized durations over the evaluated chronics.} Results are reported as mean curves across
+seeds, with shaded regions showing the spread. Final evaluations report the
+checkpoint with the highest \revision{training-split checkpoint-selection score}.
 
 \section{IEEE 14-Bus Experiments}
 \label{sec:bus14-results}
 
 The initial MAPPO baseline from the MARL2Grid framework led to unstable policies
-and low survival rates on the IEEE 14-bus topology-control task. The experiments
+and low \revision{mean survival} on the IEEE 14-bus topology-control task. The experiments
 below test changes to the training and to the architecture, in order to build a
 strong baseline.
 
@@ -66,20 +73,17 @@ main changes meant to stabilize training:
 \end{table}
 
 \paragraph{Evidence.}
-Table~\ref{tab:a0-core-summary} reports final and peak survival for the core
+Table~\ref{tab:a0-core-summary} reports final and peak \revision{mean survival} for the core
 ablations. Figure~\ref{fig:rerun-a0-all} overlays all
 core MLP baseline curves.
 
 \paragraph{Interpretation.}
-The \texttt{Optimized MLP Baseline}, which combines reward normalization and an
-optimized critic update, reaches the best performance and the fastest
-convergence, with the highest and most stable final survival (\(\sim\)93\%).
-Removing or reducing any of these three elements --- using a smaller
-architecture, disabling reward normalization, or going back to a non-optimized
-critic update --- lowers either learning speed or final survival. The original
-unoptimized baseline fails entirely to learn a competitive policy. Because the
-\texttt{Optimized MLP Baseline} consistently beats the ablations, it is used as
-the reference for all later comparisons.
+\newrevision{The \texttt{Optimized MLP Baseline} is retained because it gives
+the best overall balance of high survival, fast convergence, and stable
+training. Some ablations reach comparable or slightly higher isolated
+endpoints, but their trajectories are slower or more variable. The selection
+therefore reflects stability and performance across training rather than the
+final point alone.}
 
 \begin{table}[H]
   \centering
@@ -126,12 +130,12 @@ the reference for all later comparisons.
 \begin{table}[H]
   \centering
   \small
-  \caption{MLP baseline core rerun survival summary.}
+  \caption{MLP baseline core rerun \revision{mean-survival} summary.}
   \label{tab:a0-core-summary}
   \resizebox{\textwidth}{!}{%
   \begin{tabular}{llrr}
     \toprule
-    Run & Intended change & Final survival (\%) & Peak survival (\%) \\
+    Run & Intended change & \revision{Final mean survival (\%)} & \revision{Peak mean survival (\%)} \\
     \midrule
     \texttt{Optimized MLP Baseline} & Optimized MLP baseline & 93.4 & 98.6 \\
     \texttt{Disable optimized critic update} & Non-optimized critic update & 93.1 & 95.8 \\
@@ -170,23 +174,19 @@ zero-bias baseline with \texttt{Initial Bias 50\%} and
 \texttt{Initial Bias 70\%}.
 
 \paragraph{Interpretation.}
-The effect of the action-0 bias is large, and a stronger bias is not simply
-better or worse. The 0.5-bias curve remains unstable and well below the
-zero-bias baseline, while the 0.7-bias curve eventually reaches the highest
-final survival in this comparison. The current conclusion is that adding an
-initialization bias is generally harmful or very unstable for the models.
-Instead of helping exploration, a strong initial prior seems to stop the agent
-from reliably finding a wide range of useful actions. It should be treated with
-care as a main ablation variable.
+\newrevision{The zero-bias model is retained because it reaches high survival
+earlier and more consistently. Although the 70\% bias finishes higher, it learns
+slowly, while the 50\% bias remains unstable. Neither gives a better overall
+stability--performance trade-off.}
 
 \begin{table}[H]
   \centering
   \small
-  \caption{Initial do-nothing bias survival summary.}
+  \caption{Initial do-nothing bias \revision{mean-survival} summary.}
   \label{tab:a0-bias-summary}
   \begin{tabular}{lrr}
     \toprule
-    Run & Final survival (\%) & Peak survival (\%) \\
+    Run & \revision{Final mean survival (\%)} & \revision{Peak mean survival (\%)} \\
     \midrule
     \texttt{Optimized MLP Baseline} & 93.4 & 98.6 \\
     \texttt{Initial Bias 50\%} & 50.8 & 70.2 \\
@@ -204,21 +204,28 @@ care as a main ablation variable.
 \end{figure}
 
 \begin{tcolorbox}[colframe=red!75!black, colback=red!5!white, title=Chapter Summary]
-\textbf{Objective:} Establish a stable, high-performing flat MAPPO baseline.
+\newrevision{\textbf{Purpose:} Establish a stable, high-performing flat MAPPO
+reference on \texttt{bus14}.}
 \\
 \\
-\textbf{Findings:}
+\newrevision{\textbf{Content:} Compare the original training recipe with
+reward normalization, critic-update, model-size, and initial action-0-bias
+ablations.}
+\\
+\\
+\newrevision{\textbf{Findings:}}
 \begin{itemize}
-    \item \textbf{MLP optimization:} Hyperparameter tuning, reward normalization,
-    and optimized critic updates raise the flat MLP baseline to roughly 93\%
-    survival.
-    \item \textbf{Do-nothing initialization:} The effect is large but goes in
-    both directions; it is not a reliable substitute for learning when to
-    intervene.
+    \item \newrevision{\textbf{MLP optimization:} The selected reference enters
+    the high-survival regime earlier and sustains it more consistently than the
+    main training ablations. Its final value is about 93\%, but it is not the
+    largest isolated endpoint in the screen.}
+    \item \newrevision{\textbf{Do-nothing initialization:} A 50\% bias is weak
+    and unstable, whereas a 70\% bias learns slowly before reaching a high final
+    value. The effect therefore depends strongly on the bias level.}
 \end{itemize}
 \vspace{0.35cm}
-\textbf{Conclusion:} The tuned flat actor is a strong survival baseline. The
-next step is to ask whether it can behave more like an operator by intervening
-less often without losing that survival. That is the subject of
-Chapter~\ref{ch:sparse-control}.
+\newrevision{\textbf{Takeaway:} The tuned zero-bias actor is used as a stable
+reference because of its convergence trajectory, not because it wins every
+endpoint comparison. Chapter~\ref{ch:sparse-control} next asks whether this
+actor can intervene less often without losing survival.}
 \end{tcolorbox}

@@ -16,7 +16,7 @@ relying on an external override, this chapter tries to make sparse intervention
 something the agent learns by itself.
 \\
 \\
-Mechanisms are therefore measured on two competing axes: survival rate and
+Mechanisms are therefore measured on two competing axes: \revision{mean survival} and
 intervention sparsity. A good mechanism must improve sparsity without hurting
 survival.
 
@@ -86,9 +86,7 @@ agents can observe the line through their own physical neighborhood.
 
 \paragraph{Interpretation.}
 The heuristic is useful to ask what happens if safe-state interventions are
-blocked, but it is not a learned method. Its action-0 rates must therefore be
-reported as final executed evaluation actions, not as evidence that the policy
-itself prefers action \(0\).
+blocked, and if succesful, it can prove that the agents act too often.
 
 \section{Intervention-Gated Actor}
 \label{subsec:sparse-control-gate}
@@ -115,34 +113,14 @@ and, for \(a_i>0\),
   \log P(a_i)=\log P(g_i=1)+\log P(b_i=a_i\mid g_i=1).
 \]
 
-\noindent Two deterministic decoders are used. The \texttt{final\_action\_map} decoder
-selects the most likely final executed action:
-\[
-  P(a_i=0)=P(g_i=0),\qquad
-  P(a_i=a>0)=P(g_i=1)P(b_i=a\mid g_i=1).
-\]
-The \texttt{hierarchical\_greedy} decoder first chooses the most likely gate
-decision, then chooses the most likely non-idle action only if the gate selects
-intervention.
-\\
-\\
-The original coupled entropy term is
-\[
-  H_i=H(g_i)+P(g_i=1)H(b_i).
-\]
-This can accidentally reward intervention because a larger \(P(g_i=1)\) allows
-more non-idle entropy. The separated entropy variant is
-\[
-  H_i=\alpha_{gate}H(g_i)+\alpha_{nonidle}H(b_i),
-\]
-and is used in the gate-plus-budget diagnostic runs.
+\noindent \latestrevision{The exact evaluation rules used to convert the two
+heads into one action are documented in
+Appendix~\ref{app:sparse-control-method-details}.}
 
 \paragraph{Interpretation.}
 The gate is learned and decentralized, but it can limit exploration more than a
 reward penalty does. If it collapses early to no-op, the non-idle head is rarely
-used and gets little learning signal. For this reason,
-the gate is treated as an important diagnostic rather than the main sparse
-control contribution.
+used and gets little learning signal.
 
 \section{Fixed Sparse-Action Penalty}
 \label{subsec:sparse-control-fixed-penalty}
@@ -154,114 +132,83 @@ each agent:
   r'_{i,t}=r_{i,t}
   -\lambda_{fixed}\mathbf{1}[a_{i,t}\neq0],
 \]
-with
-\[
-  \lambda_{fixed}\in\{0.0,0.001,0.003,0.01\}.
-\]
-The grid is
-\[
-  \text{actor}\in\{\text{flat},\text{gated}\},\qquad
-  \lambda_{fixed}\in\{0.0,0.001,0.003,0.01\},\qquad
-  \text{seed}\in\{0,1,2\},
-\]
-which gives \(2\times4\times3=24\) runs. The state-dependent safety penalty is
-disabled in every condition (\texttt{safe\_intervention\_penalty = 0.0}), so
-the penalty is not rho-weighted.
+with $\lambda_{fixed}\in\{0.0,0.001,0.003,0.01\}$.
+\latestrevision{The complete 24-run actor, penalty, and seed grid is reported
+in Appendix~\ref{app:sparse-control-method-details}.}
 
 \paragraph{Interpretation.}
 This mechanism changes only the training reward. It does not override actions during
 evaluation and it does not block exploration during training. The policy can
 still sample non-idle actions, but each such action must be useful enough to pay
-its fixed cost. Comparing the flat and gated actors at
-$\lambda_{fixed}=0.010$ tests whether the gate still helps once a simple sparse
-objective already exists.
+its fixed cost.
 
 \section{Adaptive Intervention Budget}
 \label{subsec:sparse-control-aib}
 
+{\color{black}
 \paragraph{Implementation detail.}
-The adaptive intervention budget turns sparse topology control into a local
-constraint. For each agent, the cost is
-\(c_i(s_t,a_{i,t}) = \mathbf{1}[a_{i,t}\neq0]w_i(s_t)\),
-and the desired constraint is \(\mathrm{E}_{\pi_i}\left[c_i(s_t,a_{i,t})\right]\le d\).
-\\
-\\
-The implemented rollout reward removes the constant term that does not affect
-the PPO action gradient:
+The adaptive intervention budget does not use a fixed intervention penalty.
+Instead, each agent has its own penalty coefficient \(\lambda_i\), which is
+adjusted after every rollout. The local-safe version used in
+Figure~\ref{fig:sparse-control-fulltest-tradeoff} first converts the maximum
+line loading visible to agent \(i\) into a safety weight:
+\[
+  w_i^{local}(s_t)=
+  \sigma\!\left(k\left(\rho_{safe}-\rho_{i,t}^{local}\right)\right).
+\]
+When the local grid is safely below \(\rho_{safe}=0.90\), this weight is high.
+It decreases as the local lines approach or exceed the threshold. The action
+cost is then
+\[
+  c_i(s_t,a_{i,t})=
+  \mathbf{1}[a_{i,t}\neq0]w_i^{local}(s_t).
+\]
+Doing nothing always has zero cost. An intervention is expensive in a safe
+state but remains relatively cheap when the local grid is stressed and an
+action may be necessary. During the rollout, this cost is subtracted from the
+original reward:
 \[
   r'_{i,t}=r_{i,t}-\lambda_i c_i(s_t,a_{i,t}).
 \]
-After each rollout, the local multiplier is updated by
+A large value of \(\lambda_i\) therefore makes interventions more expensive,
+whereas a small value leaves the policy freer to act.
+\\
+\\
+At the end of the rollout, the average observed cost is
+\[
+  \hat C_i=\frac{1}{T}\sum_{t=1}^{T}c_i(s_t,a_{i,t}).
+\]
+This value is compared with the target budget \(d\), and the penalty
+coefficient is updated as
 \[
   \lambda_i\leftarrow
   \mathrm{clip}\left(
     \lambda_i+\eta(\hat C_i-d),
     0,
     \lambda_{\max}
-  \right),
-  \qquad
-  \hat C_i=\frac{1}{T}\sum_{t=1}^{T}c_i(s_t,a_{i,t}).
+  \right).
 \]
-If the observed cost \(\hat C_i\) is above the budget \(d\), future
-interventions become more expensive; if it is below the budget, the penalty
-relaxes. The default settings are \texttt{intervention\_budget\_lr = 0.02},
-\texttt{intervention\_budget\_init\_lambda = 0.0}, and
-\texttt{intervention\_budget\_max\_lambda = 10.0}.
-\\
-\\
-Two cost modes are used:
-\begin{itemize}
-  \item \textbf{Non-idle cost:}
-  \(w_i(s_t)=1\), so
-  \(c_i(s_t,a_{i,t})=\mathbf{1}[a_{i,t}\neq0]\). This is an adaptive version
-  of a plain sparse-action penalty.
-  \item \textbf{Local-safe cost:}
-  \(w_i^{local}(s_t)=\sigma(k(\rho_{safe}-\rho_{i,t}^{local}))\). This is the
-  decentralized version: safe local states make interventions expensive, while
-  stressed local states make them cheap.
-\end{itemize}
-In the AIB setting, \(\rho_{safe}=0.90\) is not a hard action override. It is
-the center of a smooth sigmoid safety weight.
-
-\paragraph{AIB experiment grid.}
-The main local-budget ablation contains five conditions:
-\begin{itemize}
-  \item flat actor, local-safe cost, $d=0.20$;
-  \item flat actor, stricter local-safe budget, $d=0.10$;
-  \item flat actor, looser local-safe budget, $d=0.35$;
-  \item gated actor,
-  hierarchical-greedy evaluation, separated entropy, local-safe cost,
-  $d=0.20$;
-  \item flat actor with adaptive plain non-idle cost, $d=0.20$.
-\end{itemize}
-Comparing the local-safe and plain non-idle costs at $d=0.20$ isolates the
-value of local rho weighting.
+If \(\hat C_i>d\), the agent has exceeded its budget, so \(\lambda_i\)
+increases and future interventions become more expensive. If
+\(\hat C_i<d\), the penalty decreases. The budget \(d\) is therefore a target
+used to adjust the penalty after each rollout; it is not a fixed amount
+subtracted from every reward. The value \(\rho_{safe}=0.90\) is only the center
+of the smooth safety weight; it does not force the agent to do nothing. The
+multiplier hyperparameters and complete budget ablation are reported in
+Appendix~\ref{app:sparse-control-method-details}.
+}
 
 \section{Behavioral Cloning from Heuristics}
 \label{subsec:sparse-control-bc}
 
-\paragraph{Implementation detail.}
-The evaluation-time rho heuristics
-(Section~\ref{subsec:sparse-control-heuristics}) produce highly sparse, safe
-behavior, but they require a manual override. To move this behavior into the
-policy weights, a teacher-student distillation approach is tested. The teacher
-is a MAPPO model running the local rho heuristic, and the student is trained via
-Behavioral Cloning (BC) to match the teacher's executed actions. The student is
-then evaluated without the heuristic override, to see whether it learned to copy
-the sparsity on its own. Two balancing settings are tested to handle the strong
-class imbalance caused by the teacher's high action-0 rate.
-
-\paragraph{Interpretation.}
-As reported in Appendix~\ref{app:sparse-control-full-test-tables}, the student
-policies reach roughly 91--92\% survival and 94--96\% sparsity. This shows that
-sparse behavior can be partly distilled into the actor weights. Still, the
-resulting student is weaker than the AIB methods and gives up part of the
-teacher's survival (97.1\%). The distillation route is therefore less reliable
-than learning the sparse objective directly through the Adaptive Intervention
-Budget.
+\latestrevision{A teacher-student diagnostic tests whether the behavior of the
+local rho heuristic can be copied into the policy weights. The student is
+trained by behavioral cloning and evaluated without the heuristic. The
+training setup and exact results are reported in
+Appendix~\ref{app:sparse-control-method-details}.}
 
 \section{Results}
-Figure~\ref{fig:sparse-control-fulltest-tradeoff} summarizes survival and the
+Figure~\ref{fig:sparse-control-fulltest-tradeoff} summarizes \revision{mean survival} and the
 mean action-0 fraction across agents. Exact values and per-agent action-0
 fractions are reported in Appendix~\ref{app:sparse-control-full-test-tables}.
 
@@ -276,15 +223,13 @@ fractions are reported in Appendix~\ref{app:sparse-control-full-test-tables}.
     Method & Training effect & Evaluation effect & Main risk \\
     \midrule
     Baseline & Samples from the flat policy & Greedy argmax by default &
-    Standard entropy-controlled exploration \\
+    \latestrevision{No explicit mechanism to favor sparse control} \\
     Rho heuristic & No training change & Hard no-op override in safe states &
     Evaluation is manually changed \\
     Intervention gate & Changes action factorization and sampling &
     Final-action MAP or hierarchical greedy & Gate collapse can starve non-idle exploration \\
     Fixed penalty & Fixed reward penalty on non-idle actions & No action override &
     Penalty coefficient must be tuned \\
-    AIB non-idle & Adaptive reward penalty on non-idle actions & No action override &
-    Multiplier can grow if target is too strict \\
     AIB local-safe & Adaptive state-dependent reward penalty & No action override &
     Depends on the local rho safety-weight design \\
     Behavioral cloning & Distills heuristic into actor weights & No action override &
@@ -324,80 +269,33 @@ fractions are reported in Appendix~\ref{app:sparse-control-full-test-tables}.
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.96\linewidth]{figures/sparse_control_fulltest_tradeoff.png}
-  \caption{Joint action-0/survival comparison of the selected sparse-control
+  \caption{Joint action-0/\revision{mean-survival} comparison of the selected sparse-control
   mechanisms on \texttt{bus14}. Large markers show condition means and faint
   markers the individual seeds. The plot uses checkpoint-aligned action-0
-  rates and full-test survival, so it shows the chapter's two objectives at
+  rates and full-test \revision{mean survival}, so it shows the chapter's two objectives at
   once.}
   \label{fig:sparse-control-fulltest-tradeoff}
 \end{figure}
 
 \paragraph{Interpretation.}
-The current reading is that the gate is not the strongest
-contribution by itself. Sparse reward shaping already improves action-0 usage,
-the adaptive budget makes the sparse penalty self-tuning, and the local-safe
-cost makes the penalty more physically meaningful. In particular, the flat
-actor with $\lambda_{fixed}=0.010$ is a strong fixed-penalty baseline, while
-the flat local-safe AIB policy with $d=0.20$ is the best-justified learned
-sparse-control candidate. It keeps the original decentralized actor, does not
-rely on an evaluation-time override, learns the intervention penalty
-adaptively, and uses a local state-dependent safety weight.
-Figure~\ref{fig:sparse-control-fulltest-tradeoff} also makes the main failure
-mode visible: high action-0 usage is not enough when the gate collapses and
-survival falls.
+\latestrevision{The intervention gate is not the strongest method by itself.
+The fixed penalty with $\lambda_{fixed}=0.010$ already reduces unnecessary
+actions, while local-safe AIB with $d=0.20$ gives the best balance between
+survival and action-0 usage among the learned methods. It remains decentralized
+and allows the agents to act more freely when their local grid is stressed.}
 
 \section{Preliminary WCCI Stress Test}
 \label{sec:sparse-wcci-stress-test}
 
-As an early scale test, representative mechanisms were retrained from scratch
-with an MLP actor on the maintenance-enabled WCCI grid. No \texttt{bus14}
-weights were transferred. All runs use the same reduced action space, three
-seeds, 60M training steps, and learning-rate schedule. The reported values are
-the final deterministic test evaluation, averaged over seeds and ten held-out
-episodes per seed. They are not full-test estimates.
-
-\begin{table}[htbp]
-  \centering
-  \small
-  \caption{Preliminary WCCI stress test with scheduled maintenance at the final
-  training-time test evaluation.}
-  \label{tab:sparse-wcci-stress-test}
-  \setlength{\tabcolsep}{7pt}
-  \begin{tabular}{L{0.50\textwidth}rr}
-    \toprule
-    Method & Survival (\%) & Action-0 fraction \\
-    \midrule
-    Matched MLP baseline & $23.75\pm7.70$ & 0.168 \\
-    Global rho heuristic, $\rho_{safe}=0.90$ & $28.35\pm11.06$ & 0.974 \\
-    Local rho heuristic, $\rho_{safe}=0.90$ & $9.46\pm3.54$ & 0.995 \\
-    Intervention gate, final-action MAP & $25.92\pm10.69$ & 0.400 \\
-    Flat fixed penalty, $\lambda_{fixed}=0.010$ & $27.00\pm12.13$ & 0.489 \\
-    Flat local-safe AIB, $d=0.20$ & $21.65\pm2.21$ & 0.927 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.76\linewidth]{figures/sparse_control_wcci_tradeoff.png}
-  \caption{Action-0/survival trade-off for the early
-  maintenance-enabled WCCI runs. Each point is a seed-aggregated run variant.
-  The upper-right region is still the target, but no method combines high
-  sparsity with strong survival on this larger grid.}
-  \label{fig:sparse-wcci-action-survival-tradeoff}
-\end{figure}
-
-\noindent The mechanisms change intervention frequency, but none reliably improves
-survival over the weak MLP baseline: the differences are small compared with the
-seed variation. The local rho heuristic and AIB are highly sparse but remain
-weak controllers, which suggests that sparsity transfers more easily than
-control quality. This failed pilot changes grid size, action space, and
-maintenance at once, so it cannot identify the cause. It still shows the limit
-of continuing with a fixed-width MLP actor on the larger grid. The next two
-chapters therefore introduce a size-independent graph representation and test
-its design choices. Chapter~\ref{ch:wcci-transfer} later returns to WCCI and
-separates the factors that are mixed together here, before studying cross-grid
-transfer.
+\latestrevision{As an early scale test, representative mechanisms were
+retrained from scratch with a fixed-width MLP actor on the
+maintenance-enabled WCCI grid. The mechanisms changed intervention frequency,
+but none reliably improved survival over the weak baseline, and the differences
+were small relative to seed variation. Because this pilot changes the grid,
+action space, and maintenance setting at the same time, it cannot isolate the
+cause. It nevertheless motivates the size-independent graph actor introduced
+next. The full protocol, table, and trade-off figure are retained in
+Appendix~\ref{app:sparse-control-wcci-pilot}.}
 \\
 \\
 \begin{tcolorbox}[
@@ -405,24 +303,31 @@ transfer.
   colback=red!5!white,
   title=Chapter Summary
 ]
-\textbf{Objective:} Keep survival while reducing unnecessary topology
-interventions.
+\newrevision{\textbf{Purpose:} Keep survival while reducing unnecessary
+topology interventions.}
 \\
 \\
-\textbf{Findings:}
+\newrevision{\textbf{Content:} Compare evaluation-time rho overrides, a
+learned intervention gate, fixed action penalties, adaptive intervention
+budgets, and behavioral cloning from a sparse teacher.}
+\\
+\\
+\newrevision{\textbf{Findings:}}
 \begin{itemize}
-  \item \textbf{Evaluation heuristics} reach 97--98\% survival with action 0 in
-  94--97\% of decisions, but sparsity is imposed after the policy acts.
-  \item \textbf{A fixed penalty} already gives a strong learned controller:
-  $\lambda_{fixed}=0.010$ reaches 97.44\% survival and a 0.905 action-0
-  fraction without an evaluation override.
-  \item \textbf{Local-safe AIB} gives the best learned trade-off: budgets
-  $d=0.10$ and $d=0.20$ reach about 98.4\% survival and 0.98 action-0 usage.
-  The gated variants are less reliable and can collapse to almost permanent
-  no-op behavior.
+  \item \newrevision{\textbf{Evaluation heuristics} reach 97--98\% mean
+  survival with action 0 in 94--97\% of decisions, but impose sparsity after
+  the policy acts.}
+  \item \newrevision{\textbf{A fixed penalty} already gives a strong learned
+  controller: $\lambda_{fixed}=0.010$ reaches 97.44\% mean survival and a
+  0.905 action-0 fraction without an evaluation override.}
+  \item \newrevision{\textbf{Local-safe AIB} gives the best observed learned
+  trade-off in this experiment: budgets $d=0.10$ and $d=0.20$ reach about
+  98.4\% mean survival and 0.98 action-0 usage. The gated variants are less
+  reliable and can collapse to almost permanent no-op behavior.}
 \end{itemize}
 \vspace{0.35cm}
-\textbf{Conclusion:} Sparse behavior can be learned on \texttt{bus14}, but the
-same MLP mechanisms remain weak on WCCI. This motivates the graph
-representation introduced next.
+\newrevision{\textbf{Takeaway:} Sparse behavior can be learned on
+\texttt{bus14}, but the preliminary maintenance-enabled WCCI stress test does
+not isolate transfer and its fixed-width MLP policies remain weak. This
+motivates the graph representation introduced next.}
 \end{tcolorbox}

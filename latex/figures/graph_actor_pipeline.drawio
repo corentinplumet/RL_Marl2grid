@@ -31,7 +31,7 @@
           <mxGeometry x="340" y="225" width="235" height="115" as="geometry"/>
         </mxCell>
 
-        <mxCell id="message-passing" value="&lt;b&gt;K × GINE or GAT layers&lt;/b&gt;&lt;br&gt;&lt;br&gt;edge-aware message passing&lt;br&gt;&lt;br&gt;ReLU, then LayerNorm&lt;br&gt;H&lt;sup&gt;(0)&lt;/sup&gt; → H&lt;sup&gt;(K)&lt;/sup&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#f0dff2;strokeColor=#9e9e9e;strokeWidth=2;fontColor=#111111;fontSize=16;fontFamily=Helvetica;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+        <mxCell id="message-passing" value="&lt;b&gt;K × message-passing layers&lt;/b&gt;&lt;br&gt;&lt;br&gt;configurable graph encoder&lt;br&gt;&lt;br&gt;ReLU, then LayerNorm&lt;br&gt;H&lt;sup&gt;(0)&lt;/sup&gt; → H&lt;sup&gt;(K)&lt;/sup&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#f0dff2;strokeColor=#9e9e9e;strokeWidth=2;fontColor=#111111;fontSize=16;fontFamily=Helvetica;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
           <mxGeometry x="620" y="100" width="295" height="210" as="geometry"/>
         </mxCell>
 

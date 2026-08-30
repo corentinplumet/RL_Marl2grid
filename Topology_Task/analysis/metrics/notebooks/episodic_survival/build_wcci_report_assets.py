@@ -60,6 +60,17 @@ ROUTE_COLORS = {
     "Fine-tuned": "#E4A11B",
     "Greedy": "#59A14F",
 }
+POLICY_ARM_COLORS = {
+    "Plain candidate scorer": "#4C78A8",
+    "Gmax-delta": "#B279A2",
+    "Adaptive budget": "#72B7B2",
+}
+POLICY_VARIANT_COLORS = {
+    ("Gmax-delta", "ungated"): "#B279A2",
+    ("Gmax-delta", "gated"): "#7A3E72",
+    ("Adaptive budget", "ungated"): "#72B7B2",
+    ("Adaptive budget", "gated"): "#2A7F7A",
+}
 
 
 def save(fig, name):
@@ -401,7 +412,153 @@ save(fig, "wcci_zero_shot_architecture_effects.png")
 
 
 # ---------------------------------------------------------------------------
-# Figure 9.3: modifications to zero-shot transfer and gate dependence.
+# Figure 9.3: absolute performance of both policy changes in one view.
+# ---------------------------------------------------------------------------
+policy_arms = {"Gmax-delta": arm_frame("gmax"), "Adaptive budget": arm_frame("AIB")}
+policy_variants = [
+    ("Gmax-delta", "ungated"),
+    ("Gmax-delta", "gated"),
+    ("Adaptive budget", "ungated"),
+    ("Adaptive budget", "gated"),
+]
+policy_offsets = np.linspace(-0.30, 0.30, len(policy_variants))
+
+
+def grouped_policy_boxes(ax, metric, ylabel, title, reference_lines=()):
+    """Draw two policy changes and two gate settings at every action cap."""
+    rng = np.random.default_rng(20260828)
+    for cap_index, cap in enumerate(MAIN_CAPS):
+        for offset, (architecture, gate) in zip(policy_offsets, policy_variants):
+            frame = gate_scope(policy_arms[architecture], gate)
+            values = frame.loc[frame["mk"] == cap, metric].dropna().to_numpy()
+            if not len(values):
+                continue
+            position = cap_index + offset
+            colour = POLICY_VARIANT_COLORS[(architecture, gate)]
+            ax.boxplot(
+                values,
+                positions=[position],
+                widths=0.16,
+                patch_artist=True,
+                showfliers=False,
+                manage_ticks=False,
+                boxprops={
+                    "facecolor": colour,
+                    "alpha": 0.22,
+                    "edgecolor": colour,
+                    "linewidth": 1.15,
+                },
+                whiskerprops={"color": colour, "linewidth": 1.0},
+                capprops={"color": colour, "linewidth": 1.0},
+                medianprops={"color": colour, "linewidth": 2.0},
+            )
+            jitter = rng.uniform(-0.035, 0.035, size=len(values))
+            ax.scatter(
+                np.full(len(values), position) + jitter,
+                values,
+                s=17,
+                color=colour,
+                alpha=0.72,
+                edgecolor="white",
+                linewidth=0.35,
+                zorder=3,
+            )
+    for value, label, style, colour in reference_lines:
+        ax.axhline(value, color=colour, linestyle=style, linewidth=1.25, label=label)
+    ax.set_xticks(range(len(MAIN_CAPS)), [f"mk{cap}" for cap in MAIN_CAPS])
+    ax.set_xlim(-0.55, len(MAIN_CAPS) - 0.45)
+    ax.set_xlabel("Reduced action space")
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
+
+
+fig = plt.figure(figsize=(13.8, 8.7))
+grid = fig.add_gridspec(2, 2, height_ratios=[1.0, 1.1], hspace=0.48, wspace=0.25)
+ax_overall = fig.add_subplot(grid[0, :])
+ax_hard = fig.add_subplot(grid[1, 0])
+ax_relative = fig.add_subplot(grid[1, 1])
+
+grouped_policy_boxes(
+    ax_overall,
+    "overall_pct",
+    "Mean survival over all 50 chronics (%)",
+    "Absolute performance on the full test",
+    reference_lines=[(DN_OVERALL, "Do nothing", "--", "#222222")],
+)
+greedy = data.greedy_ceiling.set_index("mk").reindex(MAIN_CAPS)
+ax_overall.plot(
+    range(len(MAIN_CAPS)),
+    greedy["greedy_overall_pct"],
+    color="#59A14F",
+    marker="*",
+    markersize=10,
+    linewidth=1.8,
+    zorder=4,
+)
+for position, value in enumerate(greedy["greedy_overall_pct"]):
+    ax_overall.annotate(
+        f"{value:.0f}%",
+        (position, value),
+        xytext=(0, 7),
+        textcoords="offset points",
+        ha="center",
+        fontsize=8,
+        color="#3C7D36",
+    )
+ax_overall.set_ylim(0, 103)
+
+grouped_policy_boxes(
+    ax_hard,
+    "hard_pct",
+    "Difficult-cohort survival (%)",
+    f"Absolute performance on the {N_HARD} difficult chronics",
+    reference_lines=[(DN_HARD, "Do nothing", "--", "#222222")],
+)
+ax_hard.set_ylim(0, 35)
+
+grouped_policy_boxes(
+    ax_relative,
+    "capture_hard_pct",
+    "Do-nothing-to-greedy progress (%)",
+    "Fraction of feasible difficult-cohort gain recovered",
+    reference_lines=[
+        (0, "Do nothing", "--", "#222222"),
+        (100, "Greedy", ":", "#59A14F"),
+    ],
+)
+ax_relative.set_ylim(-25, 108)
+
+handles = [
+    plt.Line2D(
+        [0],
+        [0],
+        marker="o",
+        linestyle="",
+        color=POLICY_VARIANT_COLORS[(architecture, gate)],
+        label=f"{architecture} - {GATE_LABELS[gate]}",
+    )
+    for architecture, gate in policy_variants
+]
+handles.extend(
+    [
+        plt.Line2D([0], [0], color="#222222", linestyle="--", label="Do nothing"),
+        plt.Line2D([0], [0], color="#59A14F", linestyle=":", label="Greedy at the same $k$"),
+    ]
+)
+fig.legend(
+    handles=handles,
+    loc="lower center",
+    ncol=6,
+    frameon=False,
+    bbox_to_anchor=(0.5, 0.005),
+)
+fig.suptitle("Absolute performance of both policy changes", y=0.985)
+fig.subplots_adjust(left=0.075, right=0.985, top=0.92, bottom=0.12)
+save(fig, "wcci_policy_change_absolute_performance.png")
+
+
+# ---------------------------------------------------------------------------
+# Figure 9.4: matched modifications and gate dependence.
 # ---------------------------------------------------------------------------
 mod_rows = []
 for treatment, display in (("gmax", "Gmax-delta"), ("AIB", "Adaptive budget")):
@@ -474,7 +631,7 @@ save(fig, "wcci_intervention_gate_effects.png")
 
 
 # ---------------------------------------------------------------------------
-# Figure 9.4: matched adaptation routes and the easy/difficult frontier.
+# Figure 9.5: matched adaptation routes and the easy/difficult frontier.
 # ---------------------------------------------------------------------------
 zero = gate_scope(arm_frame("plain"), "ungated")
 zero = zero.loc[(zero["family"] == "NLS") & (zero["mk"] == 64)]

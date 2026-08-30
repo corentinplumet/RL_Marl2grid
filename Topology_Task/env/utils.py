@@ -2090,7 +2090,15 @@ class MAEnvWrapper(Env):
     ) -> Dict[str, Any]:
         """Simulate a multi-agent action without advancing the environment."""
         rho_before, worst_line_before = self._rho_summary_from_obs(self._obs)
-        result = self._empty_action_outcome(rho_before, worst_line_before)
+        n_overloaded_before, overload_amount_before = self._overload_summary_from_obs(
+            self._obs
+        )
+        result = self._empty_action_outcome(
+            rho_before,
+            worst_line_before,
+            n_overloaded_before,
+            overload_amount_before,
+        )
 
         global_action, validation = self._build_global_action_for_simulation(actions)
         result.update(validation)
@@ -2108,12 +2116,18 @@ class MAEnvWrapper(Env):
         self,
         rho_before: float,
         worst_line_before: int,
+        n_overloaded_before: int,
+        overload_amount_before: float,
     ) -> Dict[str, Any]:
         return {
             "rho_before": rho_before,
             "worst_line_before": worst_line_before,
+            "n_overloaded_before": int(n_overloaded_before),
+            "overload_amount_before": float(overload_amount_before),
             "rho_after": float("nan"),
             "worst_line_after": -1,
+            "n_overloaded_after": -1,
+            "overload_amount_after": float("nan"),
             "sim_reward": float("nan"),
             "sim_done": False,
             "simulation_succeeded": False,
@@ -2144,8 +2158,13 @@ class MAEnvWrapper(Env):
                     global_action
                 )
             rho_after, worst_line_after = self._rho_summary_from_obs(sim_obs)
+            n_overloaded_after, overload_amount_after = (
+                self._overload_summary_from_obs(sim_obs)
+            )
             result["rho_after"] = rho_after
             result["worst_line_after"] = worst_line_after
+            result["n_overloaded_after"] = int(n_overloaded_after)
+            result["overload_amount_after"] = float(overload_amount_after)
             result["sim_reward"] = float(sim_reward)
             result["sim_done"] = bool(sim_done)
             if isinstance(sim_info, dict):
@@ -2160,6 +2179,16 @@ class MAEnvWrapper(Env):
             result["simulation_error"] = f"{type(exc).__name__}: {exc}"[:500]
             result["action_is_valid"] = False
         return result
+
+    @staticmethod
+    def _overload_summary_from_obs(obs: Any) -> Tuple[int, float]:
+        """Return the number and total magnitude of line overloads."""
+        rho = np.asarray(getattr(obs, "rho", []), dtype=np.float32)
+        finite = rho[np.isfinite(rho)]
+        if finite.size == 0:
+            return 0, 0.0
+        overload = np.maximum(finite - 1.0, 0.0)
+        return int(np.count_nonzero(overload > 0.0)), float(overload.sum())
 
     def simulate_action_outcome(
         self,
