@@ -45,7 +45,7 @@ this boundary in detail.}
     \texttt{gnn\_graph\_type} & \texttt{bus} & \texttt{heterogeneous} & \texttt{heterogeneous\_line} \\
     Node types & Busbar & Busbar, generator, load & Busbar, generator, load, transmission line \\
     Generator and load state & Summed and averaged onto the busbar & One node per asset & One node per asset \\
-    Physical line & Direct busbar-to-busbar edge & Typed direct busbar-to-busbar edge & Typed node between its endpoint busbars \\
+    Transmission line & Direct busbar-to-busbar edge & Typed direct busbar-to-busbar edge & Typed node between its endpoint busbars \\
     Line state & Continuous edge attributes & Continuous edge attributes & Features of the line node \\
     \revision{Shortest message path} & \revision{One step between adjacent busbars} & \revision{One step between adjacent busbars; two from an asset to a remote busbar} & \revision{Two steps between adjacent busbars through a line node} \\
     Hidden line state & None: the edge modifies a message & None: the edge modifies a message & Yes: each line obtains and updates an embedding \\
@@ -93,7 +93,7 @@ Chapter~\ref{ch:experiments}.}
 % \\
 % \\
 % The mechanism is easiest to see on a transmission line in the busbar and
-% disaggregated schemas, where a physical line is an edge. Consider a
+% disaggregated schemas, where a transmission line is an edge. Consider a
 % line~$\ell$ whose origin and extremity
 % belong to substations $o(\ell)$ and $e(\ell)$. For every pair of possible
 % endpoint busbars $(b_o,b_e)$, the graph reserves the two directed candidate
@@ -104,7 +104,7 @@ Chapter~\ref{ch:experiments}.}
 %   i(e(\ell),b_e)\rightarrow i(o(\ell),b_o),
 %   \label{eq:candidate-line-edges}
 % \end{equation}
-% so each physical line contributes $2B^2$ candidate directed edges and the two
+% so each transmission line contributes $2B^2$ candidate directed edges and the two
 % directions share the same line attributes. For the usual case $B=2$, one line
 % reserves eight candidate edges even though at most two, one per direction, are
 % electrically active at any time.
@@ -166,9 +166,8 @@ currently connected.}
 \subsubsection{Nodes and features}
 \label{subsec:graph-busbar-nodes}
 
-\revision{For $S$ substations and at most $B$ busbars per substation, the graph
-contains one node $i(s,b)$ for every substation--busbar pair. Empty busbars are
-kept because a topology action may connect equipment to them later.}
+For $S$ substations and at most $B$ busbars per substation, the graph
+contains one node $i(s,b)$ for every substation--busbar pair.
 \latestrevision{Generator and load powers are summed on their current busbar,
 their angles are averaged, and the substation cooldown is copied to both
 busbars. The complete feature inventory is reported in
@@ -198,10 +197,9 @@ gives the exact edge vector.}
 \label{sec:heterogeneous-graph-representation}
 
 \revision{The disaggregated graph keeps the busbars as its backbone, but gives
-each generator and load a separate node. Typed directed edges connect these
+each generator and load a separate node. Directed or bideirectionnal edges connect these
 assets to their current busbar. Transmission lines remain direct edges between
-busbars. This avoids mixing the states of several assets into one busbar
-feature vector.}
+busbars.}
 
 \begin{figure}[H]
   \centering
@@ -228,7 +226,7 @@ Appendix~\ref{sec:gnn-node-input-inventory}.}
 \subsubsection{Relations and edge features}
 \label{subsec:heterogeneous-relations}
 
-% {\color{blue}Physical lines keep the busbar-to-busbar candidates of
+% {\color{blue}Transmission lines keep the busbar-to-busbar candidates of
 % Equation~\ref{eq:candidate-line-edges}; what this schema adds is the asset
 % attachments. For generator $g$ at substation $s(g)$, the fixed candidate graph
 % contains
@@ -245,7 +243,7 @@ Appendix~\ref{sec:gnn-node-input-inventory}.}
 % \\
 % \\
 \latestrevision{Every directed edge uses a common layout containing a physical
-line block and a one-hot relation block. Physical-line edges populate both;
+line block and a one-hot relation block. Transmission-line edges populate both;
 asset attachments and structural edges use a zero physical block and identify
 only their type and direction. This prevents a structural relation from
 looking like a measured line. The exact columns and activation rules are listed
@@ -290,7 +288,7 @@ nodes.}
   \centering
   \resizebox{0.92\linewidth}{!}{\input{figures/graph_heterogeneous_line_nodes.tex}}
   \caption{Disaggregated line-node representation.
-  Yellow nodes represent physical lines and connect the blue busbars at their
+  Yellow nodes represent transmission lines and connect the blue busbars at their
   endpoints; generators and loads remain separate terminal nodes.}
   \label{fig:heterogeneous-line-node-graph}
 \end{figure}
@@ -633,8 +631,7 @@ trade-offs should be considered separately
 default was \texttt{controlled\_mean}: the node population is stable, it matches
 the actor's region, and it keeps empty busbars that may receive equipment.
 \texttt{controlled\_max} is a more risk-sensitive choice when one critical node
-should dominate the decision. If one-hop context is disabled, the controlled
-and visible sets are identical.}
+should dominate the decision.}
 
 \begin{table}[H]
   \color{black}
@@ -697,8 +694,8 @@ busbar, or one per controlled substation when summary nodes are used.}
     \input{figures/graph_virtual_readout.tex}%
   }
   \caption{Virtual-node readout in the reported one-way setting. Without
-  substation nodes, every controlled busbar---including non-energized
-  $b_{32}$---sends directly to $v_\star$. With augmentation $n$, the same
+  substation nodes, every controlled busbar, including non-energized
+  $b_{32}$, sends directly to $v_\star$. With augmentation $n$, the same
   busbars communicate through $u_s$, and only the substation nodes send to
   $v_\star$. The final state
   $\mathbf h_\star^{(K)}$ replaces the \revision{selected-node readout}.}
@@ -721,9 +718,8 @@ sampling procedure, and deterministic evaluation remain unchanged.}
 
 \revision{Let $\mathbf{z}_a$ be the $d_z$-dimensional graph embedding of agent
 $a$. It is obtained from the local node states by the graph readout of
-Section~\ref{sec:graph-pooling}, followed by the output projection in
-Equation~\ref{eq:gnn-output-projection}. The default action head receives only
-this single vector.}
+Section~\ref{sec:graph-pooling}, followed by a learned output projection. The
+default action head receives only this single vector.}
 \\
 \\
 \revision{With the default head, the logits are produced directly from
@@ -755,15 +751,13 @@ the same scorer or a separate one:}
 \revision{The same parameters now score every non-idle action, so the number of
 learned scorer parameters no longer grows with $|\mathcal{A}_a|$. Two actions
 are compared through the graph nodes they affect instead of through unrelated
-output weights. A candidate that changes a heavily loaded line can therefore be
-scored using that line's current embedding.}
+output weights.}
 \\
 \\
-\revision{The candidate head has three independent choices. First, the touched
-nodes must be combined into an action context $\mathbf{c}_j$. Second, the
+\revision{The candidate head has three independent design choices. First, how the touched
+nodes are combined into an action context $\mathbf{c}_j$. Second, a
 static action descriptor $\boldsymbol\phi_j$ may be appended. Third, the idle
-action may share the scorer or use its own head. Crossing the two parameter-free
-candidate-pooling rules with the last two choices gives eight variants. The complete path to one action score is
+action may share the scorer or use its own head. Combining together these 3 options gives eight variants. The complete structure to score one action is
 shown in Figure~\ref{fig:candidate-action-scoring-pipeline}.}
 
 \begin{figure}[H]
@@ -775,8 +769,7 @@ shown in Figure~\ref{fig:candidate-action-scoring-pipeline}.}
   endpoint-move candidate. Stage~1 is the shared GNN encoder, given in full in
   Figure~\ref{fig:graph-actor-pipeline}: it maps the local graph to node states
   $\mathbf H$. The same stack gives the global embedding $\mathbf z_a$ by
-  \revision{selected-node readout} and projection, so the two inputs to the scorer come from one
-  set of weights rather than two. In stage~2 the violet outlines mark the only
+  \revision{selected-node readout} and projection. In stage~2 the violet outlines mark the only
   rows gathered from $\mathbf H$ for the local context: both busbars of the
   modified substation and the touched line node. One \revision{candidate-pooling}
   construction then produces $\mathbf c_j$. The static descriptor
@@ -799,17 +792,17 @@ training.}
 generators, loads, and substations that it changes. These objects are mapped
 once to their graph rows. All busbars of a modified substation are included so
 that the destination context is represented, while a boundary action never
-adds private nodes from another region. The model may also receive an optional
-static descriptor of the operation. The row-mapping example, padding and mask
+adds private nodes from another region. The row-mapping example, padding and mask
 rules, and complete descriptor are reported in
 Appendix~\ref{app:candidate-scorer-details}.}
 
 \subsection{\texorpdfstring{\revision{Candidate pooling of the touched nodes}}{Candidate pooling of the touched nodes}}
 \label{subsec:candidate-pooling}
 
-\revision{The next step combines the touched rows into one action context
-$\mathbf{c}_j$. The global vector $\mathbf{z}_a$ no longer contains separate
-node states, so the encoder also returns the full node matrix $\mathbf H$:}
+\latestrevision{To score action \(j\), the model needs the embeddings of the
+graph nodes affected by that action. The encoder therefore returns both the
+global graph embedding \(\mathbf z_a\) and a matrix \(\mathbf H\) containing
+one embedding for each node:}
 \begin{equation}
   (\mathbf{z}_a,\mathbf{H})
   = \operatorname{encoder}_{\mathrm{nodes}}(\mathcal{G}^{(a)}_t),
@@ -817,11 +810,10 @@ node states, so the encoder also returns the full node matrix $\mathbf H$:}
   \mathbf{H}\in\mathbb{R}^{|\mathcal{V}|\times d_h},
   \label{eq:forward-with-nodes}
 \end{equation}
-\revision{Row $v$ of $\mathbf H$ is the final embedding
-$\mathbf{h}^{(K)}_v$ of node $v$. These embeddings have already been computed
-by the GNN. Only physical nodes are eligible for an action context.
-Substation-summary and virtual nodes are excluded because an action changes
-equipment, not a learned summary node.}
+\latestrevision{Row \(v\) of \(\mathbf H\) is the final embedding
+\(\mathbf{h}^{(K)}_v\) of node \(v\). The rows associated with action \(j\) are
+selected from this matrix and then combined to form its context
+\(\mathbf c_j\).}
 \\
 \\
 Write $\mathcal{N}_t(j)$ for the rows of type
@@ -898,6 +890,10 @@ separate global decision:}
   \label{eq:candidate-idle-scorer}
 \end{equation}
 }
+\latestrevision{Here, \(b_{\varnothing}\) is a learned scalar offset that
+calibrates the do-nothing logit relative to the non-idle action logits. It is
+applied whether action \(0\) reuses the shared MLP scorer or uses a dedicated
+MLP head.}
 
 \subsection{Global-maximum and action-delta extension}
 \label{subsec:candidate-gmax-delta}
@@ -908,9 +904,7 @@ component-wise maximum over energized nodes instead of a mean. Second, every
 exact modification in action $j$ is encoded from the object being changed, the
 mean embedding of its substation busbars, the target busbar, the difference
 between target and source context, and static operation flags. These tokens are
-combined into $\boldsymbol\delta_j$ and appended to the scorer input.
-It uses the current GNN embeddings only; it does not build the post-action graph
-or run a power-flow simulation.} \latestrevision{The complete branch diagram is
+combined into $\boldsymbol\delta_j$ and appended to the scorer input.} \latestrevision{The complete branch diagram is
 shown in Figure~\ref{fig:candidate-action-gmax-delta-pipeline}.}
 
 \begin{figure}[H]
@@ -925,8 +919,7 @@ shown in Figure~\ref{fig:candidate-action-gmax-delta-pipeline}.}
   returns node states $\mathbf H$. The upper branch builds the global vector by
   maximum graph readout over energized nodes; the middle branch keeps the
   touched-node context $\mathbf c_j$; and the lower branch encodes each exact
-  object modification into $\boldsymbol\delta_j$. No post-action graph or power
-  flow is computed.}
+  object modification into $\boldsymbol\delta_j$.}
   \label{fig:candidate-action-gmax-delta-pipeline}
 \end{figure}
 
@@ -954,7 +947,6 @@ fixed when the environment is created; they are not estimated from training
 data. The loading ratio \texttt{rho}, binary indicators, masks, node types, and
 relation types are already dimensionless and are left unchanged.}
 
-\newpage
 \subsection{Angle representation}
 \label{sec:line-node-angle}
 
@@ -972,14 +964,6 @@ absolute-angle channels are removed. Chapter~\ref{ch:encoder-inputs} shows why
 this matters: the two grids differ by about $5$ to $7^{\circ}$ in absolute
 angle, mostly because they use different slack-bus references. Dividing by a
 fixed scale cannot remove that offset.}
-\\
-\\
-\revision{In the reported experiments, this option is used only with the
-disaggregated line-node graph of
-Section~\ref{sec:heterogeneous-line-graph}. Each physical line is a node, so its
-angle difference is stored directly on that node. A local actor then receives
-the value for every line it observes, including boundary lines. The value is
-set to zero when a line is disconnected.}
 
 % \subsection{Use across the experiments}
 

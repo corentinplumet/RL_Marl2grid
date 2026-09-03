@@ -1,0 +1,1111 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/4vyxknqp",
+    "id": "4vyxknqp",
+    "slide": 27,
+    "layoutId": "/ppt/slideLayouts/slideLayout8.xml",
+    "layoutName": "5_Titre et contenu",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "EPFL 2025",
+    "colors": {
+      "accent1": "#00A79F",
+      "accent2": "#24737F",
+      "accent3": "#512880",
+      "accent4": "#4F8FCC",
+      "accent5": "#D0661C",
+      "accent6": "#B51F1F",
+      "dk1": "#413C3A",
+      "lt1": "#FFFFFF",
+      "dk2": "#FF0000",
+      "lt2": "#CAC7C7",
+      "hlink": "#ED6E9C",
+      "folHlink": "#4F8FCC"
+    },
+    "fontScheme": {
+      "name": "Arial",
+      "majorFont": {
+        "latinTypeface": "Arial"
+      },
+      "minorFont": {
+        "latinTypeface": "Arial"
+      }
+    },
+    "typefaces": [
+      "Arial"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout8.xml",
+      "name": "5_Titre et contenu",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout8.xml/3",
+          "id": "3",
+          "name": "Content Placeholder 2",
+          "bbox": [
+            57.83,
+            327.83,
+            1164.33,
+            357.17
+          ],
+          "text": "Cliquez pour modifier les styles du texte du masque",
+          "textPreview": "Cliquez pour modifier les styles du texte du masque",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Cliquez pour modifier les styles du texte du masque",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Cliquez pour modifier les styles du texte du masque"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout8.xml/2",
+          "id": "2",
+          "name": "Titre 1",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "Modifiez le style du titre",
+          "textPreview": "Modifiez le style du titre",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifiez le style du titre",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifiez le style du titre"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout8.xml/7",
+          "id": "7",
+          "name": "Espace réservé de la date 6",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "EPFL AT A GLANCE",
+          "textPreview": "EPFL AT A GLANCE",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "EPFL AT A GLANCE",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "EPFL AT A GLANCE"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout8.xml/8",
+          "id": "8",
+          "name": "Espace réservé du pied de page 7",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "order": 5,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout8.xml/9",
+          "id": "9",
+          "name": "Espace réservé du numéro de diapositive 8",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "‹#›",
+          "textPreview": "‹#›",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹#›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹#›"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "type": "master",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/2",
+          "id": "2",
+          "name": "Title Placeholder 1",
+          "bbox": [
+            55.22,
+            66.72,
+            476.33,
+            221.17
+          ],
+          "geometry": "rect",
+          "text": "Modifiez le style du titre",
+          "textPreview": "Modifiez le style du titre",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 18.9,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifiez le style du titre",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifiez"
+                },
+                {
+                  "index": 2,
+                  "text": " le style du titre"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/3",
+          "id": "3",
+          "name": "Text Placeholder 2",
+          "bbox": [
+            549.33,
+            218.83,
+            672.83,
+            466.17
+          ],
+          "geometry": "rect",
+          "text": "Modifier les styles du texte du masque\nDeuxième niveau\nTroisième niveau\nQuatrième niveau\nCinquième niveau",
+          "textPreview": "Modifier les styles du texte du masque | Deuxième niveau | Troisième niveau | Quatrième niveau | Cinquième niveau",
+          "resolvedTextStyle": {
+            "vertical": 1,
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 4.91,
+              "right": 3.78,
+              "bottom": 4.8,
+              "left": 3.78
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifier les styles du texte du masque",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifier les styles du "
+                },
+                {
+                  "index": 2,
+                  "text": "texte"
+                },
+                {
+                  "index": 3,
+                  "text": " du masque"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "text": "Deuxième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Deuxième "
+                },
+                {
+                  "index": 2,
+                  "text": "niveau"
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "text": "Troisième niveau\nQuatrième niveau\nCinquième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Troisième"
+                },
+                {
+                  "index": 2,
+                  "text": " "
+                },
+                {
+                  "index": 3,
+                  "text": "niveau"
+                },
+                {
+                  "index": 4,
+                  "text": "\n"
+                },
+                {
+                  "index": 5,
+                  "text": "Quatrième"
+                },
+                {
+                  "index": 6,
+                  "text": " "
+                },
+                {
+                  "index": 7,
+                  "text": "niveau"
+                },
+                {
+                  "index": 8,
+                  "text": "\n"
+                },
+                {
+                  "index": 9,
+                  "text": "Cinquième"
+                },
+                {
+                  "index": 10,
+                  "text": " "
+                },
+                {
+                  "index": 11,
+                  "text": "niveau"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/4",
+          "id": "4",
+          "name": "Date Placeholder 3",
+          "bbox": [
+            748.83,
+            33.33,
+            406.13,
+            22.55
+          ],
+          "geometry": "rect",
+          "text": "EPFL AT A GLANCE",
+          "textPreview": "EPFL AT A GLANCE",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 4.8,
+              "left": 0
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "EPFL AT A GLANCE",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "EPFL AT A GLANCE"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/5",
+          "id": "5",
+          "name": "Footer Placeholder 4",
+          "bbox": [
+            748.83,
+            45.39,
+            406.13,
+            23.63
+          ],
+          "geometry": "rect",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 4.8,
+              "left": 0
+            }
+          }
+        },
+        {
+          "order": 5,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/6",
+          "id": "6",
+          "name": "Slide Number Placeholder 5",
+          "bbox": [
+            1151.97,
+            -1.33,
+            71.78,
+            92.62
+          ],
+          "geometry": "rect",
+          "text": "‹#›",
+          "textPreview": "‹#›",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 9.45
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹#›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹#›"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 6,
+          "kind": "image",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/7",
+          "id": "7",
+          "name": "Image 6",
+          "bbox": [
+            49.67,
+            26.61,
+            86.33,
+            37.4
+          ],
+          "contentType": "image/svg+xml",
+          "imageCrop": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          "asset": {
+            "assetId": "/ppt/media/image2.svg",
+            "contentType": "image/svg+xml",
+            "byteLength": 1645
+          },
+          "fillImage": {
+            "assetId": "/ppt/media/image2.svg",
+            "contentType": "image/svg+xml",
+            "byteLength": 1645
+          }
+        }
+      ]
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/apwfix8n",
+      "id": "15",
+      "name": "TextBox 4",
+      "bbox": [
+        640,
+        -1.33,
+        640,
+        721.33
+      ],
+      "geometry": "rect",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "none",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": ""
+          }
+        ]
+      },
+      "lineWidth": 3
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/lofadsni",
+      "id": "3",
+      "name": "Titre 2",
+      "bbox": [
+        56.48,
+        67.98,
+        485.55,
+        292.02
+      ],
+      "text": "A bridge between Private and Public: \nProfessors of Practice",
+      "textPreview": "A bridge between Private and Public:  | Professors of Practice",
+      "resolvedFontSize": 52.8,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 58.67,
+        "typeface": "Arial",
+        "color": "tx1",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 0.9,
+        "insets": {
+          "top": 18.9,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 4,
+        "lines": [
+          {
+            "index": 1,
+            "text": "A bridge between"
+          },
+          {
+            "index": 2,
+            "text": "Private and Public:"
+          },
+          {
+            "index": 3,
+            "text": "Professors of"
+          },
+          {
+            "index": 4,
+            "text": "Practice"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "A bridge between Private and Public: \nProfessors of Practice",
+          "runs": [
+            {
+              "index": 1,
+              "text": "A bridge between Private and Public: "
+            },
+            {
+              "index": 2,
+              "text": "\n"
+            },
+            {
+              "index": 3,
+              "text": "Professors of Practice",
+              "color": "tx2"
+            }
+          ],
+          "bulletCharacter": "",
+          "lineSpacingPercent": 90000
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/mpor6x43",
+      "id": "4",
+      "name": "Espace réservé de la date 3",
+      "bbox": [
+        748.83,
+        33.33,
+        406.13,
+        22.55
+      ],
+      "text": "EPFL AT A GLANCE",
+      "textPreview": "EPFL AT A GLANCE",
+      "resolvedFontSize": 9.33,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 9.33,
+        "typeface": "Arial",
+        "color": "tx2",
+        "bold": true,
+        "alignment": "right",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 4.8,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "EPFL AT A GLANCE"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "EPFL AT A GLANCE",
+          "runs": [
+            {
+              "index": 1,
+              "text": "EPFL AT A GLANCE",
+              "color": "bg1"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/7qxsfi5o",
+      "id": "5",
+      "name": "Espace réservé du pied de page 4",
+      "bbox": [
+        748.83,
+        45.39,
+        406.13,
+        23.63
+      ],
+      "resolvedFontSize": 9.33,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 9.33,
+        "typeface": "Arial",
+        "color": "tx2",
+        "alignment": "right",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 4.8,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": ""
+          }
+        ]
+      }
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/8r698nm9",
+      "id": "6",
+      "name": "Espace réservé du numéro de diapositive 5",
+      "bbox": [
+        1151.97,
+        -1.33,
+        71.78,
+        92.62
+      ],
+      "text": "27",
+      "textPreview": "27",
+      "resolvedFontSize": 28,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "vertical": 1,
+        "fontSize": 28,
+        "typeface": "Arial",
+        "color": "tx2",
+        "bold": true,
+        "alignment": "right",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 9.45
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "27"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "27",
+          "runs": [
+            {
+              "index": 1,
+              "text": "27",
+              "color": "bg1"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/lw7yxcra",
+      "id": "12",
+      "name": "Espace réservé du contenu 11",
+      "bbox": [
+        56.48,
+        436.87,
+        379.35,
+        270.24
+      ],
+      "text": "Senior individuals holding leading positions who are interested in teaching and sharing their experience with students\n",
+      "textPreview": "Senior individuals holding leading positions who are interested in teaching and sharing their experience with students |",
+      "resolvedFontSize": 32,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 32,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "insets": {
+          "top": 4.91,
+          "right": 3.78,
+          "bottom": 4.8,
+          "left": 3.78
+        }
+      },
+      "textLayout": {
+        "lineCount": 7,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Senior individuals holding"
+          },
+          {
+            "index": 2,
+            "text": "leading positions who"
+          },
+          {
+            "index": 3,
+            "text": "are interested in teaching"
+          },
+          {
+            "index": 4,
+            "text": "and sharing their"
+          },
+          {
+            "index": 5,
+            "text": "experience with students"
+          },
+          {
+            "index": 6,
+            "text": ""
+          },
+          {
+            "index": 7,
+            "text": ""
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Senior individuals holding leading positions who are interested in teaching and sharing their experience with students",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Senior individuals holding ",
+              "typeface": "Arial"
+            },
+            {
+              "index": 2,
+              "text": "leading positions ",
+              "typeface": "Arial",
+              "bold": true
+            },
+            {
+              "index": 3,
+              "text": "who are interested in teaching and sharing their experience with students",
+              "typeface": "Arial"
+            }
+          ],
+          "bulletCharacter": "§",
+          "marginLeft": 228594,
+          "indent": -228594,
+          "lineSpacingPercent": 90000
+        }
+      ]
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/rit0vqtk",
+      "id": "21",
+      "name": "Connecteur droit 20",
+      "bbox": [
+        666.04,
+        104.63,
+        0,
+        127.65
+      ],
+      "verticalFlip": true,
+      "geometry": "line",
+      "lineColor": "bg1",
+      "lineWidth": 1.33
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/sj214va5",
+      "id": "22",
+      "name": "Connecteur droit 21",
+      "bbox": [
+        1023.42,
+        381.17,
+        200.96,
+        0
+      ],
+      "horizontalFlip": true,
+      "geometry": "line",
+      "lineColor": "bg1",
+      "lineWidth": 1.33
+    },
+    {
+      "order": 9,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/29cr2t8n",
+      "id": "23",
+      "name": "Espace réservé du contenu 7",
+      "bbox": [
+        764,
+        181.79,
+        369.14,
+        538.21
+      ],
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image111.png",
+        "contentType": "image/png",
+        "byteLength": 463183
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image111.png",
+        "contentType": "image/png",
+        "byteLength": 463183
+      }
+    },
+    {
+      "order": 10,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/x0na18ra",
+      "id": "24",
+      "name": "Image 13",
+      "bbox": [
+        354.25,
+        115.75,
+        613.14,
+        606.66
+      ],
+      "contentType": "image/png",
+      "imageCrop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "asset": {
+        "assetId": "/ppt/media/image112.png",
+        "contentType": "image/png",
+        "byteLength": 743533
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image112.png",
+        "contentType": "image/png",
+        "byteLength": 743533
+      }
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/xsnytcry",
+      "id": "16",
+      "name": "ZoneTexte 15",
+      "bbox": [
+        1048.05,
+        381.37,
+        199.97,
+        158.33
+      ],
+      "geometry": "rect",
+      "text": "Christoph Hartmann\nHonorary Professor at TU Berlin and Head of Academic Alliances & Expertise Development at Nestlé Research",
+      "textPreview": "Christoph Hartmann | Honorary Professor at TU Berlin and Head of Academic Alliances & Expertise Development at Nestlé Research",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 7,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Christoph"
+          },
+          {
+            "index": 2,
+            "text": "Hartmann"
+          },
+          {
+            "index": 3,
+            "text": "Honorary Professor at"
+          },
+          {
+            "index": 4,
+            "text": "TU Berlin and Head of"
+          },
+          {
+            "index": 5,
+            "text": "Academic Alliances &"
+          },
+          {
+            "index": 6,
+            "text": "Expertise Development"
+          },
+          {
+            "index": 7,
+            "text": "at Nestlé Research"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Christoph Hartmann",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Christoph Hartmann",
+              "fontSize": 21.33,
+              "color": "bg1",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "Honorary Professor at TU Berlin and Head of Academic Alliances & Expertise Development at Nestlé Research",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Honorary Professor at TU Berlin and Head of Academic Alliances & Expertise Development at Nestlé Research",
+              "fontSize": 16,
+              "color": "bg1"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/wrexk7qt",
+      "id": "17",
+      "name": "ZoneTexte 16",
+      "bbox": [
+        665,
+        97.9,
+        300.7,
+        74.32
+      ],
+      "geometry": "rect",
+      "text": "Peter Kummer\nHead of Infrastructure and member of the SBB Group Management Board",
+      "textPreview": "Peter Kummer | Head of Infrastructure and member of the SBB Group Management Board",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Peter Kummer"
+          },
+          {
+            "index": 2,
+            "text": "Head of Infrastructure and member of"
+          },
+          {
+            "index": 3,
+            "text": "the SBB Group Management Board"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Peter Kummer\nHead of Infrastructure and member of the SBB Group Management Board",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Peter Kummer",
+              "fontSize": 21.33,
+              "color": "bg1",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "\n"
+            },
+            {
+              "index": 3,
+              "text": "Head of Infrastructure and member of the SBB Group Management Board",
+              "fontSize": 16,
+              "color": "bg1"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    }
+  ],
+  "composeRuns": []
+}

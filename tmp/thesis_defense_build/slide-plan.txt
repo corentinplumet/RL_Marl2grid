@@ -1,0 +1,41 @@
+Communication job: By the end, a technical master-thesis jury should understand that cross-grid decentralised control is feasible only when the graph encoder, physical inputs, and action-selection interface are all designed for transfer; the strongest evidence is the gap between weak target retraining, useful gated zero-shot control, and consistently better fine-tuning.
+
+Main presentation (target: 19 slides / ~20 minutes)
+01  Title — Graph policies for decentralised power-grid topology control.
+02  Roadmap — Problem; transferable design; bus14-to-WCCI evidence; lessons.
+03  Context — Topology control uses installed switches, but the search grows combinatorially.
+04  State of the art — Existing methods reduce search or model the grid, but leave a portable-policy gap.
+05  Objectives — Decentralised execution; graph-size-independent state; action-size-independent scoring.
+06  Experimental frame — bus14 source vs WCCI target; fixed 50-chronic transfer evaluation.
+07  Sparse intervention — Local safety logic reduces unnecessary actions without sacrificing bus14 survival.
+08  Method I — Shared local graph actor with CTDE MAPPO.
+09  Method II — Score each candidate from the graph rows it touches.
+10  Source evidence — Candidate-scoring GNN variants exceed 99% bus14 survival.
+11  Cross-grid inputs — Physical scaling and relative angles reduce avoidable feature mismatch.
+12  Target difficulty — Scratch-trained target controls remain surprisingly weak on difficult WCCI cases.
+13  Required result — Encoder-only transfer endpoint comparison is still pending in the thesis.
+14  Zero-shot evidence — A small action set plus a local safety gate yields useful cross-grid performance.
+15  Architecture evidence — Typed-mean candidate pooling is the clearest transferable design choice.
+16  Adaptation — Source-initialised fine-tuning beats both zero-shot and scratch training.
+17  Interpretation — What transferred; what did not; what remains uncertain.
+18  Summary and outlook — Make the interface portable; validate safety per policy; scale evidence.
+19  Questions.
+
+Supplementary slides
+20  Supplementary divider.
+21  Evaluation protocol, maintenance choice, and cohort definitions.
+22  Reduced WCCI action spaces and same-k greedy references.
+23  Complete sparse-control trade-off on bus14.
+24  Screen B: depth/width and the robust K=2, h=128 default.
+25  Screens C/D: readout scope and structural augmentations.
+26  Screens E/F: message direction and candidate-score screening.
+27  Feature-shift details before and after transformations.
+28  Zero-shot result matrices and action-space coverage.
+29  Policy changes and local-gate matched effects.
+30  Per-chronic diagnostic against do nothing and greedy.
+31  Exact encoder-only outputs needed before the defence.
+32  Reproducibility and comparison rules.
+33  Definitions and likely Q&A anchors.
+34  Questions / return slide.
+
+Timing guide for notes: title 0:20; roadmap 0:25; slides 3–6 4:10; slides 7–11 6:00; slides 12–16 6:20; slides 17–18 2:20; close 0:25. Total approximately 20:00.

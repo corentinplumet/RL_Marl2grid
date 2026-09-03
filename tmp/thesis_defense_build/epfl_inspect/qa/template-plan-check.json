@@ -1,0 +1,10 @@
+{
+  "status": "pass",
+  "checkedAt": "2026-08-31T06:31:23.863Z",
+  "workspace": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect",
+  "mapPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/template-frame-map.json",
+  "inspectPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/template-inspect.ndjson",
+  "sourceSlideCount": 73,
+  "issueCount": 0,
+  "issues": []
+}

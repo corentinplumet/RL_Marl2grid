@@ -1,0 +1,1539 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/m90b6t0r",
+    "id": "m90b6t0r",
+    "slide": 10,
+    "layoutId": "/ppt/slideLayouts/slideLayout39.xml",
+    "layoutName": "Title_Only",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "EPFL 2025",
+    "colors": {
+      "accent1": "#00A79F",
+      "accent2": "#24737F",
+      "accent3": "#512880",
+      "accent4": "#4F8FCC",
+      "accent5": "#D0661C",
+      "accent6": "#B51F1F",
+      "dk1": "#413C3A",
+      "lt1": "#FFFFFF",
+      "dk2": "#FF0000",
+      "lt2": "#CAC7C7",
+      "hlink": "#ED6E9C",
+      "folHlink": "#4F8FCC"
+    },
+    "fontScheme": {
+      "name": "Arial",
+      "majorFont": {
+        "latinTypeface": "Arial"
+      },
+      "minorFont": {
+        "latinTypeface": "Arial"
+      }
+    },
+    "typefaces": [
+      "Arial"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout39.xml",
+      "name": "Title_Only",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout39.xml/6",
+          "id": "6",
+          "name": "Titre 5",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "Modifiez le style du titre",
+          "textPreview": "Modifiez le style du titre",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifiez le style du titre",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifiez le style du titre"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout39.xml/7",
+          "id": "7",
+          "name": "Espace réservé de la date 6",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "EPFL AT A GLANCE",
+          "textPreview": "EPFL AT A GLANCE",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "EPFL AT A GLANCE",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "EPFL AT A GLANCE"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout39.xml/8",
+          "id": "8",
+          "name": "Espace réservé du pied de page 7",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout39.xml/9",
+          "id": "9",
+          "name": "Espace réservé du numéro de diapositive 8",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "‹#›",
+          "textPreview": "‹#›",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹#›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹#›"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "type": "master",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/2",
+          "id": "2",
+          "name": "Title Placeholder 1",
+          "bbox": [
+            55.22,
+            66.72,
+            476.33,
+            221.17
+          ],
+          "geometry": "rect",
+          "text": "Modifiez le style du titre",
+          "textPreview": "Modifiez le style du titre",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 18.9,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifiez le style du titre",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifiez"
+                },
+                {
+                  "index": 2,
+                  "text": " le style du titre"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/3",
+          "id": "3",
+          "name": "Text Placeholder 2",
+          "bbox": [
+            549.33,
+            218.83,
+            672.83,
+            466.17
+          ],
+          "geometry": "rect",
+          "text": "Modifier les styles du texte du masque\nDeuxième niveau\nTroisième niveau\nQuatrième niveau\nCinquième niveau",
+          "textPreview": "Modifier les styles du texte du masque | Deuxième niveau | Troisième niveau | Quatrième niveau | Cinquième niveau",
+          "resolvedTextStyle": {
+            "vertical": 1,
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 4.91,
+              "right": 3.78,
+              "bottom": 4.8,
+              "left": 3.78
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifier les styles du texte du masque",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifier les styles du "
+                },
+                {
+                  "index": 2,
+                  "text": "texte"
+                },
+                {
+                  "index": 3,
+                  "text": " du masque"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "text": "Deuxième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Deuxième "
+                },
+                {
+                  "index": 2,
+                  "text": "niveau"
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "text": "Troisième niveau\nQuatrième niveau\nCinquième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Troisième"
+                },
+                {
+                  "index": 2,
+                  "text": " "
+                },
+                {
+                  "index": 3,
+                  "text": "niveau"
+                },
+                {
+                  "index": 4,
+                  "text": "\n"
+                },
+                {
+                  "index": 5,
+                  "text": "Quatrième"
+                },
+                {
+                  "index": 6,
+                  "text": " "
+                },
+                {
+                  "index": 7,
+                  "text": "niveau"
+                },
+                {
+                  "index": 8,
+                  "text": "\n"
+                },
+                {
+                  "index": 9,
+                  "text": "Cinquième"
+                },
+                {
+                  "index": 10,
+                  "text": " "
+                },
+                {
+                  "index": 11,
+                  "text": "niveau"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/4",
+          "id": "4",
+          "name": "Date Placeholder 3",
+          "bbox": [
+            748.83,
+            33.33,
+            406.13,
+            22.55
+          ],
+          "geometry": "rect",
+          "text": "EPFL AT A GLANCE",
+          "textPreview": "EPFL AT A GLANCE",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 4.8,
+              "left": 0
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "EPFL AT A GLANCE",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "EPFL AT A GLANCE"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/5",
+          "id": "5",
+          "name": "Footer Placeholder 4",
+          "bbox": [
+            748.83,
+            45.39,
+            406.13,
+            23.63
+          ],
+          "geometry": "rect",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 4.8,
+              "left": 0
+            }
+          }
+        },
+        {
+          "order": 5,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/6",
+          "id": "6",
+          "name": "Slide Number Placeholder 5",
+          "bbox": [
+            1151.97,
+            -1.33,
+            71.78,
+            92.62
+          ],
+          "geometry": "rect",
+          "text": "‹#›",
+          "textPreview": "‹#›",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 9.45
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹#›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹#›"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 6,
+          "kind": "image",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/7",
+          "id": "7",
+          "name": "Image 6",
+          "bbox": [
+            49.67,
+            26.61,
+            86.33,
+            37.4
+          ],
+          "contentType": "image/svg+xml",
+          "imageCrop": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          "asset": {
+            "assetId": "/ppt/media/image2.svg",
+            "contentType": "image/svg+xml",
+            "byteLength": 1645
+          },
+          "fillImage": {
+            "assetId": "/ppt/media/image2.svg",
+            "contentType": "image/svg+xml",
+            "byteLength": 1645
+          }
+        }
+      ]
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/hczel0bq",
+      "id": "38",
+      "name": "Image 4",
+      "bbox": [
+        835.95,
+        -1.33,
+        444.05,
+        212.9
+      ],
+      "contentType": "image/png",
+      "imageCrop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "asset": {
+        "assetId": "/ppt/media/image47.png",
+        "contentType": "image/png",
+        "byteLength": 109291
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image47.png",
+        "contentType": "image/png",
+        "byteLength": 109291
+      }
+    },
+    {
+      "order": 2,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/wb6dcval",
+      "id": "39",
+      "name": "Image 37",
+      "bbox": [
+        451,
+        211.57,
+        250.75,
+        295.74
+      ],
+      "horizontalFlip": true,
+      "contentType": "image/png",
+      "imageCrop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "asset": {
+        "assetId": "/ppt/media/image48.png",
+        "contentType": "image/png",
+        "byteLength": 186981
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image48.png",
+        "contentType": "image/png",
+        "byteLength": 186981
+      }
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/cbu58j2h",
+      "id": "3",
+      "name": "Titre 2",
+      "bbox": [
+        55.22,
+        66.72,
+        380.61,
+        221.17
+      ],
+      "text": "Management team 2026",
+      "textPreview": "Management team 2026",
+      "resolvedFontSize": 58.67,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 58.67,
+        "typeface": "Arial",
+        "color": "tx1",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "insets": {
+          "top": 18.9,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Management"
+          },
+          {
+            "index": 2,
+            "text": "team 2026"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Management team 2026",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Management team 2026"
+            }
+          ],
+          "bulletCharacter": "",
+          "lineSpacingPercent": 90000
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/l036l83y",
+      "id": "6",
+      "name": "Espace réservé du numéro de diapositive 5",
+      "bbox": [
+        1151.97,
+        -1.33,
+        71.78,
+        92.62
+      ],
+      "text": "10",
+      "textPreview": "10",
+      "resolvedFontSize": 28,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "vertical": 1,
+        "fontSize": 28,
+        "typeface": "Arial",
+        "color": "tx2",
+        "bold": true,
+        "alignment": "right",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 9.45
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "10"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "10",
+          "runs": [
+            {
+              "index": 1,
+              "text": "10"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 5,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/0rehk3ut",
+      "id": "40",
+      "name": "Image 35",
+      "bbox": [
+        999.02,
+        211.69,
+        280.98,
+        294.38
+      ],
+      "horizontalFlip": true,
+      "contentType": "image/png",
+      "imageCrop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "asset": {
+        "assetId": "/ppt/media/image49.png",
+        "contentType": "image/png",
+        "byteLength": 185613
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image49.png",
+        "contentType": "image/png",
+        "byteLength": 185613
+      }
+    },
+    {
+      "order": 6,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/lsnit8be",
+      "id": "41",
+      "name": "Image 25",
+      "bbox": [
+        701.75,
+        211.69,
+        297.27,
+        294.38
+      ],
+      "contentType": "image/png",
+      "imageCrop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "asset": {
+        "assetId": "/ppt/media/image50.png",
+        "contentType": "image/png",
+        "byteLength": 190460
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image50.png",
+        "contentType": "image/png",
+        "byteLength": 190460
+      }
+    },
+    {
+      "order": 7,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/ypwzidc3",
+      "id": "42",
+      "name": "Image 22",
+      "bbox": [
+        451,
+        -1.21,
+        385.44,
+        212.9
+      ],
+      "horizontalFlip": true,
+      "contentType": "image/png",
+      "imageCrop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "asset": {
+        "assetId": "/ppt/media/image51.png",
+        "contentType": "image/png",
+        "byteLength": 118296
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image51.png",
+        "contentType": "image/png",
+        "byteLength": 118296
+      }
+    },
+    {
+      "order": 8,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/zq50rito",
+      "id": "43",
+      "name": "Image 28",
+      "bbox": [
+        451,
+        506.07,
+        386.48,
+        215.15
+      ],
+      "contentType": "image/png",
+      "imageCrop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "asset": {
+        "assetId": "/ppt/media/image52.png",
+        "contentType": "image/png",
+        "byteLength": 122798
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image52.png",
+        "contentType": "image/png",
+        "byteLength": 122798
+      }
+    },
+    {
+      "order": 9,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/c3ehg3ux",
+      "id": "44",
+      "name": "Image 16",
+      "bbox": [
+        837.48,
+        504.85,
+        443.56,
+        215.15
+      ],
+      "horizontalFlip": true,
+      "contentType": "image/png",
+      "imageCrop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "asset": {
+        "assetId": "/ppt/media/image53.png",
+        "contentType": "image/png",
+        "byteLength": 123198
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image53.png",
+        "contentType": "image/png",
+        "byteLength": 123198
+      }
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ru18r2to",
+      "id": "31",
+      "name": "ZoneTexte 30",
+      "bbox": [
+        611.76,
+        36.92,
+        181.6,
+        45.24
+      ],
+      "geometry": "rect",
+      "text": "Françoise Bommensatt\nVP for Finances (VPF)",
+      "textPreview": "Françoise Bommensatt | VP for Finances (VPF)",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Françoise Bommensatt"
+          },
+          {
+            "index": 2,
+            "text": "VP for Finances (VPF)"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Françoise Bommensatt",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Françoise ",
+              "fontSize": 14.67,
+              "color": "bg1",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "Bommensatt",
+              "fontSize": 14.67,
+              "color": "bg1",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "VP for Finances (VPF)",
+          "runs": [
+            {
+              "index": 1,
+              "text": "VP for Finances (VPF)",
+              "fontSize": 14.67,
+              "color": "bg1"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/cva9k7a9",
+      "id": "32",
+      "name": "ZoneTexte 31",
+      "bbox": [
+        1040.67,
+        125.83,
+        136.55,
+        63.01
+      ],
+      "geometry": "rect",
+      "text": "Adrian Wägli\nVP for Operations (VPO)",
+      "textPreview": "Adrian Wägli | VP for Operations (VPO)",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Adrian Wägli"
+          },
+          {
+            "index": 2,
+            "text": "VP for Operations"
+          },
+          {
+            "index": 3,
+            "text": "(VPO)"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Adrian Wägli",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Adrian ",
+              "fontSize": 14.67,
+              "color": "bg1",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "Wägli",
+              "fontSize": 14.67,
+              "color": "bg1",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "VP for Operations (VPO)",
+          "runs": [
+            {
+              "index": 1,
+              "text": "VP for Operations (VPO)",
+              "fontSize": 14.67,
+              "color": "bg1"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/dwjqtcbu",
+      "id": "33",
+      "name": "ZoneTexte 32",
+      "bbox": [
+        632.33,
+        610.97,
+        177.45,
+        63.01
+      ],
+      "geometry": "rect",
+      "text": "Marianne Wannier\nVP for Human Development (VPH)",
+      "textPreview": "Marianne Wannier | VP for Human Development (VPH)",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Marianne Wannier"
+          },
+          {
+            "index": 2,
+            "text": "VP for Human"
+          },
+          {
+            "index": 3,
+            "text": "Development (VPH)"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Marianne Wannier",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Marianne ",
+              "fontSize": 14.67,
+              "color": "bg1",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "Wannier",
+              "fontSize": 14.67,
+              "color": "bg1",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "VP for Human Development (VPH)",
+          "runs": [
+            {
+              "index": 1,
+              "text": "VP for Human ",
+              "fontSize": 14.67,
+              "color": "bg1"
+            },
+            {
+              "index": 2,
+              "text": "Development",
+              "fontSize": 14.67,
+              "color": "bg1"
+            },
+            {
+              "index": 3,
+              "text": " (VPH)",
+              "fontSize": 14.67,
+              "color": "bg1"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/exsrmhsf",
+      "id": "34",
+      "name": "ZoneTexte 33",
+      "bbox": [
+        854.55,
+        527.41,
+        153.45,
+        63.01
+      ],
+      "geometry": "rect",
+      "text": "Edouard Bugnion\nVP for Innovation and Impact (VPI)",
+      "textPreview": "Edouard Bugnion | VP for Innovation and Impact (VPI)",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Edouard Bugnion"
+          },
+          {
+            "index": 2,
+            "text": "VP for Innovation"
+          },
+          {
+            "index": 3,
+            "text": "and Impact (VPI)"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Edouard Bugnion",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Edouard ",
+              "fontSize": 14.67,
+              "color": "bg1",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "Bugnion",
+              "fontSize": 14.67,
+              "color": "bg1",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "VP for Innovation and Impact (VPI)",
+          "runs": [
+            {
+              "index": 1,
+              "text": "VP for Innovation and Impact (VPI)",
+              "fontSize": 14.67,
+              "color": "bg1"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/zyl8vmt0",
+      "id": "35",
+      "name": "ZoneTexte 34",
+      "bbox": [
+        1008,
+        224.79,
+        117.29,
+        116.33
+      ],
+      "geometry": "rect",
+      "text": "Stéphanie P. Lacour\nVP for Support to Strategic Initiatives (VPS)",
+      "textPreview": "Stéphanie P. Lacour | VP for Support to Strategic Initiatives (VPS)",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 6,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Stéphanie P."
+          },
+          {
+            "index": 2,
+            "text": "Lacour"
+          },
+          {
+            "index": 3,
+            "text": "VP for Support"
+          },
+          {
+            "index": 4,
+            "text": "to Strategic"
+          },
+          {
+            "index": 5,
+            "text": "Initiatives"
+          },
+          {
+            "index": 6,
+            "text": "(VPS)"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Stéphanie P. Lacour",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Stéphanie P. Lacour",
+              "fontSize": 14.67,
+              "color": "bg1",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "VP for Support to Strategic Initiatives (VPS)",
+          "runs": [
+            {
+              "index": 1,
+              "text": "VP for Support to Strategic Initiatives (VPS)",
+              "fontSize": 14.67,
+              "color": "bg1"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0zu9ora5",
+      "id": "36",
+      "name": "ZoneTexte 35",
+      "bbox": [
+        454.58,
+        223.39,
+        117.22,
+        116.33
+      ],
+      "geometry": "rect",
+      "text": "Ambrogio Fasoli\nProvost and VP for Academic Affairs (VPA)",
+      "textPreview": "Ambrogio Fasoli | Provost and VP for Academic Affairs (VPA)",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 6,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Ambrogio"
+          },
+          {
+            "index": 2,
+            "text": "Fasoli"
+          },
+          {
+            "index": 3,
+            "text": "Provost and"
+          },
+          {
+            "index": 4,
+            "text": "VP for"
+          },
+          {
+            "index": 5,
+            "text": "Academic"
+          },
+          {
+            "index": 6,
+            "text": "Affairs (VPA)"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Ambrogio Fasoli",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Ambrogio ",
+              "fontSize": 14.67,
+              "color": "bg1",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "Fasoli",
+              "fontSize": 14.67,
+              "color": "bg1",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "Provost and VP for Academic Affairs (VPA)",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Provost and VP for Academic ",
+              "fontSize": 14.67,
+              "color": "bg1"
+            },
+            {
+              "index": 2,
+              "text": "Affairs",
+              "fontSize": 14.67,
+              "color": "bg1"
+            },
+            {
+              "index": 3,
+              "text": " (VPA)",
+              "fontSize": 14.67,
+              "color": "bg1"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 16,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/103qxcbq",
+      "id": "37",
+      "name": "ZoneTexte 36",
+      "bbox": [
+        711.54,
+        316.45,
+        104.06,
+        80.78
+      ],
+      "geometry": "rect",
+      "text": "Anna Fontcuberta i Morral\nPresident",
+      "textPreview": "Anna Fontcuberta i Morral | President",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 4,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Anna"
+          },
+          {
+            "index": 2,
+            "text": "Fontcuberta"
+          },
+          {
+            "index": 3,
+            "text": "i Morral"
+          },
+          {
+            "index": 4,
+            "text": "President"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Anna Fontcuberta i Morral",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Anna ",
+              "fontSize": 14.67,
+              "color": "bg1",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "Fontcuberta",
+              "fontSize": 14.67,
+              "color": "bg1",
+              "bold": true
+            },
+            {
+              "index": 3,
+              "text": " i ",
+              "fontSize": 14.67,
+              "color": "bg1",
+              "bold": true
+            },
+            {
+              "index": 4,
+              "text": "Morral",
+              "fontSize": 14.67,
+              "color": "bg1",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "President",
+          "runs": [
+            {
+              "index": 1,
+              "text": "President",
+              "fontSize": 14.67,
+              "color": "bg1"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 17,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/xc3mho32",
+      "id": "2",
+      "name": "Espace réservé de la date 1",
+      "bbox": [
+        748.83,
+        33.33,
+        406.13,
+        22.55
+      ],
+      "text": "EPFL AT A GLANCE",
+      "textPreview": "EPFL AT A GLANCE",
+      "resolvedFontSize": 9.33,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 9.33,
+        "typeface": "Arial",
+        "color": "tx2",
+        "bold": true,
+        "alignment": "right",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 4.8,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "EPFL AT A GLANCE"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "EPFL AT A GLANCE",
+          "runs": [
+            {
+              "index": 1,
+              "text": "EPFL AT A GLANCE"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 18,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/zelojyl8",
+      "id": "4",
+      "name": "Espace réservé du pied de page 3",
+      "bbox": [
+        748.83,
+        45.39,
+        406.13,
+        23.63
+      ],
+      "resolvedFontSize": 9.33,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 9.33,
+        "typeface": "Arial",
+        "color": "tx2",
+        "alignment": "right",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 4.8,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": ""
+          }
+        ]
+      }
+    }
+  ],
+  "composeRuns": []
+}

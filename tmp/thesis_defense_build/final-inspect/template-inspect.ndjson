@@ -1,0 +1,142 @@
+{"kind":"slide","id":"sl/y90nupkv","slide":1,"title":"Graph policies for","textShapes":4}
+{"kind":"shape","id":"sh/sryl4zqx","slide":1,"name":"Forme libre 6","bbox":[0,0,844.17,720]}
+{"kind":"shape","id":"sh/utg3698n","slide":1,"name":"Rectangle 8","bbox":[42.25,622.52,7.88,10.31]}
+{"kind":"textbox","id":"sh/k3yl0zql","slide":1,"textChars":46,"textLines":2}
+{"kind":"textbox","id":"sh/7qp4be9c","slide":1,"textChars":27,"textLines":1}
+{"kind":"textbox","id":"sh/65g3298r","slide":1,"textChars":30,"textLines":4}
+{"kind":"textbox","id":"sh/ts7md4r2","slide":1,"textChars":43,"textLines":4}
+{"kind":"image","id":"im/jqxw72dk","slide":1,"name":"Espace réservé pour une image  10","bbox":[0,0,1280,720]}
+{"kind":"image","id":"im/ipofexcz","slide":1,"name":"Image 7","bbox":[57.47,621.05,96.82,63.34]}
+{"kind":"slide","id":"sl/hwbqtkby","slide":2,"title":"THESIS STORY","textShapes":2}
+{"kind":"textbox","id":"sh/ozy1ofad","slide":2,"textChars":12,"textLines":1}
+{"kind":"textbox","id":"sh/b29kza94","slide":2,"textChars":109,"textLines":4}
+{"kind":"image","id":"im/7eh0ny1c","slide":2,"name":"","bbox":[647,2,631,716]}
+{"kind":"slide","id":"sl/ofy9wn61","slide":3,"title":"• Reconfigure busbars to redirect power flows","textShapes":4}
+{"kind":"textbox","id":"sh/cza94vmx","slide":3,"textChars":181,"textLines":6}
+{"kind":"textbox","id":"sh/d0jax03i","slide":3,"textChars":53,"textLines":1}
+{"kind":"textbox","id":"sh/298ryl4v","slide":3,"textChars":13,"textLines":1}
+{"kind":"textbox","id":"sh/obq90bml","slide":3,"textChars":1,"textLines":1}
+{"kind":"image","id":"im/8v25wni5","slide":3,"name":"","bbox":[607.95,138.02,638.76,402.27]}
+{"kind":"image","id":"im/rqxozmh4","slide":3,"name":"","bbox":[635.21,547.76,604.04,129.76]}
+{"kind":"slide","id":"sl/jyx0ra1s","slide":4,"title":"Single-agent & hierarchical","textShapes":6}
+{"kind":"textbox","id":"sh/1cj2d8b6","slide":4,"textChars":123,"textLines":4}
+{"kind":"textbox","id":"sh/0ba143al","slide":4,"textChars":122,"textLines":4}
+{"kind":"textbox","id":"sh/rm1k7yt4","slide":4,"textChars":83,"textLines":1}
+{"kind":"textbox","id":"sh/ql8jytsj","slide":4,"textChars":127,"textLines":4}
+{"kind":"textbox","id":"sh/doj29oba","slide":4,"textChars":13,"textLines":1}
+{"kind":"textbox","id":"sh/3ihk3et8","slide":4,"textChars":1,"textLines":1}
+{"kind":"image","id":"im/z6lc7q1o","slide":4,"name":"","bbox":[0,327.33,1280,179.17]}
+{"kind":"slide","id":"sl/i107q5of","slide":5,"title":"3. PORTABLE","textShapes":6}
+{"kind":"textbox","id":"sh/dgbulwnm","slide":5,"textChars":28,"textLines":2}
+{"kind":"textbox","id":"sh/cf2tcr61","slide":5,"textChars":29,"textLines":2}
+{"kind":"textbox","id":"sh/z2tcnm5s","slide":5,"textChars":8,"textLines":1}
+{"kind":"textbox","id":"sh/n6dcr65o","slide":5,"textChars":32,"textLines":2}
+{"kind":"textbox","id":"sh/j6dwfqds","slide":5,"textChars":1,"textLines":1}
+{"kind":"textbox","id":"sh/yhkbe1o7","slide":5,"textChars":13,"textLines":1}
+{"kind":"image","id":"im/vitwz65k","slide":5,"name":"","bbox":[846.53,292.21,378,230.04]}
+{"kind":"image","id":"im/uhkvq14z","slide":5,"name":"","bbox":[451,292.21,378,230.04]}
+{"kind":"image","id":"im/yt0f21or","slide":5,"name":"","bbox":[55.47,292.28,379.58,230.04]}
+{"kind":"slide","id":"sl/x8f69ofe","slide":6,"title":"14","textShapes":8}
+{"kind":"textbox","id":"sh/zi98nu94","slide":6,"textChars":9,"textLines":2}
+{"kind":"textbox","id":"sh/87ipkzal","slide":6,"textChars":21,"textLines":2}
+{"kind":"textbox","id":"sh/98rqt4r6","slide":6,"textChars":13,"textLines":1}
+{"kind":"textbox","id":"sh/7m98ru9g","slide":6,"textChars":1,"textLines":1}
+{"kind":"textbox","id":"sh/5svutgni","slide":6,"textChars":9,"textLines":2}
+{"kind":"textbox","id":"sh/47mt0b6x","slide":6,"textChars":12,"textLines":2}
+{"kind":"textbox","id":"sh/j6dcr65c","slide":6,"textChars":17,"textLines":2}
+{"kind":"textbox","id":"sh/yhg7epsj","slide":6,"textChars":83,"textLines":1}
+{"kind":"image","id":"im/lw3uh4be","slide":6,"name":"","bbox":[0,0,534,720]}
+{"kind":"slide","id":"sl/gnmp4jqx","slide":7,"title":"• Survival alone rewards needless switching","textShapes":4}
+{"kind":"textbox","id":"sh/eh0ba1sr","slide":7,"textChars":179,"textLines":3}
+{"kind":"textbox","id":"sh/cb2tkvap","slide":7,"textChars":42,"textLines":1}
+{"kind":"textbox","id":"sh/dcbud0ra","slide":7,"textChars":13,"textLines":1}
+{"kind":"textbox","id":"sh/zedcfa9g","slide":7,"textChars":1,"textLines":1}
+{"kind":"image","id":"im/6tc3mpoz","slide":7,"name":"","bbox":[482.67,272.59,771.33,447.41]}
+{"kind":"slide","id":"sl/fu1gfa1s","slide":8,"title":"• Each actor receives its regional graph plus one-hop context","textShapes":4}
+{"kind":"textbox","id":"sh/je9g3ahk","slide":8,"textChars":155,"textLines":3}
+{"kind":"textbox","id":"sh/18byd4zy","slide":8,"textChars":52,"textLines":1}
+{"kind":"textbox","id":"sh/g72x4zyd","slide":8,"textChars":13,"textLines":1}
+{"kind":"textbox","id":"sh/6h0fypgb","slide":8,"textChars":1,"textLines":1}
+{"kind":"image","id":"im/jyl0fqxw","slide":8,"name":"","bbox":[482.67,272.59,771.33,447.41]}
+{"kind":"slide","id":"sl/udsvah03","slide":9,"title":"• Gather the node rows touched by candidate j","textShapes":4}
+{"kind":"textbox","id":"sh/bih4na5w","slide":9,"textChars":145,"textLines":3}
+{"kind":"textbox","id":"sh/1cfmhgne","slide":9,"textChars":47,"textLines":1}
+{"kind":"textbox","id":"sh/0b65obm9","slide":9,"textChars":13,"textLines":1}
+{"kind":"textbox","id":"sh/mdonql4z","slide":9,"textChars":1,"textLines":1}
+{"kind":"image","id":"im/jutknyd4","slide":9,"name":"","bbox":[482.67,272.59,771.33,447.41]}
+{"kind":"slide","id":"sl/m90b6t0r","slide":10,"title":"• All leading Screen-F variants exceed 98%","textShapes":4}
+{"kind":"textbox","id":"sh/725onyl4","slide":10,"textChars":137,"textLines":3}
+{"kind":"textbox","id":"sh/xc3mho32","slide":10,"textChars":57,"textLines":1}
+{"kind":"textbox","id":"sh/cbu58j2h","slide":10,"textChars":13,"textLines":1}
+{"kind":"textbox","id":"sh/ydcnatkn","slide":10,"textChars":2,"textLines":1}
+{"kind":"image","id":"im/fm9sbalk","slide":10,"name":"","bbox":[482.67,272.59,771.33,447.41]}
+{"kind":"slide","id":"sl/jetc3ut0","slide":11,"title":"• Absolute power scales shift with grid capacity","textShapes":4}
+{"kind":"textbox","id":"sh/72t03qp0","slide":11,"textChars":185,"textLines":4}
+{"kind":"textbox","id":"sh/xcryxg7y","slide":11,"textChars":54,"textLines":1}
+{"kind":"textbox","id":"sh/wbih4b6d","slide":11,"textChars":13,"textLines":1}
+{"kind":"textbox","id":"sh/250zy18b","slide":11,"textChars":2,"textLines":1}
+{"kind":"image","id":"im/nml0bqh8","slide":11,"name":"","bbox":[482.67,272.59,771.33,447.41]}
+{"kind":"slide","id":"sl/8f2psfyx","slide":12,"title":"At k = 64, overall family means:","textShapes":4}
+{"kind":"textbox","id":"sh/b6d4f2lc","slide":12,"textChars":144,"textLines":6}
+{"kind":"textbox","id":"sh/1gbm9s3a","slide":12,"textChars":46,"textLines":1}
+{"kind":"textbox","id":"sh/0f2lgnmp","slide":12,"textChars":13,"textLines":1}
+{"kind":"textbox","id":"sh/q903ad4n","slide":12,"textChars":2,"textLines":1}
+{"kind":"image","id":"im/zy1svaho","slide":12,"name":"","bbox":[482.67,272.59,771.33,447.41]}
+{"kind":"slide","id":"sl/hgzapcr6","slide":13,"title":"RESULTS REQUIRED BEFORE DEFENCE","textShapes":4}
+{"kind":"textbox","id":"sh/gzy5s3a1","slide":13,"textChars":152,"textLines":7}
+{"kind":"textbox","id":"sh/q50nydsj","slide":13,"textChars":58,"textLines":1}
+{"kind":"textbox","id":"sh/bq9orito","slide":13,"textChars":13,"textLines":1}
+{"kind":"textbox","id":"sh/p4r6p8by","slide":13,"textChars":2,"textLines":1}
+{"kind":"image","id":"im/47250fqh","slide":13,"name":"","bbox":[482.67,272.59,771.33,447.41]}
+{"kind":"slide","id":"sl/6lsnupw7","slide":14,"title":"With local ρ = 0.95:","textShapes":4}
+{"kind":"textbox","id":"sh/zi5c3y98","slide":14,"textChars":149,"textLines":6}
+{"kind":"textbox","id":"sh/xc7eds76","slide":14,"textChars":54,"textLines":1}
+{"kind":"textbox","id":"sh/wbydknq1","slide":14,"textChars":13,"textLines":1}
+{"kind":"textbox","id":"sh/idgvmx8r","slide":14,"textChars":2,"textLines":1}
+{"kind":"image","id":"im/rapkb2x4","slide":14,"name":"","bbox":[482.67,272.59,771.33,447.41]}
+{"kind":"slide","id":"sl/vaxsvy10","slide":15,"title":"Matched difficult-cohort effects:","textShapes":4}
+{"kind":"textbox","id":"sh/na5476l8","slide":15,"textChars":154,"textLines":6}
+{"kind":"textbox","id":"sh/547mhg3m","slide":15,"textChars":53,"textLines":1}
+{"kind":"textbox","id":"sh/k3y5ov21","slide":15,"textChars":13,"textLines":1}
+{"kind":"textbox","id":"sh/65gnqlk7","slide":15,"textChars":2,"textLines":1}
+{"kind":"image","id":"im/n2lsrip4","slide":15,"name":"","bbox":[482.67,272.59,771.33,447.41]}
+{"kind":"slide","id":"sl/gny5sjyp","slide":16,"title":"Median difficult-cohort survival:","textShapes":4}
+{"kind":"textbox","id":"sh/ip4zel83","slide":16,"textChars":138,"textLines":6}
+{"kind":"textbox","id":"sh/8z2h8bq1","slide":16,"textChars":54,"textLines":1}
+{"kind":"textbox","id":"sh/9kby1g7m","slide":16,"textChars":13,"textLines":1}
+{"kind":"textbox","id":"sh/zutgvm94","slide":16,"textChars":2,"textLines":1}
+{"kind":"image","id":"im/2tcjmlgn","slide":16,"name":"","bbox":[482.67,272.59,771.33,447.41]}
+{"kind":"slide","id":"sl/14bup87q","slide":17,"title":"WHAT TRANSFERRED","textShapes":6}
+{"kind":"textbox","id":"sh/1c7e50ni","slide":17,"textChars":113,"textLines":5}
+{"kind":"textbox","id":"sh/gbedwfmx","slide":17,"textChars":114,"textLines":5}
+{"kind":"textbox","id":"sh/rm5czq50","slide":17,"textChars":34,"textLines":1}
+{"kind":"textbox","id":"sh/6lwvql4v","slide":17,"textChars":114,"textLines":5}
+{"kind":"textbox","id":"sh/t8ne10n6","slide":17,"textChars":13,"textLines":1}
+{"kind":"textbox","id":"sh/jilcvq54","slide":17,"textChars":2,"textLines":1}
+{"kind":"image","id":"im/bet4vyp0","slide":17,"name":"","bbox":[0,327.33,1280,179.17]}
+{"kind":"slide","id":"sl/y5wne50z","slide":18,"title":"Three conclusions","textShapes":3}
+{"kind":"textbox","id":"sh/hsn2l4bu","slide":18,"textChars":132,"textLines":7}
+{"kind":"textbox","id":"sh/itw3upcf","slide":18,"textChars":13,"textLines":1}
+{"kind":"textbox","id":"sh/4felwzu5","slide":18,"textChars":2,"textLines":1}
+{"kind":"image","id":"im/o3idc7i1","slide":18,"name":"Espace réservé pour une image  7","bbox":[0,0,1280,720]}
+{"kind":"slide","id":"sl/nid43ytk","slide":19,"title":"Questions?","textShapes":3}
+{"kind":"shape","id":"sh/wj2psvat","slide":19,"name":"Forme libre 6","bbox":[0,0,844.17,720]}
+{"kind":"shape","id":"sh/il47u5sz","slide":19,"name":"Rectangle 8","bbox":[42.25,622.52,7.88,10.31]}
+{"kind":"textbox","id":"sh/8v2pobax","slide":19,"textChars":10,"textLines":1}
+{"kind":"textbox","id":"sh/vitozqt8","slide":19,"textChars":13,"textLines":1}
+{"kind":"textbox","id":"sh/xkbq10be","slide":19,"textChars":40,"textLines":4}
+{"kind":"image","id":"im/fux4vy18","slide":19,"name":"Espace réservé pour une image  10","bbox":[0,0,1280,720]}
+{"kind":"image","id":"im/eton2tkn","slide":19,"name":"Image 7","bbox":[57.47,621.05,96.82,63.34]}
+{"kind":"slide","id":"sl/zyxsni5k","slide":20,"title":"SUPPLEMENTARY","textShapes":4}
+{"kind":"textbox","id":"sh/rq50vmp8","slide":20,"textChars":13,"textLines":1}
+{"kind":"textbox","id":"sh/4nu1krqh","slide":20,"textChars":62,"textLines":3}
+{"kind":"textbox","id":"sh/po3itc72","slide":20,"textChars":13,"textLines":1}
+{"kind":"textbox","id":"sh/3ml0rmpw","slide":20,"textChars":2,"textLines":1}
+{"kind":"image","id":"im/9cvypwf6","slide":20,"name":"Picture 2","bbox":[0,0,96,96]}
+{"kind":"slide","id":"sl/m1wvqtk3","slide":21,"title":"50","textShapes":8}
+{"kind":"textbox","id":"sh/0f2lon6p","slide":21,"textChars":11,"textLines":2}
+{"kind":"textbox","id":"sh/ra9kryp8","slide":21,"textChars":15,"textLines":2}
+{"kind":"textbox","id":"sh/qp03yt8n","slide":21,"textChars":13,"textLines":1}
+{"kind":"textbox","id":"sh/sb2lk36t","slide":21,"textChars":2,"textLines":1}
+{"kind":"textbox","id":"sh/wvax03q1","slide":21,"textChars":7,"textLines":2}
+{"kind":"notice","message":"Truncated: omitted 101 lines. Increase maxChars or narrow target."}

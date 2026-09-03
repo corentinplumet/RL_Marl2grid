@@ -1,0 +1,1698 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/udsvah03",
+    "id": "udsvah03",
+    "slide": 9,
+    "layoutId": "/ppt/slideLayouts/slideLayout12.xml",
+    "layoutName": "Title_Only",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 960,
+      "height": 540
+    }
+  },
+  "theme": {
+    "colorSchemeName": "EPFL - New Colors 2019",
+    "colors": {
+      "accent1": "#E30613",
+      "accent2": "#00A79F",
+      "accent3": "#413C3A",
+      "accent4": "#007480",
+      "accent5": "#F39869",
+      "accent6": "#B51F1F",
+      "dk1": "#413C3A",
+      "lt1": "#FFFFFF",
+      "dk2": "#413C3A",
+      "lt2": "#CAC7C7",
+      "hlink": "#ED6E9C",
+      "folHlink": "#4F8FCC"
+    },
+    "fontScheme": {
+      "name": "EPFL_Beta2",
+      "majorFont": {
+        "latinTypeface": "Franklin Gothic Demi Cond"
+      },
+      "minorFont": {
+        "latinTypeface": "Arial"
+      }
+    },
+    "typefaces": [
+      "Arial",
+      "Franklin Gothic Demi Cond"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout12.xml",
+      "name": "Title_Only",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout12.xml/6",
+          "id": "6",
+          "name": "Titre 5",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "Modifiez le style du titre",
+          "textPreview": "Modifiez le style du titre",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifiez le style du titre",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifiez le style du titre"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout12.xml/7",
+          "id": "7",
+          "name": "Espace réservé de la date 6",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "WELCOME TO EPFL",
+          "textPreview": "WELCOME TO EPFL",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "WELCOME TO EPFL",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "WELCOME TO EPFL"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout12.xml/8",
+          "id": "8",
+          "name": "Espace réservé du pied de page 7",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "Speaker",
+          "textPreview": "Speaker",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Speaker",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Speaker"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout12.xml/9",
+          "id": "9",
+          "name": "Espace réservé du numéro de diapositive 8",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "‹N°›",
+          "textPreview": "‹N°›",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹N°›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹N°›"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "type": "master",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/2",
+          "id": "2",
+          "name": "Title Placeholder 1",
+          "bbox": [
+            95,
+            18.85,
+            385,
+            112.62
+          ],
+          "geometry": "rect",
+          "text": "Modifiez le style du titre",
+          "textPreview": "Modifiez le style du titre",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 0,
+              "right": 7.56,
+              "bottom": 4.91,
+              "left": 18.9
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifiez le style du titre",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifiez le style du titre"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/3",
+          "id": "3",
+          "name": "Text Placeholder 2",
+          "bbox": [
+            95,
+            164.17,
+            811.17,
+            355.57
+          ],
+          "geometry": "rect",
+          "text": "Modifier les styles du texte du masque\nDeuxième niveau\nTroisième niveau\nQuatrième niveau\nCinquième niveau",
+          "textPreview": "Modifier les styles du texte du masque | Deuxième niveau | Troisième niveau | Quatrième niveau | Cinquième niveau",
+          "resolvedTextStyle": {
+            "vertical": 1,
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 18.9
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifier les styles du texte du masque",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifier les styles du "
+                },
+                {
+                  "index": 2,
+                  "text": "texte"
+                },
+                {
+                  "index": 3,
+                  "text": " du masque"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "text": "Deuxième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Deuxième"
+                },
+                {
+                  "index": 2,
+                  "text": " "
+                },
+                {
+                  "index": 3,
+                  "text": "niveau"
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "text": "Troisième niveau\nQuatrième niveau\nCinquième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Troisième"
+                },
+                {
+                  "index": 2,
+                  "text": " "
+                },
+                {
+                  "index": 3,
+                  "text": "niveau"
+                },
+                {
+                  "index": 4,
+                  "text": "\n"
+                },
+                {
+                  "index": 5,
+                  "text": "Quatrième"
+                },
+                {
+                  "index": 6,
+                  "text": " "
+                },
+                {
+                  "index": 7,
+                  "text": "niveau"
+                },
+                {
+                  "index": 8,
+                  "text": "\n"
+                },
+                {
+                  "index": 9,
+                  "text": "Cinquième"
+                },
+                {
+                  "index": 10,
+                  "text": " "
+                },
+                {
+                  "index": 11,
+                  "text": "niveau"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/4",
+          "id": "4",
+          "name": "Date Placeholder 3",
+          "bbox": [
+            -128.23,
+            291.7,
+            350.77,
+            95.7
+          ],
+          "rotation": 270,
+          "geometry": "rect",
+          "text": "WELCOME TO EPFL",
+          "textPreview": "WELCOME TO EPFL",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "WELCOME TO EPFL",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "WELCOME TO EPFL"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/5",
+          "id": "5",
+          "name": "Footer Placeholder 4",
+          "bbox": [
+            747.09,
+            196.75,
+            372,
+            53.83
+          ],
+          "rotation": 270,
+          "geometry": "rect",
+          "text": "Speaker",
+          "textPreview": "Speaker",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Speaker",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Speaker"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 5,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/6",
+          "id": "6",
+          "name": "Slide Number Placeholder 5",
+          "bbox": [
+            906.17,
+            20.5,
+            53.83,
+            17.17
+          ],
+          "geometry": "rect",
+          "text": "‹N°›",
+          "textPreview": "‹N°›",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "insets": {
+              "top": 0,
+              "right": 9.45,
+              "bottom": 0,
+              "left": 9.45
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹N°›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹N°›"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 6,
+          "kind": "image",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/15",
+          "id": "15",
+          "name": "Image 12",
+          "bbox": [
+            13.68,
+            13.89,
+            68.66,
+            29.71
+          ],
+          "contentType": "image/png",
+          "asset": {
+            "assetId": "/ppt/media/image1.png",
+            "contentType": "image/png",
+            "byteLength": 17196
+          },
+          "fillImage": {
+            "assetId": "/ppt/media/image1.png",
+            "contentType": "image/png",
+            "byteLength": 17196
+          }
+        },
+        {
+          "order": 7,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/14",
+          "id": "14",
+          "name": "Rectangle 13",
+          "bbox": [
+            45.14,
+            514.2,
+            4.8,
+            6.28
+          ],
+          "rotation": 270,
+          "geometry": "rect",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "verticalAlignment": "middle"
+          },
+          "fillColor": "accent1",
+          "lineWidth": 0
+        }
+      ]
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1cfmhgne",
+      "id": "2",
+      "name": "Titre 1",
+      "bbox": [
+        95,
+        18.85,
+        770.76,
+        112.62
+      ],
+      "text": "Dataset– Comparison paper",
+      "textPreview": "Dataset– Comparison paper",
+      "resolvedFontSize": 42.67,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 42.67,
+        "typeface": "Franklin Gothic Demi Cond",
+        "color": "tx1",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "insets": {
+          "top": 0,
+          "right": 7.56,
+          "bottom": 4.91,
+          "left": 18.9
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Dataset– Comparison paper"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Dataset– Comparison paper",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Dataset– "
+            },
+            {
+              "index": 2,
+              "text": "Comparison paper"
+            }
+          ],
+          "bulletCharacter": "",
+          "lineSpacingPercent": 80000
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/mdonql4z",
+      "id": "5",
+      "name": "Espace réservé du numéro de diapositive 4",
+      "bbox": [
+        906.17,
+        20.5,
+        53.83,
+        17.17
+      ],
+      "text": "9",
+      "textPreview": "9",
+      "resolvedFontSize": 9.33,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 9.33,
+        "typeface": "Franklin Gothic Demi Cond",
+        "color": "tx1",
+        "bold": true,
+        "alignment": "center",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 9.45,
+          "bottom": 0,
+          "left": 9.45
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "9"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "9",
+          "runs": [
+            {
+              "index": 1,
+              "text": "9"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ofq5svm5",
+      "id": "7",
+      "name": "ZoneTexte 6",
+      "bbox": [
+        786.31,
+        447.34,
+        19.39,
+        31.5
+      ],
+      "geometry": "rect",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "none",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": ""
+          }
+        ]
+      }
+    },
+    {
+      "order": 4,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/p83udoz2",
+      "id": "38",
+      "name": "Encre 16",
+      "bbox": [
+        651.47,
+        187.12,
+        19.39,
+        5.4
+      ],
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image13.png",
+        "contentType": "image/png",
+        "byteLength": 295
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image13.png",
+        "contentType": "image/png",
+        "byteLength": 295
+      },
+      "tableCell": {
+        "tableAid": "tb/47m94bed",
+        "cellIndex": 4,
+        "row": 2,
+        "column": 2,
+        "overlap": 1
+      }
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/xcfy90n6",
+      "id": "37",
+      "name": "ZoneTexte 36",
+      "bbox": [
+        53.44,
+        84.86,
+        864.95,
+        436.22
+      ],
+      "geometry": "rect",
+      "text": "Physics-constrained graph modeling for building thermal dynamics (Yang et al., 2024).\n\n\n\n\n\n\n\n\n\n\n\nWhat did we try to improve? \nEnd-to-end learning of physics parameters\nRemove hand-tuned ordering penalties (τ = R·C sorting), reducing hyperparameter tuning.\n\nLong-horizon stability\nReduce open-loop drift over extended prediction horizons.\n\nInterpretability of energy flow\nDerive explicit,message values inside the message passing algorithm enabling clear visualization and diagnosis of inter-zone energy exchange.",
+      "textPreview": "Physics-constrained graph modeling for building thermal dynamics (Yang et al., 2024). |  |  |  |  |  |  |  |  |  |  |  | What did we try ...",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 18,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 22,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Physics-constrained graph modeling for building thermal dynamics (Yang et al., 2024)."
+          },
+          {
+            "index": 2,
+            "text": ""
+          },
+          {
+            "index": 3,
+            "text": ""
+          },
+          {
+            "index": 4,
+            "text": ""
+          },
+          {
+            "index": 5,
+            "text": ""
+          },
+          {
+            "index": 6,
+            "text": ""
+          },
+          {
+            "index": 7,
+            "text": ""
+          },
+          {
+            "index": 8,
+            "text": ""
+          },
+          {
+            "index": 9,
+            "text": ""
+          },
+          {
+            "index": 10,
+            "text": ""
+          },
+          {
+            "index": 11,
+            "text": ""
+          },
+          {
+            "index": 12,
+            "text": ""
+          },
+          {
+            "index": 13,
+            "text": "What did we try to improve?"
+          },
+          {
+            "index": 14,
+            "text": "1. End-to-end learning of physics parameters"
+          },
+          {
+            "index": 15,
+            "text": "Remove hand-tuned ordering penalties (τ = R·C sorting), reducing hyperparameter tuning."
+          },
+          {
+            "index": 16,
+            "text": ""
+          },
+          {
+            "index": 17,
+            "text": "2. Long-horizon stability"
+          },
+          {
+            "index": 18,
+            "text": "Reduce open-loop drift over extended prediction horizons."
+          },
+          {
+            "index": 19,
+            "text": ""
+          },
+          {
+            "index": 20,
+            "text": "3. Interpretability of energy flow"
+          },
+          {
+            "index": 21,
+            "text": "Derive explicit,message values inside the message passing algorithm enabling clear visualization and diagnosis of"
+          },
+          {
+            "index": 22,
+            "text": "inter-zone energy exchange."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Physics-constrained graph modeling for building thermal dynamics (Yang et al., 2024).",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Physics-constrained",
+              "fontSize": 16,
+              "bold": true,
+              "italic": true
+            },
+            {
+              "index": 2,
+              "text": " graph modeling for building thermal ",
+              "fontSize": 16,
+              "bold": true,
+              "italic": true
+            },
+            {
+              "index": 3,
+              "text": "dynamics",
+              "fontSize": 16,
+              "bold": true,
+              "italic": true
+            },
+            {
+              "index": 4,
+              "text": " (Yang et al., 2024).",
+              "fontSize": 16,
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 13,
+          "text": "What did we try to improve? ",
+          "resolvedTextStyle": {
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "What",
+              "fontSize": 16,
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": " ",
+              "fontSize": 16,
+              "bold": true
+            },
+            {
+              "index": 3,
+              "text": "did",
+              "fontSize": 16,
+              "bold": true
+            },
+            {
+              "index": 4,
+              "text": " ",
+              "fontSize": 16,
+              "bold": true
+            },
+            {
+              "index": 5,
+              "text": "we",
+              "fontSize": 16,
+              "bold": true
+            },
+            {
+              "index": 6,
+              "text": " ",
+              "fontSize": 16,
+              "bold": true
+            },
+            {
+              "index": 7,
+              "text": "try",
+              "fontSize": 16,
+              "bold": true
+            },
+            {
+              "index": 8,
+              "text": " to ",
+              "fontSize": 16,
+              "bold": true
+            },
+            {
+              "index": 9,
+              "text": "improve",
+              "fontSize": 16,
+              "bold": true
+            },
+            {
+              "index": 10,
+              "text": "?",
+              "fontSize": 16,
+              "bold": true
+            },
+            {
+              "index": 11,
+              "text": " ",
+              "fontSize": 16,
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 14,
+          "text": "End-to-end learning of physics parameters\nRemove hand-tuned ordering penalties (τ = R·C sorting), reducing hyperparameter tuning.",
+          "resolvedTextStyle": {
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "End-to-end ",
+              "fontSize": 16,
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "learning",
+              "fontSize": 16,
+              "bold": true
+            },
+            {
+              "index": 3,
+              "text": " of ",
+              "fontSize": 16,
+              "bold": true
+            },
+            {
+              "index": 4,
+              "text": "physics",
+              "fontSize": 16,
+              "bold": true
+            },
+            {
+              "index": 5,
+              "text": " ",
+              "fontSize": 16,
+              "bold": true
+            },
+            {
+              "index": 6,
+              "text": "parameters",
+              "fontSize": 16,
+              "bold": true
+            },
+            {
+              "index": 7,
+              "text": "\n",
+              "alignment": "left"
+            },
+            {
+              "index": 8,
+              "text": "Remove",
+              "fontSize": 16
+            },
+            {
+              "index": 9,
+              "text": " hand-",
+              "fontSize": 16
+            },
+            {
+              "index": 10,
+              "text": "tuned",
+              "fontSize": 16
+            },
+            {
+              "index": 11,
+              "text": " ",
+              "fontSize": 16
+            },
+            {
+              "index": 12,
+              "text": "ordering",
+              "fontSize": 16
+            },
+            {
+              "index": 13,
+              "text": " penalties (",
+              "fontSize": 16
+            },
+            {
+              "index": 14,
+              "text": "τ = ",
+              "fontSize": 16
+            },
+            {
+              "index": 15,
+              "text": "R·C ",
+              "fontSize": 16
+            },
+            {
+              "index": 16,
+              "text": "sorting",
+              "fontSize": 16
+            },
+            {
+              "index": 17,
+              "text": "), ",
+              "fontSize": 16
+            },
+            {
+              "index": 18,
+              "text": "reducing",
+              "fontSize": 16
+            },
+            {
+              "index": 19,
+              "text": " ",
+              "fontSize": 16
+            },
+            {
+              "index": 20,
+              "text": "hyperparameter",
+              "fontSize": 16
+            },
+            {
+              "index": 21,
+              "text": " tuning.",
+              "fontSize": 16
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 16,
+          "text": "Long-horizon stability\nReduce open-loop drift over extended prediction horizons.",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Long-horizon ",
+              "fontSize": 16,
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "stability",
+              "fontSize": 16,
+              "bold": true
+            },
+            {
+              "index": 3,
+              "text": "\n"
+            },
+            {
+              "index": 4,
+              "text": "Reduce",
+              "fontSize": 16
+            },
+            {
+              "index": 5,
+              "text": " open-",
+              "fontSize": 16
+            },
+            {
+              "index": 6,
+              "text": "loop",
+              "fontSize": 16
+            },
+            {
+              "index": 7,
+              "text": " drift over ",
+              "fontSize": 16
+            },
+            {
+              "index": 8,
+              "text": "extended",
+              "fontSize": 16
+            },
+            {
+              "index": 9,
+              "text": " ",
+              "fontSize": 16
+            },
+            {
+              "index": 10,
+              "text": "prediction",
+              "fontSize": 16
+            },
+            {
+              "index": 11,
+              "text": " horizons",
+              "fontSize": 16
+            },
+            {
+              "index": 12,
+              "text": ".",
+              "fontSize": 16
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 18,
+          "text": "Interpretability of energy flow\nDerive explicit,message values inside the message passing algorithm enabling clear visualization and diagnosis of inter-zone energy exchange.",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Interpretability",
+              "fontSize": 16,
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": " of ",
+              "fontSize": 16,
+              "bold": true
+            },
+            {
+              "index": 3,
+              "text": "energy",
+              "fontSize": 16,
+              "bold": true
+            },
+            {
+              "index": 4,
+              "text": " flow",
+              "fontSize": 16,
+              "bold": true
+            },
+            {
+              "index": 5,
+              "text": "\n"
+            },
+            {
+              "index": 6,
+              "text": "Derive",
+              "fontSize": 16,
+              "color": "#000000"
+            },
+            {
+              "index": 7,
+              "text": " ",
+              "fontSize": 16,
+              "color": "#000000"
+            },
+            {
+              "index": 8,
+              "text": "explicit,message",
+              "fontSize": 16,
+              "color": "#000000"
+            },
+            {
+              "index": 9,
+              "text": " values ",
+              "fontSize": 16,
+              "color": "#000000"
+            },
+            {
+              "index": 10,
+              "text": "inside",
+              "fontSize": 16,
+              "color": "#000000"
+            },
+            {
+              "index": 11,
+              "text": " the message passing ",
+              "fontSize": 16,
+              "color": "#000000"
+            },
+            {
+              "index": 12,
+              "text": "algorithm",
+              "fontSize": 16,
+              "color": "#000000"
+            },
+            {
+              "index": 13,
+              "text": " ",
+              "fontSize": 16,
+              "color": "#000000"
+            },
+            {
+              "index": 14,
+              "text": "enabling",
+              "fontSize": 16,
+              "color": "#000000"
+            },
+            {
+              "index": 15,
+              "text": " ",
+              "fontSize": 16,
+              "color": "#000000"
+            },
+            {
+              "index": 16,
+              "text": "clear",
+              "fontSize": 16,
+              "color": "#000000"
+            },
+            {
+              "index": 17,
+              "text": " ",
+              "fontSize": 16,
+              "color": "#000000"
+            },
+            {
+              "index": 18,
+              "text": "visualization",
+              "fontSize": 16,
+              "color": "#000000"
+            },
+            {
+              "index": 19,
+              "text": " and ",
+              "fontSize": 16,
+              "color": "#000000"
+            },
+            {
+              "index": 20,
+              "text": "diagnosis",
+              "fontSize": 16,
+              "color": "#000000"
+            },
+            {
+              "index": 21,
+              "text": " of ",
+              "fontSize": 16,
+              "color": "#000000"
+            },
+            {
+              "index": 22,
+              "text": "inter-zone",
+              "fontSize": 16,
+              "color": "#000000"
+            },
+            {
+              "index": 23,
+              "text": " ",
+              "fontSize": 16,
+              "color": "#000000"
+            },
+            {
+              "index": 24,
+              "text": "energy",
+              "fontSize": 16,
+              "color": "#000000"
+            },
+            {
+              "index": 25,
+              "text": " exchange",
+              "fontSize": 16,
+              "color": "#000000"
+            },
+            {
+              "index": 26,
+              "text": ".",
+              "fontSize": 16,
+              "color": "#000000"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 6,
+      "kind": "table",
+      "scope": "slide",
+      "aid": "tb/47m94bed",
+      "id": "39",
+      "name": "Tableau 11",
+      "bbox": [
+        53.44,
+        144.64,
+        864.95,
+        120.72
+      ],
+      "text": "Physics-Constrained RC-GNN (Yang et al., 2024) | EGNN\nRoom size in loss: requires known zone areas. | Geometric symmetry → physics: no need for room-size metadata.\nτ = R·C in messages: embeds physics via learned time-constant. | Equivariance constraints: enforce “thermodynamics laws”.",
+      "textPreview": "Physics-Constrained RC-GNN (Yang et al., 2024) | EGNN | Room size in loss: requires known zone areas. | Geometric symmetry → physics: no ...",
+      "rows": 3,
+      "cols": 2,
+      "cells": [
+        {
+          "index": 1,
+          "row": 1,
+          "column": 1,
+          "bbox": [
+            53.44,
+            144.64,
+            432.47,
+            36.19
+          ],
+          "text": "Physics-Constrained RC-GNN (Yang et al., 2024)",
+          "textPreview": "Physics-Constrained RC-GNN (Yang et al., 2024)",
+          "fillColor": {
+            "type": "theme",
+            "value": "tx1",
+            "transform": {
+              "lighten": 0.8
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Physics-Constrained RC-GNN (Yang et al., 2024)",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Physics-Constrained",
+                  "fontSize": 16,
+                  "typeface": "Arial",
+                  "color": "tx1",
+                  "bold": true
+                },
+                {
+                  "index": 2,
+                  "text": " RC-GNN ",
+                  "fontSize": 16,
+                  "typeface": "Arial",
+                  "color": "tx1",
+                  "bold": true
+                },
+                {
+                  "index": 3,
+                  "text": "(Yang et al., 2024)",
+                  "fontSize": 16,
+                  "color": "tx1",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "row": 1,
+          "column": 2,
+          "bbox": [
+            485.92,
+            144.64,
+            432.47,
+            36.19
+          ],
+          "text": "EGNN",
+          "textPreview": "EGNN",
+          "fillColor": {
+            "type": "theme",
+            "value": "bg1",
+            "transform": {
+              "darken": 0.15
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "EGNN",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "EGNN",
+                  "fontSize": 16,
+                  "color": "tx1",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "row": 2,
+          "column": 1,
+          "bbox": [
+            53.44,
+            180.83,
+            432.47,
+            36.49
+          ],
+          "text": "Room size in loss: requires known zone areas.",
+          "textPreview": "Room size in loss: requires known zone areas.",
+          "fillColor": {
+            "type": "theme",
+            "value": "bg2",
+            "transform": {
+              "lighten": 0.8
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Room size in loss: requires known zone areas.",
+              "lineSpacingPercent": 100000,
+              "resolvedTextStyle": {
+                "alignment": "left"
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Room size in ",
+                  "fontSize": 16,
+                  "color": "tx1",
+                  "bold": true
+                },
+                {
+                  "index": 2,
+                  "text": "loss",
+                  "fontSize": 16,
+                  "color": "tx1",
+                  "bold": true
+                },
+                {
+                  "index": 3,
+                  "text": ":",
+                  "fontSize": 16,
+                  "color": "tx1",
+                  "bold": true
+                },
+                {
+                  "index": 4,
+                  "text": " ",
+                  "fontSize": 16,
+                  "color": "tx1"
+                },
+                {
+                  "index": 5,
+                  "text": "requires",
+                  "fontSize": 16,
+                  "color": "tx1"
+                },
+                {
+                  "index": 6,
+                  "text": " ",
+                  "fontSize": 16,
+                  "color": "tx1"
+                },
+                {
+                  "index": 7,
+                  "text": "known",
+                  "fontSize": 16,
+                  "color": "tx1"
+                },
+                {
+                  "index": 8,
+                  "text": " zone areas.",
+                  "fontSize": 16,
+                  "color": "tx1"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "row": 2,
+          "column": 2,
+          "bbox": [
+            485.92,
+            180.83,
+            432.47,
+            36.49
+          ],
+          "text": "Geometric symmetry → physics: no need for room-size metadata.",
+          "textPreview": "Geometric symmetry → physics: no need for room-size metadata.",
+          "fillColor": {
+            "type": "theme",
+            "value": "bg1",
+            "transform": {
+              "darken": 0.05
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Geometric symmetry → physics: no need for room-size metadata.",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Geometric",
+                  "fontSize": 16,
+                  "color": "tx1",
+                  "bold": true
+                },
+                {
+                  "index": 2,
+                  "text": " ",
+                  "fontSize": 16,
+                  "color": "tx1",
+                  "bold": true
+                },
+                {
+                  "index": 3,
+                  "text": "symmetry",
+                  "fontSize": 16,
+                  "color": "tx1",
+                  "bold": true
+                },
+                {
+                  "index": 4,
+                  "text": " → ",
+                  "fontSize": 16,
+                  "color": "tx1",
+                  "bold": true
+                },
+                {
+                  "index": 5,
+                  "text": "physics",
+                  "fontSize": 16,
+                  "color": "tx1",
+                  "bold": true
+                },
+                {
+                  "index": 6,
+                  "text": ":",
+                  "fontSize": 16,
+                  "color": "tx1",
+                  "bold": true
+                },
+                {
+                  "index": 7,
+                  "text": " no ",
+                  "fontSize": 16,
+                  "color": "tx1"
+                },
+                {
+                  "index": 8,
+                  "text": "need",
+                  "fontSize": 16,
+                  "color": "tx1"
+                },
+                {
+                  "index": 9,
+                  "text": " for room-size ",
+                  "fontSize": 16,
+                  "color": "tx1"
+                },
+                {
+                  "index": 10,
+                  "text": "metadata",
+                  "fontSize": 16,
+                  "color": "tx1"
+                },
+                {
+                  "index": 11,
+                  "text": ".",
+                  "fontSize": 16,
+                  "color": "tx1"
+                }
+              ]
+            }
+          ],
+          "ownedElementAids": [
+            "im/p83udoz2"
+          ]
+        },
+        {
+          "index": 5,
+          "row": 3,
+          "column": 1,
+          "bbox": [
+            53.44,
+            217.32,
+            432.47,
+            48.04
+          ],
+          "text": "τ = R·C in messages: embeds physics via learned time-constant.",
+          "textPreview": "τ = R·C in messages: embeds physics via learned time-constant.",
+          "fillColor": {
+            "type": "theme",
+            "value": "bg2",
+            "transform": {
+              "lighten": 0.8
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "τ = R·C in messages: embeds physics via learned time-constant.",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "τ = ",
+                  "fontSize": 16,
+                  "color": "tx1",
+                  "bold": true
+                },
+                {
+                  "index": 2,
+                  "text": "R·C in messages:",
+                  "fontSize": 16,
+                  "color": "tx1",
+                  "bold": true
+                },
+                {
+                  "index": 3,
+                  "text": " ",
+                  "fontSize": 16,
+                  "color": "tx1"
+                },
+                {
+                  "index": 4,
+                  "text": "embeds",
+                  "fontSize": 16,
+                  "color": "tx1"
+                },
+                {
+                  "index": 5,
+                  "text": " ",
+                  "fontSize": 16,
+                  "color": "tx1"
+                },
+                {
+                  "index": 6,
+                  "text": "physics",
+                  "fontSize": 16,
+                  "color": "tx1"
+                },
+                {
+                  "index": 7,
+                  "text": " via ",
+                  "fontSize": 16,
+                  "color": "tx1"
+                },
+                {
+                  "index": 8,
+                  "text": "learned",
+                  "fontSize": 16,
+                  "color": "tx1"
+                },
+                {
+                  "index": 9,
+                  "text": " time-constant.",
+                  "fontSize": 16,
+                  "color": "tx1"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "row": 3,
+          "column": 2,
+          "bbox": [
+            485.92,
+            217.32,
+            432.47,
+            48.04
+          ],
+          "text": "Equivariance constraints: enforce “thermodynamics laws”.",
+          "textPreview": "Equivariance constraints: enforce “thermodynamics laws”.",
+          "fillColor": {
+            "type": "theme",
+            "value": "bg1",
+            "transform": {
+              "darken": 0.05
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Equivariance constraints: enforce “thermodynamics laws”.",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Equivariance constraints:",
+                  "fontSize": 16,
+                  "color": "tx1",
+                  "bold": true
+                },
+                {
+                  "index": 2,
+                  "text": " enforce “thermodynamics laws”.",
+                  "fontSize": 16,
+                  "color": "tx1"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "composeRuns": []
+}

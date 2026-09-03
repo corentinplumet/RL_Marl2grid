@@ -1,0 +1,1214 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/jyx0ra1s",
+    "id": "jyx0ra1s",
+    "slide": 4,
+    "layoutId": "/ppt/slideLayouts/slideLayout19.xml",
+    "layoutName": "3 columns",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "EPFL 2025",
+    "colors": {
+      "accent1": "#00A79F",
+      "accent2": "#24737F",
+      "accent3": "#512880",
+      "accent4": "#4F8FCC",
+      "accent5": "#D0661C",
+      "accent6": "#B51F1F",
+      "dk1": "#413C3A",
+      "lt1": "#FFFFFF",
+      "dk2": "#FF0000",
+      "lt2": "#CAC7C7",
+      "hlink": "#ED6E9C",
+      "folHlink": "#4F8FCC"
+    },
+    "fontScheme": {
+      "name": "Arial",
+      "majorFont": {
+        "latinTypeface": "Arial"
+      },
+      "minorFont": {
+        "latinTypeface": "Arial"
+      }
+    },
+    "typefaces": [
+      "Arial"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout19.xml",
+      "name": "3 columns",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout19.xml/3",
+          "id": "3",
+          "name": "Content Placeholder 2",
+          "bbox": [
+            57.83,
+            92.23,
+            378,
+            328.8
+          ],
+          "text": "Cliquez pour modifier les styles du texte du masque",
+          "textPreview": "Cliquez pour modifier les styles du texte du masque",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Cliquez pour modifier les styles du texte du masque",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Cliquez pour modifier les styles du texte du masque"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout19.xml/4",
+          "id": "4",
+          "name": "Content Placeholder 3",
+          "bbox": [
+            451,
+            91.67,
+            378,
+            329.43
+          ],
+          "text": "Cliquez pour modifier les styles du texte du masque",
+          "textPreview": "Cliquez pour modifier les styles du texte du masque",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Cliquez pour modifier les styles du texte du masque",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Cliquez pour modifier les styles du texte du masque"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout19.xml/8",
+          "id": "8",
+          "name": "Titre 7",
+          "bbox": [
+            57.83,
+            486.06,
+            1164.33,
+            198.94
+          ],
+          "text": "Modifiez le style du titre",
+          "textPreview": "Modifiez le style du titre",
+          "resolvedTextStyle": {
+            "anchor": 3,
+            "verticalAlignment": "bottom",
+            "autoFit": "none"
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifiez le style du titre",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifiez le style du titre"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout19.xml/5",
+          "id": "5",
+          "name": "Espace réservé du contenu 4",
+          "bbox": [
+            844.17,
+            92.17,
+            378,
+            328.83
+          ],
+          "text": "Cliquez pour modifier les styles du texte du masque\nDeuxième niveau\nTroisième niveau\nQuatrième niveau\nCinquième niveau",
+          "textPreview": "Cliquez pour modifier les styles du texte du masque | Deuxième niveau | Troisième niveau | Quatrième niveau | Cinquième niveau",
+          "resolvedTextStyle": {
+            "autoFit": "none"
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Cliquez pour modifier les styles du texte du masque",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Cliquez pour modifier les styles du texte du masque"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "text": "Deuxième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Deuxième niveau"
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "text": "Troisième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Troisième niveau"
+                }
+              ]
+            },
+            {
+              "index": 4,
+              "text": "Quatrième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Quatrième niveau"
+                }
+              ]
+            },
+            {
+              "index": 5,
+              "text": "Cinquième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Cinquième niveau"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 5,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout19.xml/2",
+          "id": "2",
+          "name": "Espace réservé de la date 1",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "EPFL AT A GLANCE",
+          "textPreview": "EPFL AT A GLANCE",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "EPFL AT A GLANCE",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "EPFL AT A GLANCE"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 6,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout19.xml/6",
+          "id": "6",
+          "name": "Espace réservé du pied de page 5",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "order": 7,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout19.xml/7",
+          "id": "7",
+          "name": "Espace réservé du numéro de diapositive 6",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "‹#›",
+          "textPreview": "‹#›",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹#›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹#›"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "type": "master",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/2",
+          "id": "2",
+          "name": "Title Placeholder 1",
+          "bbox": [
+            55.22,
+            66.72,
+            476.33,
+            221.17
+          ],
+          "geometry": "rect",
+          "text": "Modifiez le style du titre",
+          "textPreview": "Modifiez le style du titre",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 18.9,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifiez le style du titre",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifiez"
+                },
+                {
+                  "index": 2,
+                  "text": " le style du titre"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/3",
+          "id": "3",
+          "name": "Text Placeholder 2",
+          "bbox": [
+            549.33,
+            218.83,
+            672.83,
+            466.17
+          ],
+          "geometry": "rect",
+          "text": "Modifier les styles du texte du masque\nDeuxième niveau\nTroisième niveau\nQuatrième niveau\nCinquième niveau",
+          "textPreview": "Modifier les styles du texte du masque | Deuxième niveau | Troisième niveau | Quatrième niveau | Cinquième niveau",
+          "resolvedTextStyle": {
+            "vertical": 1,
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 4.91,
+              "right": 3.78,
+              "bottom": 4.8,
+              "left": 3.78
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifier les styles du texte du masque",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifier les styles du "
+                },
+                {
+                  "index": 2,
+                  "text": "texte"
+                },
+                {
+                  "index": 3,
+                  "text": " du masque"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "text": "Deuxième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Deuxième "
+                },
+                {
+                  "index": 2,
+                  "text": "niveau"
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "text": "Troisième niveau\nQuatrième niveau\nCinquième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Troisième"
+                },
+                {
+                  "index": 2,
+                  "text": " "
+                },
+                {
+                  "index": 3,
+                  "text": "niveau"
+                },
+                {
+                  "index": 4,
+                  "text": "\n"
+                },
+                {
+                  "index": 5,
+                  "text": "Quatrième"
+                },
+                {
+                  "index": 6,
+                  "text": " "
+                },
+                {
+                  "index": 7,
+                  "text": "niveau"
+                },
+                {
+                  "index": 8,
+                  "text": "\n"
+                },
+                {
+                  "index": 9,
+                  "text": "Cinquième"
+                },
+                {
+                  "index": 10,
+                  "text": " "
+                },
+                {
+                  "index": 11,
+                  "text": "niveau"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/4",
+          "id": "4",
+          "name": "Date Placeholder 3",
+          "bbox": [
+            748.83,
+            33.33,
+            406.13,
+            22.55
+          ],
+          "geometry": "rect",
+          "text": "EPFL AT A GLANCE",
+          "textPreview": "EPFL AT A GLANCE",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 4.8,
+              "left": 0
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "EPFL AT A GLANCE",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "EPFL AT A GLANCE"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/5",
+          "id": "5",
+          "name": "Footer Placeholder 4",
+          "bbox": [
+            748.83,
+            45.39,
+            406.13,
+            23.63
+          ],
+          "geometry": "rect",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 4.8,
+              "left": 0
+            }
+          }
+        },
+        {
+          "order": 5,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/6",
+          "id": "6",
+          "name": "Slide Number Placeholder 5",
+          "bbox": [
+            1151.97,
+            -1.33,
+            71.78,
+            92.62
+          ],
+          "geometry": "rect",
+          "text": "‹#›",
+          "textPreview": "‹#›",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 9.45
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹#›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹#›"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 6,
+          "kind": "image",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/7",
+          "id": "7",
+          "name": "Image 6",
+          "bbox": [
+            49.67,
+            26.61,
+            86.33,
+            37.4
+          ],
+          "contentType": "image/svg+xml",
+          "imageCrop": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          "asset": {
+            "assetId": "/ppt/media/image.svg",
+            "contentType": "image/svg+xml",
+            "byteLength": 1645
+          },
+          "fillImage": {
+            "assetId": "/ppt/media/image.svg",
+            "contentType": "image/svg+xml",
+            "byteLength": 1645
+          }
+        }
+      ]
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1cj2d8b6",
+      "id": "2",
+      "name": "Espace réservé du contenu 1",
+      "bbox": [
+        57.83,
+        92.23,
+        378,
+        235.11
+      ],
+      "text": "Single-agent & hierarchical\n• Strong benchmark results\n• Reduced or factorised action sets\n• Often centralised at execution",
+      "textPreview": "Single-agent & hierarchical | • Strong benchmark results | • Reduced or factorised action sets | • Often centralised at execution",
+      "resolvedFontSize": 26.67,
+      "resolvedTextStyle": {
+        "vertical": 1,
+        "fontSize": 26.67,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "autoFit": "shrinkText",
+        "insets": {
+          "top": 4.91,
+          "right": 3.78,
+          "bottom": 4.8,
+          "left": 3.78
+        }
+      },
+      "textLayout": {
+        "lineCount": 9,
+        "lines": [
+          {
+            "index": 1,
+            "text": "1. Single-agent &"
+          },
+          {
+            "index": 2,
+            "text": "hierarchical"
+          },
+          {
+            "index": 3,
+            "text": ""
+          },
+          {
+            "index": 4,
+            "text": "• Strong benchmark results"
+          },
+          {
+            "index": 5,
+            "text": ""
+          },
+          {
+            "index": 6,
+            "text": "• Reduced or factorised action"
+          },
+          {
+            "index": 7,
+            "text": "sets"
+          },
+          {
+            "index": 8,
+            "text": ""
+          },
+          {
+            "index": 9,
+            "text": "• Often centralised at execution"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Single-agent & hierarchical",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Single-agent & hierarchical",
+              "color": "tx2",
+              "bold": true
+            }
+          ],
+          "bulletCharacter": "",
+          "marginLeft": 228594,
+          "indent": -228594,
+          "lineSpacingPercent": 90000
+        },
+        {
+          "index": 2,
+          "text": "• Strong benchmark results",
+          "runs": [
+            {
+              "index": 1,
+              "text": "• Strong benchmark results",
+              "fontSize": 24
+            }
+          ],
+          "bulletCharacter": "•",
+          "marginLeft": 447675,
+          "indent": -157163,
+          "lineSpacingPercent": 90000
+        },
+        {
+          "index": 3,
+          "text": "• Reduced or factorised action sets",
+          "runs": [
+            {
+              "index": 1,
+              "text": "• Reduced or factorised action sets",
+              "fontSize": 24
+            }
+          ],
+          "bulletCharacter": "•",
+          "marginLeft": 447675,
+          "indent": -157163,
+          "lineSpacingPercent": 90000
+        },
+        {
+          "index": 4,
+          "text": "• Often centralised at execution",
+          "runs": [
+            {
+              "index": 1,
+              "text": "• Often centralised at execution"
+            }
+          ],
+          "bulletCharacter": "",
+          "marginLeft": 228594,
+          "indent": -228594,
+          "lineSpacingPercent": 90000
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0ba143al",
+      "id": "3",
+      "name": "Espace réservé du contenu 2",
+      "bbox": [
+        451,
+        91.67,
+        378,
+        235.67
+      ],
+      "text": "Heuristics & MARL\n• Safety rules decide when to act\n• Regional actors match grid operation\n• Partial observability remains",
+      "textPreview": "Heuristics & MARL | • Safety rules decide when to act | • Regional actors match grid operation | • Partial observability remains",
+      "resolvedFontSize": 26.67,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 26.67,
+        "typeface": "Arial",
+        "color": "tx2",
+        "bold": true,
+        "alignment": "right",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 4.8,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 9,
+        "lines": [
+          {
+            "index": 1,
+            "text": "2. Heuristics & MARL"
+          },
+          {
+            "index": 2,
+            "text": ""
+          },
+          {
+            "index": 3,
+            "text": "• Safety rules decide when to"
+          },
+          {
+            "index": 4,
+            "text": "act"
+          },
+          {
+            "index": 5,
+            "text": ""
+          },
+          {
+            "index": 6,
+            "text": "• Regional actors match grid"
+          },
+          {
+            "index": 7,
+            "text": "operation"
+          },
+          {
+            "index": 8,
+            "text": ""
+          },
+          {
+            "index": 9,
+            "text": "• Partial observability remains"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Heuristics & MARL",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Heuristics & MARL",
+              "color": "tx2",
+              "bold": true
+            }
+          ],
+          "bulletCharacter": "",
+          "marginLeft": 228594,
+          "indent": -228594,
+          "lineSpacingPercent": 90000
+        },
+        {
+          "index": 2,
+          "text": "• Safety rules decide when to act",
+          "runs": [
+            {
+              "index": 1,
+              "text": "• Safety rules decide when to act",
+              "fontSize": 24
+            }
+          ],
+          "bulletCharacter": "•",
+          "marginLeft": 447675,
+          "indent": -157163,
+          "lineSpacingPercent": 90000
+        },
+        {
+          "index": 3,
+          "text": "• Regional actors match grid operation",
+          "runs": [
+            {
+              "index": 1,
+              "text": "• Regional actors match grid operation",
+              "fontSize": 24
+            }
+          ],
+          "bulletCharacter": "•",
+          "marginLeft": 447675,
+          "indent": -157163,
+          "lineSpacingPercent": 90000
+        },
+        {
+          "index": 4,
+          "text": "• Partial observability remains",
+          "runs": [
+            {
+              "index": 1,
+              "text": "• Partial observability remains",
+              "fontSize": 24
+            }
+          ],
+          "bulletCharacter": "•",
+          "marginLeft": 447675,
+          "indent": -157163,
+          "lineSpacingPercent": 90000
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/rm1k7yt4",
+      "id": "4",
+      "name": "Titre 3",
+      "bbox": [
+        57.83,
+        506.51,
+        1164.33,
+        198.94
+      ],
+      "text": "THE GAP: PORTABLE INPUTS ARE NOT ENOUGH IF THE ACTION INTERFACE STAYS GRID-SPECIFIC",
+      "textPreview": "THE GAP: PORTABLE INPUTS ARE NOT ENOUGH IF THE ACTION INTERFACE STAYS GRID-SPECIFIC",
+      "resolvedFontSize": 117.33,
+      "resolvedTextStyle": {
+        "anchor": 3,
+        "vertical": 1,
+        "fontSize": 117.33,
+        "typeface": "Arial",
+        "color": "tx1",
+        "bold": true,
+        "alignment": "center",
+        "verticalAlignment": "bottom",
+        "autoFit": "none",
+        "insets": {
+          "top": 18.9,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 4,
+        "lines": [
+          {
+            "index": 1,
+            "text": "THE GAP: PORTABLE"
+          },
+          {
+            "index": 2,
+            "text": "INPUTS ARE NOT ENOUGH"
+          },
+          {
+            "index": 3,
+            "text": "IF THE ACTION INTERFACE"
+          },
+          {
+            "index": 4,
+            "text": "STAYS GRID-SPECIFIC"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "THE GAP: PORTABLE INPUTS ARE NOT ENOUGH IF THE ACTION INTERFACE STAYS GRID-SPECIFIC",
+          "runs": [
+            {
+              "index": 1,
+              "text": "THE GAP: PORTABLE INPUTS ARE NOT ENOUGH IF THE ACTION INTERFACE STAYS GRID-SPECIFIC",
+              "fontSize": 88,
+              "color": "tx2"
+            }
+          ],
+          "bulletCharacter": "",
+          "lineSpacingPercent": 90000
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ql8jytsj",
+      "id": "5",
+      "name": "Espace réservé du contenu 4",
+      "bbox": [
+        844.17,
+        92.17,
+        378,
+        235.67
+      ],
+      "text": "Graph policies\n• Parameters can ignore grid size\n• Structure enters message passing\n• Most action heads still use fixed indices",
+      "textPreview": "Graph policies | • Parameters can ignore grid size | • Structure enters message passing | • Most action heads still use fixed indices",
+      "resolvedFontSize": 26.67,
+      "resolvedTextStyle": {
+        "fontSize": 26.67,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "autoFit": "none",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 10,
+        "lines": [
+          {
+            "index": 1,
+            "text": "3. Graph policies"
+          },
+          {
+            "index": 2,
+            "text": ""
+          },
+          {
+            "index": 3,
+            "text": "• Parameters can ignore grid"
+          },
+          {
+            "index": 4,
+            "text": "size"
+          },
+          {
+            "index": 5,
+            "text": ""
+          },
+          {
+            "index": 6,
+            "text": "• Structure enters message"
+          },
+          {
+            "index": 7,
+            "text": "passing"
+          },
+          {
+            "index": 8,
+            "text": ""
+          },
+          {
+            "index": 9,
+            "text": "• Most action heads still use"
+          },
+          {
+            "index": 10,
+            "text": "fixed indices"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Graph policies",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Graph policies",
+              "color": "tx2",
+              "bold": true
+            }
+          ],
+          "bulletCharacter": "",
+          "marginLeft": 228594,
+          "indent": -228594,
+          "lineSpacingPercent": 90000
+        },
+        {
+          "index": 2,
+          "text": "• Parameters can ignore grid size",
+          "runs": [
+            {
+              "index": 1,
+              "text": "• Parameters can ignore grid size",
+              "fontSize": 24
+            }
+          ],
+          "bulletCharacter": "",
+          "marginLeft": 447675,
+          "indent": -157163,
+          "lineSpacingPercent": 90000
+        },
+        {
+          "index": 3,
+          "text": "• Structure enters message passing",
+          "runs": [
+            {
+              "index": 1,
+              "text": "• Structure enters message passing",
+              "fontSize": 24
+            }
+          ],
+          "bulletCharacter": "",
+          "marginLeft": 447675,
+          "indent": -157163,
+          "lineSpacingPercent": 90000
+        },
+        {
+          "index": 4,
+          "text": "• Most action heads still use fixed indices",
+          "runs": [
+            {
+              "index": 1,
+              "text": "• Most action heads still use fixed indices",
+              "fontSize": 24
+            }
+          ],
+          "bulletCharacter": "",
+          "marginLeft": 447675,
+          "indent": -157163,
+          "lineSpacingPercent": 90000
+        }
+      ]
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/doj29oba",
+      "id": "6",
+      "name": "Espace réservé de la date 5",
+      "bbox": [
+        748.83,
+        33.33,
+        406.13,
+        22.55
+      ],
+      "text": "MASTER THESIS",
+      "textPreview": "MASTER THESIS",
+      "resolvedFontSize": 9.33,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 9.33,
+        "typeface": "Arial",
+        "color": "tx2",
+        "bold": true,
+        "alignment": "right",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 4.8,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "MASTER THESIS"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "MASTER THESIS",
+          "runs": [
+            {
+              "index": 1,
+              "text": "MASTER THESIS"
+            }
+          ],
+          "bulletCharacter": "",
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/3ihk3et8",
+      "id": "8",
+      "name": "Espace réservé du numéro de diapositive 7",
+      "bbox": [
+        1151.97,
+        -1.33,
+        71.78,
+        92.62
+      ],
+      "text": "4",
+      "textPreview": "4",
+      "resolvedFontSize": 28,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "vertical": 1,
+        "fontSize": 28,
+        "typeface": "Arial",
+        "color": "tx2",
+        "bold": true,
+        "alignment": "right",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 9.45
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "4"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "4",
+          "runs": [
+            {
+              "index": 1,
+              "text": "4"
+            }
+          ],
+          "bulletCharacter": "",
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 7,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/z6lc7q1o",
+      "id": "9",
+      "bbox": [
+        0,
+        327.33,
+        1280,
+        179.17
+      ],
+      "contentType": "image/png",
+      "imageCrop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "asset": {
+        "assetId": "/ppt/media/image10.png",
+        "contentType": "image/png",
+        "byteLength": 104956
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image10.png",
+        "contentType": "image/png",
+        "byteLength": 104956
+      }
+    }
+  ],
+  "composeRuns": []
+}

@@ -1,251 +1,85 @@
-{\color{red}
-\subsection{Additional method details}
+\subsection{Compact experimental details}
 \label{app:sparse-control-method-details}
 
-The intervention-gated actor uses two deterministic decoders. The
-\texttt{final\_action\_map} decoder selects the most likely final executed
-action:
+The two deterministic gate decoders are defined in
+Section~\ref{subsec:sparse-control-gate}. The gate-plus-budget diagnostic also
+separates the gate and non-idle entropy terms:
 \[
-  P(a_i=0)=P(g_i=0),\qquad
-  P(a_i=a>0)=P(g_i=1)P(b_i=a\mid g_i=1).
+  H_i=\alpha_{gate}H(g_i)+\alpha_{nonidle}H(b_i),
 \]
-The \texttt{hierarchical\_greedy} decoder first chooses the most likely gate
-decision and selects the most likely non-idle action only when the gate chooses
-intervention. The original coupled entropy is
-\[
-  H_i=H(g_i)+P(g_i=1)H(b_i),
-\]
-whereas the separated variant used by the gate-plus-budget diagnostic is
-\[
-  H_i=\alpha_{gate}H(g_i)+\alpha_{nonidle}H(b_i).
-\]
-Separating the terms avoids rewarding intervention merely because a larger
-$P(g_i=1)$ exposes more non-idle entropy.
+instead of using the coupled form
+$H_i=H(g_i)+P(g_i=1)H(b_i)$. This avoids rewarding intervention merely because
+a larger intervention probability exposes more non-idle entropy.
+\\
+\\
+The fixed-penalty experiment uses flat and gated actors,
+$\lambda_{fixed}\in\{0,0.001,0.003,0.01\}$, and seeds
+$\{0,1,2\}$, giving 24 runs. The
+tested conditions are flat local-safe budgets
+$d\in\{0.10,0.20,0.35\}$, a gated local-safe budget with $d=0.20$, and a flat
+plain non-idle budget with $d=0.20$.
+\\
+\\
+For the teacher-student diagnostic, the teacher is the MAPPO policy evaluated
+with the local rho heuristic. The student is trained to reproduce the
+teacher's executed actions and is evaluated without the heuristic. The two
+reported students use balanced non-idle fractions of $0.50$ and $0.20$, with
+non-idle loss weights of $5$ and $3$, and auxiliary weights of $0.50$ and
+$0.25$, respectively.
 
-The fixed-penalty experiment crosses
-\[
-  \text{actor}\in\{\text{flat},\text{gated}\},\qquad
-  \lambda_{fixed}\in\{0.0,0.001,0.003,0.01\},\qquad
-  \text{seed}\in\{0,1,2\},
-\]
-for $2\times4\times3=24$ runs. The state-dependent safety penalty is disabled
-in every condition, so this penalty is not rho-weighted.
+\subsection{Exact aggregate results}
 
-For AIB, the multiplier settings are:
-\begin{itemize}
-  \item \texttt{intervention\_budget\_lr}: $0.02$;
-  \item \texttt{intervention\_budget\_init\_lambda}: $0.0$;
-  \item \texttt{intervention\_budget\_max\_lambda}: $10.0$.
-\end{itemize}
-The five main conditions are flat local-safe AIB with
-$d\in\{0.10,0.20,0.35\}$; gated local-safe AIB with $d=0.20$,
-hierarchical-greedy evaluation, and separated entropy; and flat plain non-idle
-AIB with $d=0.20$.
-
-For the teacher-student diagnostic, the teacher is a MAPPO policy evaluated
-with the local rho heuristic. The student is trained by behavioral cloning to
-match the teacher's executed actions and is then evaluated without the
-heuristic. Two balancing settings address the strong action-0 class imbalance;
-their exact outcomes are reported in
-Table~\ref{tab:teacher-student-full-test}.
-}
-
-\subsection{\texorpdfstring{\latestrevision{Exact bus14 results}}{Exact bus14 results}}
-
-The following tables report average full-test episodic survival and action-0
-fractions over the three evaluated seeds. The all-agent value is the arithmetic
-mean of the three per-agent fractions. The do-nothing row is a reference policy
-that always selects action 0.
+Table~\ref{tab:sparse-control-full-results} reports the condition means over
+three seeds. The action-0 value is the arithmetic mean of the three agents'
+fractions. Figure~\ref{fig:sparse-control-fulltest-tradeoff} shows the same two
+metrics together with the individual seeds.
 
 \begin{table}[H]
   \centering
-  \small
-  \caption{Full-test summary for evaluation-time rho heuristics.}
-  \label{tab:a0-heuristic-full-test}
+  \scriptsize
+  \caption{Full-test aggregate results for the sparse-control experiments on
+  \texttt{bus14}.}
+  \label{tab:sparse-control-full-results}
   \setlength{\tabcolsep}{4pt}
-  \resizebox{\textwidth}{!}{%
-  \begin{tabular}{L{0.34\textwidth}rrrrr}
+  \renewcommand{\arraystretch}{0.94}
+  \begin{tabular}{L{0.14\textwidth}L{0.48\textwidth}rr}
     \toprule
-    Run type & Avg. episodic survival (\%) & Avg. action-0 all agents &
-    Avg. action-0 agent 0 & Avg. action-0 agent 1 &
-    Avg. action-0 agent 2 \\
+    Family & Configuration & Mean survival (\%) & Mean action-0 \\
     \midrule
-    Do-nothing policy & 20.25 & 1.000 & 1.000 & 1.000 & 1.000 \\
-    Baseline flat policy & 93.67 & 0.434 & 0.554 & 0.385 & 0.363 \\
-    Global rho heuristic, \(\rho_{safe}=0.90\) & 98.36 & 0.936 & 0.933 & 0.936 & 0.940 \\
-    Local rho heuristic, \(\rho_{safe}=0.90\) & 97.07 & 0.968 & 0.992 & 0.985 & 0.928 \\
-    \bottomrule
-  \end{tabular}
-  }
-\end{table}
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Full-test summary for intervention-gated actors.}
-  \label{tab:a0-gate-full-test}
-  \setlength{\tabcolsep}{4pt}
-  \resizebox{\textwidth}{!}{%
-  \begin{tabular}{L{0.34\textwidth}rrrrr}
-    \toprule
-    Run type & Avg. episodic survival (\%) & Avg. action-0 all agents &
-    Avg. action-0 agent 0 & Avg. action-0 agent 1 &
-    Avg. action-0 agent 2 \\
+    Reference
+      & Do-nothing policy & 20.25 & 1.000 \\
+      & Baseline flat policy & 93.67 & 0.434 \\
     \midrule
-    Do-nothing policy & 20.25 & 1.000 & 1.000 & 1.000 & 1.000 \\
-    Baseline flat policy & 93.67 & 0.434 & 0.554 & 0.385 & 0.363 \\
-    Intervention gate, final-action MAP & 89.82 & 0.802 & 0.826 & 0.889 & 0.690 \\
-    Intervention gate, hierarchical greedy & 93.66 & 0.395 & 0.066 & 0.844 & 0.276 \\
-    \bottomrule
-  \end{tabular}
-  }
-\end{table}
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Full-test summary for flat-policy fixed-penalty runs.}
-  \label{tab:a0-sparse16-flat-full-test}
-  \setlength{\tabcolsep}{4pt}
-  \resizebox{\textwidth}{!}{%
-  \begin{tabular}{L{0.34\textwidth}rrrrr}
-    \toprule
-    Run type & Avg. episodic survival (\%) & Avg. action-0 all agents &
-    Avg. action-0 agent 0 & Avg. action-0 agent 1 &
-    Avg. action-0 agent 2 \\
+    Rho heuristic
+      & Global, $\rho_{safe}=0.90$ & 98.36 & 0.936 \\
+      & Local, $\rho_{safe}=0.90$ & 97.07 & 0.968 \\
     \midrule
-    Do-nothing policy & 20.25 & 1.000 & 1.000 & 1.000 & 1.000 \\
-    Baseline flat policy & 93.67 & 0.434 & 0.554 & 0.385 & 0.363 \\
-    Flat policy, \(\lambda_{fixed}=0.000\) & 98.23 & 0.494 & 0.524 & 0.463 & 0.496 \\
-    Flat policy, \(\lambda_{fixed}=0.001\) & 96.75 & 0.486 & 0.642 & 0.401 & 0.416 \\
-    Flat policy, \(\lambda_{fixed}=0.003\) & 93.97 & 0.575 & 0.691 & 0.346 & 0.688 \\
-    Flat policy, \(\lambda_{fixed}=0.010\) & 97.44 & 0.905 & 0.907 & 0.954 & 0.853 \\
-    \bottomrule
-  \end{tabular}
-  }
-\end{table}
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Full-test summary for gated-policy fixed-penalty runs.}
-  \label{tab:a0-sparse16-gated-full-test}
-  \setlength{\tabcolsep}{4pt}
-  \resizebox{\textwidth}{!}{%
-  \begin{tabular}{L{0.34\textwidth}rrrrr}
-    \toprule
-    Run type & Avg. episodic survival (\%) & Avg. action-0 all agents &
-    Avg. action-0 agent 0 & Avg. action-0 agent 1 &
-    Avg. action-0 agent 2 \\
+    Intervention gate
+      & Final-action MAP & 89.82 & 0.802 \\
+      & Hierarchical greedy & 93.66 & 0.395 \\
     \midrule
-    Do-nothing policy & 20.25 & 1.000 & 1.000 & 1.000 & 1.000 \\
-    Baseline flat policy & 93.67 & 0.434 & 0.554 & 0.385 & 0.363 \\
-    Gated policy, \(\lambda_{fixed}=0.000\) & 78.51 & 0.787 & 0.747 & 0.949 & 0.665 \\
-    Gated policy, \(\lambda_{fixed}=0.001\) & 73.82 & 0.862 & 0.956 & 0.832 & 0.799 \\
-    Gated policy, \(\lambda_{fixed}=0.003\) & 94.59 & 0.887 & 0.934 & 0.929 & 0.799 \\
-    Gated policy, \(\lambda_{fixed}=0.010\) & 85.69 & 0.974 & 0.990 & 0.984 & 0.947 \\
-    \bottomrule
-  \end{tabular}
-  }
-\end{table}
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Full-test summary for adaptive intervention budget runs.}
-  \label{tab:a0-aib-full-test}
-  \setlength{\tabcolsep}{4pt}
-  \resizebox{\textwidth}{!}{%
-  \begin{tabular}{L{0.34\textwidth}rrrrr}
-    \toprule
-    Run type & Avg. episodic survival (\%) & Avg. action-0 all agents &
-    Avg. action-0 agent 0 & Avg. action-0 agent 1 &
-    Avg. action-0 agent 2 \\
+    Fixed penalty, flat
+      & $\lambda_{fixed}=0$ & 93.67 & 0.494 \\
+      & $\lambda_{fixed}=0.001$ & 96.75 & 0.486 \\
+      & $\lambda_{fixed}=0.003$ & 93.97 & 0.575 \\
+      & $\lambda_{fixed}=0.010$ & 97.44 & 0.905 \\
     \midrule
-    Do-nothing policy & 20.25 & 1.000 & 1.000 & 1.000 & 1.000 \\
-    Baseline flat policy & 93.67 & 0.434 & 0.554 & 0.385 & 0.363 \\
-    Flat local-safe AIB, \(d=0.20\) & 98.31 & 0.978 & 0.980 & 0.989 & 0.966 \\
-    Flat local-safe AIB, \(d=0.10\) & 98.39 & 0.979 & 0.992 & 0.995 & 0.949 \\
-    Flat local-safe AIB, \(d=0.35\) & 96.61 & 0.934 & 0.959 & 0.947 & 0.896 \\
-    Gated local-safe AIB, \(d=0.20\), hierarchical greedy &
-    33.87 & 0.999 & 1.000 & 1.000 & 0.998 \\
-    Flat non-idle AIB, \(d=0.20\) & 95.08 & 0.986 & 0.997 & 0.992 & 0.970 \\
-    \bottomrule
-  \end{tabular}
-  }
-\end{table}
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Full-test summary for the teacher-student distillation runs.}
-  \label{tab:teacher-student-full-test}
-  \setlength{\tabcolsep}{4pt}
-  \resizebox{\textwidth}{!}{%
-  \begin{tabular}{L{0.34\textwidth}rrrrr}
-    \toprule
-    Run type & Avg. episodic survival (\%) & Avg. action-0 all agents &
-    Avg. action-0 agent 0 & Avg. action-0 agent 1 &
-    Avg. action-0 agent 2 \\
+    Fixed penalty, gated
+      & $\lambda_{fixed}=0$ & 78.51 & 0.787 \\
+      & $\lambda_{fixed}=0.001$ & 73.82 & 0.862 \\
+      & $\lambda_{fixed}=0.003$ & 94.59 & 0.887 \\
+      & $\lambda_{fixed}=0.010$ & 85.69 & 0.974 \\
     \midrule
-    Do-nothing policy & 20.25 & 1.000 & 1.000 & 1.000 & 1.000 \\
-    Teacher: MAPPO with local rho heuristic & 97.07 & 0.968 & 0.992 & 0.985 & 0.928 \\
-    Student BC, balanced non-idle 0.50, weight 5, aux 0.50 &
-    92.14 & 0.939 & 0.974 & 0.925 & 0.919 \\
-    Student BC, balanced non-idle 0.20, weight 3, aux 0.25 &
-    90.76 & 0.957 & 0.982 & 0.948 & 0.940 \\
-    \bottomrule
-  \end{tabular}
-  }
-\end{table}
-
-{\color{red}
-\subsection{Preliminary maintenance-enabled WCCI pilot}
-\label{app:sparse-control-wcci-pilot}
-
-Representative sparse-control mechanisms were retrained from scratch with an
-MLP actor on the maintenance-enabled WCCI grid. No \texttt{bus14} weights were
-transferred. All runs use the same reduced action space, three seeds, 60M
-training steps, and learning-rate schedule. The values below are the final
-deterministic test evaluation, averaged over seeds and ten held-out episodes
-per seed; they are not full-test estimates.
-
-\begin{table}[H]
-  \color{red}
-  \captionsetup{labelfont={color=red},textfont={color=red}}
-  \centering
-  \small
-  \caption{Preliminary WCCI stress test with scheduled maintenance at the final
-  training-time test evaluation.}
-  \label{tab:sparse-wcci-stress-test}
-  \setlength{\tabcolsep}{7pt}
-  \begin{tabular}{L{0.50\textwidth}rr}
-    \toprule
-    Method & Mean survival (\%) & Action-0 fraction \\
+    Adaptive budget
+      & Flat local-safe, $d=0.10$ & 98.39 & 0.979 \\
+      & Flat local-safe, $d=0.20$ & 98.31 & 0.978 \\
+      & Flat local-safe, $d=0.35$ & 96.61 & 0.934 \\
+      & Gated local-safe, $d=0.20$, hierarchical greedy & 33.87 & 0.999 \\
+      & Flat plain non-idle, $d=0.20$ & 95.08 & 0.986 \\
     \midrule
-    Matched MLP baseline & $23.75\pm7.70$ & 0.168 \\
-    Global rho heuristic, $\rho_{safe}=0.90$ & $28.35\pm11.06$ & 0.974 \\
-    Local rho heuristic, $\rho_{safe}=0.90$ & $9.46\pm3.54$ & 0.995 \\
-    Intervention gate, final-action MAP & $25.92\pm10.69$ & 0.400 \\
-    Flat fixed penalty, $\lambda_{fixed}=0.010$ & $27.00\pm12.13$ & 0.489 \\
-    Flat local-safe AIB, $d=0.20$ & $21.65\pm2.21$ & 0.927 \\
+    Behavioral cloning
+      & Student: balance $0.50$, non-idle weight $5$, auxiliary weight $0.50$ & 92.14 & 0.939 \\
+      & Student: balance $0.20$, non-idle weight $3$, auxiliary weight $0.25$ & 90.76 & 0.957 \\
     \bottomrule
   \end{tabular}
 \end{table}
-
-\begin{figure}[H]
-  \color{red}
-  \captionsetup{labelfont={color=red},textfont={color=red}}
-  \centering
-  \includegraphics[width=0.76\linewidth]{figures/sparse_control_wcci_tradeoff.png}
-  \caption{Action-0/mean-survival trade-off for the early maintenance-enabled
-  WCCI runs. Each point is a seed-aggregated run variant. No method combines
-  high sparsity with strong survival on this larger grid.}
-  \label{fig:sparse-wcci-action-survival-tradeoff}
-\end{figure}
-
-The local rho heuristic and AIB are highly sparse but remain weak controllers,
-which suggests that sparsity transfers more easily than control quality. Since
-the pilot changes grid size, action space, and maintenance simultaneously, it
-cannot identify the cause of the weak result.
-}

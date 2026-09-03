@@ -1,0 +1,1087 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/gny5sjyp",
+    "id": "gny5sjyp",
+    "slide": 16,
+    "layoutId": "/ppt/slideLayouts/slideLayout12.xml",
+    "layoutName": "Title_Only",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 960,
+      "height": 540
+    }
+  },
+  "theme": {
+    "colorSchemeName": "EPFL - New Colors 2019",
+    "colors": {
+      "accent1": "#E30613",
+      "accent2": "#00A79F",
+      "accent3": "#413C3A",
+      "accent4": "#007480",
+      "accent5": "#F39869",
+      "accent6": "#B51F1F",
+      "dk1": "#413C3A",
+      "lt1": "#FFFFFF",
+      "dk2": "#413C3A",
+      "lt2": "#CAC7C7",
+      "hlink": "#ED6E9C",
+      "folHlink": "#4F8FCC"
+    },
+    "fontScheme": {
+      "name": "EPFL_Beta2",
+      "majorFont": {
+        "latinTypeface": "Franklin Gothic Demi Cond"
+      },
+      "minorFont": {
+        "latinTypeface": "Arial"
+      }
+    },
+    "typefaces": [
+      "Arial",
+      "Franklin Gothic Demi Cond",
+      "Times New Roman"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout12.xml",
+      "name": "Title_Only",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout12.xml/6",
+          "id": "6",
+          "name": "Titre 5",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "Modifiez le style du titre",
+          "textPreview": "Modifiez le style du titre",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifiez le style du titre",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifiez le style du titre"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout12.xml/7",
+          "id": "7",
+          "name": "Espace réservé de la date 6",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "WELCOME TO EPFL",
+          "textPreview": "WELCOME TO EPFL",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "WELCOME TO EPFL",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "WELCOME TO EPFL"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout12.xml/8",
+          "id": "8",
+          "name": "Espace réservé du pied de page 7",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "Speaker",
+          "textPreview": "Speaker",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Speaker",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Speaker"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout12.xml/9",
+          "id": "9",
+          "name": "Espace réservé du numéro de diapositive 8",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "‹N°›",
+          "textPreview": "‹N°›",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹N°›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹N°›"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "type": "master",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/2",
+          "id": "2",
+          "name": "Title Placeholder 1",
+          "bbox": [
+            95,
+            18.85,
+            385,
+            112.62
+          ],
+          "geometry": "rect",
+          "text": "Modifiez le style du titre",
+          "textPreview": "Modifiez le style du titre",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 0,
+              "right": 7.56,
+              "bottom": 4.91,
+              "left": 18.9
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifiez le style du titre",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifiez le style du titre"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/3",
+          "id": "3",
+          "name": "Text Placeholder 2",
+          "bbox": [
+            95,
+            164.17,
+            811.17,
+            355.57
+          ],
+          "geometry": "rect",
+          "text": "Modifier les styles du texte du masque\nDeuxième niveau\nTroisième niveau\nQuatrième niveau\nCinquième niveau",
+          "textPreview": "Modifier les styles du texte du masque | Deuxième niveau | Troisième niveau | Quatrième niveau | Cinquième niveau",
+          "resolvedTextStyle": {
+            "vertical": 1,
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 18.9
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifier les styles du texte du masque",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifier les styles du "
+                },
+                {
+                  "index": 2,
+                  "text": "texte"
+                },
+                {
+                  "index": 3,
+                  "text": " du masque"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "text": "Deuxième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Deuxième"
+                },
+                {
+                  "index": 2,
+                  "text": " "
+                },
+                {
+                  "index": 3,
+                  "text": "niveau"
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "text": "Troisième niveau\nQuatrième niveau\nCinquième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Troisième"
+                },
+                {
+                  "index": 2,
+                  "text": " "
+                },
+                {
+                  "index": 3,
+                  "text": "niveau"
+                },
+                {
+                  "index": 4,
+                  "text": "\n"
+                },
+                {
+                  "index": 5,
+                  "text": "Quatrième"
+                },
+                {
+                  "index": 6,
+                  "text": " "
+                },
+                {
+                  "index": 7,
+                  "text": "niveau"
+                },
+                {
+                  "index": 8,
+                  "text": "\n"
+                },
+                {
+                  "index": 9,
+                  "text": "Cinquième"
+                },
+                {
+                  "index": 10,
+                  "text": " "
+                },
+                {
+                  "index": 11,
+                  "text": "niveau"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/4",
+          "id": "4",
+          "name": "Date Placeholder 3",
+          "bbox": [
+            -128.23,
+            291.7,
+            350.77,
+            95.7
+          ],
+          "rotation": 270,
+          "geometry": "rect",
+          "text": "WELCOME TO EPFL",
+          "textPreview": "WELCOME TO EPFL",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "WELCOME TO EPFL",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "WELCOME TO EPFL"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/5",
+          "id": "5",
+          "name": "Footer Placeholder 4",
+          "bbox": [
+            747.09,
+            196.75,
+            372,
+            53.83
+          ],
+          "rotation": 270,
+          "geometry": "rect",
+          "text": "Speaker",
+          "textPreview": "Speaker",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Speaker",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Speaker"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 5,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/6",
+          "id": "6",
+          "name": "Slide Number Placeholder 5",
+          "bbox": [
+            906.17,
+            20.5,
+            53.83,
+            17.17
+          ],
+          "geometry": "rect",
+          "text": "‹N°›",
+          "textPreview": "‹N°›",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "insets": {
+              "top": 0,
+              "right": 9.45,
+              "bottom": 0,
+              "left": 9.45
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹N°›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹N°›"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 6,
+          "kind": "image",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/15",
+          "id": "15",
+          "name": "Image 12",
+          "bbox": [
+            13.68,
+            13.89,
+            68.66,
+            29.71
+          ],
+          "contentType": "image/png",
+          "asset": {
+            "assetId": "/ppt/media/image1.png",
+            "contentType": "image/png",
+            "byteLength": 17196
+          },
+          "fillImage": {
+            "assetId": "/ppt/media/image1.png",
+            "contentType": "image/png",
+            "byteLength": 17196
+          }
+        },
+        {
+          "order": 7,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/14",
+          "id": "14",
+          "name": "Rectangle 13",
+          "bbox": [
+            45.14,
+            514.2,
+            4.8,
+            6.28
+          ],
+          "rotation": 270,
+          "geometry": "rect",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "verticalAlignment": "middle"
+          },
+          "fillColor": "accent1",
+          "lineWidth": 0
+        }
+      ]
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/8z2h8bq1",
+      "id": "2",
+      "name": "Titre 1",
+      "bbox": [
+        95,
+        18.85,
+        770.76,
+        112.62
+      ],
+      "text": "Dataset– Simulation Time-series",
+      "textPreview": "Dataset– Simulation Time-series",
+      "resolvedFontSize": 42.67,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 42.67,
+        "typeface": "Franklin Gothic Demi Cond",
+        "color": "tx1",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "insets": {
+          "top": 0,
+          "right": 7.56,
+          "bottom": 4.91,
+          "left": 18.9
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Dataset– Simulation Time-series"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Dataset– Simulation Time-series",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Dataset– Simulation Time-series"
+            }
+          ],
+          "bulletCharacter": "",
+          "lineSpacingPercent": 80000
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/zutgvm94",
+      "id": "5",
+      "name": "Espace réservé du numéro de diapositive 4",
+      "bbox": [
+        906.17,
+        20.5,
+        53.83,
+        17.17
+      ],
+      "text": "16",
+      "textPreview": "16",
+      "resolvedFontSize": 9.33,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 9.33,
+        "typeface": "Franklin Gothic Demi Cond",
+        "color": "tx1",
+        "bold": true,
+        "alignment": "center",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 9.45,
+          "bottom": 0,
+          "left": 9.45
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "16"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "16",
+          "runs": [
+            {
+              "index": 1,
+              "text": "16"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/9kby1g7m",
+      "id": "3",
+      "name": "Espace réservé du contenu 1",
+      "bbox": [
+        53.44,
+        186.56,
+        445.77,
+        41.32
+      ],
+      "geometry": "rect",
+      "text": "Simulation results",
+      "textPreview": "Simulation results",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "autoFit": "none",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "§Simulation results"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Simulation results",
+          "lineSpacingPercent": 100000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Simulation results",
+              "fontSize": 18.67
+            }
+          ],
+          "bulletCharacter": "§",
+          "marginLeft": 171450,
+          "indent": -171450
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ytkf2h8j",
+      "id": "4",
+      "name": "Espace réservé du contenu 1",
+      "bbox": [
+        489.2,
+        184.21,
+        380.01,
+        42.98
+      ],
+      "geometry": "rect",
+      "text": "Simulation results with noise added",
+      "textPreview": "Simulation results with noise added",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "autoFit": "none",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "§Simulation results with noise added"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Simulation results with noise added",
+          "lineSpacingPercent": 100000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Simulation results with noise added",
+              "fontSize": 18.67
+            }
+          ],
+          "bulletCharacter": "§",
+          "marginLeft": 171450,
+          "indent": -171450
+        }
+      ]
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/lwbyxwra",
+      "id": "7",
+      "name": "ZoneTexte 6",
+      "bbox": [
+        786.31,
+        447.34,
+        19.39,
+        31.5
+      ],
+      "geometry": "rect",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "none",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": ""
+          }
+        ]
+      }
+    },
+    {
+      "order": 6,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/uhs7q10v",
+      "id": "38",
+      "name": "Encre 16",
+      "bbox": [
+        651.47,
+        187.12,
+        19.39,
+        5.4
+      ],
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image13.png",
+        "contentType": "image/png",
+        "byteLength": 295
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image13.png",
+        "contentType": "image/png",
+        "byteLength": 295
+      }
+    },
+    {
+      "order": 7,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/viloj6hg",
+      "id": "39",
+      "name": "Picture 4",
+      "bbox": [
+        45.33,
+        235.17,
+        431.41,
+        230.14
+      ],
+      "rotation": 0,
+      "contentType": "image/png",
+      "imageCrop": {
+        "left": 0,
+        "top": 0.03068,
+        "right": 0,
+        "bottom": 0.50479
+      },
+      "asset": {
+        "assetId": "/ppt/media/image29.png",
+        "contentType": "image/png",
+        "byteLength": 295785
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image29.png",
+        "contentType": "image/png",
+        "byteLength": 295785
+      }
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/rat4b298",
+      "id": "32",
+      "name": "ZoneTexte 31",
+      "bbox": [
+        45.33,
+        465.31,
+        431.41,
+        27.47
+      ],
+      "rotation": 0,
+      "geometry": "rect",
+      "text": "Figure 10: Simulated room temperatures",
+      "textPreview": "Figure 10: Simulated room temperatures",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Figure 10: Simulated room temperatures"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Figure 10: Simulated room temperatures",
+          "resolvedTextStyle": {
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Figure 10: Simulated ",
+              "fontSize": 14.67,
+              "typeface": "Times New Roman",
+              "bold": true,
+              "italic": true
+            },
+            {
+              "index": 2,
+              "text": "room",
+              "fontSize": 14.67,
+              "typeface": "Times New Roman",
+              "bold": true,
+              "italic": true
+            },
+            {
+              "index": 3,
+              "text": " temperatures",
+              "fontSize": 14.67,
+              "typeface": "Times New Roman",
+              "bold": true,
+              "italic": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 9,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/nal4v2lw",
+      "id": "40",
+      "name": "Picture 6",
+      "bbox": [
+        483.26,
+        227.18,
+        417.01,
+        239.64
+      ],
+      "rotation": 0,
+      "contentType": "image/png",
+      "imageCrop": {
+        "left": 0,
+        "top": 0.00886,
+        "right": 0,
+        "bottom": 0
+      },
+      "asset": {
+        "assetId": "/ppt/media/image30.png",
+        "contentType": "image/png",
+        "byteLength": 882019
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image30.png",
+        "contentType": "image/png",
+        "byteLength": 882019
+      }
+    },
+    {
+      "order": 10,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/m9c32xkr",
+      "id": "41",
+      "name": "Encre 29",
+      "bbox": [
+        631.23,
+        225.22,
+        139.78,
+        10.29
+      ],
+      "rotation": 0,
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image31.png",
+        "contentType": "image/png",
+        "byteLength": 433
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image31.png",
+        "contentType": "image/png",
+        "byteLength": 433
+      }
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/58bm9sr2",
+      "id": "34",
+      "name": "ZoneTexte 33",
+      "bbox": [
+        483.26,
+        466.83,
+        431.41,
+        27.47
+      ],
+      "rotation": 0,
+      "geometry": "rect",
+      "text": "Figure 11: Simulated room temperatures with noise",
+      "textPreview": "Figure 11: Simulated room temperatures with noise",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Figure 11: Simulated room temperatures with noise"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Figure 11: Simulated room temperatures with noise",
+          "resolvedTextStyle": {
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Figure 11: Simulated room temperatures with noise",
+              "fontSize": 14.67,
+              "typeface": "Times New Roman",
+              "bold": true,
+              "italic": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/i503ydsr",
+      "id": "37",
+      "name": "ZoneTexte 36",
+      "bbox": [
+        53.44,
+        95.9,
+        864.95,
+        54.93
+      ],
+      "geometry": "rect",
+      "text": "To approach a real dataset, we can add noise to the resulting time-series, replicating the effect of a noisy sensor:",
+      "textPreview": "To approach a real dataset, we can add noise to the resulting time-series, replicating the effect of a noisy sensor:",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "To approach a real dataset, we can add noise to the resulting time-series, replicating the effect"
+          },
+          {
+            "index": 2,
+            "text": "of a noisy sensor:"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "To approach a real dataset, we can add noise to the resulting time-series, replicating the effect of a noisy sensor:",
+          "runs": [
+            {
+              "index": 1,
+              "text": "To approach a real dataset, we can add noise to the resulting time-series, replicating the effect of a noisy sensor:",
+              "fontSize": 18.67,
+              "typeface": "Arial",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    }
+  ],
+  "composeRuns": []
+}

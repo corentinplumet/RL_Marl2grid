@@ -1,0 +1,202 @@
+\chapter{WCCI36: Target Environment and Controls}
+\label{ch:wcci-transfer}
+
+The experiments now move from \texttt{bus14} to the larger WCCI 2020 grid.
+This chapter defines the target setting and checks which models can learn on it
+before testing transfer.
+
+\section{Target environment}
+\label{sec:wcci-environment}
+
+WCCI has more substations, lines and agents than \texttt{bus14}
+(Table~\ref{tab:wcci-env-comparison}). The agents still control separate areas,
+but their areas are not equal in size.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Source and target environments. Both use topology actions,
+  decentralized agents and the same train/test split rule.}
+  \label{tab:wcci-env-comparison}
+  \setlength{\tabcolsep}{6pt}
+  \begin{tabular}{L{0.30\textwidth}L{0.28\textwidth}L{0.30\textwidth}}
+    \toprule
+    & \texttt{bus14} & \texttt{bus36\_wcci\_nomaint} \\
+    \midrule
+    Substations & 14 & 36 \\
+    Lines & 20 & 59 \\
+    Agents & 3 & 4 \\
+    Chronics & 1{,}004 & 2{,}880 \\
+    Episode length & up to 8{,}064 steps & up to 8{,}062 steps \\
+    Maintenance & none & disabled (Section~\ref{sec:wcci-nomaint}) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Removing maintenance}
+\label{sec:wcci-nomaint}
+
+The WCCI environment normally includes scheduled line maintenance, while
+\texttt{bus14} does not. Maintenance is disabled here so that a transferred
+policy is not tested on a hazard absent from its source environment. This also
+keeps the observation spaces aligned.
+\\
+\\
+On the full WCCI test split, removing maintenance raises do-nothing mean
+survival from $27.3\%$ to $57.3\%$ (Table~\ref{tab:wcci-maintenance-effect}).
+The change is large enough that maintenance-on and maintenance-off results
+should not be compared directly.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Do-nothing performance on the full WCCI test split. The 576
+  chronics are the same in both rows.}
+  \label{tab:wcci-maintenance-effect}
+  \setlength{\tabcolsep}{7pt}
+  \begin{tabular}{lrrr}
+    \toprule
+    Setting & Mean survival & Median survival & Complete episodes \\
+    \midrule
+    Maintenance enabled  & 27.3\% & 12.1\%  & 39/576 (6.8\%) \\
+    Maintenance disabled & 57.3\% & 100.0\% & 303/576 (52.6\%) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Reduced action spaces}
+\label{sec:wcci-action-space}
+
+The full decentralized action space contains almost 67{,}000 actions and is
+strongly unbalanced across agents. The candidate-action models are therefore
+evaluated with reduced spaces of $k\in\{32,64,128,256\}$. Here, $k$ is a cap:
+agents with fewer valid actions keep their complete list.
+\\
+\\
+The greedy survival values below are not computed on the full
+576-chronic WCCI test split. They use only the 24 difficult chronics from the
+fixed 50-chronic evaluation subset defined in
+Section~\ref{sec:wcci-evaluation-protocol}.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Per-agent action counts on \texttt{bus36\_wcci\_nomaint} and
+  one-step greedy mean survival on a subset of the WCCI test split:
+  the 24 difficult chronics from the fixed 50-chronic evaluation set. These are
+  not full-test averages. Agent headings give the number of controlled
+  substations.}
+  \label{tab:wcci-action-space}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{lrrrrrr}
+    \toprule
+    Action space
+      & \texttt{agent\_0} (5)
+      & \texttt{agent\_1} (5)
+      & \texttt{agent\_2} (9)
+      & \texttt{agent\_3} (17)
+      & Total
+      & Greedy mean survival \\
+    \midrule
+    Full list & 77 & 65{,}642 & 127 & 1{,}119 & 66{,}965 & -- \\
+    $k=32$   & 32 & 32  & 32  & 32  & 128 & 33.1\% \\
+    $k=64$   & 64 & 64  & 64  & 64  & 256 & 67.9\% \\
+    $k=128$  & 77 & 128 & 127 & 128 & 460 & 68.2\% \\
+    $k=256$  & 77 & 256 & 127 & 256 & 716 & 94.9\% \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\noindent A one-step greedy policy is used only as a reference for what each reduced
+space contains. Its difficult-cohort mean survival rises from $33.1\%$ at $k=32$ to
+$94.9\%$ at $k=256$. A larger action list therefore gives more useful choices,
+but it also gives the learned policy a harder selection problem. This trade-off
+is measured in Chapter~\ref{ch:screen-f-transfer}.
+
+\section{Evaluation protocol}
+\label{sec:wcci-evaluation-protocol}
+
+All reported transfer evaluations use the same 50 WCCI chronics. Do nothing
+completes 26 of them, giving a 52\% completion rate. These 26 form the \emph{easy} cohort; the remaining 24 form
+the \emph{difficult} cohort. Do-nothing mean survival is $56.0\%$ overall and
+$8.34\%$ on the difficult cohort.
+\\
+\\
+Reporting both values separates two goals: preserving cases that already need
+no action and improving cases where inaction fails. The number of difficult
+chronics completed is reported as \emph{rescues}. The one-step greedy policy is
+a strong reference, not an upper bound, because it queries the simulator at
+every step.
+
+\section{Controls trained on WCCI}
+\label{sec:wcci-architecture-choice}
+
+Figure~\ref{fig:wcci-target-controls} compares three controls trained directly
+on WCCI: the flat-MLP baseline, the four selected GNN encoders with
+grid-specific MLP action heads, and the eight GNN candidate-scorer variants.
+All architecture cells use seed 0. For a family with several cells, the bar
+reports their arithmetic mean and the whisker spans their minimum and maximum. The
+number above each bar gives the number of cells included. Figure~\ref{fig:wcci-target-controls}
+keeps only \(k=64\), because it is roughly the same size the action space on the bus 14 environment.
+
+\noindent\textcolor{green!50!black}{\textbf{Incomplete settings excluded:}
+at \(k=32\), only the flat MLP is currently available; at \(k=256\), the flat
+MLP and selected GNN encoder with an MLP head are available.}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{figures/wcci_target_controls.png}
+  \caption{Matched comparison of WCCI controls trained from scratch at
+  \(k=64\). Bar colour identifies the model family. Bar height is the family
+  mean, whiskers show the minimum--maximum range when several architecture
+  cells are available, and labels give the number of cells. The dashed line is
+  do nothing.}
+  \label{fig:wcci-target-controls}
+\end{figure}
+
+\noindent At the matched \(k=64\) setting, the overall mean across architecture
+cells is \(32.64\%\) for the flat MLP, \(38.40\%\) for the four fixed-head GNNs and \(47.21\%\) for
+the eight candidate scorers. All three remain below the \(56.0\%\) do-nothing
+reference. These values are surprisingly low for models
+retrained directly on the target grid. On the difficult cohort, however, the candidate scorer has the
+strongest mean at \(10.51\%\), compared with \(8.82\%\) for the flat MLP and
+\(5.26\%\) for the fixed-head GNNs. Its best cell reaches \(18.46\%\).
+\\
+\\
+The candidate scorer is also the only graph actor here whose complete policy
+can cross grids. Its shared scorer is applied to each candidate, so its output
+size does not depend on the number of agents or actions. A fixed-list head has
+one output per action index and cannot be reused unchanged on WCCI.
+\\
+\\
+Exact flat-MLP and fixed-list GNN results are given in
+Appendix~\ref{app:wcci-result-atlas}.
+
+\begin{tcolorbox}[
+  colframe=red!75!black,
+  colback=red!5!white,
+  title=Chapter 7 Summary: Target Environment and Controls]
+\textbf{Purpose:} Define the WCCI target and scratch-trained
+reference controls for the transfer study.
+\\
+\\
+\textbf{Content:} We quantify the maintenance effect, reduce
+the action space, define a fixed 50-chronic evaluation, and compare the three
+control families at the matched $k=64$ setting.
+\\
+\\
+\textbf{Findings:}
+\begin{itemize}
+  \item Disabling maintenance raises do-nothing mean survival from $27.3\%$ to
+  $57.3\%$. On the 24 difficult cases, it reaches only $8.34\%$.
+  \item Greedy difficult-case survival rises from $33.1\%$ at $k=32$ to
+  $94.9\%$ at $k=256$, but larger lists make ranking harder.
+  \item Direct retraining is surprisingly weak: all three
+  $k=64$ family means remain below do nothing overall. The candidate scorer is
+  strongest on difficult cases, with a $10.51\%$ mean and an $18.46\%$ best
+  cell.
+\end{itemize}
+\textbf{Takeaway:} Target-grid retraining alone does not solve
+WCCI control. These controls provide the reference for encoder reuse and
+complete-policy transfer.
+\end{tcolorbox}

@@ -1,0 +1,1440 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/udsvah03",
+    "id": "udsvah03",
+    "slide": 9,
+    "layoutId": "/ppt/slideLayouts/slideLayout16.xml",
+    "layoutName": "1_Titre et contenu",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "EPFL 2025",
+    "colors": {
+      "accent1": "#00A79F",
+      "accent2": "#24737F",
+      "accent3": "#512880",
+      "accent4": "#4F8FCC",
+      "accent5": "#D0661C",
+      "accent6": "#B51F1F",
+      "dk1": "#413C3A",
+      "lt1": "#FFFFFF",
+      "dk2": "#FF0000",
+      "lt2": "#CAC7C7",
+      "hlink": "#ED6E9C",
+      "folHlink": "#4F8FCC"
+    },
+    "fontScheme": {
+      "name": "Arial",
+      "majorFont": {
+        "latinTypeface": "Arial"
+      },
+      "minorFont": {
+        "latinTypeface": "Arial"
+      }
+    },
+    "typefaces": [
+      "Arial"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout16.xml",
+      "name": "1_Titre et contenu",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout16.xml/3",
+          "id": "3",
+          "name": "Content Placeholder 2",
+          "bbox": [
+            57.83,
+            218.83,
+            672.83,
+            466.17
+          ],
+          "text": "Cliquez pour modifier les styles du texte du masque",
+          "textPreview": "Cliquez pour modifier les styles du texte du masque",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Cliquez pour modifier les styles du texte du masque",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Cliquez pour modifier les styles du texte du masque"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout16.xml/8",
+          "id": "8",
+          "name": "Espace réservé pour une image  7",
+          "bbox": [
+            745.83,
+            0,
+            534.17,
+            720
+          ],
+          "text": "Cliquez sur l'icône pour ajouter une image",
+          "textPreview": "Cliquez sur l'icône pour ajouter une image",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Cliquez sur l'icône pour ajouter une image",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Cliquez sur l'icône pour ajouter une image"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout16.xml/2",
+          "id": "2",
+          "name": "Titre 1",
+          "bbox": [
+            55.22,
+            66.72,
+            476.33,
+            152.12
+          ],
+          "text": "Modifiez le style du titre",
+          "textPreview": "Modifiez le style du titre",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifiez le style du titre",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifiez le style du titre"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout16.xml/4",
+          "id": "4",
+          "name": "Espace réservé de la date 3",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "EPFL AT A GLANCE",
+          "textPreview": "EPFL AT A GLANCE",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "EPFL AT A GLANCE",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "EPFL AT A GLANCE"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 5,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout16.xml/5",
+          "id": "5",
+          "name": "Espace réservé du pied de page 4",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "order": 6,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout16.xml/7",
+          "id": "7",
+          "name": "Espace réservé du numéro de diapositive 6",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "‹#›",
+          "textPreview": "‹#›",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹#›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹#›"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "type": "master",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/2",
+          "id": "2",
+          "name": "Title Placeholder 1",
+          "bbox": [
+            55.22,
+            66.72,
+            476.33,
+            221.17
+          ],
+          "geometry": "rect",
+          "text": "Modifiez le style du titre",
+          "textPreview": "Modifiez le style du titre",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 18.9,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifiez le style du titre",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifiez"
+                },
+                {
+                  "index": 2,
+                  "text": " le style du titre"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/3",
+          "id": "3",
+          "name": "Text Placeholder 2",
+          "bbox": [
+            549.33,
+            218.83,
+            672.83,
+            466.17
+          ],
+          "geometry": "rect",
+          "text": "Modifier les styles du texte du masque\nDeuxième niveau\nTroisième niveau\nQuatrième niveau\nCinquième niveau",
+          "textPreview": "Modifier les styles du texte du masque | Deuxième niveau | Troisième niveau | Quatrième niveau | Cinquième niveau",
+          "resolvedTextStyle": {
+            "vertical": 1,
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 4.91,
+              "right": 3.78,
+              "bottom": 4.8,
+              "left": 3.78
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifier les styles du texte du masque",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifier les styles du "
+                },
+                {
+                  "index": 2,
+                  "text": "texte"
+                },
+                {
+                  "index": 3,
+                  "text": " du masque"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "text": "Deuxième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Deuxième "
+                },
+                {
+                  "index": 2,
+                  "text": "niveau"
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "text": "Troisième niveau\nQuatrième niveau\nCinquième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Troisième"
+                },
+                {
+                  "index": 2,
+                  "text": " "
+                },
+                {
+                  "index": 3,
+                  "text": "niveau"
+                },
+                {
+                  "index": 4,
+                  "text": "\n"
+                },
+                {
+                  "index": 5,
+                  "text": "Quatrième"
+                },
+                {
+                  "index": 6,
+                  "text": " "
+                },
+                {
+                  "index": 7,
+                  "text": "niveau"
+                },
+                {
+                  "index": 8,
+                  "text": "\n"
+                },
+                {
+                  "index": 9,
+                  "text": "Cinquième"
+                },
+                {
+                  "index": 10,
+                  "text": " "
+                },
+                {
+                  "index": 11,
+                  "text": "niveau"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/4",
+          "id": "4",
+          "name": "Date Placeholder 3",
+          "bbox": [
+            748.83,
+            33.33,
+            406.13,
+            22.55
+          ],
+          "geometry": "rect",
+          "text": "EPFL AT A GLANCE",
+          "textPreview": "EPFL AT A GLANCE",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 4.8,
+              "left": 0
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "EPFL AT A GLANCE",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "EPFL AT A GLANCE"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/5",
+          "id": "5",
+          "name": "Footer Placeholder 4",
+          "bbox": [
+            748.83,
+            45.39,
+            406.13,
+            23.63
+          ],
+          "geometry": "rect",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 4.8,
+              "left": 0
+            }
+          }
+        },
+        {
+          "order": 5,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/6",
+          "id": "6",
+          "name": "Slide Number Placeholder 5",
+          "bbox": [
+            1151.97,
+            -1.33,
+            71.78,
+            92.62
+          ],
+          "geometry": "rect",
+          "text": "‹#›",
+          "textPreview": "‹#›",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 9.45
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹#›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹#›"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 6,
+          "kind": "image",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/7",
+          "id": "7",
+          "name": "Image 6",
+          "bbox": [
+            49.67,
+            26.61,
+            86.33,
+            37.4
+          ],
+          "contentType": "image/svg+xml",
+          "imageCrop": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          "asset": {
+            "assetId": "/ppt/media/image2.svg",
+            "contentType": "image/svg+xml",
+            "byteLength": 1645
+          },
+          "fillImage": {
+            "assetId": "/ppt/media/image2.svg",
+            "contentType": "image/svg+xml",
+            "byteLength": 1645
+          }
+        }
+      ]
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/6lo7qlc3",
+      "id": "15",
+      "name": "Espace réservé pour une image  8",
+      "bbox": [
+        96.94,
+        0,
+        1183.06,
+        720
+      ],
+      "contentType": "image/png",
+      "imageCrop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "asset": {
+        "assetId": "/ppt/media/image38.png",
+        "contentType": "image/png",
+        "byteLength": 193082
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image38.png",
+        "contentType": "image/png",
+        "byteLength": 193082
+      }
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/3y107axw",
+      "id": "13",
+      "name": "TextBox 4",
+      "bbox": [
+        955.98,
+        0,
+        323.33,
+        365.22
+      ],
+      "geometry": "rect",
+      "text": "EPFL Fribourg  Building technology and sustainable architecture",
+      "textPreview": "EPFL Fribourg  Building technology and sustainable architecture",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 3,
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "bottom",
+        "wrap": "square",
+        "autoFit": "none",
+        "insets": {
+          "top": 4.8,
+          "right": 18.9,
+          "bottom": 34.02,
+          "left": 30.24
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "EPFL Fribourg"
+          },
+          {
+            "index": 2,
+            "text": "Building technology and"
+          },
+          {
+            "index": 3,
+            "text": "sustainable architecture"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "EPFL Fribourg  Building technology and sustainable architecture",
+          "lineSpacingPercent": 100000,
+          "resolvedTextStyle": {
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "EPFL Fribourg  ",
+              "fontSize": 32,
+              "typeface": "Arial",
+              "color": "#FFFFFF",
+              "bold": true,
+              "textTransform": "none"
+            },
+            {
+              "index": 2,
+              "text": "Building ",
+              "fontSize": 21.33,
+              "typeface": "Arial",
+              "color": "#FFFFFF",
+              "textTransform": "none"
+            },
+            {
+              "index": 3,
+              "text": "technology",
+              "fontSize": 21.33,
+              "typeface": "Arial",
+              "color": "#FFFFFF",
+              "textTransform": "none"
+            },
+            {
+              "index": 4,
+              "text": " and ",
+              "fontSize": 21.33,
+              "typeface": "Arial",
+              "color": "#FFFFFF",
+              "textTransform": "none"
+            },
+            {
+              "index": 5,
+              "text": "sustainable",
+              "fontSize": 21.33,
+              "typeface": "Arial",
+              "color": "#FFFFFF",
+              "textTransform": "none"
+            },
+            {
+              "index": 6,
+              "text": " architecture",
+              "fontSize": 21.33,
+              "typeface": "Arial",
+              "color": "#FFFFFF",
+              "textTransform": "none"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "accent5",
+      "lineWidth": 3
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/nex4jq5k",
+      "id": "4",
+      "name": "Titre 3",
+      "bbox": [
+        55.22,
+        66.72,
+        476.33,
+        152.12
+      ],
+      "text": "Associated campuses",
+      "textPreview": "Associated campuses",
+      "resolvedFontSize": 58.67,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 58.67,
+        "typeface": "Arial",
+        "color": "tx1",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "insets": {
+          "top": 18.9,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Associated"
+          },
+          {
+            "index": 2,
+            "text": "campuses"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Associated campuses",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Associated "
+            },
+            {
+              "index": 2,
+              "text": "campuses"
+            }
+          ],
+          "bulletCharacter": "",
+          "lineSpacingPercent": 90000
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/bih4na5w",
+      "id": "8",
+      "name": "TextBox 4",
+      "bbox": [
+        632.5,
+        364.97,
+        323.33,
+        355.03
+      ],
+      "geometry": "rect",
+      "text": "EPFL Genève \nBio- and neuroengineering (Wyss center); Neuroscience; Neurotechnology,",
+      "textPreview": "EPFL Genève  | Bio- and neuroengineering (Wyss center); Neuroscience; Neurotechnology,",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 3,
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "bottom",
+        "wrap": "square",
+        "autoFit": "none",
+        "insets": {
+          "top": 4.8,
+          "right": 18.9,
+          "bottom": 34.02,
+          "left": 30.24
+        }
+      },
+      "textLayout": {
+        "lineCount": 5,
+        "lines": [
+          {
+            "index": 1,
+            "text": "EPFL Genève"
+          },
+          {
+            "index": 2,
+            "text": "Bio- and neuroengineering"
+          },
+          {
+            "index": 3,
+            "text": "(Wyss center);"
+          },
+          {
+            "index": 4,
+            "text": "Neuroscience;"
+          },
+          {
+            "index": 5,
+            "text": "Neurotechnology,"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "EPFL Genève ",
+          "lineSpacingPercent": 100000,
+          "resolvedTextStyle": {
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "EPFL Genève ",
+              "fontSize": 32,
+              "typeface": "Arial",
+              "color": "#FFFFFF",
+              "bold": true,
+              "textTransform": "none"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "Bio- and neuroengineering (Wyss center); Neuroscience; Neurotechnology,",
+          "lineSpacingPercent": 100000,
+          "resolvedTextStyle": {
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Bio- and ",
+              "fontSize": 21.33,
+              "typeface": "Arial",
+              "color": "#FFFFFF",
+              "textTransform": "none"
+            },
+            {
+              "index": 2,
+              "text": "neuroengineering",
+              "fontSize": 21.33,
+              "typeface": "Arial",
+              "color": "#FFFFFF",
+              "textTransform": "none"
+            },
+            {
+              "index": 3,
+              "text": " (Wyss center); ",
+              "fontSize": 21.33,
+              "typeface": "Arial",
+              "color": "#FFFFFF",
+              "textTransform": "none"
+            },
+            {
+              "index": 4,
+              "text": "Neuroscience; ",
+              "fontSize": 21.33,
+              "typeface": "Arial",
+              "color": "#FFFFFF"
+            },
+            {
+              "index": 5,
+              "text": "Neurotechnology",
+              "fontSize": 21.33,
+              "typeface": "Arial",
+              "color": "#FFFFFF"
+            },
+            {
+              "index": 6,
+              "text": ",",
+              "fontSize": 21.33,
+              "typeface": "Arial",
+              "color": "#FFFFFF"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "accent4",
+      "lineWidth": 3
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/2xsjepgb",
+      "id": "12",
+      "name": "TextBox 4",
+      "bbox": [
+        955.98,
+        364.97,
+        323.33,
+        355.03
+      ],
+      "geometry": "rect",
+      "text": "EPFL Valais Wallis \nIndustrial energy / green chemistry; Environmental engineering; Biotechnology / bioengineering",
+      "textPreview": "EPFL Valais Wallis  | Industrial energy / green chemistry; Environmental engineering; Biotechnology / bioengineering",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 3,
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "bottom",
+        "wrap": "square",
+        "autoFit": "none",
+        "insets": {
+          "top": 4.8,
+          "right": 18.9,
+          "bottom": 34.02,
+          "left": 30.24
+        }
+      },
+      "textLayout": {
+        "lineCount": 6,
+        "lines": [
+          {
+            "index": 1,
+            "text": "EPFL Valais"
+          },
+          {
+            "index": 2,
+            "text": "Wallis"
+          },
+          {
+            "index": 3,
+            "text": "Industrial energy / green"
+          },
+          {
+            "index": 4,
+            "text": "chemistry; Environmental"
+          },
+          {
+            "index": 5,
+            "text": "engineering; Biotechnology /"
+          },
+          {
+            "index": 6,
+            "text": "bioengineering"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "EPFL Valais Wallis ",
+          "lineSpacingPercent": 100000,
+          "resolvedTextStyle": {
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "EPFL Valais Wallis ",
+              "fontSize": 32,
+              "typeface": "Arial",
+              "color": "#FFFFFF",
+              "bold": true,
+              "textTransform": "none"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "Industrial energy / green chemistry; Environmental engineering; Biotechnology / bioengineering",
+          "lineSpacingPercent": 100000,
+          "resolvedTextStyle": {
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Industrial",
+              "fontSize": 21.33,
+              "typeface": "Arial",
+              "color": "#FFFFFF",
+              "textTransform": "none"
+            },
+            {
+              "index": 2,
+              "text": " ",
+              "fontSize": 21.33,
+              "typeface": "Arial",
+              "color": "#FFFFFF",
+              "textTransform": "none"
+            },
+            {
+              "index": 3,
+              "text": "energy",
+              "fontSize": 21.33,
+              "typeface": "Arial",
+              "color": "#FFFFFF",
+              "textTransform": "none"
+            },
+            {
+              "index": 4,
+              "text": " / green ",
+              "fontSize": 21.33,
+              "typeface": "Arial",
+              "color": "#FFFFFF",
+              "textTransform": "none"
+            },
+            {
+              "index": 5,
+              "text": "chemistry",
+              "fontSize": 21.33,
+              "typeface": "Arial",
+              "color": "#FFFFFF",
+              "textTransform": "none"
+            },
+            {
+              "index": 6,
+              "text": "; ",
+              "fontSize": 21.33,
+              "typeface": "Arial",
+              "color": "#FFFFFF",
+              "textTransform": "none"
+            },
+            {
+              "index": 7,
+              "text": "Environmental",
+              "fontSize": 21.33,
+              "typeface": "Arial",
+              "color": "#FFFFFF",
+              "textTransform": "none"
+            },
+            {
+              "index": 8,
+              "text": " engineering; ",
+              "fontSize": 21.33,
+              "typeface": "Arial",
+              "color": "#FFFFFF",
+              "textTransform": "none"
+            },
+            {
+              "index": 9,
+              "text": "Biotechnology",
+              "fontSize": 21.33,
+              "typeface": "Arial",
+              "color": "#FFFFFF",
+              "textTransform": "none"
+            },
+            {
+              "index": 10,
+              "text": " / ",
+              "fontSize": 21.33,
+              "typeface": "Arial",
+              "color": "#FFFFFF",
+              "textTransform": "none"
+            },
+            {
+              "index": 11,
+              "text": "bioengineering",
+              "fontSize": 21.33,
+              "typeface": "Arial",
+              "color": "#FFFFFF",
+              "textTransform": "none"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "accent6",
+      "lineWidth": 3
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/cnu1kzyd",
+      "id": "14",
+      "name": "TextBox 4",
+      "bbox": [
+        632.5,
+        -0.14,
+        323.33,
+        365.22
+      ],
+      "geometry": "rect",
+      "text": "EPFL Neuchâtel\nMicroengineering and nanotechnologies; \nAdvanced micro-manufacturing ",
+      "textPreview": "EPFL Neuchâtel | Microengineering and nanotechnologies;  | Advanced micro-manufacturing",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 3,
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "bottom",
+        "wrap": "square",
+        "autoFit": "none",
+        "insets": {
+          "top": 4.8,
+          "right": 18.9,
+          "bottom": 34.02,
+          "left": 30.24
+        }
+      },
+      "textLayout": {
+        "lineCount": 5,
+        "lines": [
+          {
+            "index": 1,
+            "text": "EPFL Neuchâtel"
+          },
+          {
+            "index": 2,
+            "text": "Microengineering and"
+          },
+          {
+            "index": 3,
+            "text": "nanotechnologies;"
+          },
+          {
+            "index": 4,
+            "text": "Advanced micro-"
+          },
+          {
+            "index": 5,
+            "text": "manufacturing"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "EPFL Neuchâtel",
+          "lineSpacingPercent": 100000,
+          "resolvedTextStyle": {
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "EPFL Neuchâtel",
+              "fontSize": 32,
+              "typeface": "Arial",
+              "color": "#FFFFFF",
+              "bold": true,
+              "textTransform": "none"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "Microengineering and nanotechnologies; \nAdvanced micro-manufacturing ",
+          "lineSpacingPercent": 100000,
+          "resolvedTextStyle": {
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Microengineering",
+              "fontSize": 21.33,
+              "typeface": "Arial",
+              "color": "#FFFFFF",
+              "textTransform": "none"
+            },
+            {
+              "index": 2,
+              "text": " and nanotechnologies; ",
+              "fontSize": 21.33,
+              "typeface": "Arial",
+              "color": "#FFFFFF",
+              "textTransform": "none"
+            },
+            {
+              "index": 3,
+              "text": "\n",
+              "alignment": "left"
+            },
+            {
+              "index": 4,
+              "text": "Advanced micro-",
+              "fontSize": 21.33,
+              "typeface": "Arial",
+              "color": "#FFFFFF",
+              "textTransform": "none"
+            },
+            {
+              "index": 5,
+              "text": "manufacturing",
+              "fontSize": 21.33,
+              "typeface": "Arial",
+              "color": "#FFFFFF",
+              "textTransform": "none"
+            },
+            {
+              "index": 6,
+              "text": " ",
+              "fontSize": 21.33,
+              "typeface": "Arial",
+              "color": "#FFFFFF",
+              "textTransform": "none"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "accent2",
+      "lineWidth": 3
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/mdonql4z",
+      "id": "5",
+      "name": "Espace réservé de la date 4",
+      "bbox": [
+        748.83,
+        33.33,
+        406.13,
+        22.55
+      ],
+      "text": "EPFL AT A GLANCE",
+      "textPreview": "EPFL AT A GLANCE",
+      "resolvedFontSize": 9.33,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 9.33,
+        "typeface": "Arial",
+        "color": "tx2",
+        "bold": true,
+        "alignment": "right",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 4.8,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "EPFL AT A GLANCE"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "EPFL AT A GLANCE",
+          "runs": [
+            {
+              "index": 1,
+              "text": "EPFL AT A GLANCE",
+              "color": "bg1"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/9gzml0nq",
+      "id": "6",
+      "name": "Espace réservé du pied de page 5",
+      "bbox": [
+        748.83,
+        45.39,
+        406.13,
+        23.63
+      ],
+      "resolvedFontSize": 9.33,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 9.33,
+        "typeface": "Arial",
+        "color": "tx2",
+        "alignment": "right",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 4.8,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": ""
+          }
+        ]
+      }
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ofq5svm5",
+      "id": "7",
+      "name": "Espace réservé du numéro de diapositive 6",
+      "bbox": [
+        1151.97,
+        -1.33,
+        71.78,
+        92.62
+      ],
+      "text": "9",
+      "textPreview": "9",
+      "resolvedFontSize": 28,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "vertical": 1,
+        "fontSize": 28,
+        "typeface": "Arial",
+        "color": "tx2",
+        "bold": true,
+        "alignment": "right",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 9.45
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "9"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "9",
+          "runs": [
+            {
+              "index": 1,
+              "text": "9",
+              "color": "bg1"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 10,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/t8z610vu",
+      "id": "16",
+      "name": "Graphique 17",
+      "bbox": [
+        660.55,
+        389.3,
+        58.35,
+        54.25
+      ],
+      "contentType": "image/svg+xml",
+      "asset": {
+        "assetId": "/ppt/media/image40.svg",
+        "contentType": "image/svg+xml",
+        "byteLength": 47164
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image40.svg",
+        "contentType": "image/svg+xml",
+        "byteLength": 47164
+      }
+    },
+    {
+      "order": 11,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/s76psvu9",
+      "id": "17",
+      "name": "Graphique 19",
+      "bbox": [
+        983.86,
+        392.24,
+        113.62,
+        49.13
+      ],
+      "contentType": "image/svg+xml",
+      "asset": {
+        "assetId": "/ppt/media/image42.svg",
+        "contentType": "image/svg+xml",
+        "byteLength": 15482
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image42.svg",
+        "contentType": "image/svg+xml",
+        "byteLength": 15482
+      }
+    },
+    {
+      "order": 12,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/jixovqds",
+      "id": "18",
+      "name": "Graphique 21",
+      "bbox": [
+        660.55,
+        93.24,
+        140.24,
+        38.9
+      ],
+      "contentType": "image/svg+xml",
+      "asset": {
+        "assetId": "/ppt/media/image44.svg",
+        "contentType": "image/svg+xml",
+        "byteLength": 12502
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image44.svg",
+        "contentType": "image/svg+xml",
+        "byteLength": 12502
+      }
+    },
+    {
+      "order": 13,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/yho7mlc7",
+      "id": "19",
+      "name": "Graphique 23",
+      "bbox": [
+        976.37,
+        96.05,
+        98.27,
+        46.06
+      ],
+      "contentType": "image/svg+xml",
+      "asset": {
+        "assetId": "/ppt/media/image46.svg",
+        "contentType": "image/svg+xml",
+        "byteLength": 12057
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image46.svg",
+        "contentType": "image/svg+xml",
+        "byteLength": 12057
+      }
+    }
+  ],
+  "composeRuns": []
+}

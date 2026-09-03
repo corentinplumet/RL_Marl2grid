@@ -34,6 +34,7 @@ plt.rcParams.update(
 data = W.load()
 wsc = W.load_wsc(data)
 wmlp = W.load_wmlp(data)
+wmlp_all_runs = wmlp.runs.copy()
 wmlp.runs = wmlp.runs.loc[wmlp.runs["mk"].isin([64, 256])].copy()
 runs = data.runs.copy()
 
@@ -198,73 +199,128 @@ def grouped_gate_boxes(
 
 
 # ---------------------------------------------------------------------------
-# Figure 8.1: target-grid controls trained from scratch.
+# Figure 7.1: target-grid controls trained from scratch.
 # ---------------------------------------------------------------------------
-wmlp_final = wmlp.runs.loc[
-    (wmlp.runs["selection"] == "last") & (wmlp.runs["gate"] == "ungated")
+wmlp_final = wmlp_all_runs.loc[
+    (wmlp_all_runs["selection"] == "last")
+    & (wmlp_all_runs["gate"] == "ungated")
+    & (wmlp_all_runs["mk"].isin([32, 64, 256]))
 ].copy()
 wsc_final = wsc.runs.loc[wsc.runs["checkpoint_kind"] == "final"].copy()
 candidate_scratch = runs.loc[
     (runs["route"] == "MAPPO scratch")
     & (runs["selection"] == "last")
     & (runs["gate"] == "ungated")
-    & (runs["mk"] == 64)
+    & (runs["mk"].isin([32, 64, 256]))
 ].copy()
 
 controls = pd.concat(
     [
-        wmlp_final.assign(method="WMLP"),
-        wsc_final.assign(method="Fixed-list GNN"),
-        candidate_scratch.assign(method="Candidate scorer, scratch"),
+        wmlp_final.assign(model_family="Flat MLP baseline"),
+        wsc_final.assign(model_family="Selected GNN encoder + MLP head"),
+        candidate_scratch.assign(model_family="GNN encoder + action scorer"),
     ],
     ignore_index=True,
 )
-method_order = ["WMLP", "Fixed-list GNN", "Candidate scorer, scratch"]
-method_labels = ["Flat MLP", "Fixed-list GNN", "Candidate scorer\nfrom scratch"]
+family_order = [
+    "Flat MLP baseline",
+    "Selected GNN encoder + MLP head",
+    "GNN encoder + action scorer",
+]
+family_colors = {
+    "Flat MLP baseline": "#9C755F",
+    "Selected GNN encoder + MLP head": "#B279A2",
+    "GNN encoder + action scorer": "#54A24B",
+}
+scratch_caps = [64]
+bar_width = 0.22
+family_offsets = {
+    "Flat MLP baseline": -bar_width,
+    "Selected GNN encoder + MLP head": 0.0,
+    "GNN encoder + action scorer": bar_width,
+}
 
-fig, axes = plt.subplots(1, 2, figsize=(12.4, 4.7))
+fig, axes = plt.subplots(1, 2, figsize=(13.4, 5.1))
 for ax, metric, title, floor in (
     (axes[0], "overall_pct", "All 50 chronics", DN_OVERALL),
     (axes[1], "hard_pct", f"The {N_HARD} difficult chronics", DN_HARD),
 ):
-    for method_index, method in enumerate(method_order):
-        method_data = controls.loc[controls["method"] == method]
-        for cap_index, cap in enumerate(sorted(method_data["mk"].dropna().unique())):
-            values = method_data.loc[method_data["mk"] == cap, metric].to_numpy()
-            center = method_index + (cap_index - (method_data["mk"].nunique() - 1) / 2) * 0.16
-            jitter = (np.arange(len(values)) - (len(values) - 1) / 2) * 0.025
-            ax.scatter(
-                np.full(len(values), center) + jitter,
-                values,
-                s=54,
-                color=CAP_COLORS[int(cap)],
+    for cap_index, cap in enumerate(scratch_caps):
+        for family in family_order:
+            values = controls.loc[
+                (controls["mk"] == cap) & (controls["model_family"] == family),
+                metric,
+            ].dropna().to_numpy()
+            if not len(values):
+                continue
+            center = cap_index + family_offsets[family]
+            family_mean = float(np.mean(values))
+            error_kw = None
+            if len(values) > 1:
+                error_kw = {
+                    "yerr": np.array(
+                        [
+                            [family_mean - float(values.min())],
+                            [float(values.max()) - family_mean],
+                        ]
+                    ),
+                    "capsize": 3.5,
+                    "error_kw": {"elinewidth": 1.25, "ecolor": "#222222"},
+                }
+            ax.bar(
+                center,
+                family_mean,
+                width=bar_width * 0.88,
+                color=family_colors[family],
                 edgecolor="white",
-                linewidth=0.7,
+                linewidth=0.8,
                 alpha=0.92,
                 zorder=3,
+                **(error_kw or {}),
             )
-            if len(values) > 1:
-                ax.plot(
-                    [center - 0.07, center + 0.07],
-                    [np.median(values)] * 2,
-                    color="#222222",
-                    linewidth=2.2,
-                    zorder=4,
-                )
+            label_y = family_mean - (1.6 if metric == "overall_pct" else 0.45)
+            ax.text(
+                center,
+                label_y,
+                f"n={len(values)}",
+                ha="center",
+                va="top",
+                fontsize=8.2,
+                color="white",
+                fontweight="bold",
+                zorder=5,
+            )
     ax.axhline(floor, color="#222222", linestyle="--", linewidth=1.3)
-    ax.set_xticks(range(len(method_order)), method_labels)
-    ax.set_xlim(-0.5, len(method_order) - 0.5)
+    ax.set_xticks(range(len(scratch_caps)), [f"$k={cap}$" for cap in scratch_caps])
+    ax.set_xlim(-0.55, len(scratch_caps) - 0.45)
+    ax.set_xlabel("Reduced actions per agent")
     ax.set_ylabel("Mean survival (%)")
     ax.set_title(title)
-axes[0].set_ylim(0, 68)
-axes[1].set_ylim(0, 27)
+axes[0].set_ylim(0, 70)
+axes[1].set_ylim(0, 28)
 handles = [
-    plt.Line2D([0], [0], marker="o", linestyle="", color=CAP_COLORS[c], label=f"mk{c}")
-    for c in (64, 256)
+    plt.Rectangle(
+        (0, 0),
+        1,
+        1,
+        facecolor=family_colors[family],
+        edgecolor="white",
+        label=family,
+    )
+    for family in family_order
 ]
-fig.legend(handles=handles, loc="lower center", ncol=3, frameon=False, bbox_to_anchor=(0.5, -0.02))
-fig.suptitle("WCCI controls trained from scratch - final checkpoints, no heuristic", y=1.02)
-fig.tight_layout(rect=(0, 0.08, 1, 1))
+fig.legend(
+    handles=handles,
+    loc="lower center",
+    ncol=3,
+    frameon=False,
+    bbox_to_anchor=(0.5, -0.02),
+)
+fig.suptitle(
+    "Matched WCCI controls trained from scratch at $k=64$",
+    y=1.02,
+)
+fig.tight_layout(rect=(0, 0.10, 1, 1))
 save(fig, "wcci_target_controls.png")
 
 
@@ -558,7 +614,7 @@ save(fig, "wcci_policy_change_absolute_performance.png")
 
 
 # ---------------------------------------------------------------------------
-# Figure 9.4: matched modifications and gate dependence.
+# Figure 10.4: matched modifications and gate dependence.
 # ---------------------------------------------------------------------------
 mod_rows = []
 for treatment, display in (("gmax", "Gmax-delta"), ("AIB", "Adaptive budget")):
@@ -597,9 +653,19 @@ for cap, row in wmlp_gate.iterrows():
 gate_effects = pd.DataFrame(gate_rows)
 
 fig, axes = plt.subplots(1, 2, figsize=(13.4, 5.2))
-for ax, frame, title in (
-    (axes[0], modifications, "Change from the plain zero-shot actor"),
-    (axes[1], gate_effects, "Effect of the local-rho 0.95 heuristic"),
+for ax, frame, title, xlabel in (
+    (
+        axes[0],
+        modifications,
+        "Variant minus plain zero-shot\n(same architecture, k, and gate)",
+        r"$\Delta$ difficult survival = variant - plain zero-shot (pp)",
+    ),
+    (
+        axes[1],
+        gate_effects,
+        r"Local-$\rho=0.95$ minus ungated" + "\n(same policy, architecture, and k)",
+        r"$\Delta$ difficult survival = gated - ungated (pp)",
+    ),
 ):
     positions = np.arange(len(frame))
     colours = ["#B279A2" if "Gmax" in label else "#72B7B2" for label in frame["label"]] if ax is axes[0] else ["#E45756" if "WMLP" in label else "#4C78A8" for label in frame["label"]]
@@ -621,7 +687,7 @@ for ax, frame, title in (
     ax.axvline(0, color="#222222", linewidth=1.1)
     ax.set_yticks(positions, frame["label"])
     ax.invert_yaxis()
-    ax.set_xlabel("Matched change in difficult survival (pp)")
+    ax.set_xlabel(xlabel)
     ax.set_title(title)
     for i, row in frame.iterrows():
         ax.text(row["high"] + 0.25, i, f"{row['mean']:+.1f}", va="center", fontsize=8)

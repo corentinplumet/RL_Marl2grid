@@ -1,0 +1,827 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/7qto7e10",
+    "id": "7qto7e10",
+    "slide": 24,
+    "layoutId": "/ppt/slideLayouts/slideLayout12.xml",
+    "layoutName": "Title_Only",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 960,
+      "height": 540
+    }
+  },
+  "theme": {
+    "colorSchemeName": "EPFL - New Colors 2019",
+    "colors": {
+      "accent1": "#E30613",
+      "accent2": "#00A79F",
+      "accent3": "#413C3A",
+      "accent4": "#007480",
+      "accent5": "#F39869",
+      "accent6": "#B51F1F",
+      "dk1": "#413C3A",
+      "lt1": "#FFFFFF",
+      "dk2": "#413C3A",
+      "lt2": "#CAC7C7",
+      "hlink": "#ED6E9C",
+      "folHlink": "#4F8FCC"
+    },
+    "fontScheme": {
+      "name": "EPFL_Beta2",
+      "majorFont": {
+        "latinTypeface": "Franklin Gothic Demi Cond"
+      },
+      "minorFont": {
+        "latinTypeface": "Arial"
+      }
+    },
+    "typefaces": [
+      "Arial",
+      "Franklin Gothic Demi Cond"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout12.xml",
+      "name": "Title_Only",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout12.xml/6",
+          "id": "6",
+          "name": "Titre 5",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "Modifiez le style du titre",
+          "textPreview": "Modifiez le style du titre",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifiez le style du titre",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifiez le style du titre"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout12.xml/7",
+          "id": "7",
+          "name": "Espace réservé de la date 6",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "WELCOME TO EPFL",
+          "textPreview": "WELCOME TO EPFL",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "WELCOME TO EPFL",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "WELCOME TO EPFL"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout12.xml/8",
+          "id": "8",
+          "name": "Espace réservé du pied de page 7",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "Speaker",
+          "textPreview": "Speaker",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Speaker",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Speaker"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout12.xml/9",
+          "id": "9",
+          "name": "Espace réservé du numéro de diapositive 8",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "‹N°›",
+          "textPreview": "‹N°›",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹N°›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹N°›"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "type": "master",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/2",
+          "id": "2",
+          "name": "Title Placeholder 1",
+          "bbox": [
+            95,
+            18.85,
+            385,
+            112.62
+          ],
+          "geometry": "rect",
+          "text": "Modifiez le style du titre",
+          "textPreview": "Modifiez le style du titre",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 0,
+              "right": 7.56,
+              "bottom": 4.91,
+              "left": 18.9
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifiez le style du titre",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifiez le style du titre"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/3",
+          "id": "3",
+          "name": "Text Placeholder 2",
+          "bbox": [
+            95,
+            164.17,
+            811.17,
+            355.57
+          ],
+          "geometry": "rect",
+          "text": "Modifier les styles du texte du masque\nDeuxième niveau\nTroisième niveau\nQuatrième niveau\nCinquième niveau",
+          "textPreview": "Modifier les styles du texte du masque | Deuxième niveau | Troisième niveau | Quatrième niveau | Cinquième niveau",
+          "resolvedTextStyle": {
+            "vertical": 1,
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 18.9
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifier les styles du texte du masque",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifier les styles du "
+                },
+                {
+                  "index": 2,
+                  "text": "texte"
+                },
+                {
+                  "index": 3,
+                  "text": " du masque"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "text": "Deuxième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Deuxième"
+                },
+                {
+                  "index": 2,
+                  "text": " "
+                },
+                {
+                  "index": 3,
+                  "text": "niveau"
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "text": "Troisième niveau\nQuatrième niveau\nCinquième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Troisième"
+                },
+                {
+                  "index": 2,
+                  "text": " "
+                },
+                {
+                  "index": 3,
+                  "text": "niveau"
+                },
+                {
+                  "index": 4,
+                  "text": "\n"
+                },
+                {
+                  "index": 5,
+                  "text": "Quatrième"
+                },
+                {
+                  "index": 6,
+                  "text": " "
+                },
+                {
+                  "index": 7,
+                  "text": "niveau"
+                },
+                {
+                  "index": 8,
+                  "text": "\n"
+                },
+                {
+                  "index": 9,
+                  "text": "Cinquième"
+                },
+                {
+                  "index": 10,
+                  "text": " "
+                },
+                {
+                  "index": 11,
+                  "text": "niveau"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/4",
+          "id": "4",
+          "name": "Date Placeholder 3",
+          "bbox": [
+            -128.23,
+            291.7,
+            350.77,
+            95.7
+          ],
+          "rotation": 270,
+          "geometry": "rect",
+          "text": "WELCOME TO EPFL",
+          "textPreview": "WELCOME TO EPFL",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "WELCOME TO EPFL",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "WELCOME TO EPFL"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/5",
+          "id": "5",
+          "name": "Footer Placeholder 4",
+          "bbox": [
+            747.09,
+            196.75,
+            372,
+            53.83
+          ],
+          "rotation": 270,
+          "geometry": "rect",
+          "text": "Speaker",
+          "textPreview": "Speaker",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Speaker",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Speaker"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 5,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/6",
+          "id": "6",
+          "name": "Slide Number Placeholder 5",
+          "bbox": [
+            906.17,
+            20.5,
+            53.83,
+            17.17
+          ],
+          "geometry": "rect",
+          "text": "‹N°›",
+          "textPreview": "‹N°›",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "insets": {
+              "top": 0,
+              "right": 9.45,
+              "bottom": 0,
+              "left": 9.45
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹N°›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹N°›"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 6,
+          "kind": "image",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/15",
+          "id": "15",
+          "name": "Image 12",
+          "bbox": [
+            13.68,
+            13.89,
+            68.66,
+            29.71
+          ],
+          "contentType": "image/png",
+          "asset": {
+            "assetId": "/ppt/media/image1.png",
+            "contentType": "image/png",
+            "byteLength": 17196
+          },
+          "fillImage": {
+            "assetId": "/ppt/media/image1.png",
+            "contentType": "image/png",
+            "byteLength": 17196
+          }
+        },
+        {
+          "order": 7,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/14",
+          "id": "14",
+          "name": "Rectangle 13",
+          "bbox": [
+            45.14,
+            514.2,
+            4.8,
+            6.28
+          ],
+          "rotation": 270,
+          "geometry": "rect",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "verticalAlignment": "middle"
+          },
+          "fillColor": "accent1",
+          "lineWidth": 0
+        }
+      ]
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1sfqxsv6",
+      "id": "2",
+      "name": "Titre 1",
+      "bbox": [
+        95,
+        26.54,
+        790.77,
+        63.13
+      ],
+      "text": "Results – Conclusion on simulated Data",
+      "textPreview": "Results – Conclusion on simulated Data",
+      "resolvedFontSize": 42.67,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 42.67,
+        "typeface": "Franklin Gothic Demi Cond",
+        "color": "tx1",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "insets": {
+          "top": 0,
+          "right": 7.56,
+          "bottom": 4.91,
+          "left": 18.9
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Results – Conclusion on simulated"
+          },
+          {
+            "index": 2,
+            "text": "Data"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Results – Conclusion on simulated Data",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Results – Conclusion on simulated Data"
+            }
+          ],
+          "bulletCharacter": "",
+          "lineSpacingPercent": 80000
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/2to76dcr",
+      "id": "5",
+      "name": "Espace réservé du numéro de diapositive 4",
+      "bbox": [
+        906.17,
+        20.5,
+        53.83,
+        17.17
+      ],
+      "text": "24",
+      "textPreview": "24",
+      "resolvedFontSize": 9.33,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 9.33,
+        "typeface": "Franklin Gothic Demi Cond",
+        "color": "tx1",
+        "bold": true,
+        "alignment": "center",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 9.45,
+          "bottom": 0,
+          "left": 9.45
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "24"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "24",
+          "runs": [
+            {
+              "index": 1,
+              "text": "24"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/8veh8ril",
+      "id": "10",
+      "name": "ZoneTexte 9",
+      "bbox": [
+        62.97,
+        148.83,
+        854.83,
+        244.18
+      ],
+      "geometry": "rect",
+      "text": "Long-horizon feedback: \nM-step rollouts or lookback windows prevent error divergence over extended predictions.\n\nGradient outputs:\nPredicting ∆T (residuals) stabilizes updates.\n\nEquivariant messaging: \nEnforcing boosts robustness to noise especially.\n\nInterpretability matters:\nOnly PI gradient 5 step (clean) and PI lookback gradient (noisy/missing R, C)achieve both low MAE and high signed correlations; final-step-only losses hide true dynamics by collapsing latent states.",
+      "textPreview": "Long-horizon feedback:  | M-step rollouts or lookback windows prevent error divergence over extended predictions. |  | Gradient outputs: ...",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 12,
+        "lines": [
+          {
+            "index": 1,
+            "text": "§Long-horizon feedback:"
+          },
+          {
+            "index": 2,
+            "text": "M-step rollouts or lookback windows prevent error divergence over extended predictions."
+          },
+          {
+            "index": 3,
+            "text": ""
+          },
+          {
+            "index": 4,
+            "text": "§Gradient outputs:"
+          },
+          {
+            "index": 5,
+            "text": "Predicting ∆T (residuals) stabilizes updates."
+          },
+          {
+            "index": 6,
+            "text": ""
+          },
+          {
+            "index": 7,
+            "text": "§Equivariant messaging:"
+          },
+          {
+            "index": 8,
+            "text": "Enforcing boosts robustness to noise especially."
+          },
+          {
+            "index": 9,
+            "text": ""
+          },
+          {
+            "index": 10,
+            "text": "§Interpretability matters:"
+          },
+          {
+            "index": 11,
+            "text": "Only PI gradient 5 step (clean) and PI lookback gradient (noisy/missing R, C)achieve both low MAE and"
+          },
+          {
+            "index": 12,
+            "text": "high signed correlations; final-step-only losses hide true dynamics by collapsing latent states."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Long-horizon feedback: \nM-step rollouts or lookback windows prevent error divergence over extended predictions.",
+          "resolvedTextStyle": {
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Long-horizon feedback: ",
+              "fontSize": 16,
+              "color": "accent1",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "\n",
+              "alignment": "left"
+            },
+            {
+              "index": 3,
+              "text": "M-step rollouts or lookback windows prevent error divergence over extended predictions",
+              "fontSize": 16,
+              "bold": true
+            },
+            {
+              "index": 4,
+              "text": ".",
+              "fontSize": 16
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 3,
+          "text": "Gradient outputs:\nPredicting ∆T (residuals) stabilizes updates.",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Gradient outputs",
+              "fontSize": 16,
+              "color": "accent1",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": ":",
+              "fontSize": 16,
+              "color": "accent1",
+              "bold": true
+            },
+            {
+              "index": 3,
+              "text": "\n"
+            },
+            {
+              "index": 4,
+              "text": "Predicting ∆T (residuals) stabilizes updates.",
+              "fontSize": 16,
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 5,
+          "text": "Equivariant messaging: \nEnforcing boosts robustness to noise especially.",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Equivariant messaging: ",
+              "fontSize": 16,
+              "color": "accent1",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "\n"
+            },
+            {
+              "index": 3,
+              "text": "Enforcing",
+              "fontSize": 16,
+              "bold": true
+            },
+            {
+              "index": 4,
+              "text": " boosts robustness to noise especially.",
+              "fontSize": 16,
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 7,
+          "text": "Interpretability matters:\nOnly PI gradient 5 step (clean) and PI lookback gradient (noisy/missing R, C)achieve both low MAE and high signed correlations; final-step-only losses hide true dynamics by collapsing latent states.",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Interpretability matters:",
+              "fontSize": 16,
+              "color": "accent1",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "\n"
+            },
+            {
+              "index": 3,
+              "text": "Only PI gradient 5 step (clean) and PI lookback gradient (noisy/missing R, C)achieve both low MAE and high signed correlations; final-step-only losses hide true dynamics by collapsing latent states.",
+              "fontSize": 16,
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 3
+    }
+  ],
+  "composeRuns": []
+}

@@ -1,0 +1,28 @@
+Source template: EPFL_General_presentation_2026LR.pptx, 73 slides, 1280 x 720, theme “EPFL 2025”, Arial, white/red/dark-grey with section colours. Every source slide was rendered; all 73 source-slide PNGs and layouts were reviewed through the complete contact sheet and per-slide layout inventory. Artifact-tool emitted warnings for two TIFF assets and one EMF asset in unused source slides; the selected slide patterns render correctly.
+
+Secondary reference: semester_project_presentation 1.pptx, 29 slides. Its complete contact sheet shows the requested technical density: claim-style title, one or two plots, short bullets, simple EPFL chrome, and limited decorative imagery. This density informs content selection, while the new deck retains the 2026 EPFL master/layout hierarchy from the primary template.
+
+Reusable primary-template patterns selected:
+- Slide 1: branded cover with large title and two metadata panels.
+- Slide 2: outline with a large text rail and right image.
+- Slide 4: three parallel claims with three media frames and a bottom synthesis line.
+- Slide 5: one large image plus four metric slots.
+- Slide 37: two-evidence comparison with paired image frames.
+- Slide 40: title, left bullet block, and two right media frames.
+- Slide 43: section divider.
+- Slide 44: metric-led evidence wall.
+- Slide 54: large title, left conclusion block, and one dominant evidence image.
+- Slide 68: synthesis/closing visual.
+- Slide 72: three-column synthesis plus a bottom takeaway.
+- Slide 73: branded question/closing slide.
+
+Insertion contract:
+- Output slides duplicate one of the source patterns above; no slide is built from a blank canvas.
+- Existing title/body/metric/image slots are rewritten or replaced in place.
+- Template dates are rewritten to MASTER THESIS, slide numbers are rewritten to output numbers, and empty footers are deleted.
+- EPFL logos, source backgrounds, colour blocks, master/layout links, font family, inherited font sizes, and text-box geometry are preserved.
+- New copy is deliberately shorter than the inherited source copy; no template font is reduced.
+- The only explicit placeholder is the encoder-only transfer result. It is audience-facing because the user requested placeholders for missing thesis results, and it states the exact comparison needed.
+
+Omitted source-slide inventory:
+- Slides 3, 6–36, 38–39, 41–42, 45–53, 55–67, and 69–71 are omitted because their structures are either institution-specific, image-led, map-led, logo-heavy, or denser than required for a technical defence.

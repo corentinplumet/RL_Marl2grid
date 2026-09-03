@@ -1,0 +1,1494 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/i5o3q10v",
+    "id": "i5o3q10v",
+    "slide": 29,
+    "layoutId": "/ppt/slideLayouts/slideLayout12.xml",
+    "layoutName": "Title_Only",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 960,
+      "height": 540
+    }
+  },
+  "theme": {
+    "colorSchemeName": "EPFL - New Colors 2019",
+    "colors": {
+      "accent1": "#E30613",
+      "accent2": "#00A79F",
+      "accent3": "#413C3A",
+      "accent4": "#007480",
+      "accent5": "#F39869",
+      "accent6": "#B51F1F",
+      "dk1": "#413C3A",
+      "lt1": "#FFFFFF",
+      "dk2": "#413C3A",
+      "lt2": "#CAC7C7",
+      "hlink": "#ED6E9C",
+      "folHlink": "#4F8FCC"
+    },
+    "fontScheme": {
+      "name": "EPFL_Beta2",
+      "majorFont": {
+        "latinTypeface": "Franklin Gothic Demi Cond"
+      },
+      "minorFont": {
+        "latinTypeface": "Arial"
+      }
+    },
+    "typefaces": [
+      "Arial",
+      "Franklin Gothic Demi Cond"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout12.xml",
+      "name": "Title_Only",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout12.xml/6",
+          "id": "6",
+          "name": "Titre 5",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "Modifiez le style du titre",
+          "textPreview": "Modifiez le style du titre",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifiez le style du titre",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifiez le style du titre"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout12.xml/7",
+          "id": "7",
+          "name": "Espace réservé de la date 6",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "WELCOME TO EPFL",
+          "textPreview": "WELCOME TO EPFL",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "WELCOME TO EPFL",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "WELCOME TO EPFL"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout12.xml/8",
+          "id": "8",
+          "name": "Espace réservé du pied de page 7",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "Speaker",
+          "textPreview": "Speaker",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Speaker",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Speaker"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout12.xml/9",
+          "id": "9",
+          "name": "Espace réservé du numéro de diapositive 8",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "‹N°›",
+          "textPreview": "‹N°›",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹N°›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹N°›"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "type": "master",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/2",
+          "id": "2",
+          "name": "Title Placeholder 1",
+          "bbox": [
+            95,
+            18.85,
+            385,
+            112.62
+          ],
+          "geometry": "rect",
+          "text": "Modifiez le style du titre",
+          "textPreview": "Modifiez le style du titre",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 0,
+              "right": 7.56,
+              "bottom": 4.91,
+              "left": 18.9
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifiez le style du titre",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifiez le style du titre"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/3",
+          "id": "3",
+          "name": "Text Placeholder 2",
+          "bbox": [
+            95,
+            164.17,
+            811.17,
+            355.57
+          ],
+          "geometry": "rect",
+          "text": "Modifier les styles du texte du masque\nDeuxième niveau\nTroisième niveau\nQuatrième niveau\nCinquième niveau",
+          "textPreview": "Modifier les styles du texte du masque | Deuxième niveau | Troisième niveau | Quatrième niveau | Cinquième niveau",
+          "resolvedTextStyle": {
+            "vertical": 1,
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 18.9
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifier les styles du texte du masque",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifier les styles du "
+                },
+                {
+                  "index": 2,
+                  "text": "texte"
+                },
+                {
+                  "index": 3,
+                  "text": " du masque"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "text": "Deuxième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Deuxième"
+                },
+                {
+                  "index": 2,
+                  "text": " "
+                },
+                {
+                  "index": 3,
+                  "text": "niveau"
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "text": "Troisième niveau\nQuatrième niveau\nCinquième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Troisième"
+                },
+                {
+                  "index": 2,
+                  "text": " "
+                },
+                {
+                  "index": 3,
+                  "text": "niveau"
+                },
+                {
+                  "index": 4,
+                  "text": "\n"
+                },
+                {
+                  "index": 5,
+                  "text": "Quatrième"
+                },
+                {
+                  "index": 6,
+                  "text": " "
+                },
+                {
+                  "index": 7,
+                  "text": "niveau"
+                },
+                {
+                  "index": 8,
+                  "text": "\n"
+                },
+                {
+                  "index": 9,
+                  "text": "Cinquième"
+                },
+                {
+                  "index": 10,
+                  "text": " "
+                },
+                {
+                  "index": 11,
+                  "text": "niveau"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/4",
+          "id": "4",
+          "name": "Date Placeholder 3",
+          "bbox": [
+            -128.23,
+            291.7,
+            350.77,
+            95.7
+          ],
+          "rotation": 270,
+          "geometry": "rect",
+          "text": "WELCOME TO EPFL",
+          "textPreview": "WELCOME TO EPFL",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "WELCOME TO EPFL",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "WELCOME TO EPFL"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/5",
+          "id": "5",
+          "name": "Footer Placeholder 4",
+          "bbox": [
+            747.09,
+            196.75,
+            372,
+            53.83
+          ],
+          "rotation": 270,
+          "geometry": "rect",
+          "text": "Speaker",
+          "textPreview": "Speaker",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Speaker",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Speaker"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 5,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/6",
+          "id": "6",
+          "name": "Slide Number Placeholder 5",
+          "bbox": [
+            906.17,
+            20.5,
+            53.83,
+            17.17
+          ],
+          "geometry": "rect",
+          "text": "‹N°›",
+          "textPreview": "‹N°›",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "insets": {
+              "top": 0,
+              "right": 9.45,
+              "bottom": 0,
+              "left": 9.45
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹N°›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹N°›"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 6,
+          "kind": "image",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/15",
+          "id": "15",
+          "name": "Image 12",
+          "bbox": [
+            13.68,
+            13.89,
+            68.66,
+            29.71
+          ],
+          "contentType": "image/png",
+          "asset": {
+            "assetId": "/ppt/media/image1.png",
+            "contentType": "image/png",
+            "byteLength": 17196
+          },
+          "fillImage": {
+            "assetId": "/ppt/media/image1.png",
+            "contentType": "image/png",
+            "byteLength": 17196
+          }
+        },
+        {
+          "order": 7,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/14",
+          "id": "14",
+          "name": "Rectangle 13",
+          "bbox": [
+            45.14,
+            514.2,
+            4.8,
+            6.28
+          ],
+          "rotation": 270,
+          "geometry": "rect",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "verticalAlignment": "middle"
+          },
+          "fillColor": "accent1",
+          "lineWidth": 0
+        }
+      ]
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/tk36hwby",
+      "id": "2",
+      "name": "Titre 1",
+      "bbox": [
+        95,
+        26.54,
+        790.77,
+        63.13
+      ],
+      "text": "References",
+      "textPreview": "References",
+      "resolvedFontSize": 42.67,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 42.67,
+        "typeface": "Franklin Gothic Demi Cond",
+        "color": "tx1",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "insets": {
+          "top": 0,
+          "right": 7.56,
+          "bottom": 4.91,
+          "left": 18.9
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "References"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "References",
+          "runs": [
+            {
+              "index": 1,
+              "text": "References"
+            }
+          ],
+          "bulletCharacter": "",
+          "lineSpacingPercent": 80000
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ulc7a1s3",
+      "id": "5",
+      "name": "Espace réservé du numéro de diapositive 4",
+      "bbox": [
+        906.17,
+        20.5,
+        53.83,
+        17.17
+      ],
+      "text": "29",
+      "textPreview": "29",
+      "resolvedFontSize": 9.33,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 9.33,
+        "typeface": "Franklin Gothic Demi Cond",
+        "color": "tx1",
+        "bold": true,
+        "alignment": "center",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 9.45,
+          "bottom": 0,
+          "left": 9.45
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "29"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "29",
+          "runs": [
+            {
+              "index": 1,
+              "text": "29"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vmlojmto",
+      "id": "4",
+      "name": "ZoneTexte 3",
+      "bbox": [
+        30.76,
+        112.18,
+        919.26,
+        339.28
+      ],
+      "geometry": "rect",
+      "text": "[9] Thomas, N., Smidt, T., Kearnes, S., Yang, L., Li, L., Kohlhoff, K., & Riley, P. (2018). Tensor field networks: Rotation- and translation-equivariant neural networks for 3D point clouds. arXiv:1802.08219. arxiv.org\n[10] Fuchs, F. B., Worrall, D. E., Fischer, V., & Welling, M. (2020). SE(3)-Transformers: 3D roto-translation equivariant attention networks. NeurIPS 33, 1970–1981. arxiv.org\n[11] Satorras, V. G., Hoogeboom, E., & Welling, M. (2021). E(n) equivariant graph neural networks. In ICML 38 (pp. 9323-9332). arxiv.org\n[12] Sharma, V., & Fink, O. (2025). Dynami-CAL GraphNet: A physics-informed graph neural network conserving linear and angular momentum for dynamical systems. arXiv:2501.07373. arxiv.org\n[13] McPartlon, M., Lai, B., & Xu, J. (2022). A deep SE(3)-equivariant model for learning inverse protein folding. bioRxiv 2022.04.15.488492. biorxiv.org\n[14] Linot, A. J., Hang, H., Kanso, E., & Taira, K. (2024). Hierarchical equivariant graph neural networks for forecasting collective motion in vortex clusters and microswimmers. arXiv:2501.00626. arxiv.org\n[15] Gao, C., Xue, Z., Deng, S., Liang, T., Yang, S., Shao, L., & Xu, H. (2024). RiEMann: Near real-time SE(3)-equivariant robot manipulation without point cloud segmentation. arXiv:2403.19460. arxiv.org\n[16] Sharma, V., Oddon, R. T., Tesini, P., Ravesloot, J., Taal, C., & Fink, O. (2025). Equi-Euler GraphNet: An equivariant, temporal-dynamics informed graph neural network for dual force and trajectory prediction in multi-body systems. arXiv:2504.13768.",
+      "textPreview": "[9] Thomas, N., Smidt, T., Kearnes, S., Yang, L., Li, L., Kohlhoff, K., & Riley, P. (2018). Tensor field networks: Rotation- and translat...",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 17,
+        "lines": [
+          {
+            "index": 1,
+            "text": "• [9] Thomas, N., Smidt, T., Kearnes, S., Yang, L., Li, L., Kohlhoff, K., & Riley, P. (2018). Tensor field networks: Rotation- and"
+          },
+          {
+            "index": 2,
+            "text": "translation-equivariant neural networks for 3D point clouds. arXiv:1802.08219. arxiv.org"
+          },
+          {
+            "index": 3,
+            "text": "• [10] Fuchs, F. B., Worrall, D. E., Fischer, V., & Welling, M. (2020). SE(3)-Transformers: 3D roto-translation equivariant"
+          },
+          {
+            "index": 4,
+            "text": "attention networks. NeurIPS 33, 1970–1981. arxiv.org"
+          },
+          {
+            "index": 5,
+            "text": "• [11] Satorras, V. G., Hoogeboom, E., & Welling, M. (2021). E(n) equivariant graph neural networks. In ICML 38 (pp."
+          },
+          {
+            "index": 6,
+            "text": "9323-9332). arxiv.org"
+          },
+          {
+            "index": 7,
+            "text": "• [12] Sharma, V., & Fink, O. (2025). Dynami-CAL GraphNet: A physics-informed graph neural network conserving linear and"
+          },
+          {
+            "index": 8,
+            "text": "angular momentum for dynamical systems. arXiv:2501.07373. arxiv.org"
+          },
+          {
+            "index": 9,
+            "text": "• [13] McPartlon, M., Lai, B., & Xu, J. (2022). A deep SE(3)-equivariant model for learning inverse protein folding. bioRxiv"
+          },
+          {
+            "index": 10,
+            "text": "2022.04.15.488492. biorxiv.org"
+          },
+          {
+            "index": 11,
+            "text": "• [14] Linot, A. J., Hang, H., Kanso, E., & Taira, K. (2024). Hierarchical equivariant graph neural networks for forecasting"
+          },
+          {
+            "index": 12,
+            "text": "collective motion in vortex clusters and microswimmers. arXiv:2501.00626. arxiv.org"
+          },
+          {
+            "index": 13,
+            "text": "• [15] Gao, C., Xue, Z., Deng, S., Liang, T., Yang, S., Shao, L., & Xu, H. (2024). RiEMann: Near real-time SE(3)-equivariant"
+          },
+          {
+            "index": 14,
+            "text": "robot manipulation without point cloud segmentation. arXiv:2403.19460. arxiv.org"
+          },
+          {
+            "index": 15,
+            "text": "• [16] Sharma, V., Oddon, R. T., Tesini, P., Ravesloot, J., Taal, C., & Fink, O. (2025). Equi-Euler GraphNet: An equivariant,"
+          },
+          {
+            "index": 16,
+            "text": "temporal-dynamics informed graph neural network for dual force and trajectory prediction in multi-body systems."
+          },
+          {
+            "index": 17,
+            "text": "arXiv:2504.13768."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "[9] Thomas, N., Smidt, T., Kearnes, S., Yang, L., Li, L., Kohlhoff, K., & Riley, P. (2018). Tensor field networks: Rotation- and translation-equivariant neural networks for 3D point clouds. arXiv:1802.08219. arxiv.org",
+          "runs": [
+            {
+              "index": 1,
+              "text": "[9] Thomas, N., ",
+              "fontSize": 16
+            },
+            {
+              "index": 2,
+              "text": "Smidt",
+              "fontSize": 16
+            },
+            {
+              "index": 3,
+              "text": ", ",
+              "fontSize": 16
+            },
+            {
+              "index": 4,
+              "text": "T",
+              "fontSize": 16
+            },
+            {
+              "index": 5,
+              "text": "., ",
+              "fontSize": 16
+            },
+            {
+              "index": 6,
+              "text": "Kearnes",
+              "fontSize": 16
+            },
+            {
+              "index": 7,
+              "text": ", S., Yang, L., Li, L., ",
+              "fontSize": 16
+            },
+            {
+              "index": 8,
+              "text": "Kohlhoff",
+              "fontSize": 16
+            },
+            {
+              "index": 9,
+              "text": ", K., & Riley, P. (2018). ",
+              "fontSize": 16
+            },
+            {
+              "index": 10,
+              "text": "Tensor",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 11,
+              "text": " ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 12,
+              "text": "field",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 13,
+              "text": " networks: Rotation- and translation-",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 14,
+              "text": "equivariant",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 15,
+              "text": " neural networks for 3D point ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 16,
+              "text": "clouds",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 17,
+              "text": ". arXiv:1802.08219. ",
+              "fontSize": 16
+            },
+            {
+              "index": 18,
+              "text": "arxiv.org",
+              "fontSize": 16
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "[10] Fuchs, F. B., Worrall, D. E., Fischer, V., & Welling, M. (2020). SE(3)-Transformers: 3D roto-translation equivariant attention networks. NeurIPS 33, 1970–1981. arxiv.org",
+          "runs": [
+            {
+              "index": 1,
+              "text": "[10] Fuchs, F. B., ",
+              "fontSize": 16
+            },
+            {
+              "index": 2,
+              "text": "Worrall",
+              "fontSize": 16
+            },
+            {
+              "index": 3,
+              "text": ", D. E., Fischer, V., & ",
+              "fontSize": 16
+            },
+            {
+              "index": 4,
+              "text": "Welling",
+              "fontSize": 16
+            },
+            {
+              "index": 5,
+              "text": ", M. (2020). ",
+              "fontSize": 16
+            },
+            {
+              "index": 6,
+              "text": "SE(3)-Transformers: 3D roto-translation ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 7,
+              "text": "equivariant",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 8,
+              "text": " attention networks",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 9,
+              "text": ". ",
+              "fontSize": 16
+            },
+            {
+              "index": 10,
+              "text": "NeurIPS",
+              "fontSize": 16
+            },
+            {
+              "index": 11,
+              "text": " 33, 1970–1981. ",
+              "fontSize": 16
+            },
+            {
+              "index": 12,
+              "text": "arxiv.org",
+              "fontSize": 16
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 3,
+          "text": "[11] Satorras, V. G., Hoogeboom, E., & Welling, M. (2021). E(n) equivariant graph neural networks. In ICML 38 (pp. 9323-9332). arxiv.org",
+          "runs": [
+            {
+              "index": 1,
+              "text": "[11] ",
+              "fontSize": 16
+            },
+            {
+              "index": 2,
+              "text": "Satorras",
+              "fontSize": 16
+            },
+            {
+              "index": 3,
+              "text": ", V. G., ",
+              "fontSize": 16
+            },
+            {
+              "index": 4,
+              "text": "Hoogeboom",
+              "fontSize": 16
+            },
+            {
+              "index": 5,
+              "text": ", E., & ",
+              "fontSize": 16
+            },
+            {
+              "index": 6,
+              "text": "Welling",
+              "fontSize": 16
+            },
+            {
+              "index": 7,
+              "text": ", M. (2021). ",
+              "fontSize": 16
+            },
+            {
+              "index": 8,
+              "text": "E(n) ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 9,
+              "text": "equivariant",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 10,
+              "text": " graph neural networks",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 11,
+              "text": ". In ",
+              "fontSize": 16
+            },
+            {
+              "index": 12,
+              "text": "ICML 38",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 13,
+              "text": " (pp. 9323-9332). ",
+              "fontSize": 16
+            },
+            {
+              "index": 14,
+              "text": "arxiv.org",
+              "fontSize": 16
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 4,
+          "text": "[12] Sharma, V., & Fink, O. (2025). Dynami-CAL GraphNet: A physics-informed graph neural network conserving linear and angular momentum for dynamical systems. arXiv:2501.07373. arxiv.org",
+          "runs": [
+            {
+              "index": 1,
+              "text": "[12] Sharma, V., & Fink, O. (2025). ",
+              "fontSize": 16
+            },
+            {
+              "index": 2,
+              "text": "Dynami",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 3,
+              "text": "-CAL ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 4,
+              "text": "GraphNet",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 5,
+              "text": ": A ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 6,
+              "text": "physics-informed",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 7,
+              "text": " graph neural network ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 8,
+              "text": "conserving",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 9,
+              "text": " ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 10,
+              "text": "linear",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 11,
+              "text": " and ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 12,
+              "text": "angular",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 13,
+              "text": " ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 14,
+              "text": "momentum",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 15,
+              "text": " for ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 16,
+              "text": "dynamical",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 17,
+              "text": " ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 18,
+              "text": "systems",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 19,
+              "text": ". arXiv:2501.07373. ",
+              "fontSize": 16
+            },
+            {
+              "index": 20,
+              "text": "arxiv.org",
+              "fontSize": 16
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 5,
+          "text": "[13] McPartlon, M., Lai, B., & Xu, J. (2022). A deep SE(3)-equivariant model for learning inverse protein folding. bioRxiv 2022.04.15.488492. biorxiv.org",
+          "runs": [
+            {
+              "index": 1,
+              "text": "[13] ",
+              "fontSize": 16
+            },
+            {
+              "index": 2,
+              "text": "McPartlon",
+              "fontSize": 16
+            },
+            {
+              "index": 3,
+              "text": ", M., Lai, B., & Xu, J. (2022). ",
+              "fontSize": 16
+            },
+            {
+              "index": 4,
+              "text": "A ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 5,
+              "text": "deep",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 6,
+              "text": " SE(3)-",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 7,
+              "text": "equivariant",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 8,
+              "text": " model for ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 9,
+              "text": "learning",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 10,
+              "text": " inverse ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 11,
+              "text": "protein",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 12,
+              "text": " ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 13,
+              "text": "folding",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 14,
+              "text": ". ",
+              "fontSize": 16
+            },
+            {
+              "index": 15,
+              "text": "bioRxiv",
+              "fontSize": 16
+            },
+            {
+              "index": 16,
+              "text": " 2022.04.15.488492. ",
+              "fontSize": 16
+            },
+            {
+              "index": 17,
+              "text": "biorxiv.org",
+              "fontSize": 16
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 6,
+          "text": "[14] Linot, A. J., Hang, H., Kanso, E., & Taira, K. (2024). Hierarchical equivariant graph neural networks for forecasting collective motion in vortex clusters and microswimmers. arXiv:2501.00626. arxiv.org",
+          "runs": [
+            {
+              "index": 1,
+              "text": "[14] Linot, A. J., Hang, H., Kanso, E., & Taira, K. (2024). ",
+              "fontSize": 16
+            },
+            {
+              "index": 2,
+              "text": "Hierarchical",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 3,
+              "text": " ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 4,
+              "text": "equivariant",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 5,
+              "text": " graph neural networks for ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 6,
+              "text": "forecasting",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 7,
+              "text": " collective motion in vortex clusters and ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 8,
+              "text": "microswimmers",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 9,
+              "text": ". arXiv:2501.00626. ",
+              "fontSize": 16
+            },
+            {
+              "index": 10,
+              "text": "arxiv.org",
+              "fontSize": 16
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 7,
+          "text": "[15] Gao, C., Xue, Z., Deng, S., Liang, T., Yang, S., Shao, L., & Xu, H. (2024). RiEMann: Near real-time SE(3)-equivariant robot manipulation without point cloud segmentation. arXiv:2403.19460. arxiv.org",
+          "runs": [
+            {
+              "index": 1,
+              "text": "[15] Gao, C., Xue, Z., Deng, S., Liang, ",
+              "fontSize": 16
+            },
+            {
+              "index": 2,
+              "text": "T",
+              "fontSize": 16
+            },
+            {
+              "index": 3,
+              "text": "., Yang, S., ",
+              "fontSize": 16
+            },
+            {
+              "index": 4,
+              "text": "Shao",
+              "fontSize": 16
+            },
+            {
+              "index": 5,
+              "text": ", L., & Xu, H. (2024). ",
+              "fontSize": 16
+            },
+            {
+              "index": 6,
+              "text": "RiEMann",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 7,
+              "text": ": Near real-time SE(3)-",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 8,
+              "text": "equivariant",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 9,
+              "text": " robot manipulation ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 10,
+              "text": "without",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 11,
+              "text": " point cloud segmentation",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 12,
+              "text": ". arXiv:2403.19460. ",
+              "fontSize": 16
+            },
+            {
+              "index": 13,
+              "text": "arxiv.org",
+              "fontSize": 16
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 8,
+          "text": "[16] Sharma, V., Oddon, R. T., Tesini, P., Ravesloot, J., Taal, C., & Fink, O. (2025). Equi-Euler GraphNet: An equivariant, temporal-dynamics informed graph neural network for dual force and trajectory prediction in multi-body systems. arXiv:2504.13768.",
+          "runs": [
+            {
+              "index": 1,
+              "text": "[16] Sharma, V., ",
+              "fontSize": 16
+            },
+            {
+              "index": 2,
+              "text": "Oddon",
+              "fontSize": 16
+            },
+            {
+              "index": 3,
+              "text": ", R. ",
+              "fontSize": 16
+            },
+            {
+              "index": 4,
+              "text": "T",
+              "fontSize": 16
+            },
+            {
+              "index": 5,
+              "text": "., ",
+              "fontSize": 16
+            },
+            {
+              "index": 6,
+              "text": "Tesini",
+              "fontSize": 16
+            },
+            {
+              "index": 7,
+              "text": ", P., ",
+              "fontSize": 16
+            },
+            {
+              "index": 8,
+              "text": "Ravesloot",
+              "fontSize": 16
+            },
+            {
+              "index": 9,
+              "text": ", J., Taal, C., & Fink, O. (2025). ",
+              "fontSize": 16
+            },
+            {
+              "index": 10,
+              "text": "Equi",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 11,
+              "text": "-Euler ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 12,
+              "text": "GraphNet",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 13,
+              "text": ": An ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 14,
+              "text": "equivariant",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 15,
+              "text": ", temporal-",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 16,
+              "text": "dynamics",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 17,
+              "text": " ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 18,
+              "text": "informed",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 19,
+              "text": " graph neural network for dual force and ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 20,
+              "text": "trajectory",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 21,
+              "text": " ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 22,
+              "text": "prediction",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 23,
+              "text": " in multi-body ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 24,
+              "text": "systems",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 25,
+              "text": ". arXiv:2504.13768.",
+              "fontSize": 16
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    }
+  ],
+  "composeRuns": []
+}

@@ -1,0 +1,2932 @@
+{
+  "sourcePptx": "/Users/corentinplumet/Downloads/EPFL_General_presentation_2026LR.pptx",
+  "workspace": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect",
+  "outDir": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect",
+  "generatedAt": "2026-08-31T06:17:40.774Z",
+  "slideCount": 73,
+  "slideArtifacts": [
+    {
+      "slide": 1,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-01.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-01.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-01.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-01.layout.json"
+    },
+    {
+      "slide": 2,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-02.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-02.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-02.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-02.layout.json"
+    },
+    {
+      "slide": 3,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-03.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-03.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-03.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-03.layout.json"
+    },
+    {
+      "slide": 4,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-04.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-04.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-04.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-04.layout.json"
+    },
+    {
+      "slide": 5,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-05.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-05.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-05.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-05.layout.json"
+    },
+    {
+      "slide": 6,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-06.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-06.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-06.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-06.layout.json"
+    },
+    {
+      "slide": 7,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-07.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-07.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-07.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-07.layout.json"
+    },
+    {
+      "slide": 8,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-08.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-08.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-08.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-08.layout.json"
+    },
+    {
+      "slide": 9,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-09.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-09.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-09.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-09.layout.json"
+    },
+    {
+      "slide": 10,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-10.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-10.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-10.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-10.layout.json"
+    },
+    {
+      "slide": 11,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-11.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-11.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-11.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-11.layout.json"
+    },
+    {
+      "slide": 12,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-12.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-12.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-12.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-12.layout.json"
+    },
+    {
+      "slide": 13,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-13.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-13.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-13.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-13.layout.json"
+    },
+    {
+      "slide": 14,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-14.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-14.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-14.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-14.layout.json"
+    },
+    {
+      "slide": 15,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-15.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-15.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-15.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-15.layout.json"
+    },
+    {
+      "slide": 16,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-16.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-16.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-16.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-16.layout.json"
+    },
+    {
+      "slide": 17,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-17.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-17.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-17.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-17.layout.json"
+    },
+    {
+      "slide": 18,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-18.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-18.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-18.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-18.layout.json"
+    },
+    {
+      "slide": 19,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-19.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-19.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-19.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-19.layout.json"
+    },
+    {
+      "slide": 20,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-20.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-20.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-20.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-20.layout.json"
+    },
+    {
+      "slide": 21,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-21.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-21.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-21.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-21.layout.json"
+    },
+    {
+      "slide": 22,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-22.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-22.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-22.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-22.layout.json"
+    },
+    {
+      "slide": 23,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-23.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-23.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-23.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-23.layout.json"
+    },
+    {
+      "slide": 24,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-24.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-24.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-24.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-24.layout.json"
+    },
+    {
+      "slide": 25,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-25.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-25.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-25.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-25.layout.json"
+    },
+    {
+      "slide": 26,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-26.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-26.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-26.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-26.layout.json"
+    },
+    {
+      "slide": 27,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-27.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-27.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-27.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-27.layout.json"
+    },
+    {
+      "slide": 28,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-28.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-28.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-28.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-28.layout.json"
+    },
+    {
+      "slide": 29,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-29.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-29.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-29.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-29.layout.json"
+    },
+    {
+      "slide": 30,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-30.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-30.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-30.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-30.layout.json"
+    },
+    {
+      "slide": 31,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-31.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-31.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-31.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-31.layout.json"
+    },
+    {
+      "slide": 32,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-32.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-32.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-32.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-32.layout.json"
+    },
+    {
+      "slide": 33,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-33.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-33.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-33.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-33.layout.json"
+    },
+    {
+      "slide": 34,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-34.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-34.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-34.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-34.layout.json"
+    },
+    {
+      "slide": 35,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-35.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-35.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-35.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-35.layout.json"
+    },
+    {
+      "slide": 36,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-36.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-36.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-36.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-36.layout.json"
+    },
+    {
+      "slide": 37,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-37.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-37.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-37.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-37.layout.json"
+    },
+    {
+      "slide": 38,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-38.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-38.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-38.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-38.layout.json"
+    },
+    {
+      "slide": 39,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-39.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-39.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-39.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-39.layout.json"
+    },
+    {
+      "slide": 40,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-40.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-40.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-40.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-40.layout.json"
+    },
+    {
+      "slide": 41,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-41.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-41.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-41.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-41.layout.json"
+    },
+    {
+      "slide": 42,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-42.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-42.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-42.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-42.layout.json"
+    },
+    {
+      "slide": 43,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-43.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-43.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-43.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-43.layout.json"
+    },
+    {
+      "slide": 44,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-44.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-44.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-44.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-44.layout.json"
+    },
+    {
+      "slide": 45,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-45.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-45.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-45.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-45.layout.json"
+    },
+    {
+      "slide": 46,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-46.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-46.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-46.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-46.layout.json"
+    },
+    {
+      "slide": 47,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-47.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-47.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-47.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-47.layout.json"
+    },
+    {
+      "slide": 48,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-48.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-48.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-48.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-48.layout.json"
+    },
+    {
+      "slide": 49,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-49.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-49.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-49.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-49.layout.json"
+    },
+    {
+      "slide": 50,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-50.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-50.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-50.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-50.layout.json"
+    },
+    {
+      "slide": 51,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-51.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-51.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-51.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-51.layout.json"
+    },
+    {
+      "slide": 52,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-52.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-52.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-52.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-52.layout.json"
+    },
+    {
+      "slide": 53,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-53.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-53.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-53.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-53.layout.json"
+    },
+    {
+      "slide": 54,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-54.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-54.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-54.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-54.layout.json"
+    },
+    {
+      "slide": 55,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-55.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-55.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-55.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-55.layout.json"
+    },
+    {
+      "slide": 56,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-56.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-56.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-56.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-56.layout.json"
+    },
+    {
+      "slide": 57,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-57.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-57.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-57.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-57.layout.json"
+    },
+    {
+      "slide": 58,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-58.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-58.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-58.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-58.layout.json"
+    },
+    {
+      "slide": 59,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-59.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-59.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-59.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-59.layout.json"
+    },
+    {
+      "slide": 60,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-60.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-60.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-60.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-60.layout.json"
+    },
+    {
+      "slide": 61,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-61.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-61.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-61.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-61.layout.json"
+    },
+    {
+      "slide": 62,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-62.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-62.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-62.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-62.layout.json"
+    },
+    {
+      "slide": 63,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-63.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-63.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-63.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-63.layout.json"
+    },
+    {
+      "slide": 64,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-64.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-64.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-64.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-64.layout.json"
+    },
+    {
+      "slide": 65,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-65.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-65.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-65.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-65.layout.json"
+    },
+    {
+      "slide": 66,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-66.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-66.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-66.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-66.layout.json"
+    },
+    {
+      "slide": 67,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-67.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-67.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-67.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-67.layout.json"
+    },
+    {
+      "slide": 68,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-68.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-68.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-68.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-68.layout.json"
+    },
+    {
+      "slide": 69,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-69.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-69.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-69.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-69.layout.json"
+    },
+    {
+      "slide": 70,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-70.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-70.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-70.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-70.layout.json"
+    },
+    {
+      "slide": 71,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-71.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-71.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-71.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-71.layout.json"
+    },
+    {
+      "slide": 72,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-72.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-72.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-72.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-72.layout.json"
+    },
+    {
+      "slide": 73,
+      "previewPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/source-slides/source-slide-73.png",
+      "previewRelativePath": "template-inspect/source-slides/source-slide-73.png",
+      "layoutPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/layouts/source-slide-73.layout.json",
+      "layoutRelativePath": "template-inspect/layouts/source-slide-73.layout.json"
+    }
+  ],
+  "inspectPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/template-inspect.ndjson",
+  "inspectRelativePath": "template-inspect/template-inspect.ndjson",
+  "inspectTruncated": true,
+  "inspectMetadata": {
+    "revision": "5twws3",
+    "target": {
+      "id": "pr/4svqbw"
+    },
+    "kind": {
+      "requested": "slide,textbox,shape,image,table,chart",
+      "tokens": [
+        "slide",
+        "textbox",
+        "shape",
+        "image",
+        "table",
+        "chart"
+      ]
+    },
+    "include": {
+      "tokens": []
+    },
+    "exclude": {
+      "tokens": []
+    },
+    "notices": []
+  },
+  "extractedMedia": [
+    {
+      "entry": "ppt/media/image302.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image302.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image302.jpeg",
+      "bytes": 3048
+    },
+    {
+      "entry": "ppt/media/hdphoto5.wdp",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/hdphoto5.wdp",
+      "relativePath": "template-inspect/assets/ppt/media/hdphoto5.wdp",
+      "bytes": 72673
+    },
+    {
+      "entry": "ppt/media/image1.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image1.png",
+      "relativePath": "template-inspect/assets/ppt/media/image1.png",
+      "bytes": 10971
+    },
+    {
+      "entry": "ppt/media/image2.svg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image2.svg",
+      "relativePath": "template-inspect/assets/ppt/media/image2.svg",
+      "bytes": 1645
+    },
+    {
+      "entry": "ppt/media/image3.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image3.png",
+      "relativePath": "template-inspect/assets/ppt/media/image3.png",
+      "bytes": 2168
+    },
+    {
+      "entry": "ppt/media/image4.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image4.png",
+      "relativePath": "template-inspect/assets/ppt/media/image4.png",
+      "bytes": 247458
+    },
+    {
+      "entry": "ppt/media/image5.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image5.png",
+      "relativePath": "template-inspect/assets/ppt/media/image5.png",
+      "bytes": 963900
+    },
+    {
+      "entry": "ppt/media/image6.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image6.png",
+      "relativePath": "template-inspect/assets/ppt/media/image6.png",
+      "bytes": 35101
+    },
+    {
+      "entry": "ppt/media/image7.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image7.png",
+      "relativePath": "template-inspect/assets/ppt/media/image7.png",
+      "bytes": 23971
+    },
+    {
+      "entry": "ppt/media/image8.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image8.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image8.jpeg",
+      "bytes": 198397
+    },
+    {
+      "entry": "ppt/media/image9.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image9.png",
+      "relativePath": "template-inspect/assets/ppt/media/image9.png",
+      "bytes": 18562
+    },
+    {
+      "entry": "ppt/media/image10.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image10.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image10.jpeg",
+      "bytes": 304169
+    },
+    {
+      "entry": "ppt/media/image11.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image11.png",
+      "relativePath": "template-inspect/assets/ppt/media/image11.png",
+      "bytes": 416604
+    },
+    {
+      "entry": "ppt/media/image12.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image12.png",
+      "relativePath": "template-inspect/assets/ppt/media/image12.png",
+      "bytes": 355146
+    },
+    {
+      "entry": "ppt/media/image13.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image13.png",
+      "relativePath": "template-inspect/assets/ppt/media/image13.png",
+      "bytes": 299427
+    },
+    {
+      "entry": "ppt/media/image14.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image14.png",
+      "relativePath": "template-inspect/assets/ppt/media/image14.png",
+      "bytes": 62346
+    },
+    {
+      "entry": "ppt/media/image15.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image15.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image15.jpeg",
+      "bytes": 86866
+    },
+    {
+      "entry": "ppt/media/image16.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image16.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image16.jpeg",
+      "bytes": 34959
+    },
+    {
+      "entry": "ppt/media/image17.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image17.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image17.jpeg",
+      "bytes": 66626
+    },
+    {
+      "entry": "ppt/media/image18.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image18.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image18.jpeg",
+      "bytes": 263092
+    },
+    {
+      "entry": "ppt/media/image19.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image19.png",
+      "relativePath": "template-inspect/assets/ppt/media/image19.png",
+      "bytes": 5034
+    },
+    {
+      "entry": "ppt/media/image20.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image20.png",
+      "relativePath": "template-inspect/assets/ppt/media/image20.png",
+      "bytes": 5460
+    },
+    {
+      "entry": "ppt/media/image21.svg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image21.svg",
+      "relativePath": "template-inspect/assets/ppt/media/image21.svg",
+      "bytes": 2753
+    },
+    {
+      "entry": "ppt/media/image22.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image22.png",
+      "relativePath": "template-inspect/assets/ppt/media/image22.png",
+      "bytes": 5324
+    },
+    {
+      "entry": "ppt/media/image23.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image23.png",
+      "relativePath": "template-inspect/assets/ppt/media/image23.png",
+      "bytes": 5908
+    },
+    {
+      "entry": "ppt/media/image24.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image24.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image24.jpeg",
+      "bytes": 264684
+    },
+    {
+      "entry": "ppt/media/image25.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image25.png",
+      "relativePath": "template-inspect/assets/ppt/media/image25.png",
+      "bytes": 3850
+    },
+    {
+      "entry": "ppt/media/image26.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image26.png",
+      "relativePath": "template-inspect/assets/ppt/media/image26.png",
+      "bytes": 3278
+    },
+    {
+      "entry": "ppt/media/image27.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image27.png",
+      "relativePath": "template-inspect/assets/ppt/media/image27.png",
+      "bytes": 3301
+    },
+    {
+      "entry": "ppt/media/image28.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image28.png",
+      "relativePath": "template-inspect/assets/ppt/media/image28.png",
+      "bytes": 3557
+    },
+    {
+      "entry": "ppt/media/image29.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image29.png",
+      "relativePath": "template-inspect/assets/ppt/media/image29.png",
+      "bytes": 2424
+    },
+    {
+      "entry": "ppt/media/image30.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image30.png",
+      "relativePath": "template-inspect/assets/ppt/media/image30.png",
+      "bytes": 3756
+    },
+    {
+      "entry": "ppt/media/image31.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image31.png",
+      "relativePath": "template-inspect/assets/ppt/media/image31.png",
+      "bytes": 4540
+    },
+    {
+      "entry": "ppt/media/image32.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image32.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image32.jpeg",
+      "bytes": 101895
+    },
+    {
+      "entry": "ppt/media/image33.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image33.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image33.jpeg",
+      "bytes": 101835
+    },
+    {
+      "entry": "ppt/media/image34.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image34.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image34.jpeg",
+      "bytes": 105570
+    },
+    {
+      "entry": "ppt/media/image35.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image35.png",
+      "relativePath": "template-inspect/assets/ppt/media/image35.png",
+      "bytes": 4201
+    },
+    {
+      "entry": "ppt/media/image36.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image36.png",
+      "relativePath": "template-inspect/assets/ppt/media/image36.png",
+      "bytes": 3570
+    },
+    {
+      "entry": "ppt/media/image37.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image37.png",
+      "relativePath": "template-inspect/assets/ppt/media/image37.png",
+      "bytes": 4827
+    },
+    {
+      "entry": "ppt/media/image38.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image38.png",
+      "relativePath": "template-inspect/assets/ppt/media/image38.png",
+      "bytes": 193082
+    },
+    {
+      "entry": "ppt/media/image39.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image39.png",
+      "relativePath": "template-inspect/assets/ppt/media/image39.png",
+      "bytes": 9985
+    },
+    {
+      "entry": "ppt/media/image40.svg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image40.svg",
+      "relativePath": "template-inspect/assets/ppt/media/image40.svg",
+      "bytes": 47164
+    },
+    {
+      "entry": "ppt/media/image41.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image41.png",
+      "relativePath": "template-inspect/assets/ppt/media/image41.png",
+      "bytes": 6864
+    },
+    {
+      "entry": "ppt/media/image42.svg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image42.svg",
+      "relativePath": "template-inspect/assets/ppt/media/image42.svg",
+      "bytes": 15482
+    },
+    {
+      "entry": "ppt/media/image43.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image43.png",
+      "relativePath": "template-inspect/assets/ppt/media/image43.png",
+      "bytes": 6163
+    },
+    {
+      "entry": "ppt/media/image44.svg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image44.svg",
+      "relativePath": "template-inspect/assets/ppt/media/image44.svg",
+      "bytes": 12502
+    },
+    {
+      "entry": "ppt/media/image45.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image45.png",
+      "relativePath": "template-inspect/assets/ppt/media/image45.png",
+      "bytes": 8049
+    },
+    {
+      "entry": "ppt/media/image46.svg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image46.svg",
+      "relativePath": "template-inspect/assets/ppt/media/image46.svg",
+      "bytes": 12057
+    },
+    {
+      "entry": "ppt/media/image47.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image47.png",
+      "relativePath": "template-inspect/assets/ppt/media/image47.png",
+      "bytes": 109291
+    },
+    {
+      "entry": "ppt/media/hdphoto1.wdp",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/hdphoto1.wdp",
+      "relativePath": "template-inspect/assets/ppt/media/hdphoto1.wdp",
+      "bytes": 29526
+    },
+    {
+      "entry": "ppt/media/image48.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image48.png",
+      "relativePath": "template-inspect/assets/ppt/media/image48.png",
+      "bytes": 186981
+    },
+    {
+      "entry": "ppt/media/image49.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image49.png",
+      "relativePath": "template-inspect/assets/ppt/media/image49.png",
+      "bytes": 185613
+    },
+    {
+      "entry": "ppt/media/image50.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image50.png",
+      "relativePath": "template-inspect/assets/ppt/media/image50.png",
+      "bytes": 190460
+    },
+    {
+      "entry": "ppt/media/image51.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image51.png",
+      "relativePath": "template-inspect/assets/ppt/media/image51.png",
+      "bytes": 118296
+    },
+    {
+      "entry": "ppt/media/image52.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image52.png",
+      "relativePath": "template-inspect/assets/ppt/media/image52.png",
+      "bytes": 122798
+    },
+    {
+      "entry": "ppt/media/image53.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image53.png",
+      "relativePath": "template-inspect/assets/ppt/media/image53.png",
+      "bytes": 123198
+    },
+    {
+      "entry": "ppt/media/image54.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image54.png",
+      "relativePath": "template-inspect/assets/ppt/media/image54.png",
+      "bytes": 356058
+    },
+    {
+      "entry": "ppt/media/image55.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image55.png",
+      "relativePath": "template-inspect/assets/ppt/media/image55.png",
+      "bytes": 4420
+    },
+    {
+      "entry": "ppt/media/image56.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image56.png",
+      "relativePath": "template-inspect/assets/ppt/media/image56.png",
+      "bytes": 18172
+    },
+    {
+      "entry": "ppt/media/image57.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image57.png",
+      "relativePath": "template-inspect/assets/ppt/media/image57.png",
+      "bytes": 1470
+    },
+    {
+      "entry": "ppt/media/image58.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image58.png",
+      "relativePath": "template-inspect/assets/ppt/media/image58.png",
+      "bytes": 2279
+    },
+    {
+      "entry": "ppt/media/image59.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image59.png",
+      "relativePath": "template-inspect/assets/ppt/media/image59.png",
+      "bytes": 7055
+    },
+    {
+      "entry": "ppt/media/image60.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image60.png",
+      "relativePath": "template-inspect/assets/ppt/media/image60.png",
+      "bytes": 9436
+    },
+    {
+      "entry": "ppt/media/image61.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image61.png",
+      "relativePath": "template-inspect/assets/ppt/media/image61.png",
+      "bytes": 9443
+    },
+    {
+      "entry": "ppt/media/image62.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image62.png",
+      "relativePath": "template-inspect/assets/ppt/media/image62.png",
+      "bytes": 6445
+    },
+    {
+      "entry": "ppt/media/image63.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image63.png",
+      "relativePath": "template-inspect/assets/ppt/media/image63.png",
+      "bytes": 3941
+    },
+    {
+      "entry": "ppt/media/image64.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image64.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image64.jpeg",
+      "bytes": 72464
+    },
+    {
+      "entry": "ppt/media/image65.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image65.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image65.jpeg",
+      "bytes": 58968
+    },
+    {
+      "entry": "ppt/media/image66.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image66.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image66.jpeg",
+      "bytes": 39276
+    },
+    {
+      "entry": "ppt/media/image67.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image67.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image67.jpeg",
+      "bytes": 317426
+    },
+    {
+      "entry": "ppt/media/image68.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image68.png",
+      "relativePath": "template-inspect/assets/ppt/media/image68.png",
+      "bytes": 601118
+    },
+    {
+      "entry": "ppt/media/image69.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image69.png",
+      "relativePath": "template-inspect/assets/ppt/media/image69.png",
+      "bytes": 1356773
+    },
+    {
+      "entry": "ppt/media/image70.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image70.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image70.jpeg",
+      "bytes": 164860
+    },
+    {
+      "entry": "ppt/media/image71.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image71.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image71.jpeg",
+      "bytes": 79364
+    },
+    {
+      "entry": "ppt/media/image72.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image72.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image72.jpeg",
+      "bytes": 82890
+    },
+    {
+      "entry": "ppt/media/image73.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image73.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image73.jpeg",
+      "bytes": 54525
+    },
+    {
+      "entry": "ppt/media/image74.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image74.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image74.jpeg",
+      "bytes": 43925
+    },
+    {
+      "entry": "ppt/media/image75.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image75.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image75.jpeg",
+      "bytes": 82521
+    },
+    {
+      "entry": "ppt/media/image76.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image76.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image76.jpeg",
+      "bytes": 79917
+    },
+    {
+      "entry": "ppt/media/image77.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image77.png",
+      "relativePath": "template-inspect/assets/ppt/media/image77.png",
+      "bytes": 37100
+    },
+    {
+      "entry": "ppt/media/image78.svg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image78.svg",
+      "relativePath": "template-inspect/assets/ppt/media/image78.svg",
+      "bytes": 763
+    },
+    {
+      "entry": "ppt/media/image79.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image79.png",
+      "relativePath": "template-inspect/assets/ppt/media/image79.png",
+      "bytes": 40459
+    },
+    {
+      "entry": "ppt/media/image80.svg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image80.svg",
+      "relativePath": "template-inspect/assets/ppt/media/image80.svg",
+      "bytes": 4091
+    },
+    {
+      "entry": "ppt/media/image81.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image81.png",
+      "relativePath": "template-inspect/assets/ppt/media/image81.png",
+      "bytes": 2582
+    },
+    {
+      "entry": "ppt/media/image82.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image82.png",
+      "relativePath": "template-inspect/assets/ppt/media/image82.png",
+      "bytes": 2547
+    },
+    {
+      "entry": "ppt/media/image83.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image83.png",
+      "relativePath": "template-inspect/assets/ppt/media/image83.png",
+      "bytes": 40577
+    },
+    {
+      "entry": "ppt/media/image84.svg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image84.svg",
+      "relativePath": "template-inspect/assets/ppt/media/image84.svg",
+      "bytes": 4093
+    },
+    {
+      "entry": "ppt/media/image85.emf",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image85.emf",
+      "relativePath": "template-inspect/assets/ppt/media/image85.emf",
+      "bytes": 1090396
+    },
+    {
+      "entry": "ppt/media/image86.emf",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image86.emf",
+      "relativePath": "template-inspect/assets/ppt/media/image86.emf",
+      "bytes": 1105592
+    },
+    {
+      "entry": "ppt/media/image87.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image87.png",
+      "relativePath": "template-inspect/assets/ppt/media/image87.png",
+      "bytes": 2434
+    },
+    {
+      "entry": "ppt/media/image88.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image88.png",
+      "relativePath": "template-inspect/assets/ppt/media/image88.png",
+      "bytes": 36927
+    },
+    {
+      "entry": "ppt/media/image89.svg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image89.svg",
+      "relativePath": "template-inspect/assets/ppt/media/image89.svg",
+      "bytes": 771
+    },
+    {
+      "entry": "ppt/media/image90.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image90.png",
+      "relativePath": "template-inspect/assets/ppt/media/image90.png",
+      "bytes": 330374
+    },
+    {
+      "entry": "ppt/media/image91.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image91.png",
+      "relativePath": "template-inspect/assets/ppt/media/image91.png",
+      "bytes": 5406
+    },
+    {
+      "entry": "ppt/media/image92.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image92.png",
+      "relativePath": "template-inspect/assets/ppt/media/image92.png",
+      "bytes": 18335
+    },
+    {
+      "entry": "ppt/media/image93.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image93.png",
+      "relativePath": "template-inspect/assets/ppt/media/image93.png",
+      "bytes": 14170
+    },
+    {
+      "entry": "ppt/media/image94.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image94.png",
+      "relativePath": "template-inspect/assets/ppt/media/image94.png",
+      "bytes": 13357
+    },
+    {
+      "entry": "ppt/media/image95.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image95.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image95.jpeg",
+      "bytes": 236851
+    },
+    {
+      "entry": "ppt/media/image96.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image96.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image96.jpeg",
+      "bytes": 127842
+    },
+    {
+      "entry": "ppt/media/image97.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image97.png",
+      "relativePath": "template-inspect/assets/ppt/media/image97.png",
+      "bytes": 4261
+    },
+    {
+      "entry": "ppt/media/image98.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image98.png",
+      "relativePath": "template-inspect/assets/ppt/media/image98.png",
+      "bytes": 9383
+    },
+    {
+      "entry": "ppt/media/image99.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image99.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image99.jpeg",
+      "bytes": 141316
+    },
+    {
+      "entry": "ppt/media/image100.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image100.png",
+      "relativePath": "template-inspect/assets/ppt/media/image100.png",
+      "bytes": 10717
+    },
+    {
+      "entry": "ppt/media/image101.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image101.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image101.jpeg",
+      "bytes": 159869
+    },
+    {
+      "entry": "ppt/media/image102.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image102.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image102.jpeg",
+      "bytes": 131074
+    },
+    {
+      "entry": "ppt/media/image103.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image103.png",
+      "relativePath": "template-inspect/assets/ppt/media/image103.png",
+      "bytes": 736199
+    },
+    {
+      "entry": "ppt/media/image104.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image104.png",
+      "relativePath": "template-inspect/assets/ppt/media/image104.png",
+      "bytes": 392915
+    },
+    {
+      "entry": "ppt/media/image105.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image105.png",
+      "relativePath": "template-inspect/assets/ppt/media/image105.png",
+      "bytes": 61239
+    },
+    {
+      "entry": "ppt/media/image106.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image106.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image106.jpeg",
+      "bytes": 206318
+    },
+    {
+      "entry": "ppt/media/image107.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image107.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image107.jpeg",
+      "bytes": 283708
+    },
+    {
+      "entry": "ppt/media/image108.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image108.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image108.jpeg",
+      "bytes": 218155
+    },
+    {
+      "entry": "ppt/media/image109.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image109.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image109.jpeg",
+      "bytes": 166522
+    },
+    {
+      "entry": "ppt/media/image110.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image110.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image110.jpeg",
+      "bytes": 181951
+    },
+    {
+      "entry": "ppt/media/image111.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image111.png",
+      "relativePath": "template-inspect/assets/ppt/media/image111.png",
+      "bytes": 463183
+    },
+    {
+      "entry": "ppt/media/image112.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image112.png",
+      "relativePath": "template-inspect/assets/ppt/media/image112.png",
+      "bytes": 743533
+    },
+    {
+      "entry": "ppt/media/hdphoto2.wdp",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/hdphoto2.wdp",
+      "relativePath": "template-inspect/assets/ppt/media/hdphoto2.wdp",
+      "bytes": 162015
+    },
+    {
+      "entry": "ppt/media/image113.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image113.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image113.jpeg",
+      "bytes": 237566
+    },
+    {
+      "entry": "ppt/media/image114.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image114.png",
+      "relativePath": "template-inspect/assets/ppt/media/image114.png",
+      "bytes": 387536
+    },
+    {
+      "entry": "ppt/media/image115.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image115.png",
+      "relativePath": "template-inspect/assets/ppt/media/image115.png",
+      "bytes": 376329
+    },
+    {
+      "entry": "ppt/media/image116.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image116.png",
+      "relativePath": "template-inspect/assets/ppt/media/image116.png",
+      "bytes": 42709
+    },
+    {
+      "entry": "ppt/media/image117.svg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image117.svg",
+      "relativePath": "template-inspect/assets/ppt/media/image117.svg",
+      "bytes": 980
+    },
+    {
+      "entry": "ppt/media/image118.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image118.png",
+      "relativePath": "template-inspect/assets/ppt/media/image118.png",
+      "bytes": 53991
+    },
+    {
+      "entry": "ppt/media/image119.svg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image119.svg",
+      "relativePath": "template-inspect/assets/ppt/media/image119.svg",
+      "bytes": 2101
+    },
+    {
+      "entry": "ppt/media/image120.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image120.png",
+      "relativePath": "template-inspect/assets/ppt/media/image120.png",
+      "bytes": 48025
+    },
+    {
+      "entry": "ppt/media/image121.svg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image121.svg",
+      "relativePath": "template-inspect/assets/ppt/media/image121.svg",
+      "bytes": 1919
+    },
+    {
+      "entry": "ppt/media/image122.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image122.png",
+      "relativePath": "template-inspect/assets/ppt/media/image122.png",
+      "bytes": 20740
+    },
+    {
+      "entry": "ppt/media/image123.svg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image123.svg",
+      "relativePath": "template-inspect/assets/ppt/media/image123.svg",
+      "bytes": 783
+    },
+    {
+      "entry": "ppt/media/image124.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image124.png",
+      "relativePath": "template-inspect/assets/ppt/media/image124.png",
+      "bytes": 5324
+    },
+    {
+      "entry": "ppt/media/image125.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image125.png",
+      "relativePath": "template-inspect/assets/ppt/media/image125.png",
+      "bytes": 3216
+    },
+    {
+      "entry": "ppt/media/image126.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image126.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image126.jpeg",
+      "bytes": 133057
+    },
+    {
+      "entry": "ppt/media/image127.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image127.png",
+      "relativePath": "template-inspect/assets/ppt/media/image127.png",
+      "bytes": 6447
+    },
+    {
+      "entry": "ppt/media/image128.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image128.png",
+      "relativePath": "template-inspect/assets/ppt/media/image128.png",
+      "bytes": 33369
+    },
+    {
+      "entry": "ppt/media/image129.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image129.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image129.jpeg",
+      "bytes": 371865
+    },
+    {
+      "entry": "ppt/media/image130.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image130.png",
+      "relativePath": "template-inspect/assets/ppt/media/image130.png",
+      "bytes": 146681
+    },
+    {
+      "entry": "ppt/media/image131.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image131.png",
+      "relativePath": "template-inspect/assets/ppt/media/image131.png",
+      "bytes": 211157
+    },
+    {
+      "entry": "ppt/media/image132.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image132.png",
+      "relativePath": "template-inspect/assets/ppt/media/image132.png",
+      "bytes": 199443
+    },
+    {
+      "entry": "ppt/media/image133.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image133.png",
+      "relativePath": "template-inspect/assets/ppt/media/image133.png",
+      "bytes": 144767
+    },
+    {
+      "entry": "ppt/media/image134.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image134.png",
+      "relativePath": "template-inspect/assets/ppt/media/image134.png",
+      "bytes": 199806
+    },
+    {
+      "entry": "ppt/media/image303.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image303.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image303.jpeg",
+      "bytes": 3540
+    },
+    {
+      "entry": "ppt/media/image304.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image304.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image304.jpeg",
+      "bytes": 3316
+    },
+    {
+      "entry": "ppt/media/image305.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image305.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image305.jpeg",
+      "bytes": 3597
+    },
+    {
+      "entry": "ppt/media/image306.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image306.png",
+      "relativePath": "template-inspect/assets/ppt/media/image306.png",
+      "bytes": 1357
+    },
+    {
+      "entry": "ppt/media/image307.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image307.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image307.jpeg",
+      "bytes": 5142
+    },
+    {
+      "entry": "ppt/media/image308.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image308.png",
+      "relativePath": "template-inspect/assets/ppt/media/image308.png",
+      "bytes": 5770
+    },
+    {
+      "entry": "ppt/media/image309.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image309.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image309.jpeg",
+      "bytes": 2637
+    },
+    {
+      "entry": "ppt/media/image310.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image310.png",
+      "relativePath": "template-inspect/assets/ppt/media/image310.png",
+      "bytes": 3442
+    },
+    {
+      "entry": "ppt/media/image311.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image311.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image311.jpeg",
+      "bytes": 2951
+    },
+    {
+      "entry": "ppt/media/image312.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image312.png",
+      "relativePath": "template-inspect/assets/ppt/media/image312.png",
+      "bytes": 3159
+    },
+    {
+      "entry": "ppt/media/image313.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image313.png",
+      "relativePath": "template-inspect/assets/ppt/media/image313.png",
+      "bytes": 128785
+    },
+    {
+      "entry": "ppt/media/image213.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image213.png",
+      "relativePath": "template-inspect/assets/ppt/media/image213.png",
+      "bytes": 6265
+    },
+    {
+      "entry": "ppt/media/image314.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image314.png",
+      "relativePath": "template-inspect/assets/ppt/media/image314.png",
+      "bytes": 339880
+    },
+    {
+      "entry": "ppt/media/image315.tiff",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image315.tiff",
+      "relativePath": "template-inspect/assets/ppt/media/image315.tiff",
+      "bytes": 44162
+    },
+    {
+      "entry": "ppt/media/image214.emf",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image214.emf",
+      "relativePath": "template-inspect/assets/ppt/media/image214.emf",
+      "bytes": 997076
+    },
+    {
+      "entry": "ppt/media/image316.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image316.png",
+      "relativePath": "template-inspect/assets/ppt/media/image316.png",
+      "bytes": 4897
+    },
+    {
+      "entry": "ppt/media/image317.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image317.png",
+      "relativePath": "template-inspect/assets/ppt/media/image317.png",
+      "bytes": 6100
+    },
+    {
+      "entry": "ppt/media/image318.emf",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image318.emf",
+      "relativePath": "template-inspect/assets/ppt/media/image318.emf",
+      "bytes": 89144
+    },
+    {
+      "entry": "ppt/media/image319.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image319.png",
+      "relativePath": "template-inspect/assets/ppt/media/image319.png",
+      "bytes": 7425
+    },
+    {
+      "entry": "ppt/media/image320.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image320.png",
+      "relativePath": "template-inspect/assets/ppt/media/image320.png",
+      "bytes": 8589
+    },
+    {
+      "entry": "ppt/media/image321.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image321.png",
+      "relativePath": "template-inspect/assets/ppt/media/image321.png",
+      "bytes": 5477
+    },
+    {
+      "entry": "ppt/media/image322.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image322.png",
+      "relativePath": "template-inspect/assets/ppt/media/image322.png",
+      "bytes": 4843
+    },
+    {
+      "entry": "ppt/media/image323.svg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image323.svg",
+      "relativePath": "template-inspect/assets/ppt/media/image323.svg",
+      "bytes": 6365
+    },
+    {
+      "entry": "ppt/media/image324.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image324.png",
+      "relativePath": "template-inspect/assets/ppt/media/image324.png",
+      "bytes": 22272
+    },
+    {
+      "entry": "ppt/media/image325.emf",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image325.emf",
+      "relativePath": "template-inspect/assets/ppt/media/image325.emf",
+      "bytes": 38696
+    },
+    {
+      "entry": "ppt/media/image326.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image326.png",
+      "relativePath": "template-inspect/assets/ppt/media/image326.png",
+      "bytes": 788457
+    },
+    {
+      "entry": "ppt/media/image327.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image327.png",
+      "relativePath": "template-inspect/assets/ppt/media/image327.png",
+      "bytes": 21277
+    },
+    {
+      "entry": "ppt/media/image328.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image328.png",
+      "relativePath": "template-inspect/assets/ppt/media/image328.png",
+      "bytes": 808945
+    },
+    {
+      "entry": "ppt/media/image329.svg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image329.svg",
+      "relativePath": "template-inspect/assets/ppt/media/image329.svg",
+      "bytes": 427663
+    },
+    {
+      "entry": "ppt/media/image330.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image330.png",
+      "relativePath": "template-inspect/assets/ppt/media/image330.png",
+      "bytes": 820327
+    },
+    {
+      "entry": "ppt/media/image331.svg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image331.svg",
+      "relativePath": "template-inspect/assets/ppt/media/image331.svg",
+      "bytes": 4395619
+    },
+    {
+      "entry": "ppt/media/image332.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image332.png",
+      "relativePath": "template-inspect/assets/ppt/media/image332.png",
+      "bytes": 705627
+    },
+    {
+      "entry": "ppt/media/image333.svg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image333.svg",
+      "relativePath": "template-inspect/assets/ppt/media/image333.svg",
+      "bytes": 2815901
+    },
+    {
+      "entry": "ppt/media/image334.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image334.png",
+      "relativePath": "template-inspect/assets/ppt/media/image334.png",
+      "bytes": 705909
+    },
+    {
+      "entry": "ppt/media/image335.svg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image335.svg",
+      "relativePath": "template-inspect/assets/ppt/media/image335.svg",
+      "bytes": 2917799
+    },
+    {
+      "entry": "ppt/media/image336.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image336.png",
+      "relativePath": "template-inspect/assets/ppt/media/image336.png",
+      "bytes": 887575
+    },
+    {
+      "entry": "ppt/media/image337.svg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image337.svg",
+      "relativePath": "template-inspect/assets/ppt/media/image337.svg",
+      "bytes": 811953
+    },
+    {
+      "entry": "ppt/media/image338.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image338.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image338.jpeg",
+      "bytes": 33878
+    },
+    {
+      "entry": "ppt/media/image339.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image339.png",
+      "relativePath": "template-inspect/assets/ppt/media/image339.png",
+      "bytes": 2754
+    },
+    {
+      "entry": "ppt/media/image340.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image340.png",
+      "relativePath": "template-inspect/assets/ppt/media/image340.png",
+      "bytes": 2800
+    },
+    {
+      "entry": "ppt/media/image341.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image341.png",
+      "relativePath": "template-inspect/assets/ppt/media/image341.png",
+      "bytes": 24767
+    },
+    {
+      "entry": "ppt/media/image215.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image215.png",
+      "relativePath": "template-inspect/assets/ppt/media/image215.png",
+      "bytes": 3095
+    },
+    {
+      "entry": "ppt/media/image342.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image342.png",
+      "relativePath": "template-inspect/assets/ppt/media/image342.png",
+      "bytes": 126229
+    },
+    {
+      "entry": "ppt/media/image343.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image343.png",
+      "relativePath": "template-inspect/assets/ppt/media/image343.png",
+      "bytes": 121784
+    },
+    {
+      "entry": "ppt/media/image344.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image344.png",
+      "relativePath": "template-inspect/assets/ppt/media/image344.png",
+      "bytes": 91913
+    },
+    {
+      "entry": "ppt/media/image345.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image345.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image345.jpeg",
+      "bytes": 456294
+    },
+    {
+      "entry": "ppt/media/image346.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image346.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image346.jpeg",
+      "bytes": 402027
+    },
+    {
+      "entry": "ppt/media/image216.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image216.png",
+      "relativePath": "template-inspect/assets/ppt/media/image216.png",
+      "bytes": 8197
+    },
+    {
+      "entry": "ppt/media/image347.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image347.png",
+      "relativePath": "template-inspect/assets/ppt/media/image347.png",
+      "bytes": 504861
+    },
+    {
+      "entry": "ppt/media/image348.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image348.png",
+      "relativePath": "template-inspect/assets/ppt/media/image348.png",
+      "bytes": 735151
+    },
+    {
+      "entry": "ppt/media/image217.emf",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image217.emf",
+      "relativePath": "template-inspect/assets/ppt/media/image217.emf",
+      "bytes": 302236
+    },
+    {
+      "entry": "ppt/media/image349.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image349.png",
+      "relativePath": "template-inspect/assets/ppt/media/image349.png",
+      "bytes": 214854
+    },
+    {
+      "entry": "ppt/media/image350.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image350.png",
+      "relativePath": "template-inspect/assets/ppt/media/image350.png",
+      "bytes": 12318
+    },
+    {
+      "entry": "ppt/media/image351.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image351.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image351.jpeg",
+      "bytes": 180844
+    },
+    {
+      "entry": "ppt/media/image218.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image218.png",
+      "relativePath": "template-inspect/assets/ppt/media/image218.png",
+      "bytes": 3517
+    },
+    {
+      "entry": "ppt/media/image352.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image352.png",
+      "relativePath": "template-inspect/assets/ppt/media/image352.png",
+      "bytes": 454076
+    },
+    {
+      "entry": "ppt/media/image219.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image219.png",
+      "relativePath": "template-inspect/assets/ppt/media/image219.png",
+      "bytes": 3198
+    },
+    {
+      "entry": "ppt/media/image353.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image353.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image353.jpeg",
+      "bytes": 80096
+    },
+    {
+      "entry": "ppt/media/image354.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image354.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image354.jpeg",
+      "bytes": 135472
+    },
+    {
+      "entry": "ppt/media/image355.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image355.png",
+      "relativePath": "template-inspect/assets/ppt/media/image355.png",
+      "bytes": 13237
+    },
+    {
+      "entry": "ppt/media/image356.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image356.png",
+      "relativePath": "template-inspect/assets/ppt/media/image356.png",
+      "bytes": 10573
+    },
+    {
+      "entry": "ppt/media/image357.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image357.png",
+      "relativePath": "template-inspect/assets/ppt/media/image357.png",
+      "bytes": 4661
+    },
+    {
+      "entry": "ppt/media/image358.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image358.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image358.jpeg",
+      "bytes": 3672
+    },
+    {
+      "entry": "ppt/media/image359.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image359.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image359.jpeg",
+      "bytes": 2684
+    },
+    {
+      "entry": "ppt/media/image360.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image360.png",
+      "relativePath": "template-inspect/assets/ppt/media/image360.png",
+      "bytes": 6985
+    },
+    {
+      "entry": "ppt/media/image361.svg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image361.svg",
+      "relativePath": "template-inspect/assets/ppt/media/image361.svg",
+      "bytes": 5042
+    },
+    {
+      "entry": "ppt/media/image362.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image362.png",
+      "relativePath": "template-inspect/assets/ppt/media/image362.png",
+      "bytes": 3663
+    },
+    {
+      "entry": "ppt/media/image363.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image363.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image363.jpeg",
+      "bytes": 3694
+    },
+    {
+      "entry": "ppt/media/image364.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image364.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image364.jpeg",
+      "bytes": 2615
+    },
+    {
+      "entry": "ppt/media/image365.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image365.png",
+      "relativePath": "template-inspect/assets/ppt/media/image365.png",
+      "bytes": 4516
+    },
+    {
+      "entry": "ppt/media/image366.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image366.png",
+      "relativePath": "template-inspect/assets/ppt/media/image366.png",
+      "bytes": 1647
+    },
+    {
+      "entry": "ppt/media/image367.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image367.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image367.jpeg",
+      "bytes": 2406
+    },
+    {
+      "entry": "ppt/media/image368.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image368.png",
+      "relativePath": "template-inspect/assets/ppt/media/image368.png",
+      "bytes": 4007
+    },
+    {
+      "entry": "ppt/media/image369.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image369.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image369.jpeg",
+      "bytes": 121567
+    },
+    {
+      "entry": "ppt/media/image370.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image370.png",
+      "relativePath": "template-inspect/assets/ppt/media/image370.png",
+      "bytes": 21108
+    },
+    {
+      "entry": "ppt/media/image371.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image371.png",
+      "relativePath": "template-inspect/assets/ppt/media/image371.png",
+      "bytes": 9032
+    },
+    {
+      "entry": "ppt/media/image220.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image220.png",
+      "relativePath": "template-inspect/assets/ppt/media/image220.png",
+      "bytes": 3152
+    },
+    {
+      "entry": "ppt/media/image372.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image372.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image372.jpeg",
+      "bytes": 218470
+    },
+    {
+      "entry": "ppt/media/image373.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image373.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image373.jpeg",
+      "bytes": 423881
+    },
+    {
+      "entry": "ppt/media/image221.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image221.png",
+      "relativePath": "template-inspect/assets/ppt/media/image221.png",
+      "bytes": 3449
+    },
+    {
+      "entry": "ppt/media/image374.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image374.png",
+      "relativePath": "template-inspect/assets/ppt/media/image374.png",
+      "bytes": 407443
+    },
+    {
+      "entry": "ppt/media/image207.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image207.png",
+      "relativePath": "template-inspect/assets/ppt/media/image207.png",
+      "bytes": 3130
+    },
+    {
+      "entry": "ppt/media/image375.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image375.png",
+      "relativePath": "template-inspect/assets/ppt/media/image375.png",
+      "bytes": 445348
+    },
+    {
+      "entry": "ppt/media/image376.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image376.png",
+      "relativePath": "template-inspect/assets/ppt/media/image376.png",
+      "bytes": 661169
+    },
+    {
+      "entry": "ppt/media/image222.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image222.png",
+      "relativePath": "template-inspect/assets/ppt/media/image222.png",
+      "bytes": 3316
+    },
+    {
+      "entry": "ppt/media/image377.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image377.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image377.jpeg",
+      "bytes": 447049
+    },
+    {
+      "entry": "ppt/media/image378.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image378.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image378.jpeg",
+      "bytes": 247214
+    },
+    {
+      "entry": "ppt/media/image223.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image223.png",
+      "relativePath": "template-inspect/assets/ppt/media/image223.png",
+      "bytes": 3887
+    },
+    {
+      "entry": "ppt/media/image224.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image224.png",
+      "relativePath": "template-inspect/assets/ppt/media/image224.png",
+      "bytes": 516689
+    },
+    {
+      "entry": "ppt/media/image379.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image379.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image379.jpeg",
+      "bytes": 190242
+    },
+    {
+      "entry": "ppt/media/image380.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image380.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image380.jpeg",
+      "bytes": 623957
+    },
+    {
+      "entry": "ppt/media/image206.svg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image206.svg",
+      "relativePath": "template-inspect/assets/ppt/media/image206.svg",
+      "bytes": 5311
+    },
+    {
+      "entry": "ppt/media/image205.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image205.png",
+      "relativePath": "template-inspect/assets/ppt/media/image205.png",
+      "bytes": 55983
+    },
+    {
+      "entry": "ppt/media/image225.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image225.png",
+      "relativePath": "template-inspect/assets/ppt/media/image225.png",
+      "bytes": 196862
+    },
+    {
+      "entry": "ppt/media/image204.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image204.png",
+      "relativePath": "template-inspect/assets/ppt/media/image204.png",
+      "bytes": 1514
+    },
+    {
+      "entry": "ppt/media/image203.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image203.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image203.jpeg",
+      "bytes": 2673
+    },
+    {
+      "entry": "ppt/media/image202.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image202.png",
+      "relativePath": "template-inspect/assets/ppt/media/image202.png",
+      "bytes": 3991
+    },
+    {
+      "entry": "ppt/media/image201.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image201.png",
+      "relativePath": "template-inspect/assets/ppt/media/image201.png",
+      "bytes": 6134
+    },
+    {
+      "entry": "ppt/media/image200.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image200.png",
+      "relativePath": "template-inspect/assets/ppt/media/image200.png",
+      "bytes": 2779
+    },
+    {
+      "entry": "ppt/media/image199.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image199.png",
+      "relativePath": "template-inspect/assets/ppt/media/image199.png",
+      "bytes": 1719
+    },
+    {
+      "entry": "ppt/media/image198.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image198.png",
+      "relativePath": "template-inspect/assets/ppt/media/image198.png",
+      "bytes": 4936
+    },
+    {
+      "entry": "ppt/media/image197.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image197.png",
+      "relativePath": "template-inspect/assets/ppt/media/image197.png",
+      "bytes": 4351
+    },
+    {
+      "entry": "ppt/media/image196.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image196.png",
+      "relativePath": "template-inspect/assets/ppt/media/image196.png",
+      "bytes": 5387
+    },
+    {
+      "entry": "ppt/media/image195.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image195.png",
+      "relativePath": "template-inspect/assets/ppt/media/image195.png",
+      "bytes": 4407
+    },
+    {
+      "entry": "ppt/media/image194.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image194.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image194.jpeg",
+      "bytes": 427084
+    },
+    {
+      "entry": "ppt/media/image193.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image193.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image193.jpeg",
+      "bytes": 680234
+    },
+    {
+      "entry": "ppt/media/image192.emf",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image192.emf",
+      "relativePath": "template-inspect/assets/ppt/media/image192.emf",
+      "bytes": 73380
+    },
+    {
+      "entry": "ppt/media/image191.emf",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image191.emf",
+      "relativePath": "template-inspect/assets/ppt/media/image191.emf",
+      "bytes": 75584
+    },
+    {
+      "entry": "ppt/media/image190.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image190.png",
+      "relativePath": "template-inspect/assets/ppt/media/image190.png",
+      "bytes": 692830
+    },
+    {
+      "entry": "ppt/media/image189.svg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image189.svg",
+      "relativePath": "template-inspect/assets/ppt/media/image189.svg",
+      "bytes": 2220
+    },
+    {
+      "entry": "ppt/media/image188.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image188.png",
+      "relativePath": "template-inspect/assets/ppt/media/image188.png",
+      "bytes": 25830
+    },
+    {
+      "entry": "ppt/media/image187.svg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image187.svg",
+      "relativePath": "template-inspect/assets/ppt/media/image187.svg",
+      "bytes": 1418
+    },
+    {
+      "entry": "ppt/media/image186.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image186.png",
+      "relativePath": "template-inspect/assets/ppt/media/image186.png",
+      "bytes": 29783
+    },
+    {
+      "entry": "ppt/media/image185.emf",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image185.emf",
+      "relativePath": "template-inspect/assets/ppt/media/image185.emf",
+      "bytes": 74068
+    },
+    {
+      "entry": "ppt/media/image184.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image184.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image184.jpeg",
+      "bytes": 100626
+    },
+    {
+      "entry": "ppt/media/image183.svg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image183.svg",
+      "relativePath": "template-inspect/assets/ppt/media/image183.svg",
+      "bytes": 3560
+    },
+    {
+      "entry": "ppt/media/image182.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image182.png",
+      "relativePath": "template-inspect/assets/ppt/media/image182.png",
+      "bytes": 5238
+    },
+    {
+      "entry": "ppt/media/image181.svg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image181.svg",
+      "relativePath": "template-inspect/assets/ppt/media/image181.svg",
+      "bytes": 1023
+    },
+    {
+      "entry": "ppt/media/image180.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image180.png",
+      "relativePath": "template-inspect/assets/ppt/media/image180.png",
+      "bytes": 2869
+    },
+    {
+      "entry": "ppt/media/image179.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image179.png",
+      "relativePath": "template-inspect/assets/ppt/media/image179.png",
+      "bytes": 3857389
+    },
+    {
+      "entry": "ppt/media/image178.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image178.png",
+      "relativePath": "template-inspect/assets/ppt/media/image178.png",
+      "bytes": 126125
+    },
+    {
+      "entry": "ppt/media/image177.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image177.png",
+      "relativePath": "template-inspect/assets/ppt/media/image177.png",
+      "bytes": 227617
+    },
+    {
+      "entry": "ppt/media/image176.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image176.png",
+      "relativePath": "template-inspect/assets/ppt/media/image176.png",
+      "bytes": 13803
+    },
+    {
+      "entry": "ppt/media/image175.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image175.png",
+      "relativePath": "template-inspect/assets/ppt/media/image175.png",
+      "bytes": 12678
+    },
+    {
+      "entry": "ppt/media/image174.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image174.png",
+      "relativePath": "template-inspect/assets/ppt/media/image174.png",
+      "bytes": 12730
+    },
+    {
+      "entry": "ppt/media/image173.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image173.png",
+      "relativePath": "template-inspect/assets/ppt/media/image173.png",
+      "bytes": 12061
+    },
+    {
+      "entry": "ppt/media/image172.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image172.png",
+      "relativePath": "template-inspect/assets/ppt/media/image172.png",
+      "bytes": 14097
+    },
+    {
+      "entry": "ppt/media/image171.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image171.png",
+      "relativePath": "template-inspect/assets/ppt/media/image171.png",
+      "bytes": 13757
+    },
+    {
+      "entry": "ppt/media/image170.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image170.png",
+      "relativePath": "template-inspect/assets/ppt/media/image170.png",
+      "bytes": 5538
+    },
+    {
+      "entry": "ppt/media/image169.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image169.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image169.jpeg",
+      "bytes": 146028
+    },
+    {
+      "entry": "ppt/media/image168.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image168.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image168.jpeg",
+      "bytes": 48843
+    },
+    {
+      "entry": "ppt/media/image167.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image167.png",
+      "relativePath": "template-inspect/assets/ppt/media/image167.png",
+      "bytes": 75919
+    },
+    {
+      "entry": "ppt/media/image166.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image166.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image166.jpeg",
+      "bytes": 68150
+    },
+    {
+      "entry": "ppt/media/image165.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image165.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image165.jpeg",
+      "bytes": 130744
+    },
+    {
+      "entry": "ppt/media/image164.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image164.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image164.jpeg",
+      "bytes": 46106
+    },
+    {
+      "entry": "ppt/media/image163.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image163.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image163.jpeg",
+      "bytes": 89888
+    },
+    {
+      "entry": "ppt/media/image162.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image162.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image162.jpeg",
+      "bytes": 58408
+    },
+    {
+      "entry": "ppt/media/image161.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image161.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image161.jpeg",
+      "bytes": 67782
+    },
+    {
+      "entry": "ppt/media/image160.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image160.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image160.jpeg",
+      "bytes": 244512
+    },
+    {
+      "entry": "ppt/media/image159.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image159.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image159.jpeg",
+      "bytes": 557968
+    },
+    {
+      "entry": "ppt/media/image158.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image158.png",
+      "relativePath": "template-inspect/assets/ppt/media/image158.png",
+      "bytes": 38444
+    },
+    {
+      "entry": "ppt/media/image157.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image157.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image157.jpeg",
+      "bytes": 109780
+    },
+    {
+      "entry": "ppt/media/image156.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image156.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image156.jpeg",
+      "bytes": 128857
+    },
+    {
+      "entry": "ppt/media/image155.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image155.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image155.jpeg",
+      "bytes": 166872
+    },
+    {
+      "entry": "ppt/media/image154.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image154.png",
+      "relativePath": "template-inspect/assets/ppt/media/image154.png",
+      "bytes": 422307
+    },
+    {
+      "entry": "ppt/media/hdphoto4.wdp",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/hdphoto4.wdp",
+      "relativePath": "template-inspect/assets/ppt/media/hdphoto4.wdp",
+      "bytes": 31620
+    },
+    {
+      "entry": "ppt/media/image153.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image153.png",
+      "relativePath": "template-inspect/assets/ppt/media/image153.png",
+      "bytes": 96926
+    },
+    {
+      "entry": "ppt/media/image152.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image152.png",
+      "relativePath": "template-inspect/assets/ppt/media/image152.png",
+      "bytes": 100624
+    },
+    {
+      "entry": "ppt/media/image151.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image151.png",
+      "relativePath": "template-inspect/assets/ppt/media/image151.png",
+      "bytes": 116206
+    },
+    {
+      "entry": "ppt/media/image150.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image150.png",
+      "relativePath": "template-inspect/assets/ppt/media/image150.png",
+      "bytes": 86919
+    },
+    {
+      "entry": "ppt/media/image149.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image149.png",
+      "relativePath": "template-inspect/assets/ppt/media/image149.png",
+      "bytes": 96129
+    },
+    {
+      "entry": "ppt/media/hdphoto3.wdp",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/hdphoto3.wdp",
+      "relativePath": "template-inspect/assets/ppt/media/hdphoto3.wdp",
+      "bytes": 33001
+    },
+    {
+      "entry": "ppt/media/image148.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image148.png",
+      "relativePath": "template-inspect/assets/ppt/media/image148.png",
+      "bytes": 136283
+    },
+    {
+      "entry": "ppt/media/image147.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image147.png",
+      "relativePath": "template-inspect/assets/ppt/media/image147.png",
+      "bytes": 99037
+    },
+    {
+      "entry": "ppt/media/image146.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image146.png",
+      "relativePath": "template-inspect/assets/ppt/media/image146.png",
+      "bytes": 136138
+    },
+    {
+      "entry": "ppt/media/image145.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image145.png",
+      "relativePath": "template-inspect/assets/ppt/media/image145.png",
+      "bytes": 68257
+    },
+    {
+      "entry": "ppt/media/image144.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image144.png",
+      "relativePath": "template-inspect/assets/ppt/media/image144.png",
+      "bytes": 92529
+    },
+    {
+      "entry": "ppt/media/image143.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image143.png",
+      "relativePath": "template-inspect/assets/ppt/media/image143.png",
+      "bytes": 76074
+    },
+    {
+      "entry": "ppt/media/image142.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image142.png",
+      "relativePath": "template-inspect/assets/ppt/media/image142.png",
+      "bytes": 81021
+    },
+    {
+      "entry": "ppt/media/image141.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image141.png",
+      "relativePath": "template-inspect/assets/ppt/media/image141.png",
+      "bytes": 78408
+    },
+    {
+      "entry": "ppt/media/image140.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image140.png",
+      "relativePath": "template-inspect/assets/ppt/media/image140.png",
+      "bytes": 147213
+    },
+    {
+      "entry": "ppt/media/image139.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image139.png",
+      "relativePath": "template-inspect/assets/ppt/media/image139.png",
+      "bytes": 110582
+    },
+    {
+      "entry": "ppt/media/image208.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image208.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image208.jpeg",
+      "bytes": 3376
+    },
+    {
+      "entry": "ppt/media/image138.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image138.png",
+      "relativePath": "template-inspect/assets/ppt/media/image138.png",
+      "bytes": 155189
+    },
+    {
+      "entry": "ppt/media/image137.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image137.png",
+      "relativePath": "template-inspect/assets/ppt/media/image137.png",
+      "bytes": 115879
+    },
+    {
+      "entry": "ppt/media/image136.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image136.png",
+      "relativePath": "template-inspect/assets/ppt/media/image136.png",
+      "bytes": 105224
+    },
+    {
+      "entry": "ppt/media/image135.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image135.png",
+      "relativePath": "template-inspect/assets/ppt/media/image135.png",
+      "bytes": 83852
+    },
+    {
+      "entry": "ppt/media/image226.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image226.png",
+      "relativePath": "template-inspect/assets/ppt/media/image226.png",
+      "bytes": 15093
+    },
+    {
+      "entry": "ppt/media/image227.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image227.png",
+      "relativePath": "template-inspect/assets/ppt/media/image227.png",
+      "bytes": 321715
+    },
+    {
+      "entry": "ppt/media/image228.tiff",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image228.tiff",
+      "relativePath": "template-inspect/assets/ppt/media/image228.tiff",
+      "bytes": 90654
+    },
+    {
+      "entry": "ppt/media/image209.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image209.png",
+      "relativePath": "template-inspect/assets/ppt/media/image209.png",
+      "bytes": 167869
+    },
+    {
+      "entry": "ppt/media/image229.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image229.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image229.jpeg",
+      "bytes": 164706
+    },
+    {
+      "entry": "ppt/media/image230.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image230.png",
+      "relativePath": "template-inspect/assets/ppt/media/image230.png",
+      "bytes": 5037
+    },
+    {
+      "entry": "ppt/media/image231.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image231.png",
+      "relativePath": "template-inspect/assets/ppt/media/image231.png",
+      "bytes": 17384
+    },
+    {
+      "entry": "ppt/media/image232.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image232.png",
+      "relativePath": "template-inspect/assets/ppt/media/image232.png",
+      "bytes": 5247
+    },
+    {
+      "entry": "ppt/media/image233.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image233.png",
+      "relativePath": "template-inspect/assets/ppt/media/image233.png",
+      "bytes": 3531
+    },
+    {
+      "entry": "ppt/media/image234.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image234.png",
+      "relativePath": "template-inspect/assets/ppt/media/image234.png",
+      "bytes": 1640
+    },
+    {
+      "entry": "ppt/media/image235.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image235.png",
+      "relativePath": "template-inspect/assets/ppt/media/image235.png",
+      "bytes": 4863
+    },
+    {
+      "entry": "ppt/media/image236.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image236.png",
+      "relativePath": "template-inspect/assets/ppt/media/image236.png",
+      "bytes": 4468
+    },
+    {
+      "entry": "ppt/media/image237.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image237.png",
+      "relativePath": "template-inspect/assets/ppt/media/image237.png",
+      "bytes": 2060
+    },
+    {
+      "entry": "ppt/media/image238.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image238.png",
+      "relativePath": "template-inspect/assets/ppt/media/image238.png",
+      "bytes": 3224
+    },
+    {
+      "entry": "ppt/media/image239.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image239.png",
+      "relativePath": "template-inspect/assets/ppt/media/image239.png",
+      "bytes": 3345
+    },
+    {
+      "entry": "ppt/media/image240.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image240.png",
+      "relativePath": "template-inspect/assets/ppt/media/image240.png",
+      "bytes": 2213
+    },
+    {
+      "entry": "ppt/media/image241.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image241.png",
+      "relativePath": "template-inspect/assets/ppt/media/image241.png",
+      "bytes": 3480
+    },
+    {
+      "entry": "ppt/media/image242.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image242.png",
+      "relativePath": "template-inspect/assets/ppt/media/image242.png",
+      "bytes": 4203
+    },
+    {
+      "entry": "ppt/media/image243.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image243.png",
+      "relativePath": "template-inspect/assets/ppt/media/image243.png",
+      "bytes": 2162
+    },
+    {
+      "entry": "ppt/media/image244.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image244.png",
+      "relativePath": "template-inspect/assets/ppt/media/image244.png",
+      "bytes": 4436
+    },
+    {
+      "entry": "ppt/media/image245.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image245.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image245.jpeg",
+      "bytes": 2887
+    },
+    {
+      "entry": "ppt/media/image246.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image246.png",
+      "relativePath": "template-inspect/assets/ppt/media/image246.png",
+      "bytes": 3419
+    },
+    {
+      "entry": "ppt/media/image247.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image247.png",
+      "relativePath": "template-inspect/assets/ppt/media/image247.png",
+      "bytes": 3386
+    },
+    {
+      "entry": "ppt/media/image248.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image248.png",
+      "relativePath": "template-inspect/assets/ppt/media/image248.png",
+      "bytes": 4443
+    },
+    {
+      "entry": "ppt/media/image249.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image249.png",
+      "relativePath": "template-inspect/assets/ppt/media/image249.png",
+      "bytes": 8869
+    },
+    {
+      "entry": "ppt/media/image250.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image250.png",
+      "relativePath": "template-inspect/assets/ppt/media/image250.png",
+      "bytes": 5125
+    },
+    {
+      "entry": "ppt/media/image251.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image251.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image251.jpeg",
+      "bytes": 2662
+    },
+    {
+      "entry": "ppt/media/image252.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image252.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image252.jpeg",
+      "bytes": 2657
+    },
+    {
+      "entry": "ppt/media/image253.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image253.png",
+      "relativePath": "template-inspect/assets/ppt/media/image253.png",
+      "bytes": 3527
+    },
+    {
+      "entry": "ppt/media/image254.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image254.png",
+      "relativePath": "template-inspect/assets/ppt/media/image254.png",
+      "bytes": 3494
+    },
+    {
+      "entry": "ppt/media/image210.svg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image210.svg",
+      "relativePath": "template-inspect/assets/ppt/media/image210.svg",
+      "bytes": 208193
+    },
+    {
+      "entry": "ppt/media/image255.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image255.png",
+      "relativePath": "template-inspect/assets/ppt/media/image255.png",
+      "bytes": 504654
+    },
+    {
+      "entry": "ppt/media/image211.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image211.png",
+      "relativePath": "template-inspect/assets/ppt/media/image211.png",
+      "bytes": 5161
+    },
+    {
+      "entry": "ppt/media/image256.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image256.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image256.jpeg",
+      "bytes": 102670
+    },
+    {
+      "entry": "ppt/media/image257.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image257.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image257.jpeg",
+      "bytes": 89835
+    },
+    {
+      "entry": "ppt/media/image258.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image258.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image258.jpeg",
+      "bytes": 96108
+    },
+    {
+      "entry": "ppt/media/image259.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image259.png",
+      "relativePath": "template-inspect/assets/ppt/media/image259.png",
+      "bytes": 8775
+    },
+    {
+      "entry": "ppt/media/image260.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image260.png",
+      "relativePath": "template-inspect/assets/ppt/media/image260.png",
+      "bytes": 9346
+    },
+    {
+      "entry": "ppt/media/image261.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image261.png",
+      "relativePath": "template-inspect/assets/ppt/media/image261.png",
+      "bytes": 9980
+    },
+    {
+      "entry": "ppt/media/image262.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image262.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image262.jpeg",
+      "bytes": 7176
+    },
+    {
+      "entry": "ppt/media/image263.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image263.png",
+      "relativePath": "template-inspect/assets/ppt/media/image263.png",
+      "bytes": 10151
+    },
+    {
+      "entry": "ppt/media/image264.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image264.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image264.jpeg",
+      "bytes": 4512
+    },
+    {
+      "entry": "ppt/media/image265.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image265.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image265.jpeg",
+      "bytes": 5093
+    },
+    {
+      "entry": "ppt/media/image266.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image266.png",
+      "relativePath": "template-inspect/assets/ppt/media/image266.png",
+      "bytes": 6167
+    },
+    {
+      "entry": "ppt/media/image267.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image267.png",
+      "relativePath": "template-inspect/assets/ppt/media/image267.png",
+      "bytes": 5777
+    },
+    {
+      "entry": "ppt/media/image268.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image268.png",
+      "relativePath": "template-inspect/assets/ppt/media/image268.png",
+      "bytes": 10364
+    },
+    {
+      "entry": "ppt/media/image269.svg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image269.svg",
+      "relativePath": "template-inspect/assets/ppt/media/image269.svg",
+      "bytes": 2959
+    },
+    {
+      "entry": "ppt/media/image212.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image212.png",
+      "relativePath": "template-inspect/assets/ppt/media/image212.png",
+      "bytes": 4524
+    },
+    {
+      "entry": "ppt/media/image270.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image270.png",
+      "relativePath": "template-inspect/assets/ppt/media/image270.png",
+      "bytes": 1575
+    },
+    {
+      "entry": "ppt/media/image271.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image271.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image271.jpeg",
+      "bytes": 3066
+    },
+    {
+      "entry": "ppt/media/image272.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image272.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image272.jpeg",
+      "bytes": 3142
+    },
+    {
+      "entry": "ppt/media/image273.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image273.png",
+      "relativePath": "template-inspect/assets/ppt/media/image273.png",
+      "bytes": 5263
+    },
+    {
+      "entry": "ppt/media/image274.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image274.png",
+      "relativePath": "template-inspect/assets/ppt/media/image274.png",
+      "bytes": 5199
+    },
+    {
+      "entry": "ppt/media/image275.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image275.png",
+      "relativePath": "template-inspect/assets/ppt/media/image275.png",
+      "bytes": 7117
+    },
+    {
+      "entry": "ppt/media/image276.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image276.png",
+      "relativePath": "template-inspect/assets/ppt/media/image276.png",
+      "bytes": 7121
+    },
+    {
+      "entry": "ppt/media/image277.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image277.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image277.jpeg",
+      "bytes": 2802
+    },
+    {
+      "entry": "ppt/media/image278.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image278.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image278.jpeg",
+      "bytes": 3469
+    },
+    {
+      "entry": "ppt/media/image279.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image279.png",
+      "relativePath": "template-inspect/assets/ppt/media/image279.png",
+      "bytes": 2225
+    },
+    {
+      "entry": "ppt/media/image280.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image280.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image280.jpeg",
+      "bytes": 2204
+    },
+    {
+      "entry": "ppt/media/image281.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image281.png",
+      "relativePath": "template-inspect/assets/ppt/media/image281.png",
+      "bytes": 3386
+    },
+    {
+      "entry": "ppt/media/image282.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image282.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image282.jpeg",
+      "bytes": 2615
+    },
+    {
+      "entry": "ppt/media/image283.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image283.png",
+      "relativePath": "template-inspect/assets/ppt/media/image283.png",
+      "bytes": 6225
+    },
+    {
+      "entry": "ppt/media/image284.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image284.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image284.jpeg",
+      "bytes": 4672
+    },
+    {
+      "entry": "ppt/media/image285.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image285.png",
+      "relativePath": "template-inspect/assets/ppt/media/image285.png",
+      "bytes": 4278
+    },
+    {
+      "entry": "ppt/media/image286.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image286.png",
+      "relativePath": "template-inspect/assets/ppt/media/image286.png",
+      "bytes": 4317
+    },
+    {
+      "entry": "ppt/media/image287.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image287.png",
+      "relativePath": "template-inspect/assets/ppt/media/image287.png",
+      "bytes": 6735
+    },
+    {
+      "entry": "ppt/media/image288.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image288.png",
+      "relativePath": "template-inspect/assets/ppt/media/image288.png",
+      "bytes": 2849
+    },
+    {
+      "entry": "ppt/media/image289.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image289.png",
+      "relativePath": "template-inspect/assets/ppt/media/image289.png",
+      "bytes": 4617
+    },
+    {
+      "entry": "ppt/media/image290.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image290.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image290.jpeg",
+      "bytes": 873
+    },
+    {
+      "entry": "ppt/media/image291.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image291.png",
+      "relativePath": "template-inspect/assets/ppt/media/image291.png",
+      "bytes": 4057
+    },
+    {
+      "entry": "ppt/media/image292.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image292.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image292.jpeg",
+      "bytes": 2238
+    },
+    {
+      "entry": "ppt/media/image293.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image293.png",
+      "relativePath": "template-inspect/assets/ppt/media/image293.png",
+      "bytes": 3204
+    },
+    {
+      "entry": "ppt/media/image294.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image294.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image294.jpeg",
+      "bytes": 3126
+    },
+    {
+      "entry": "ppt/media/image295.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image295.png",
+      "relativePath": "template-inspect/assets/ppt/media/image295.png",
+      "bytes": 6855
+    },
+    {
+      "entry": "ppt/media/image296.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image296.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image296.jpeg",
+      "bytes": 2983
+    },
+    {
+      "entry": "ppt/media/image297.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image297.png",
+      "relativePath": "template-inspect/assets/ppt/media/image297.png",
+      "bytes": 4265
+    },
+    {
+      "entry": "ppt/media/image298.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image298.png",
+      "relativePath": "template-inspect/assets/ppt/media/image298.png",
+      "bytes": 3369
+    },
+    {
+      "entry": "ppt/media/image299.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image299.png",
+      "relativePath": "template-inspect/assets/ppt/media/image299.png",
+      "bytes": 5902
+    },
+    {
+      "entry": "ppt/media/image300.jpeg",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image300.jpeg",
+      "relativePath": "template-inspect/assets/ppt/media/image300.jpeg",
+      "bytes": 2400
+    },
+    {
+      "entry": "ppt/media/image301.png",
+      "path": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-inspect/assets/ppt/media/image301.png",
+      "relativePath": "template-inspect/assets/ppt/media/image301.png",
+      "bytes": 6269
+    }
+  ],
+  "fonts": [
+    "+mj-cs",
+    "+mj-ea",
+    "+mj-lt",
+    "+mn-cs",
+    "+mn-ea",
+    "+mn-lt",
+    "Angsana New",
+    "Arial",
+    "Arial Narrow",
+    "Calibri",
+    "Calibri Light",
+    "Cordia New",
+    "DaunPenh",
+    "DokChampa",
+    "Ebrima",
+    "Estrangelo Edessa",
+    "Euphemia",
+    "Franklin Gothic Demi Cond",
+    "Gautami",
+    "Iskoola Pota",
+    "Javanese Text",
+    "Kalinga",
+    "Kartika",
+    "Latha",
+    "Leelawadee UI",
+    "MS PGothic",
+    "MV Boli",
+    "Mangal",
+    "Microsoft Himalaya",
+    "Microsoft JhengHei",
+    "Microsoft New Tai Lue",
+    "Microsoft Tai Le",
+    "Microsoft Uighur",
+    "Microsoft Yi Baiti",
+    "Mongolian Baiti",
+    "MoolBoran",
+    "Myanmar Text",
+    "Nirmala UI",
+    "Nyala",
+    "Phagspa",
+    "Plantagenet Cherokee",
+    "Raavi",
+    "Roboto Black",
+    "Segoe UI",
+    "Shruti",
+    "Suisse Int'l",
+    "Suisse Int'l Bold Italic",
+    "Suisse Int'l Light Italic",
+    "Sylfaen",
+    "Times New Roman",
+    "Tunga",
+    "Vrinda",
+    "Wingdings",
+    "宋体",
+    "微軟正黑體",
+    "新細明體",
+    "游ゴシック",
+    "游ゴシック Light",
+    "等线",
+    "等线 Light",
+    "黑体",
+    "굴림",
+    "나눔스퀘어 ExtraBold",
+    "맑은 고딕",
+    "ＭＳ Ｐゴシック"
+  ],
+  "packageParts": {
+    "mediaCount": 385,
+    "slideXmlCount": 73,
+    "chartCount": 2,
+    "tableSlideCount": 0
+  }
+}

@@ -50,17 +50,27 @@ HEURISTIC_LABELS = {
 }
 ROUTE_ORDER = [
     "bus14 zero-shot",
+    "bus14 zero-shot (gmax-delta)",
+    "encoder-only: random frozen",
+    "encoder-only: NL frozen",
+    "encoder-only: NLS frozen",
     "bus14 zero-shot + AIB",
     "MAPPO fine-tune (aggressive)",
     "MAPPO fine-tune (conservative)",
+    "MAPPO fine-tune (Gmax-delta)",
     "BC on greedy labels",
     "MAPPO scratch",
 ]
 ROUTE_COLORS = {
     "bus14 zero-shot": "#4C78A8",
+    "bus14 zero-shot (gmax-delta)": "#8C6BB1",
+    "encoder-only: random frozen": "#BAB0AC",
+    "encoder-only: NL frozen": "#79706E",
+    "encoder-only: NLS frozen": "#B279A2",
     "bus14 zero-shot + AIB": "#72B7B2",
     "MAPPO fine-tune (aggressive)": "#F58518",
     "MAPPO fine-tune (conservative)": "#E4A11B",
+    "MAPPO fine-tune (Gmax-delta)": "#D67195",
     "BC on greedy labels": "#B279A2",
     "MAPPO scratch": "#54A24B",
 }
@@ -70,6 +80,21 @@ GATE_COLORS = {"ungated": "#9EC5E8", "gated": "#E45756"}
 # Checkpoints are saved under a selection prefix; the campaign name follows it.
 SELECTION_RE = re.compile(r"^(?P<selection>best_test|final)_(?P<rest>.+)$")
 CONSERVATIVE_RE = re.compile(r"^ft\d+c")
+GMAX_DELTA_RE = re.compile(r"^ftgd(?P<cap>\d+)")
+# Chapter 9: a bus14 encoder is frozen and only new WCCI heads are learned.
+# These are Screen C/D representations, not cas_hl pooling variants, so they
+# carry their own naming and none of the pool/descriptor/idle factors apply.
+# The gmax-delta backbone transfers zero-shot like the plain cas_hl sweep but is
+# a different network (energized_max readout, candidate delta encoder, from
+# F_nl_cas_hl_max_arch). Left in the zero-shot route it puts two architectures in
+# every cell and silently destroys that route's factorial.
+GMAX_ZEROSHOT_RE = re.compile(r"cas_hl_(NLS?_)?\w*?gmax_delta")
+ETB_RE = re.compile(r"^etb(?P<cap>\d+)_(?P<init>rndfz|nlfz|nlsfz)_(?P<repr>.+?)_s\d+$")
+ETB_ROUTES = {
+    "rndfz": ("encoder-only: random frozen", "frozen random encoder, the control"),
+    "nlfz": ("encoder-only: NL frozen", "frozen bus14 encoder, raw inputs"),
+    "nlsfz": ("encoder-only: NLS frozen", "frozen bus14 encoder, physical scaling"),
+}
 AIB_RE = re.compile(r"^aibcas")
 AIB_TARGET_RE = re.compile(r"_d(\d{3})_")
 SCRATCH_RE = re.compile(r"^sc\d+c")
@@ -208,6 +233,9 @@ def _classify_route(checkpoint, checkpoint_stem, haystack):
     same route at different action spaces.
     """
     _, label = split_selection(checkpoint_stem)
+    etb = ETB_RE.match(label)
+    if etb:
+        return ETB_ROUTES[etb.group("init")]
     if "dangerous_graph_bc" in haystack or label.startswith("bcg"):
         detail = "direct from bus14" if "direct_bus14" in label else "on top of MAPPO fine-tune"
         return "BC on greedy labels", detail
@@ -221,10 +249,18 @@ def _classify_route(checkpoint, checkpoint_stem, haystack):
         return "bus14 zero-shot + AIB", budget
     if SCRATCH_RE.match(label):
         return "MAPPO scratch", "random init"
+    gmax = GMAX_DELTA_RE.match(label)
+    if gmax:
+        # Conservative fine-tune of the Gmax-delta source family
+        # (F_nl_cas_hl_max_arch), not of the plain cas_hl sweep. Same protocol,
+        # different bus14 pretraining, so it cannot share an arm with either.
+        return "MAPPO fine-tune (Gmax-delta)", f"Gmax-delta source, mk{gmax.group('cap')}"
     if CONSERVATIVE_RE.match(label):
         return "MAPPO fine-tune (conservative)", "annealed lr, short budget"
     if "finetune" in checkpoint.lower() or label.startswith(("ft", "trcas")):
         return "MAPPO fine-tune (aggressive)", "actor lr restarted at 1e-4, fully unfrozen"
+    if GMAX_ZEROSHOT_RE.search(label):
+        return "bus14 zero-shot (gmax-delta)", "no target-grid gradient, gmax-delta backbone"
     return "bus14 zero-shot", "no target-grid gradient"
 
 
@@ -238,6 +274,11 @@ def _classify_result(task_dir, result_path):
     family = "NLS" if "_NLS_" in f"{checkpoint_stem}_{stem}" else (
         "NL" if "_NL_" in f"{checkpoint_stem}_{stem}" else "other"
     )
+    # The encoder-only runs name a Screen C/D representation instead of a
+    # cas_hl pooling variant; their input condition is carried by the route.
+    etb = ETB_RE.match(split_selection(checkpoint_stem)[1])
+    if etb:
+        family = "NLS" if etb.group("init") == "nlsfz" else "NL"
     haystack = f"{checkpoint.lower()}/{result_path.parent.name.lower()}/{stem.lower()}"
     route, detail = _classify_route(checkpoint, checkpoint_stem, haystack)
 
@@ -272,7 +313,7 @@ def _classify_result(task_dir, result_path):
         "descriptor": DESCRIPTOR_LABELS.get(features, "?"),
         "head": head,
         "idle": IDLE_LABELS.get(head, "?"),
-        "variant": f"{family}_{pool}_f{features}_a0h{head}",
+        "variant": (etb.group("repr") if etb else f"{family}_{pool}_f{features}_a0h{head}"),
         "cell": f"{pool}_f{features}_a0h{head}",
         "mk": int(mk_match.group(1)) if mk_match else np.nan,
         "heuristic": heuristic,
@@ -516,6 +557,9 @@ def load(task_dir=None):
             "variant": f"{family}_{pool}_f{features}_a0h{head}",
             "bus14_group": result_path.parent.name,
             "bus14_pct": payload.get("survival_percent"),
+            "bus14_checkpoint_stem": stem,
+            "bus14_episodes": payload.get("eval_episodes"),
+            "bus14_result_path": str(result_path),
         })
     bus14 = pd.DataFrame(bus14_rows)
     # The WCCI zero-shot arm transfers exactly these two bus14 batches.

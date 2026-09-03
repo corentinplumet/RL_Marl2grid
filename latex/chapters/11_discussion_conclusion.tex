@@ -1,0 +1,116 @@
+\begingroup
+\color{black}
+
+\chapter{Discussion and Conclusions}
+\label{ch:discussion-conclusion}
+
+This thesis asks whether graph-based decentralized policies can control one
+grid and remain useful on a larger one. The work addresses this question in
+four stages: stable learning, sparse intervention, graph design, and
+cross-grid transfer.
+
+\section{Research questions revisited}
+
+\noindent\textbf{1. Which changes stabilize decentralized MAPPO?}
+The tuned flat actor reaches high survival earlier and more consistently than
+the initial implementation. Its final mean survival is about $93\%$ on
+\texttt{bus14}. Reward normalization, the critic update, and the optimization
+settings have a clearer effect than simply increasing the model size. An
+initial bias toward do nothing is not consistently helpful: a strong bias
+delays learning, while a weaker bias remains unstable. The zero-bias model is
+therefore retained as a stable reference, even though it does not have the
+highest endpoint in every comparison.
+
+\medskip
+\noindent\textbf{2. Can unnecessary interventions be reduced?}
+Yes, at least on the source grid. The local-safe adaptive intervention budget
+reaches about $98.4\%$ mean survival while selecting action 0 in about $98\%$
+of decisions. The baseline reaches $93.67\%$ survival and selects action 0 in
+only $43.4\%$ of decisions. The agents can therefore learn to intervene less
+often without losing performance. A fixed penalty also gives good results,
+whereas the learned gate does not improve both survival and intervention
+frequency at the same time.
+
+\medskip
+\noindent\textbf{3. Which graph design provides a useful local actor?}
+Several graph actors exceed $99\%$ mean survival on \texttt{bus14}. For the
+fixed-head encoder branch, the source-grid screens retain GINE message passing,
+two layers of width 128, and an energized-node maximum graph readout. Several
+busbar and disaggregated representations are then kept because their small
+source-grid differences may become more important after transfer. The
+candidate-action head also works well: six of its eight cells exceed $98.2\%$
+and three exceed $99\%$. More importantly, its shared scorer can rank action
+lists of different sizes, which makes complete-policy transfer possible.
+
+\medskip
+\noindent\textbf{4. Do graph-policy weights transfer to WCCI?}
+The complete shared encoder and candidate scorer can run on WCCI without any
+change to their parameter dimensions. This confirms structural transfer, but
+the transferred behavior remains limited. On the 24 difficult chronics, do
+nothing reaches $8.34\%$ mean survival. With the local-$\rho=0.95$ heuristic,
+the median zero-shot actor reaches $21.9\%$ at $k=32$, while the best evaluated
+actor reaches $25.8\%$. Performance decreases as the candidate list grows even
+though the greedy reference improves. The main difficulty is therefore not
+the lack of useful actions, but ranking them correctly. In the matched $k=64$
+comparison, fine-tuning raises median difficult-chronic survival to $18.1\%$,
+compared with $9.6\%$ from scratch and $5.7\%$ zero-shot. Source initialization
+is useful, but target adaptation is still needed.
+\\
+\\
+\textcolor{red}{This answer will be completed after Chapter~\ref{ch:encoder-transfer-bridge}
+establishes whether a frozen source encoder outperforms the random-frozen
+control when the WCCI action heads are relearned.}
+
+\section{What the experiments show together}
+
+High source-grid survival does not guarantee successful transfer. The screens
+in Chapter~\ref{ch:experiments} show that the graph encoders and candidate
+scorer can learn the \texttt{bus14} task. The WCCI experiments then test two
+different forms of reuse. Encoder-only transfer asks whether the learned
+representation remains useful after replacing the grid-specific head.
+Complete-policy transfer also reuses the action-selection mechanism.
+\\
+\\
+Together, the experiments give three practical lessons. First, compatible
+parameter dimensions do not guarantee compatible behavior. The input
+convention, candidate actions, and intervention frequency all matter. Second,
+a smaller candidate set can help a learned policy even when a larger set
+contains better greedy actions, because the policy must still rank those
+actions correctly. Third, the local heuristic is policy-dependent: it improves
+most zero-shot actors but can hurt policies trained directly on WCCI. Overall
+survival should therefore be read together with difficult-chronic survival,
+since many of the easy chronics are already completed by doing nothing.
+
+\section{Limitations and next steps}
+
+The main architecture screens use one training seed, and the controlled WCCI
+comparison uses 50 chronics from a single source-target grid pair. Maintenance
+is disabled on WCCI and the policies use reduced action spaces. Scratch and
+fine-tuned actors also receive different training budgets. Their comparison
+therefore supports the observed performance ordering, but not a strict claim
+about sample efficiency. Finally, the one-step greedy controller is a useful
+reference, not an upper bound on long-term control.
+\\
+\\
+The next experiments should focus on the finalists rather than repeat the full
+architecture search. They should use additional seeds, a larger untouched WCCI
+cohort, and equal budgets for scratch training and fine-tuning. Testing with
+maintenance and on a second target grid would show whether the conclusions are
+more general. Better candidate ranking is also a priority, because the largest
+remaining gap lies between the learned policies and the useful actions already
+available to them.
+
+\section{Conclusion}
+
+Graph and candidate-action architectures remove the dimensional barrier that
+prevents a fixed-width decentralized actor from being reused across grids.
+However, structural compatibility alone does not guarantee reliable control
+on a new network. In the \texttt{bus14}-to-WCCI study, useful transfer also
+depends on compatible inputs, a manageable action set, candidate-aware
+scoring, policy-specific intervention control, and target adaptation. The main
+conclusion is therefore not that one graph architecture solves transfer. It is
+that a transferable policy can retain meaningful zero-shot performance and
+provide a better starting point for adaptation than learning the same control
+problem again from random weights.
+
+\endgroup

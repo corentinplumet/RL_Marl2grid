@@ -1,0 +1,7 @@
+Intentional deviations from copied source slides:
+- All selected content slides: replace institutional headings with claim-led thesis titles; rewrite date rail to MASTER THESIS; rewrite slide number; remove empty slide footer.
+- Slides mapped from source 54/40/37/5/4/2: replace inherited institutional photos/graphics with figures that already appear in the LaTeX thesis or with LaTeX/TikZ figures rendered from the thesis source.
+- Slides mapped from source 72: remove the alumni contact overlay and replace the photo banner with thesis evidence while preserving the three-column geometry.
+- Slide mapped from source 44: remove the person cutout and icons while preserving the coloured metric structure.
+- Encoder-only transfer slide: replace the inherited image with a conspicuous results-required placeholder. This is required because the LaTeX chapter still contains pending protocol fields and endpoint plots.
+- Supplementary divider and question slides preserve the EPFL visual assets; only audience-facing text changes.

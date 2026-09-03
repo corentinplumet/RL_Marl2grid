@@ -1,343 +1,20 @@
-\chapter{\texorpdfstring{\latestrevision{Additional Experimental Evidence}}{Additional Experimental Evidence}}
+\chapter{\texorpdfstring{Additional Experimental Evidence}{Additional Experimental Evidence}}
 \label{app:additional-screening-results}
-
-\latestrevision{This appendix collects the additional evidence behind the
-experimental narrative. It follows the order of the thesis: sparse control,
-graph-design screening, cross-grid input analysis, and WCCI transfer. Each
-block states its own evaluation protocol because the number of seeds and
-chronics differs between campaigns. The main chapters retain the compact
-comparisons needed for the discussion.}
 
 \section{Sparse Intervention Control}
 \label{app:sparse-control-full-test-tables}
 
 The joint survival/action-0 comparison is retained in
-Figure~\ref{fig:sparse-control-fulltest-tradeoff}; the tables below provide the
-exact aggregate and per-agent values.
+Figure~\ref{fig:sparse-control-fulltest-tradeoff}; the material below provides
+the compact experimental settings and exact condition means.
 
 \input{chapters/appendix_sparse_control_tables}
 
-\clearpage
-
-\section{\texorpdfstring{\latestrevision{Graph-Design Screening}}{Graph-Design Screening}}
-
-\latestrevision{Screens B--F use the common 15M-step \texttt{bus14} protocol
-of Section~\ref{sec:screening-common-protocol}. Each factorial cell uses seed
-0; training checkpoints are selected from changing 20-chronic training-split
-rollouts and then evaluated over the 201 held-out chronics. Multi-seed curves
-are shown only where a later replication campaign is explicitly identified.}
-
-\subsection{Screen B: Encoder Depth and Width}
-\label{app:screen-b-additional-results}
-
-Table~\ref{tab:depth-width-grid} gives the complete endpoint grid, while
-Table~\ref{tab:depth-width-marginals} summarizes each factor across the other.
-Figures~\ref{fig:depth-width-curves} and~\ref{fig:depth-width-cost} provide the
-corresponding training-curve and parameter-count diagnostics.
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Screen B. Full-test survival of the best checkpoint, one seed per
-  cell, by message-passing depth and encoder width. Screen C reuses
-  \texttt{mp2\_h128} as its all-visible/mean reference.}
-  \label{tab:depth-width-grid}
-  \setlength{\tabcolsep}{6pt}
-  \begin{tabular}{lcccc}
-    \toprule
-    & \multicolumn{4}{c}{Encoder width $d_h$} \\
-    \cmidrule(lr){2-5}
-    Layers $K$ & 16 & 32 & 64 & 128 \\
-    \midrule
-    1 & 84.02 & 92.72 & 65.52 & 92.96 \\
-    2 & 92.12 & 91.37 & 53.38 & 94.72 \\
-    3 & 89.11 & \textbf{97.80} & 65.57 & 86.48 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Screen B. Marginal effect of each factor, averaged over the other.
-  Four runs per depth, three per width.}
-  \label{tab:depth-width-marginals}
-  \setlength{\tabcolsep}{6pt}
-  \begin{tabular}{lrrr}
-    \toprule
-    Level & Mean (\%) & Min (\%) & Max (\%) \\
-    \midrule
-    \multicolumn{4}{l}{\emph{Message-passing depth}} \\
-    $K=1$ & 83.80 & 65.52 & 92.96 \\
-    $K=2$ & 82.90 & 53.38 & 94.72 \\
-    $K=3$ & 84.74 & 65.57 & 97.80 \\
-    \midrule
-    \multicolumn{4}{l}{\emph{Encoder width}} \\
-    $d_h=16$ & 88.42 & 84.02 & 92.12 \\
-    $d_h=32$ & 93.97 & 91.37 & 97.80 \\
-    $d_h=64$ & 61.49 & 53.38 & 65.57 \\
-    $d_h=128$ & 91.39 & 86.48 & 94.72 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\linewidth]{figures/nl_s3dw_width_within_depth.png}
-  \caption{Screen B. Test episodic survival during training, one panel per
-  message-passing depth, with the four widths compared inside each panel.
-  Restarted runs use the canonical history in which the continuation replaces
-  the overlapping post-checkpoint branch.}
-  \label{fig:depth-width-curves}
-\end{figure}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.92\linewidth]{figures/nl_s3dw_capacity_vs_survival.png}
-  \caption{Screen B. Full-test survival against actor parameter count on a
-  logarithmic axis, joined within each depth. The grid spans 83.6k to 244.9k
-  actor parameters, a factor of three.}
-  \label{fig:depth-width-cost}
-\end{figure}
-
-\subsection{Screen C: Graph Readout Scope and Reducer}
-\label{app:screen-c-additional-results}
-
-Figures~\ref{fig:encoder-pooling-curves} and
-\ref{fig:encoder-pooling-fulltest} complement the endpoint comparison in
-Table~\ref{tab:encoder-pooling-grid} with the eight training trajectories and
-the full-test interaction between readout scope and reducer.
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.94\linewidth]{figures/nl_s3ep_curves.png}
-  \caption{Screen C. Smoothed training episodic survival curves by readout
-  scope and reducer (seed 0).}
-  \label{fig:encoder-pooling-curves}
-\end{figure}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.78\linewidth]{figures/nl_s3ep_fulltest_interaction.png}
-  \caption{Screen C. Full-test survival of each best checkpoint. Connecting
-  the two reducers within a scope makes the scope--reducer interaction visible;
-  energized-only readout leads under both reductions.}
-  \label{fig:encoder-pooling-fulltest}
-\end{figure}
-
-\subsection{Screen D: Structural Augmentations of the Busbar Graph}
-\label{app:screen-d-additional-results}
-
-Tables~\ref{tab:structure-ranking} and~\ref{tab:structure-effects} and
-Figures~\ref{fig:structure-curves} and~\ref{fig:structure-seed-heatmap}
-complement the factorial cube retained in
-Section~\ref{sec:screen-cus-structure} with the complete results.
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Screen D. Cells ranked by full-test survival, with the difference
-  from the unaugmented \texttt{e0n0v0} baseline.}
-  \label{tab:structure-ranking}
-  \setlength{\tabcolsep}{5pt}
-  \begin{tabular}{lrrrrr}
-    \toprule
-    Cell & Mean (\%) & Std (pp) & Min (\%) & Max (\%) & $\Delta$ baseline (pp) \\
-    \midrule
-    \texttt{e0n0v0} & 97.31 & 1.22 & 96.55 & 98.72 & $0.00$ \\
-    \texttt{e1n0v0} & 96.20 & 3.94 & 91.66 & 98.68 & $-1.11$ \\
-    \texttt{e0n0v1} & 95.63 & 6.19 & 88.52 & 99.82 & $-1.68$ \\
-    \texttt{e0n1v0} & 93.51 & 6.39 & 86.72 & 99.40 & $-3.80$ \\
-    \texttt{e1n1v0} & 90.01 & 4.92 & 85.42 & 95.19 & $-7.30$ \\
-    \texttt{e1n0v1} & 89.92 & 9.42 & 80.48 & 99.33 & $-7.39$ \\
-    \texttt{e0n1v1} & 68.91 & 5.77 & 62.59 & 73.91 & $-28.40$ \\
-    \texttt{e1n1v1} & 66.11 & 33.95 & 27.86 & 92.68 & $-31.20$ \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Screen D. Main effect of each factor (12 runs per level) and the four
-  single-factor flips of the cube, each one enabling that factor with the other
-  two held fixed. \texttt{Spread} is the range of those four flips.}
-  \label{tab:structure-effects}
-  \setlength{\tabcolsep}{4pt}
-  \begin{tabular}{lrrrlrr}
-    \toprule
-    Factor & Off (\%) & On (\%) & Effect & Flips (pp) & Mean flip & Spread \\
-     & & & (pp) & & (pp) & (pp) \\
-    \midrule
-    $e$ (substation edges) & 88.84 & 85.56 & $-3.28$ & $-1.1,\,-5.7,\,-3.5,\,-2.8$ & $-3.28$ & 4.60 \\
-    $v$ (virtual readout) & 94.26 & 80.14 & $-14.11$ & $-1.7,\,-24.6,\,-6.3,\,-23.9$ & $-14.11$ & 22.92 \\
-    $n$ (summary nodes) & 94.77 & 79.63 & $-15.13$ & $-3.8,\,-26.7,\,-6.2,\,-23.8$ & $-15.13$ & 22.92 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\linewidth]{figures/gs_s2_structure_vs_baseline_curves.png}
-  \caption{Screen D. Test episodic survival during training, one panel per
-  augmented cell against the unaugmented \texttt{e0n0v0} baseline in grey. Thin
-  lines are the three seeds, the thick line is their mean, and the band is one
-  standard deviation.}
-  \label{fig:structure-curves}
-\end{figure}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.92\linewidth]{figures/gs_s2_structure_seed_heatmap.png}
-  \caption{Screen D. The same eight cells as a heatmap of the full-test
-  survival of each run's best checkpoint, with the three individual seed values
-  printed under each cell mean.}
-  \label{fig:structure-seed-heatmap}
-\end{figure}
-
-\subsection{Screen E: Generator and Load Message Direction}
-\label{app:screen-e-additional-results}
-
-Figure~\ref{fig:direction-curves} shows the training trajectories behind the
-endpoint heatmap retained in Section~\ref{sec:screen-message-direction}.
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\linewidth]{figures/gs_hmd_direction_vs_baseline_curves.png}
-  \caption{Screen E. Test episodic survival during training, one panel per
-  direction pair against the bidirectional baseline in grey. Thin lines are the
-  three seeds, the thick line is their mean, and the band is one standard
-  deviation.}
-  \label{fig:direction-curves}
-\end{figure}
-
-\clearpage
-\subsection{Screen F: Candidate-Action Scoring}
-\label{app:screen-f-additional-results}
-
-Figures~\ref{fig:nl-cas-hl-curves} and~\ref{fig:nl-cas-hl-fulltest}
-complement the full-test table retained in Section~\ref{sec:screen-f-cas} with
-the training trajectories and endpoint ordering.
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.92\linewidth]{figures/nl_cas_hl_curves.png}
-  \caption{Screen F. Test episodic survival during training, smoothed over nine
-  evaluations. Six of the eight cells converge to the top of the range and stay
-  there; \texttt{typed\_mean/f1/a0h1} never does.}
-  \label{fig:nl-cas-hl-curves}
-\end{figure}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.82\linewidth]{figures/nl_cas_hl_fulltest.png}
-  \caption{Screen F. Full-test survival of each best checkpoint. The dashed
-  line marks $98\%$.}
-  \label{fig:nl-cas-hl-fulltest}
-\end{figure}
-
-\clearpage
-
-\section{\texorpdfstring{\latestrevision{Cross-Grid Input Analysis}}{Cross-Grid Input Analysis}}
-
-\latestrevision{This block supports Chapter~\ref{ch:encoder-inputs}. Both
-grids are measured under the same do-nothing protocol: 6{,}000 environment
-steps, at most 300 steps per chronic, and pooled local-graph nodes from the
-shared encoder. This yields 426{,}000 \texttt{bus14} node observations and
-1{,}236{,}000 WCCI node observations.}
-
-\subsection{Encoder Input Distributions}
-\label{app:encoder-inputs-additional}
-
-Chapter~\ref{ch:encoder-inputs} retains the compact shift table
-(Table~\ref{tab:wcci-shift}) and the consolidated distribution panel
-(Figure~\ref{fig:wcci-distributions}). This section provides the raw moments
-behind those statistics and the tail behaviour that linear axes compress. All
-values are measured on the disaggregated line-node graph under the protocol of
-Section~\ref{sec:wcci-protocol}.
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Raw moments behind Table~\ref{tab:wcci-shift}, with the Wasserstein
-  distance. ``Owning'' restricts each channel to the node type that carries it.
-  $W_1/\sigma_p$ tracks the offset almost exactly on the displaced channel,
-  which is why the main table omits it: for distributions that differ mainly by
-  a shift the two statistics carry the same information.}
-  \label{tab:wcci-shift-full-appendix}
-  \setlength{\tabcolsep}{5pt}
-  \begin{tabular}{llrrrrrrr}
-    \toprule
-    & & \multicolumn{2}{c}{\texttt{bus14}} & \multicolumn{2}{c}{WCCI} & & & \\
-    \cmidrule(lr){3-4}\cmidrule(lr){5-6}
-    Channel & Rows & mean & sd & mean & sd & offset & ratio & $W_1/\sigma_p$ \\
-    \midrule
-    \texttt{p}     & all    & $6.538$  & $17.615$ & $5.461$  & $37.718$ & $-0.037$ & 2.141 & 0.204 \\
-                   & owning & $27.306$ & $26.998$ & $19.067$ & $68.613$ & $-0.158$ & 2.541 & 0.485 \\
-    \texttt{theta} & all    & $-1.236$ & $2.570$  & $0.305$  & $2.127$  & $+0.653$ & 0.827 & 0.653 \\
-                   & owning & $-5.162$ & $2.707$  & $1.064$  & $3.871$  & $+1.864$ & 1.430 & 1.864 \\
-    \texttt{rho}   & all    & $0.133$  & $0.203$  & $0.116$  & $0.187$  & $-0.088$ & 0.922 & 0.088 \\
-                   & owning & $0.364$  & $0.168$  & $0.319$  & $0.176$  & $-0.260$ & 1.050 & 0.261 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\linewidth]{figures/wcci_feature_tails.png}
-  \caption{Full range of the two asset channels on log density. WCCI carries a
-  generator pinned near its $399$~MW rating and a load region reaching
-  $-281$~MW, neither of which occurs anywhere on \texttt{bus14}: a transferred
-  encoder has no calibration for either. The angle panel shows the displacement
-  rather than a difference in width.}
-  \label{fig:wcci-tails-appendix}
-\end{figure}
-
-\clearpage
-
-\subsection{Deterministic Feature Scales}
-\label{app:physical-scales}
-
-Section~\ref{subsec:graph-feature-normalization} gives the two references that
-carry physical content, the power base and the angular scale. The complete list
-of divisors, including the discrete counters, is below.
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Deterministic physical scales used for continuous graph features.
-  The power base is the largest installed generator rating on the grid; the
-  remaining discrete channels use the corresponding Grid2Op parameter bound.}
-  \label{tab:graph-physical-scales}
-  \setlength{\tabcolsep}{5pt}
-  \begin{tabular}{L{0.34\textwidth}L{0.25\textwidth}L{0.31\textwidth}}
-    \toprule
-    Features & Scale $s_f$ & Source \\
-    \midrule
-    \texttt{gen\_p}, \texttt{load\_p}, \texttt{p}
-      & Power base in MW & Largest installed generator rating. \\
-    \texttt{gen\_theta}, \texttt{load\_theta}, \texttt{theta}, \texttt{theta\_diff}
-      & $180$ degrees & Fixed angular scale. \\
-    \texttt{time\_before\_cooldown\_sub}
-      & Maximum substation cooldown & Grid2Op environment parameter. \\
-    \texttt{time\_before\_cooldown\_line}
-      & Maximum line cooldown & Grid2Op environment parameter. \\
-    \texttt{timestep\_overflow}
-      & Allowed overflow duration & Grid2Op environment parameter. \\
-    Maintenance time and duration
-      & Episode horizon & Grid2Op chronic horizon. \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\clearpage
-\section{\texorpdfstring{\latestrevision{WCCI Transfer and Target-Control Results}}{WCCI Transfer and Target-Control Results}}
+\section{\texorpdfstring{WCCI Transfer and Target-Control Results}{WCCI Transfer and Target-Control Results}}
 \label{app:wcci-result-atlas}
 
-\latestrevision{This section gives the detailed results behind
-Chapters~\ref{ch:wcci-transfer}--\ref{ch:screen-f-transfer}. The encoder-only
-transfer tables will be added after the pending experiments in
-Chapter~\ref{ch:encoder-transfer-bridge}.} Every survival value uses the same
+This section gives the detailed results behind
+Chapters~\ref{ch:wcci-transfer}--\ref{ch:screen-f-transfer}. Every survival value uses the same
 50 WCCI chronics and the easy/difficult split defined in
 Section~\ref{sec:wcci-evaluation-protocol}.
 
@@ -345,7 +22,7 @@ Section~\ref{sec:wcci-evaluation-protocol}.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\linewidth]{figures/wcci_appendix_zero_shot_matrix.png}
+  \includegraphics[width=0.72\linewidth]{figures/wcci_appendix_zero_shot_matrix.png}
   \caption{Zero-shot difficult-cohort survival across input, \revision{candidate pooling},
   descriptor, idle-head and action-space choices.}
   \label{fig:wcci-appendix-zero-shot-matrix}
@@ -353,14 +30,14 @@ Section~\ref{sec:wcci-evaluation-protocol}.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\linewidth]{figures/wcci_appendix_aib_matrix.png}
+  \includegraphics[width=0.60\linewidth]{figures/wcci_appendix_aib_matrix.png}
   \caption{Difficult-cohort survival with the adaptive intervention budget.}
   \label{fig:wcci-appendix-aib-matrix}
 \end{figure}
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\linewidth]{figures/wcci_appendix_gmax_matrix.png}
+  \includegraphics[width=0.60\linewidth]{figures/wcci_appendix_gmax_matrix.png}
   \caption{Difficult-cohort survival with the Gmax-delta action feature.}
   \label{fig:wcci-appendix-gmax-matrix}
 \end{figure}
@@ -370,28 +47,25 @@ Section~\ref{sec:wcci-evaluation-protocol}.
 \begin{table}[H]
   \centering
   \small
-  \caption{Flat-MLP control results. \emph{Easy kept} counts complete episodes
-  among the 26 chronics completed by do nothing.}
+  \caption{Matched target-trained controls at $k=64$, using the final
+  checkpoint without an evaluation heuristic. \emph{Easy kept} counts
+  complete episodes among the 26 chronics completed by do nothing.}
   \label{tab:wcci-wmlp-results}
-  \resizebox{\linewidth}{!}{\input{tables/wcci_wmlp_results}}
-\end{table}
-
-\begin{table}[H]
-  \centering
-  \small
-  \caption{Fixed-list GNN controls trained directly on WCCI.}
   \label{tab:wcci-wsc-results}
-  \resizebox{\linewidth}{!}{\input{tables/wcci_wsc_results}}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{llrrrr}
+    \toprule
+    Family & Architecture & Overall (\%) & Difficult (\%) & Rescues & Easy kept \\
+    \midrule
+    Flat MLP & -- & 32.64 & 8.82 & 0 & 9 \\
+    \midrule
+    Fixed-list GNN & \texttt{bus\_e0n0v0} & 29.47 & 4.50 & 0 & 4 \\
+    Fixed-list GNN & \texttt{bus\_e1n0v0} & 39.63 & 5.15 & 0 & 9 \\
+    Fixed-list GNN & \texttt{het\_ga2b\_lb2a} & 39.54 & 4.59 & 0 & 10 \\
+    Fixed-list GNN & \texttt{het\_gbi\_lbi} & 44.95 & 6.80 & 0 & 15 \\
+    \bottomrule
+  \end{tabular}
 \end{table}
-
-\begin{landscape}
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.88\linewidth]{figures/wcci_appendix_target_board.png}
-  \caption{Detailed comparison of target-trained WCCI controls.}
-  \label{fig:wcci-appendix-target-board}
-\end{figure}
-\end{landscape}
 
 \begin{landscape}
 \subsection{Per-chronic diagnostic}

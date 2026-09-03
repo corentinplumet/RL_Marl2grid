@@ -1,0 +1,137 @@
+{"kind":"slide","id":"sl/y90nupkv","slide":1,"title":"Semester Project:","textShapes":3}
+{"kind":"textbox","id":"sh/utg3698n","slide":1,"textChars":85,"textLines":2}
+{"kind":"textbox","id":"sh/wn6dc7eh","slide":1,"textChars":69,"textLines":4}
+{"kind":"textbox","id":"sh/k3yl0zql","slide":1,"textChars":9,"textLines":1}
+{"kind":"image","id":"im/ipofexcz","slide":1,"name":"Image 11","bbox":[125.82,8.16,834.18,523.67]}
+{"kind":"slide","id":"sl/hwbqtkby","slide":2,"title":"2","textShapes":3}
+{"kind":"textbox","id":"sh/w3i1sfa9","slide":2,"textChars":1,"textLines":1}
+{"kind":"textbox","id":"sh/4zmxwzmp","slide":2,"textChars":46,"textLines":5}
+{"kind":"textbox","id":"sh/ozy1ofad","slide":2,"textChars":7,"textLines":1}
+{"kind":"image","id":"im/xo7il4ne","slide":2,"name":"Picture 2","bbox":[95,0,384.48,540]}
+{"kind":"slide","id":"sl/ofy9wn61","slide":3,"title":"Introduction – Motivation","textShapes":4}
+{"kind":"textbox","id":"sh/pcjqtg36","slide":3,"textChars":25,"textLines":1}
+{"kind":"textbox","id":"sh/obq90bml","slide":3,"textChars":1,"textLines":1}
+{"kind":"textbox","id":"sh/d0jax03i","slide":3,"textChars":205,"textLines":3}
+{"kind":"textbox","id":"sh/n6ls3alk","slide":3,"textChars":79,"textLines":1}
+{"kind":"image","id":"im/4repgvex","slide":3,"name":"Image 7","bbox":[146.5,221.29,637,299.86]}
+{"kind":"slide","id":"sl/jyx0ra1s","slide":4,"title":"Introduction – Motivation & Objective","textShapes":5}
+{"kind":"textbox","id":"sh/sna103ap","slide":4,"textChars":37,"textLines":1}
+{"kind":"textbox","id":"sh/doj29oba","slide":4,"textChars":1,"textLines":1}
+{"kind":"textbox","id":"sh/ql8jytsj","slide":4,"textChars":255,"textLines":3}
+{"kind":"textbox","id":"sh/x8vaxsfe","slide":4,"textChars":180,"textLines":2}
+{"kind":"textbox","id":"sh/a5kr2xg3","slide":4,"textChars":49,"textLines":1}
+{"kind":"image","id":"im/sbm5cbix","slide":4,"name":"Image 12","bbox":[84,82.16,290.98,242.37]}
+{"kind":"slide","id":"sl/i107q5of","slide":5,"title":"Introduction - Related Work & Contributions","textShapes":2}
+{"kind":"textbox","id":"sh/032tgr6d","slide":5,"textChars":43,"textLines":1}
+{"kind":"textbox","id":"sh/l4bupwny","slide":5,"textChars":1,"textLines":1}
+{"kind":"table","id":"tb/adonexsj","slide":5,"name":"Tableau 9","rows":5,"cols":2,"preview":"Related Work | Our Contributions","bbox":[74.42,156.1,811.17,264]}
+{"kind":"slide","id":"sl/x8f69ofe","slide":6,"title":"6","textShapes":3}
+{"kind":"textbox","id":"sh/7m98ru9g","slide":6,"textChars":1,"textLines":1}
+{"kind":"textbox","id":"sh/1k3mhozu","slide":6,"textChars":46,"textLines":5}
+{"kind":"textbox","id":"sh/zi98nu94","slide":6,"textChars":7,"textLines":1}
+{"kind":"image","id":"im/sn25c7q9","slide":6,"name":"Image 1","bbox":[10.57,114.34,454.83,325.75]}
+{"kind":"image","id":"im/tob6lc7u","slide":6,"name":"Encre 11","bbox":[443.01,263.79,34.34,172.76]}
+{"kind":"slide","id":"sl/gnmp4jqx","slide":7,"title":"Models – Base Model: MeshGraphNet [2]","textShapes":11}
+{"kind":"textbox","id":"sh/cb2tkvap","slide":7,"textChars":37,"textLines":1}
+{"kind":"textbox","id":"sh/zedcfa9g","slide":7,"textChars":1,"textLines":1}
+{"kind":"textbox","id":"sh/baxkjqlk","slide":7,"textChars":48,"textLines":1}
+{"kind":"textbox","id":"sh/l0vuh0rm","slide":7,"textChars":13,"textLines":1}
+{"kind":"textbox","id":"sh/eh0ba1sr","slide":7,"textChars":13,"textLines":1}
+{"kind":"textbox","id":"sh/a9ojq5kz","slide":7,"textChars":3,"textLines":1}
+{"kind":"textbox","id":"sh/o761ov2t","slide":7,"textChars":3,"textLines":1}
+{"kind":"shape","id":"sh/eh4jil4r","slide":7,"name":"Accolade fermante 18","bbox":[495.01,244.88,17.34,333.53]}
+{"kind":"textbox","id":"sh/id4ju1oz","slide":7,"textChars":7,"textLines":1}
+{"kind":"textbox","id":"sh/dcbud0ra","slide":7,"textChars":54,"textLines":1}
+{"kind":"textbox","id":"sh/kzmdova1","slide":7,"textChars":6,"textLines":1}
+{"kind":"textbox","id":"sh/xcz2l03q","slide":7,"textChars":6,"textLines":1}
+{"kind":"image","id":"im/gb25wj6t","slide":7,"name":"Image 8","bbox":[69.77,169.83,816,240.14]}
+{"kind":"slide","id":"sl/fu1gfa1s","slide":8,"title":"Models – Base Model to EGNN motivation","textShapes":3}
+{"kind":"textbox","id":"sh/18byd4zy","slide":8,"textChars":38,"textLines":1}
+{"kind":"textbox","id":"sh/6h0fypgb","slide":8,"textChars":1,"textLines":1}
+{"kind":"textbox","id":"sh/1k7edwv2","slide":8,"textChars":122,"textLines":1}
+{"kind":"table","id":"tb/5sre1gnq","slide":8,"name":"Tableau 3","rows":5,"cols":2,"preview":"EGNN literature | Where EGNNs are already used","bbox":[117.85,203.27,724.31,269.2]}
+{"kind":"slide","id":"sl/udsvah03","slide":9,"title":"Dataset– Comparison paper","textShapes":3}
+{"kind":"textbox","id":"sh/1cfmhgne","slide":9,"textChars":25,"textLines":1}
+{"kind":"textbox","id":"sh/mdonql4z","slide":9,"textChars":1,"textLines":1}
+{"kind":"shape","id":"sh/ofq5svm5","slide":9,"name":"ZoneTexte 6","bbox":[786.31,447.34,19.39,31.5]}
+{"kind":"textbox","id":"sh/xcfy90n6","slide":9,"textChars":512,"textLines":21}
+{"kind":"table","id":"tb/47m94bed","slide":9,"name":"Tableau 11","rows":3,"cols":2,"preview":"Physics-Constrained RC-GNN (Yang et al., 2024) | EGNN","bbox":[53.44,144.64,864.95,132.22]}
+{"kind":"image","id":"im/p83udoz2","slide":9,"name":"Encre 16","bbox":[651.47,187.12,19.39,5.4]}
+{"kind":"slide","id":"sl/m90b6t0r","slide":10,"title":"Models – Physics Inspired GNN","textShapes":6}
+{"kind":"textbox","id":"sh/xc3mho32","slide":10,"textChars":29,"textLines":1}
+{"kind":"textbox","id":"sh/ydcnatkn","slide":10,"textChars":2,"textLines":1}
+{"kind":"textbox","id":"sh/0bit8b2d","slide":10,"textChars":82,"textLines":3}
+{"kind":"textbox","id":"sh/zelojyl8","slide":10,"textChars":2,"textLines":1}
+{"kind":"textbox","id":"sh/725onyl4","slide":10,"textChars":53,"textLines":1}
+{"kind":"textbox","id":"sh/d87uxg3m","slide":10,"textChars":32,"textLines":1}
+{"kind":"shape","id":"sh/1cru1g3y","slide":10,"name":"Connecteur droit 14","bbox":[527.99,366.26,0,58.89]}
+{"kind":"image","id":"im/tg7ixo36","slide":10,"name":"Image 9","bbox":[85,270,385,223.42]}
+{"kind":"slide","id":"sl/jetc3ut0","slide":11,"title":"Models – Physics Inspired GNN","textShapes":6}
+{"kind":"textbox","id":"sh/xcryxg7y","slide":11,"textChars":29,"textLines":1}
+{"kind":"textbox","id":"sh/250zy18b","slide":11,"textChars":2,"textLines":1}
+{"kind":"textbox","id":"sh/0b6tc3yx","slide":11,"textChars":137,"textLines":4}
+{"kind":"textbox","id":"sh/n69grmpw","slide":11,"textChars":3,"textLines":1}
+{"kind":"textbox","id":"sh/9gza9sze","slide":11,"textChars":60,"textLines":1}
+{"kind":"textbox","id":"sh/mdobedg3","slide":11,"textChars":34,"textLines":1}
+{"kind":"shape","id":"sh/nehs7iho","slide":11,"name":"Connecteur droit 12","bbox":[504.91,368.01,0,66]}
+{"kind":"image","id":"im/21cnihkf","slide":11,"name":"Image 8","bbox":[74.17,278.34,378.91,220.51]}
+{"kind":"slide","id":"sl/8f2psfyx","slide":12,"title":"Models – Model Variants","textShapes":4}
+{"kind":"textbox","id":"sh/1gbm9s3a","slide":12,"textChars":23,"textLines":1}
+{"kind":"textbox","id":"sh/q903ad4n","slide":12,"textChars":2,"textLines":1}
+{"kind":"textbox","id":"sh/orapcf6h","slide":12,"textChars":232,"textLines":3}
+{"kind":"textbox","id":"sh/ra943il8","slide":12,"textChars":35,"textLines":1}
+{"kind":"image","id":"im/et472543","slide":12,"name":"Image 6","bbox":[133.38,220.25,693.23,262.42]}
+{"kind":"slide","id":"sl/hgzapcr6","slide":13,"title":"13","textShapes":3}
+{"kind":"textbox","id":"sh/32ponyts","slide":13,"textChars":2,"textLines":1}
+{"kind":"textbox","id":"sh/9wjyp4bq","slide":13,"textChars":46,"textLines":5}
+{"kind":"textbox","id":"sh/bq9orito","slide":13,"textChars":7,"textLines":1}
+{"kind":"image","id":"im/wbylczmp","slide":13,"name":"Encre 8","bbox":[345.94,423.53,118,56.27]}
+{"kind":"image","id":"im/xc7m543a","slide":13,"name":"Image 1","bbox":[7.88,128.67,467.89,344.55]}
+{"kind":"slide","id":"sl/6lsnupw7","slide":14,"title":"Dataset – Real Data [1][4]","textShapes":5}
+{"kind":"textbox","id":"sh/xc7eds76","slide":14,"textChars":26,"textLines":1}
+{"kind":"textbox","id":"sh/idgvmx8r","slide":14,"textChars":2,"textLines":1}
+{"kind":"textbox","id":"sh/kfidonqx","slide":14,"textChars":446,"textLines":7}
+{"kind":"textbox","id":"sh/x4ni9ofy","slide":14,"textChars":42,"textLines":1}
+{"kind":"textbox","id":"sh/b2507exs","slide":14,"textChars":35,"textLines":1}
+{"kind":"image","id":"im/rq1cvq1g","slide":14,"name":"Image 9","bbox":[52.82,280,331.75,220.76]}
+{"kind":"image","id":"im/qpsv2lkb","slide":14,"name":"Picture 2","bbox":[440.31,296.44,504.22,213.63]}
+{"kind":"slide","id":"sl/vaxsvy10","slide":15,"title":"Dataset – Graph creation","textShapes":6}
+{"kind":"textbox","id":"sh/547mhg3m","slide":15,"textChars":25,"textLines":1}
+{"kind":"textbox","id":"sh/65gnqlk7","slide":15,"textChars":2,"textLines":1}
+{"kind":"textbox","id":"sh/m9c3e1kn","slide":15,"textChars":225,"textLines":9}
+{"kind":"textbox","id":"sh/wrm9kvep","slide":15,"textChars":115,"textLines":1}
+{"kind":"textbox","id":"sh/vqdsrqx4","slide":15,"textChars":35,"textLines":1}
+{"kind":"textbox","id":"sh/5wvax0f6","slide":15,"textChars":34,"textLines":1}
+{"kind":"shape","id":"sh/76p4jqls","slide":15,"name":"Accolade fermante 3","bbox":[480,144.02,28.35,328.87]}
+{"kind":"image","id":"im/503mdsry","slide":15,"name":"Picture 2","bbox":[60.13,163.51,413.95,279.13]}
+{"kind":"image","id":"im/4fulknqd","slide":15,"name":"Image 11","bbox":[571.83,380.17,270.85,107.44]}
+{"kind":"slide","id":"sl/gny5sjyp","slide":16,"title":"Dataset– Simulation Time-series","textShapes":7}
+{"kind":"textbox","id":"sh/8z2h8bq1","slide":16,"textChars":31,"textLines":1}
+{"kind":"textbox","id":"sh/zutgvm94","slide":16,"textChars":2,"textLines":1}
+{"kind":"textbox","id":"sh/9kby1g7m","slide":16,"textChars":18,"textLines":1}
+{"kind":"textbox","id":"sh/ytkf2h8j","slide":16,"textChars":35,"textLines":1}
+{"kind":"shape","id":"sh/lwbyxwra","slide":16,"name":"ZoneTexte 6","bbox":[786.31,447.34,19.39,31.5]}
+{"kind":"textbox","id":"sh/rat4b298","slide":16,"textChars":38,"textLines":1}
+{"kind":"textbox","id":"sh/58bm9sr2","slide":16,"textChars":49,"textLines":1}
+{"kind":"textbox","id":"sh/i503ydsr","slide":16,"textChars":116,"textLines":1}
+{"kind":"image","id":"im/uhs7q10v","slide":16,"name":"Encre 16","bbox":[651.47,187.12,19.39,5.4]}
+{"kind":"image","id":"im/viloj6hg","slide":16,"name":"Picture 4","bbox":[45.33,235.17,431.41,230.14]}
+{"kind":"image","id":"im/nal4v2lw","slide":16,"name":"Picture 6","bbox":[483.26,227.18,417.01,239.64]}
+{"kind":"image","id":"im/m9c32xkr","slide":16,"name":"Encre 29","bbox":[631.23,225.22,139.78,10.29]}
+{"kind":"slide","id":"sl/14bup87q","slide":17,"title":"17","textShapes":3}
+{"kind":"textbox","id":"sh/snedsvml","slide":17,"textChars":2,"textLines":1}
+{"kind":"textbox","id":"sh/c7up8ryp","slide":17,"textChars":46,"textLines":5}
+{"kind":"textbox","id":"sh/gbedwfmx","slide":17,"textChars":7,"textLines":1}
+{"kind":"image","id":"im/lknexc7a","slide":17,"name":"graph_animation (online-video-cutter.com)","bbox":[65.8,37.67,413.39,489.72]}
+{"kind":"slide","id":"sl/y5wne50z","slide":18,"title":"Results – with R, C as features","textShapes":5}
+{"kind":"textbox","id":"sh/wrelszu9","slide":18,"textChars":33,"textLines":1}
+{"kind":"textbox","id":"sh/je5knut0","slide":18,"textChars":2,"textLines":1}
+{"kind":"textbox","id":"sh/hsn2l4bu","slide":18,"textChars":44,"textLines":1}
+{"kind":"textbox","id":"sh/itw3upcf","slide":18,"textChars":47,"textLines":1}
+{"kind":"textbox","id":"sh/fapkr6pw","slide":18,"textChars":521,"textLines":13}
+{"kind":"image","id":"im/h8j2pofa","slide":18,"name":"Picture 2","bbox":[53.83,303.36,416.36,213.46]}
+{"kind":"image","id":"im/ul83e9gj","slide":18,"name":"Picture 4","bbox":[53.83,83.67,416.36,196.11]}
+{"kind":"slide","id":"sl/nid43ytk","slide":19,"title":"Results – without R, C as features","textShapes":6}
+{"kind":"textbox","id":"sh/9gb6xgbi","slide":19,"textChars":36,"textLines":1}
+{"kind":"textbox","id":"sh/ahk7qls3","slide":19,"textChars":2,"textLines":1}
+{"kind":"notice","message":"Truncated: omitted 60 lines. Increase maxChars or narrow target."}

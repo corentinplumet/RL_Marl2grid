@@ -1,0 +1,2925 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/twb2lg7e",
+    "id": "twb2lg7e",
+    "slide": 39,
+    "layoutId": "/ppt/slideLayouts/slideLayout29.xml",
+    "layoutName": "Full image title",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "EPFL 2025",
+    "colors": {
+      "accent1": "#00A79F",
+      "accent2": "#24737F",
+      "accent3": "#512880",
+      "accent4": "#4F8FCC",
+      "accent5": "#D0661C",
+      "accent6": "#B51F1F",
+      "dk1": "#413C3A",
+      "lt1": "#FFFFFF",
+      "dk2": "#FF0000",
+      "lt2": "#CAC7C7",
+      "hlink": "#ED6E9C",
+      "folHlink": "#4F8FCC"
+    },
+    "fontScheme": {
+      "name": "Arial",
+      "majorFont": {
+        "latinTypeface": "Arial"
+      },
+      "minorFont": {
+        "latinTypeface": "Arial"
+      }
+    },
+    "typefaces": [
+      "Arial",
+      "Suisse Int'l",
+      "Suisse Int'l Bold Italic"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout29.xml",
+      "name": "Full image title",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout29.xml/18",
+          "id": "18",
+          "name": "Espace réservé pour une image  17",
+          "bbox": [
+            0,
+            0,
+            1280,
+            720
+          ],
+          "geometry": "custom",
+          "text": "Cliquez sur l'icône pour ajouter une image",
+          "textPreview": "Cliquez sur l'icône pour ajouter une image",
+          "resolvedTextStyle": {
+            "wrap": "square",
+            "autoFit": "none"
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Cliquez sur l'icône pour ajouter une image",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Cliquez sur l'icône pour ajouter une image"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout29.xml/2",
+          "id": "2",
+          "name": "Titre 1",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "Modifiez le style du titre",
+          "textPreview": "Modifiez le style du titre",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifiez le style du titre",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifiez le style du titre"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout29.xml/3",
+          "id": "3",
+          "name": "Espace réservé de la date 2",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "EPFL AT A GLANCE",
+          "textPreview": "EPFL AT A GLANCE",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "EPFL AT A GLANCE",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "EPFL AT A GLANCE"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout29.xml/4",
+          "id": "4",
+          "name": "Espace réservé du pied de page 3",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "order": 5,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout29.xml/7",
+          "id": "7",
+          "name": "Espace réservé du numéro de diapositive 6",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "‹#›",
+          "textPreview": "‹#›",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹#›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹#›"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "type": "master",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/2",
+          "id": "2",
+          "name": "Title Placeholder 1",
+          "bbox": [
+            55.22,
+            66.72,
+            476.33,
+            221.17
+          ],
+          "geometry": "rect",
+          "text": "Modifiez le style du titre",
+          "textPreview": "Modifiez le style du titre",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 18.9,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifiez le style du titre",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifiez"
+                },
+                {
+                  "index": 2,
+                  "text": " le style du titre"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/3",
+          "id": "3",
+          "name": "Text Placeholder 2",
+          "bbox": [
+            549.33,
+            218.83,
+            672.83,
+            466.17
+          ],
+          "geometry": "rect",
+          "text": "Modifier les styles du texte du masque\nDeuxième niveau\nTroisième niveau\nQuatrième niveau\nCinquième niveau",
+          "textPreview": "Modifier les styles du texte du masque | Deuxième niveau | Troisième niveau | Quatrième niveau | Cinquième niveau",
+          "resolvedTextStyle": {
+            "vertical": 1,
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 4.91,
+              "right": 3.78,
+              "bottom": 4.8,
+              "left": 3.78
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifier les styles du texte du masque",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifier les styles du "
+                },
+                {
+                  "index": 2,
+                  "text": "texte"
+                },
+                {
+                  "index": 3,
+                  "text": " du masque"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "text": "Deuxième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Deuxième "
+                },
+                {
+                  "index": 2,
+                  "text": "niveau"
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "text": "Troisième niveau\nQuatrième niveau\nCinquième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Troisième"
+                },
+                {
+                  "index": 2,
+                  "text": " "
+                },
+                {
+                  "index": 3,
+                  "text": "niveau"
+                },
+                {
+                  "index": 4,
+                  "text": "\n"
+                },
+                {
+                  "index": 5,
+                  "text": "Quatrième"
+                },
+                {
+                  "index": 6,
+                  "text": " "
+                },
+                {
+                  "index": 7,
+                  "text": "niveau"
+                },
+                {
+                  "index": 8,
+                  "text": "\n"
+                },
+                {
+                  "index": 9,
+                  "text": "Cinquième"
+                },
+                {
+                  "index": 10,
+                  "text": " "
+                },
+                {
+                  "index": 11,
+                  "text": "niveau"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/4",
+          "id": "4",
+          "name": "Date Placeholder 3",
+          "bbox": [
+            748.83,
+            33.33,
+            406.13,
+            22.55
+          ],
+          "geometry": "rect",
+          "text": "EPFL AT A GLANCE",
+          "textPreview": "EPFL AT A GLANCE",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 4.8,
+              "left": 0
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "EPFL AT A GLANCE",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "EPFL AT A GLANCE"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/5",
+          "id": "5",
+          "name": "Footer Placeholder 4",
+          "bbox": [
+            748.83,
+            45.39,
+            406.13,
+            23.63
+          ],
+          "geometry": "rect",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 4.8,
+              "left": 0
+            }
+          }
+        },
+        {
+          "order": 5,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/6",
+          "id": "6",
+          "name": "Slide Number Placeholder 5",
+          "bbox": [
+            1151.97,
+            -1.33,
+            71.78,
+            92.62
+          ],
+          "geometry": "rect",
+          "text": "‹#›",
+          "textPreview": "‹#›",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 9.45
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹#›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹#›"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 6,
+          "kind": "image",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/7",
+          "id": "7",
+          "name": "Image 6",
+          "bbox": [
+            49.67,
+            26.61,
+            86.33,
+            37.4
+          ],
+          "contentType": "image/svg+xml",
+          "imageCrop": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          "asset": {
+            "assetId": "/ppt/media/image2.svg",
+            "contentType": "image/svg+xml",
+            "byteLength": 1645
+          },
+          "fillImage": {
+            "assetId": "/ppt/media/image2.svg",
+            "contentType": "image/svg+xml",
+            "byteLength": 1645
+          }
+        }
+      ]
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/90rmtcjq",
+      "id": "85",
+      "name": "Espace réservé pour une image  7",
+      "bbox": [
+        0,
+        0,
+        1280,
+        720
+      ],
+      "contentType": "image/jpeg",
+      "imageCrop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "asset": {
+        "assetId": "/ppt/media/image169.jpeg",
+        "contentType": "image/jpeg",
+        "byteLength": 146028
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image169.jpeg",
+        "contentType": "image/jpeg",
+        "byteLength": 146028
+      }
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/4ze50fu9",
+      "id": "3",
+      "name": "Titre 2",
+      "bbox": [
+        55.22,
+        66.72,
+        476.33,
+        221.17
+      ],
+      "text": "Research Initiatives ",
+      "textPreview": "Research Initiatives",
+      "resolvedFontSize": 58.67,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 58.67,
+        "typeface": "Arial",
+        "color": "tx1",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "insets": {
+          "top": 18.9,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Research"
+          },
+          {
+            "index": 2,
+            "text": "Initiatives"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Research Initiatives ",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Research"
+            },
+            {
+              "index": 2,
+              "text": " Initiatives "
+            }
+          ],
+          "bulletCharacter": "",
+          "lineSpacingPercent": 90000
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/r2pobudk",
+      "id": "4",
+      "name": "Espace réservé de la date 3",
+      "bbox": [
+        748.83,
+        33.33,
+        406.13,
+        22.55
+      ],
+      "text": "EPFL AT A GLANCE",
+      "textPreview": "EPFL AT A GLANCE",
+      "resolvedFontSize": 9.33,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 9.33,
+        "typeface": "Arial",
+        "color": "tx2",
+        "bold": true,
+        "alignment": "right",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 4.8,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "EPFL AT A GLANCE"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "EPFL AT A GLANCE",
+          "runs": [
+            {
+              "index": 1,
+              "text": "EPFL AT A GLANCE"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/q1gn2pcf",
+      "id": "5",
+      "name": "Espace réservé du pied de page 4",
+      "bbox": [
+        748.83,
+        45.39,
+        406.13,
+        23.63
+      ],
+      "resolvedFontSize": 9.33,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 9.33,
+        "typeface": "Arial",
+        "color": "tx2",
+        "alignment": "right",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 4.8,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": ""
+          }
+        ]
+      }
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/do76d4vq",
+      "id": "6",
+      "name": "Espace réservé du numéro de diapositive 5",
+      "bbox": [
+        1151.97,
+        -1.33,
+        71.78,
+        92.62
+      ],
+      "text": "39",
+      "textPreview": "39",
+      "resolvedFontSize": 28,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "vertical": 1,
+        "fontSize": 28,
+        "typeface": "Arial",
+        "color": "tx2",
+        "bold": true,
+        "alignment": "right",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 9.45
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "39"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "39",
+          "runs": [
+            {
+              "index": 1,
+              "text": "39"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/j2xcv6x0",
+      "id": "44",
+      "name": "Ellipse 43",
+      "bbox": [
+        591.81,
+        363.78,
+        117.74,
+        117.74
+      ],
+      "rotation": 0,
+      "geometry": "ellipse",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "lt1",
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": ""
+          }
+        ]
+      },
+      "lineColor": "tx1",
+      "lineWidth": 6
+    },
+    {
+      "order": 7,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/mx0nixkz",
+      "id": "86",
+      "name": "Image 30",
+      "bbox": [
+        614.76,
+        385.53,
+        71.83,
+        73.33
+      ],
+      "rotation": 0,
+      "contentType": "image/png",
+      "imageCrop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "asset": {
+        "assetId": "/ppt/media/image170.png",
+        "contentType": "image/png",
+        "byteLength": 5538
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image170.png",
+        "contentType": "image/png",
+        "byteLength": 5538
+      }
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1gzu5wnu",
+      "id": "37",
+      "name": "ZoneTexte 36",
+      "bbox": [
+        561.33,
+        490.2,
+        178.7,
+        38.78
+      ],
+      "rotation": 0,
+      "geometry": "rect",
+      "text": "AI for Health ",
+      "textPreview": "AI for Health",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "AI for Health"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "AI for Health ",
+          "resolvedTextStyle": {
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "AI for ",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "Health",
+              "bold": true
+            },
+            {
+              "index": 3,
+              "text": " ",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/y1obm1gf",
+      "id": "45",
+      "name": "ZoneTexte 44",
+      "bbox": [
+        549.33,
+        528.98,
+        202.7,
+        164.76
+      ],
+      "rotation": 0,
+      "geometry": "rect",
+      "text": "Medical decision support\nBiological discovery\nDrug discovery\nWearable health monitoring\nNeuroengineering and Neuroprosthetics",
+      "textPreview": "Medical decision support | Biological discovery | Drug discovery | Wearable health monitoring | Neuroengineering and Neuroprosthetics",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 11,
+        "lines": [
+          {
+            "index": 1,
+            "text": "•Medical decision support"
+          },
+          {
+            "index": 2,
+            "text": ""
+          },
+          {
+            "index": 3,
+            "text": "•Biological discovery"
+          },
+          {
+            "index": 4,
+            "text": ""
+          },
+          {
+            "index": 5,
+            "text": "•Drug discovery"
+          },
+          {
+            "index": 6,
+            "text": ""
+          },
+          {
+            "index": 7,
+            "text": "•Wearable health"
+          },
+          {
+            "index": 8,
+            "text": "monitoring"
+          },
+          {
+            "index": 9,
+            "text": ""
+          },
+          {
+            "index": 10,
+            "text": "•Neuroengineering and"
+          },
+          {
+            "index": 11,
+            "text": "Neuroprosthetics"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Medical decision support",
+          "lineSpacingPercent": 90000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Medical",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 2,
+              "text": " ",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 3,
+              "text": "decision",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 4,
+              "text": " support",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "Biological discovery",
+          "lineSpacingPercent": 90000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Biological",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 2,
+              "text": " ",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 3,
+              "text": "discovery",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 3,
+          "text": "Drug discovery",
+          "lineSpacingPercent": 90000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Drug ",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 2,
+              "text": "discovery",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 4,
+          "text": "Wearable health monitoring",
+          "lineSpacingPercent": 90000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Wearable",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 2,
+              "text": " ",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 3,
+              "text": "health",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 4,
+              "text": " monitoring",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 5,
+          "text": "Neuroengineering and Neuroprosthetics",
+          "lineSpacingPercent": 90000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Neuroengineering",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 2,
+              "text": " and ",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 3,
+              "text": "Neuroprosthetics",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 10,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/ny94r21k",
+      "id": "87",
+      "name": "Image 29",
+      "bbox": [
+        109.83,
+        311.28,
+        88.04,
+        79.72
+      ],
+      "rotation": 0,
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image171.png",
+        "contentType": "image/png",
+        "byteLength": 13757
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image171.png",
+        "contentType": "image/png",
+        "byteLength": 13757
+      }
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/2h8by1of",
+      "id": "38",
+      "name": "ZoneTexte 37",
+      "bbox": [
+        44.02,
+        430.55,
+        219.67,
+        38.78
+      ],
+      "rotation": 0,
+      "geometry": "rect",
+      "text": "AI for Education",
+      "textPreview": "AI for Education",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "AI for Education"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "AI for Education",
+          "resolvedTextStyle": {
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "AI for Education",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/l4fuxgf6",
+      "id": "46",
+      "name": "Ellipse 45",
+      "bbox": [
+        94.98,
+        292.27,
+        117.74,
+        117.74
+      ],
+      "rotation": 0,
+      "geometry": "ellipse",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "lt1",
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": ""
+          }
+        ]
+      },
+      "lineColor": "tx1",
+      "lineWidth": 6
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/k36tobyl",
+      "id": "47",
+      "name": "ZoneTexte 46",
+      "bbox": [
+        62.26,
+        471.93,
+        183.19,
+        213.07
+      ],
+      "rotation": 0,
+      "geometry": "rect",
+      "text": "AI in Education\nTeaching Optimization \nGuidelines\nEducation in AI \nMapping of courses\nFellowship programs\nContinuing education\n",
+      "textPreview": "AI in Education | Teaching Optimization  | Guidelines | Education in AI  | Mapping of courses | Fellowship programs | Continuing education |",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 15,
+        "lines": [
+          {
+            "index": 1,
+            "text": "AI in Education"
+          },
+          {
+            "index": 2,
+            "text": ""
+          },
+          {
+            "index": 3,
+            "text": "•Teaching Optimization"
+          },
+          {
+            "index": 4,
+            "text": ""
+          },
+          {
+            "index": 5,
+            "text": "•Guidelines"
+          },
+          {
+            "index": 6,
+            "text": ""
+          },
+          {
+            "index": 7,
+            "text": "Education in AI"
+          },
+          {
+            "index": 8,
+            "text": ""
+          },
+          {
+            "index": 9,
+            "text": "•Mapping of courses"
+          },
+          {
+            "index": 10,
+            "text": ""
+          },
+          {
+            "index": 11,
+            "text": "•Fellowship programs"
+          },
+          {
+            "index": 12,
+            "text": ""
+          },
+          {
+            "index": 13,
+            "text": "•Continuing education"
+          },
+          {
+            "index": 14,
+            "text": ""
+          },
+          {
+            "index": 15,
+            "text": ""
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "AI in Education",
+          "lineSpacingPercent": 90000,
+          "resolvedTextStyle": {
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "AI in Education",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l Bold Italic",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "Teaching Optimization ",
+          "lineSpacingPercent": 90000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Teaching",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 2,
+              "text": " ",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 3,
+              "text": "Optimization",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 4,
+              "text": " ",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 3,
+          "text": "Guidelines",
+          "lineSpacingPercent": 90000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Guidelines",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 4,
+          "text": "Education in AI ",
+          "lineSpacingPercent": 90000,
+          "resolvedTextStyle": {
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Education in AI ",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l Bold Italic",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 5,
+          "text": "Mapping of courses",
+          "lineSpacingPercent": 90000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Mapping of courses",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 6,
+          "text": "Fellowship programs",
+          "lineSpacingPercent": 90000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Fellowship",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 2,
+              "text": " programs",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 7,
+          "text": "Continuing education",
+          "lineSpacingPercent": 90000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Continuing",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 2,
+              "text": " ",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 3,
+              "text": "education",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 14,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/8vm5wb29",
+      "id": "88",
+      "name": "Image 33",
+      "bbox": [
+        762.28,
+        154.33,
+        75.57,
+        80.27
+      ],
+      "rotation": 0,
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image172.png",
+        "contentType": "image/png",
+        "byteLength": 14097
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image172.png",
+        "contentType": "image/png",
+        "byteLength": 14097
+      }
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/wzmtkry9",
+      "id": "43",
+      "name": "ZoneTexte 42",
+      "bbox": [
+        859.82,
+        125.12,
+        216.19,
+        38.78
+      ],
+      "rotation": 0,
+      "geometry": "rect",
+      "text": "AI for the Planet",
+      "textPreview": "AI for the Planet",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "AI for the Planet"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "AI for the Planet",
+          "resolvedTextStyle": {
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "AI for the Planet",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 16,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/z6tsjmxw",
+      "id": "48",
+      "name": "Ellipse 47",
+      "bbox": [
+        740.03,
+        132.48,
+        117.74,
+        117.74
+      ],
+      "rotation": 0,
+      "geometry": "ellipse",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "lt1",
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": ""
+          }
+        ]
+      },
+      "lineColor": "tx1",
+      "lineWidth": 6
+    },
+    {
+      "order": 17,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/e5kbahgb",
+      "id": "49",
+      "name": "ZoneTexte 48",
+      "bbox": [
+        869.33,
+        168.65,
+        202.7,
+        95.23
+      ],
+      "rotation": 0,
+      "geometry": "rect",
+      "text": "Environmental studies and actions ​\nEnergy management​\nAutonomous mobility",
+      "textPreview": "Environmental studies and actions ​ | Energy management​ | Autonomous mobility",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 6,
+        "lines": [
+          {
+            "index": 1,
+            "text": "•Environmental studies and"
+          },
+          {
+            "index": 2,
+            "text": "actions ​"
+          },
+          {
+            "index": 3,
+            "text": ""
+          },
+          {
+            "index": 4,
+            "text": "•Energy management​"
+          },
+          {
+            "index": 5,
+            "text": ""
+          },
+          {
+            "index": 6,
+            "text": "•Autonomous mobility"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Environmental studies and actions ​",
+          "lineSpacingPercent": 90000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Environmental",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 2,
+              "text": " ",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 3,
+              "text": "studies",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 4,
+              "text": " and actions ​",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "Energy management​",
+          "lineSpacingPercent": 90000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Energy management​",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 3,
+          "text": "Autonomous mobility",
+          "lineSpacingPercent": 90000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Autonomous",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 2,
+              "text": " ",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 3,
+              "text": "mobility",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 18,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/pcrqt8ve",
+      "id": "51",
+      "name": "Connecteur droit 50",
+      "bbox": [
+        204.43,
+        383.85,
+        128.36,
+        72.87
+      ],
+      "geometry": "line",
+      "lineColor": "tx1",
+      "lineWidth": 6
+    },
+    {
+      "order": 19,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/twv65wju",
+      "id": "89",
+      "name": "Image 32",
+      "bbox": [
+        400,
+        220.28,
+        65.62,
+        77.67
+      ],
+      "rotation": 0,
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image173.png",
+        "contentType": "image/png",
+        "byteLength": 12061
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image173.png",
+        "contentType": "image/png",
+        "byteLength": 12061
+      }
+    },
+    {
+      "order": 20,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/nihc765k",
+      "id": "39",
+      "name": "ZoneTexte 38",
+      "bbox": [
+        479.91,
+        197.26,
+        213.43,
+        38.78
+      ],
+      "rotation": 0,
+      "geometry": "rect",
+      "text": "AI for Science",
+      "textPreview": "AI for Science",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "AI for Science"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "AI for Science",
+          "resolvedTextStyle": {
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "AI for Science",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 21,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/290ridw3",
+      "id": "52",
+      "name": "Ellipse 51",
+      "bbox": [
+        373.36,
+        198.83,
+        117.74,
+        117.74
+      ],
+      "rotation": 0,
+      "geometry": "ellipse",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "lt1",
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": ""
+          }
+        ]
+      },
+      "lineColor": "tx1",
+      "lineWidth": 6
+    },
+    {
+      "order": 22,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/3a98rido",
+      "id": "53",
+      "name": "ZoneTexte 52",
+      "bbox": [
+        498.65,
+        232.89,
+        175.95,
+        79.24
+      ],
+      "rotation": 0,
+      "geometry": "rect",
+      "text": "Chemistry​\nMaterial science​\nQuantum computing",
+      "textPreview": "Chemistry​ | Material science​ | Quantum computing",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 5,
+        "lines": [
+          {
+            "index": 1,
+            "text": "•Chemistry​"
+          },
+          {
+            "index": 2,
+            "text": ""
+          },
+          {
+            "index": 3,
+            "text": "•Material science​"
+          },
+          {
+            "index": 4,
+            "text": ""
+          },
+          {
+            "index": 5,
+            "text": "•Quantum computing"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Chemistry​",
+          "lineSpacingPercent": 90000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Chemistry​",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "Material science​",
+          "lineSpacingPercent": 90000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Material",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 2,
+              "text": " science​",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 3,
+          "text": "Quantum computing",
+          "lineSpacingPercent": 90000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Quantum ",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 2,
+              "text": "computing",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 23,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/g7ypg3ex",
+      "id": "54",
+      "name": "Connecteur droit 53",
+      "bbox": [
+        399.35,
+        316.51,
+        20.61,
+        114.05
+      ],
+      "horizontalFlip": true,
+      "geometry": "line",
+      "lineColor": "tx1",
+      "lineWidth": 6
+    },
+    {
+      "order": 24,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/3qx8valw",
+      "id": "90",
+      "name": "Image 34",
+      "bbox": [
+        865.72,
+        426.99,
+        74.34,
+        80.27
+      ],
+      "rotation": 0,
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image174.png",
+        "contentType": "image/png",
+        "byteLength": 12730
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image174.png",
+        "contentType": "image/png",
+        "byteLength": 12730
+      }
+    },
+    {
+      "order": 25,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ax4bi1gj",
+      "id": "41",
+      "name": "ZoneTexte 40",
+      "bbox": [
+        785.16,
+        526.86,
+        235.46,
+        38.78
+      ],
+      "rotation": 0,
+      "geometry": "rect",
+      "text": "AI Fundamentals",
+      "textPreview": "AI Fundamentals",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "AI Fundamentals"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "AI Fundamentals",
+          "resolvedTextStyle": {
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "AI Fundamentals",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 26,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0329s7e1",
+      "id": "58",
+      "name": "Ellipse 57",
+      "bbox": [
+        844.02,
+        405.78,
+        117.74,
+        117.74
+      ],
+      "rotation": 0,
+      "geometry": "ellipse",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "lt1",
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": ""
+          }
+        ]
+      },
+      "lineColor": "tx1",
+      "lineWidth": 6
+    },
+    {
+      "order": 27,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/14bq1svm",
+      "id": "59",
+      "name": "ZoneTexte 58",
+      "bbox": [
+        801.54,
+        571.74,
+        202.7,
+        122
+      ],
+      "rotation": 0,
+      "geometry": "rect",
+      "text": "Large Language Models​\nMulti-lingual Models​\nMulti-modal Models\nRobust distributed systems",
+      "textPreview": "Large Language Models​ | Multi-lingual Models​ | Multi-modal Models | Robust distributed systems",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 8,
+        "lines": [
+          {
+            "index": 1,
+            "text": "•Large Language Models​"
+          },
+          {
+            "index": 2,
+            "text": ""
+          },
+          {
+            "index": 3,
+            "text": "•Multi-lingual Models​"
+          },
+          {
+            "index": 4,
+            "text": ""
+          },
+          {
+            "index": 5,
+            "text": "•Multi-modal Models"
+          },
+          {
+            "index": 6,
+            "text": ""
+          },
+          {
+            "index": 7,
+            "text": "•Robust distributed"
+          },
+          {
+            "index": 8,
+            "text": "systems"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Large Language Models​",
+          "lineSpacingPercent": 90000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Large ",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 2,
+              "text": "Language",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 3,
+              "text": " ",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 4,
+              "text": "Models",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 5,
+              "text": "​",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "Multi-lingual Models​",
+          "lineSpacingPercent": 90000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Multi-lingual ",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 2,
+              "text": "Models",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 3,
+              "text": "​",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 3,
+          "text": "Multi-modal Models",
+          "lineSpacingPercent": 90000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Multi-modal",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 2,
+              "text": " ",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 3,
+              "text": "Models",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 4,
+          "text": "Robust distributed systems",
+          "lineSpacingPercent": 90000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Robust",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 2,
+              "text": " ",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 3,
+              "text": "distributed",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 4,
+              "text": " ",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 5,
+              "text": "systems",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 28,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/ipo7m54b",
+      "id": "91",
+      "name": "Image 31",
+      "bbox": [
+        349.23,
+        450.83,
+        75.3,
+        77.67
+      ],
+      "rotation": 0,
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image175.png",
+        "contentType": "image/png",
+        "byteLength": 12678
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image175.png",
+        "contentType": "image/png",
+        "byteLength": 12678
+      }
+    },
+    {
+      "order": 29,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/bydcr6x4",
+      "id": "40",
+      "name": "ZoneTexte 39",
+      "bbox": [
+        276.93,
+        557.74,
+        213.43,
+        38.78
+      ],
+      "rotation": 0,
+      "geometry": "rect",
+      "text": "AI for Robotics",
+      "textPreview": "AI for Robotics",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "AI for Robotics"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "AI for Robotics",
+          "resolvedTextStyle": {
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "AI for ",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "Robotics",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 30,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/9onip8ju",
+      "id": "60",
+      "name": "Ellipse 59",
+      "bbox": [
+        324.77,
+        429.4,
+        117.74,
+        117.74
+      ],
+      "rotation": 0,
+      "geometry": "ellipse",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "lt1",
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": ""
+          }
+        ]
+      },
+      "lineColor": "tx1",
+      "lineWidth": 6
+    },
+    {
+      "order": 31,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/onehw329",
+      "id": "61",
+      "name": "ZoneTexte 60",
+      "bbox": [
+        306.41,
+        600.79,
+        154.47,
+        79.24
+      ],
+      "rotation": 0,
+      "geometry": "rect",
+      "text": "Adaptative robots​\nSoft robots\nIndustrial services",
+      "textPreview": "Adaptative robots​ | Soft robots | Industrial services",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 5,
+        "lines": [
+          {
+            "index": 1,
+            "text": "•Adaptative robots​"
+          },
+          {
+            "index": 2,
+            "text": ""
+          },
+          {
+            "index": 3,
+            "text": "•Soft robots"
+          },
+          {
+            "index": 4,
+            "text": ""
+          },
+          {
+            "index": 5,
+            "text": "•Industrial services"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Adaptative robots​",
+          "lineSpacingPercent": 90000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Adaptative robots​",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "Soft robots",
+          "lineSpacingPercent": 90000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Soft robots",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 3,
+          "text": "Industrial services",
+          "lineSpacingPercent": 90000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Industrial",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 2,
+              "text": " services",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 32,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/nm50ny1o",
+      "id": "62",
+      "name": "Connecteur droit 61",
+      "bbox": [
+        473.86,
+        299.33,
+        124.46,
+        92.99
+      ],
+      "geometry": "line",
+      "lineColor": "tx1",
+      "lineWidth": 6
+    },
+    {
+      "order": 33,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1knyloji",
+      "id": "64",
+      "name": "Connecteur droit 63",
+      "bbox": [
+        683.92,
+        243.28,
+        86.04,
+        130.25
+      ],
+      "verticalFlip": true,
+      "geometry": "line",
+      "lineColor": "tx1",
+      "lineWidth": 6
+    },
+    {
+      "order": 34,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/pcfqx032",
+      "id": "92",
+      "name": "Image 35",
+      "bbox": [
+        1109.78,
+        309.06,
+        76.59,
+        80.27
+      ],
+      "rotation": 0,
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image176.png",
+        "contentType": "image/png",
+        "byteLength": 13803
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image176.png",
+        "contentType": "image/png",
+        "byteLength": 13803
+      }
+    },
+    {
+      "order": 35,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/x0futwfu",
+      "id": "42",
+      "name": "ZoneTexte 41",
+      "bbox": [
+        1039.15,
+        421.43,
+        217.85,
+        38.78
+      ],
+      "rotation": 0,
+      "geometry": "rect",
+      "text": "AI for Society",
+      "textPreview": "AI for Society",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "AI for Society"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "AI for Society",
+          "resolvedTextStyle": {
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "AI for Society",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 36,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/zilgje1c",
+      "id": "66",
+      "name": "Ellipse 65",
+      "bbox": [
+        1089.21,
+        290.64,
+        117.74,
+        117.74
+      ],
+      "rotation": 0,
+      "geometry": "ellipse",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "lt1",
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": ""
+          }
+        ]
+      },
+      "lineColor": "tx1",
+      "lineWidth": 6
+    },
+    {
+      "order": 37,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ehczqtk7",
+      "id": "67",
+      "name": "ZoneTexte 66",
+      "bbox": [
+        1058.68,
+        459.62,
+        178.79,
+        122
+      ],
+      "rotation": 0,
+      "geometry": "rect",
+      "text": "Participatory AI ​\nSafe AI​ (transparent, trustworthy and open)\nResponsible AI\nDeepfakes",
+      "textPreview": "Participatory AI ​ | Safe AI​ (transparent, trustworthy and open) | Responsible AI | Deepfakes",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 8,
+        "lines": [
+          {
+            "index": 1,
+            "text": "•Participatory AI ​"
+          },
+          {
+            "index": 2,
+            "text": ""
+          },
+          {
+            "index": 3,
+            "text": "•Safe AI​ (transparent,"
+          },
+          {
+            "index": 4,
+            "text": "trustworthy and open)"
+          },
+          {
+            "index": 5,
+            "text": ""
+          },
+          {
+            "index": 6,
+            "text": "•Responsible AI"
+          },
+          {
+            "index": 7,
+            "text": ""
+          },
+          {
+            "index": 8,
+            "text": "•Deepfakes"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Participatory AI ​",
+          "lineSpacingPercent": 90000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Participatory",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 2,
+              "text": " AI ​",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "Safe AI​ (transparent, trustworthy and open)",
+          "lineSpacingPercent": 90000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Safe AI​ (transparent, ",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 2,
+              "text": "trustworthy",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 3,
+              "text": " and open)",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 3,
+          "text": "Responsible AI",
+          "lineSpacingPercent": 90000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Responsible",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            },
+            {
+              "index": 2,
+              "text": " AI",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 4,
+          "text": "Deepfakes",
+          "lineSpacingPercent": 90000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Deepfakes",
+              "fontSize": 14.67,
+              "typeface": "Suisse Int'l"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 38,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ahs7ydgj",
+      "id": "81",
+      "name": "Connecteur droit 80",
+      "bbox": [
+        814.04,
+        250.22,
+        69.03,
+        158.16
+      ],
+      "geometry": "line",
+      "lineColor": "tx1",
+      "lineWidth": 6
+    },
+    {
+      "order": 39,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/nu1o3yxs",
+      "id": "84",
+      "name": "Connecteur droit 83",
+      "bbox": [
+        956.15,
+        372.49,
+        140.08,
+        68.05
+      ],
+      "verticalFlip": true,
+      "geometry": "line",
+      "lineColor": "tx1",
+      "lineWidth": 6
+    }
+  ],
+  "composeRuns": []
+}

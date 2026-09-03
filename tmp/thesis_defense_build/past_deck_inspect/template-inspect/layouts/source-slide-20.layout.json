@@ -1,0 +1,974 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/zyxsni5k",
+    "id": "zyxsni5k",
+    "slide": 20,
+    "layoutId": "/ppt/slideLayouts/slideLayout12.xml",
+    "layoutName": "Title_Only",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 960,
+      "height": 540
+    }
+  },
+  "theme": {
+    "colorSchemeName": "EPFL - New Colors 2019",
+    "colors": {
+      "accent1": "#E30613",
+      "accent2": "#00A79F",
+      "accent3": "#413C3A",
+      "accent4": "#007480",
+      "accent5": "#F39869",
+      "accent6": "#B51F1F",
+      "dk1": "#413C3A",
+      "lt1": "#FFFFFF",
+      "dk2": "#413C3A",
+      "lt2": "#CAC7C7",
+      "hlink": "#ED6E9C",
+      "folHlink": "#4F8FCC"
+    },
+    "fontScheme": {
+      "name": "EPFL_Beta2",
+      "majorFont": {
+        "latinTypeface": "Franklin Gothic Demi Cond"
+      },
+      "minorFont": {
+        "latinTypeface": "Arial"
+      }
+    },
+    "typefaces": [
+      "Arial",
+      "Franklin Gothic Demi Cond"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout12.xml",
+      "name": "Title_Only",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout12.xml/6",
+          "id": "6",
+          "name": "Titre 5",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "Modifiez le style du titre",
+          "textPreview": "Modifiez le style du titre",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifiez le style du titre",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifiez le style du titre"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout12.xml/7",
+          "id": "7",
+          "name": "Espace réservé de la date 6",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "WELCOME TO EPFL",
+          "textPreview": "WELCOME TO EPFL",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "WELCOME TO EPFL",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "WELCOME TO EPFL"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout12.xml/8",
+          "id": "8",
+          "name": "Espace réservé du pied de page 7",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "Speaker",
+          "textPreview": "Speaker",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Speaker",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Speaker"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout12.xml/9",
+          "id": "9",
+          "name": "Espace réservé du numéro de diapositive 8",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "‹N°›",
+          "textPreview": "‹N°›",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹N°›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹N°›"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "type": "master",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/2",
+          "id": "2",
+          "name": "Title Placeholder 1",
+          "bbox": [
+            95,
+            18.85,
+            385,
+            112.62
+          ],
+          "geometry": "rect",
+          "text": "Modifiez le style du titre",
+          "textPreview": "Modifiez le style du titre",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 0,
+              "right": 7.56,
+              "bottom": 4.91,
+              "left": 18.9
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifiez le style du titre",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifiez le style du titre"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/3",
+          "id": "3",
+          "name": "Text Placeholder 2",
+          "bbox": [
+            95,
+            164.17,
+            811.17,
+            355.57
+          ],
+          "geometry": "rect",
+          "text": "Modifier les styles du texte du masque\nDeuxième niveau\nTroisième niveau\nQuatrième niveau\nCinquième niveau",
+          "textPreview": "Modifier les styles du texte du masque | Deuxième niveau | Troisième niveau | Quatrième niveau | Cinquième niveau",
+          "resolvedTextStyle": {
+            "vertical": 1,
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 18.9
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifier les styles du texte du masque",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifier les styles du "
+                },
+                {
+                  "index": 2,
+                  "text": "texte"
+                },
+                {
+                  "index": 3,
+                  "text": " du masque"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "text": "Deuxième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Deuxième"
+                },
+                {
+                  "index": 2,
+                  "text": " "
+                },
+                {
+                  "index": 3,
+                  "text": "niveau"
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "text": "Troisième niveau\nQuatrième niveau\nCinquième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Troisième"
+                },
+                {
+                  "index": 2,
+                  "text": " "
+                },
+                {
+                  "index": 3,
+                  "text": "niveau"
+                },
+                {
+                  "index": 4,
+                  "text": "\n"
+                },
+                {
+                  "index": 5,
+                  "text": "Quatrième"
+                },
+                {
+                  "index": 6,
+                  "text": " "
+                },
+                {
+                  "index": 7,
+                  "text": "niveau"
+                },
+                {
+                  "index": 8,
+                  "text": "\n"
+                },
+                {
+                  "index": 9,
+                  "text": "Cinquième"
+                },
+                {
+                  "index": 10,
+                  "text": " "
+                },
+                {
+                  "index": 11,
+                  "text": "niveau"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/4",
+          "id": "4",
+          "name": "Date Placeholder 3",
+          "bbox": [
+            -128.23,
+            291.7,
+            350.77,
+            95.7
+          ],
+          "rotation": 270,
+          "geometry": "rect",
+          "text": "WELCOME TO EPFL",
+          "textPreview": "WELCOME TO EPFL",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "WELCOME TO EPFL",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "WELCOME TO EPFL"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/5",
+          "id": "5",
+          "name": "Footer Placeholder 4",
+          "bbox": [
+            747.09,
+            196.75,
+            372,
+            53.83
+          ],
+          "rotation": 270,
+          "geometry": "rect",
+          "text": "Speaker",
+          "textPreview": "Speaker",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Speaker",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Speaker"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 5,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/6",
+          "id": "6",
+          "name": "Slide Number Placeholder 5",
+          "bbox": [
+            906.17,
+            20.5,
+            53.83,
+            17.17
+          ],
+          "geometry": "rect",
+          "text": "‹N°›",
+          "textPreview": "‹N°›",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "insets": {
+              "top": 0,
+              "right": 9.45,
+              "bottom": 0,
+              "left": 9.45
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹N°›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹N°›"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 6,
+          "kind": "image",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/15",
+          "id": "15",
+          "name": "Image 12",
+          "bbox": [
+            13.68,
+            13.89,
+            68.66,
+            29.71
+          ],
+          "contentType": "image/png",
+          "asset": {
+            "assetId": "/ppt/media/image1.png",
+            "contentType": "image/png",
+            "byteLength": 17196
+          },
+          "fillImage": {
+            "assetId": "/ppt/media/image1.png",
+            "contentType": "image/png",
+            "byteLength": 17196
+          }
+        },
+        {
+          "order": 7,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/14",
+          "id": "14",
+          "name": "Rectangle 13",
+          "bbox": [
+            45.14,
+            514.2,
+            4.8,
+            6.28
+          ],
+          "rotation": 270,
+          "geometry": "rect",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "verticalAlignment": "middle"
+          },
+          "fillColor": "accent1",
+          "lineWidth": 0
+        }
+      ]
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/qpwjmh8n",
+      "id": "2",
+      "name": "Titre 1",
+      "bbox": [
+        95,
+        26.54,
+        790.77,
+        63.13
+      ],
+      "text": "Results – Interpretability and physics compliance ",
+      "textPreview": "Results – Interpretability and physics compliance",
+      "resolvedFontSize": 42.67,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 42.67,
+        "typeface": "Franklin Gothic Demi Cond",
+        "color": "tx1",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "insets": {
+          "top": 0,
+          "right": 7.56,
+          "bottom": 4.91,
+          "left": 18.9
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Results – Interpretability and physics"
+          },
+          {
+            "index": 2,
+            "text": "compliance"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Results – Interpretability and physics compliance ",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Results – Interpretability and physics compliance "
+            }
+          ],
+          "bulletCharacter": "",
+          "lineSpacingPercent": 80000
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/po3itc72",
+      "id": "5",
+      "name": "Espace réservé du numéro de diapositive 4",
+      "bbox": [
+        906.17,
+        20.5,
+        53.83,
+        17.17
+      ],
+      "text": "20",
+      "textPreview": "20",
+      "resolvedFontSize": 9.33,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 9.33,
+        "typeface": "Franklin Gothic Demi Cond",
+        "color": "tx1",
+        "bold": true,
+        "alignment": "center",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 9.45,
+          "bottom": 0,
+          "left": 9.45
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "20"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "20",
+          "runs": [
+            {
+              "index": 1,
+              "text": "20"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/hk3ipcr6",
+      "id": "9",
+      "name": "Espace réservé du contenu 1",
+      "bbox": [
+        64.79,
+        105.31,
+        851.18,
+        372.45
+      ],
+      "geometry": "rect",
+      "text": "Node Level Correlation: Correlation between the theoretical energy change of each node (without the VAV) and the aggregation of message it receives.\n\n\n\n\n\n\n\n\nEdge Level Correlation: Correlation between the theoritical energy flux between room and message of the GNN.\n\n",
+      "textPreview": "Node Level Correlation: Correlation between the theoretical energy change of each node (without the VAV) and the aggregation of message i...",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "autoFit": "none",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 25,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Node Level Correlation: Correlation between the theoretical energy change of each node (without"
+          },
+          {
+            "index": 2,
+            "text": "the VAV) and the aggregation of message it receives."
+          },
+          {
+            "index": 3,
+            "text": ""
+          },
+          {
+            "index": 4,
+            "text": ""
+          },
+          {
+            "index": 5,
+            "text": ""
+          },
+          {
+            "index": 6,
+            "text": ""
+          },
+          {
+            "index": 7,
+            "text": ""
+          },
+          {
+            "index": 8,
+            "text": ""
+          },
+          {
+            "index": 9,
+            "text": ""
+          },
+          {
+            "index": 10,
+            "text": ""
+          },
+          {
+            "index": 11,
+            "text": ""
+          },
+          {
+            "index": 12,
+            "text": ""
+          },
+          {
+            "index": 13,
+            "text": ""
+          },
+          {
+            "index": 14,
+            "text": ""
+          },
+          {
+            "index": 15,
+            "text": ""
+          },
+          {
+            "index": 16,
+            "text": ""
+          },
+          {
+            "index": 17,
+            "text": ""
+          },
+          {
+            "index": 18,
+            "text": ""
+          },
+          {
+            "index": 19,
+            "text": ""
+          },
+          {
+            "index": 20,
+            "text": "§Edge Level Correlation: Correlation between the theoritical energy flux between room and"
+          },
+          {
+            "index": 21,
+            "text": "message of the GNN."
+          },
+          {
+            "index": 22,
+            "text": ""
+          },
+          {
+            "index": 23,
+            "text": ""
+          },
+          {
+            "index": 24,
+            "text": ""
+          },
+          {
+            "index": 25,
+            "text": ""
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Node Level Correlation: Correlation between the theoretical energy change of each node (without the VAV) and the aggregation of message it receives.",
+          "lineSpacingPercent": 100000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Node Level Correlation: ",
+              "fontSize": 18.67,
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "Correlation between the theoretical energy change of each node (without the VAV) and the aggregation of message it receives.",
+              "fontSize": 18.67
+            }
+          ],
+          "bulletCharacter": "§",
+          "marginLeft": 171450,
+          "indent": -171450
+        },
+        {
+          "index": 10,
+          "text": "Edge Level Correlation: Correlation between the theoritical energy flux between room and message of the GNN.",
+          "lineSpacingPercent": 100000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "Edge Level Correlation: ",
+              "fontSize": 18.67,
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "Correlation between the ",
+              "fontSize": 18.67
+            },
+            {
+              "index": 3,
+              "text": "theoritical",
+              "fontSize": 18.67
+            },
+            {
+              "index": 4,
+              "text": " energy flux between room and message of the GNN.",
+              "fontSize": 18.67
+            }
+          ],
+          "bulletCharacter": "§",
+          "marginLeft": 171450,
+          "indent": -171450
+        },
+        {
+          "index": 12,
+          "text": "𝑬_(𝒊,𝒋)^(𝒕𝒉𝒆𝒐)𝒕 = (𝑻_(𝒊)𝒕 − 𝑻_(𝒋)(𝒕))⁄(𝑹_(𝒋))",
+          "lineSpacingPercent": 100000,
+          "runs": [],
+          "bulletCharacter": "§",
+          "marginLeft": 171450,
+          "indent": -171450
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/cj65wzyd",
+      "id": "11",
+      "name": "ZoneTexte 10",
+      "bbox": [
+        497.7,
+        197.03,
+        357.82,
+        145.94
+      ],
+      "geometry": "rect",
+      "text": "𝑬_(𝒊)^(𝒕𝒉𝒆𝒐)𝒕 = 𝑪_(𝒊)(𝑻_(𝒊)𝒕 − 𝑻_(𝒊)𝒕 − 𝟏)\n\n𝑬_(𝒊)^(𝑽𝑨𝑽)𝒕 = (𝟏)⁄(𝑹_(𝒊𝒏𝒕))𝑻_(𝑽𝑨𝑽,𝒊)𝒕 − 𝑻_(𝒊)𝒕∗𝒅𝒕\n\n ",
+      "textPreview": "𝑬_(𝒊)^(𝒕𝒉𝒆𝒐)𝒕 = 𝑪_(𝒊)(𝑻_(𝒊)𝒕 − 𝑻_(𝒊)𝒕 − 𝟏) |  | 𝑬_(𝒊)^(𝑽𝑨𝑽)𝒕 = (𝟏)⁄(𝑹_(𝒊𝒏𝒕))𝑻_(𝑽𝑨𝑽,𝒊)𝒕 − 𝑻_(𝒊)𝒕∗𝒅𝒕 ...",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 9,
+        "lines": [
+          {
+            "index": 1,
+            "text": ""
+          },
+          {
+            "index": 2,
+            "text": ""
+          },
+          {
+            "index": 3,
+            "text": ""
+          },
+          {
+            "index": 4,
+            "text": ""
+          },
+          {
+            "index": 5,
+            "text": ""
+          },
+          {
+            "index": 6,
+            "text": ""
+          },
+          {
+            "index": 7,
+            "text": ""
+          },
+          {
+            "index": 8,
+            "text": ""
+          },
+          {
+            "index": 9,
+            "text": " "
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "𝑬_(𝒊)^(𝒕𝒉𝒆𝒐)𝒕 = 𝑪_(𝒊)(𝑻_(𝒊)𝒕 − 𝑻_(𝒊)𝒕 − 𝟏)",
+          "lineSpacingPercent": 100000,
+          "runs": [],
+          "marginLeft": 0
+        },
+        {
+          "index": 3,
+          "text": "𝑬_(𝒊)^(𝑽𝑨𝑽)𝒕 = (𝟏)⁄(𝑹_(𝒊𝒏𝒕))𝑻_(𝑽𝑨𝑽,𝒊)𝒕 − 𝑻_(𝒊)𝒕∗𝒅𝒕",
+          "lineSpacingPercent": 100000,
+          "runs": [],
+          "marginLeft": 0
+        },
+        {
+          "index": 5,
+          "lineSpacingPercent": 100000,
+          "resolvedTextStyle": {
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": " ",
+              "fontSize": 16,
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/qh4nupg7",
+      "id": "13",
+      "name": "ZoneTexte 12",
+      "bbox": [
+        79.42,
+        232.29,
+        357.82,
+        59.25
+      ],
+      "geometry": "rect",
+      "text": "𝑬_(𝒊)^(𝒍𝒂𝒕𝒆𝒏𝒕)𝒕 = ∑_(𝒋∈𝑵(𝒊)) 𝑴_(𝒋𝒊)(𝒕) − ∑_(𝒋∈𝑵(𝒊)) 𝑴_(𝒊𝒋)(𝒕)",
+      "textPreview": "𝑬_(𝒊)^(𝒍𝒂𝒕𝒆𝒏𝒕)𝒕 = ∑_(𝒋∈𝑵(𝒊)) 𝑴_(𝒋𝒊)(𝒕) − ∑_(𝒋∈𝑵(𝒊)) 𝑴_(𝒊𝒋)(𝒕)",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "𝑬_(𝒊)^(𝒍𝒂𝒕𝒆𝒏𝒕)𝒕 = ∑_(𝒋∈𝑵(𝒊)) 𝑴_(𝒋𝒊)(𝒕) − ∑_(𝒋∈𝑵(𝒊)) 𝑴_(𝒊𝒋)(𝒕)"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "𝑬_(𝒊)^(𝒍𝒂𝒕𝒆𝒏𝒕)𝒕 = ∑_(𝒋∈𝑵(𝒊)) 𝑴_(𝒋𝒊)(𝒕) − ∑_(𝒋∈𝑵(𝒊)) 𝑴_(𝒊𝒋)(𝒕)",
+          "runs": [],
+          "marginLeft": 0
+        }
+      ]
+    }
+  ],
+  "composeRuns": []
+}

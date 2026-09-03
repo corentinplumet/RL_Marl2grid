@@ -1,0 +1,10 @@
+Primary content source: /Users/corentinplumet/Documents/RL_Marl2grid/latex/main.pdf and the corresponding /latex/main.tex plus /latex/chapters/*.tex.
+Primary visual assets: /Users/corentinplumet/Documents/RL_Marl2grid/latex/figures/*.png and two rendered TikZ figures: graph_actor_pipeline.tex and candidate_action_scoring_pipeline.tex.
+Primary visual template: /Users/corentinplumet/Downloads/EPFL_General_presentation_2026LR.pptx.
+Secondary density reference: /Users/corentinplumet/Desktop/powerpoint presentation/semester_project_presentation 1.pptx.
+No web research or externally sourced assets are used. State-of-the-art claims are paraphrased from Chapter 2 of the thesis; its bibliography contains the underlying literature.
+
+Known missing thesis evidence:
+- Chapter 9 encoder-only transfer still contains pending values for the action cap/data path, target training budget, seed set, head optimiser/learning rate, checkpoint selection, and gate condition.
+- Its learning-curve plot, difficult-cohort endpoint table, final four-representation endpoint figure, finding, and takeaway are placeholders.
+- The main deck therefore contains one explicit replace-before-defence result slide, and backup slide 31 lists the exact outputs required.

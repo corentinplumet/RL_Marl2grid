@@ -1,0 +1,1262 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/fu1gfa1s",
+    "id": "fu1gfa1s",
+    "slide": 8,
+    "layoutId": "/ppt/slideLayouts/slideLayout12.xml",
+    "layoutName": "Title_Only",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 960,
+      "height": 540
+    }
+  },
+  "theme": {
+    "colorSchemeName": "EPFL - New Colors 2019",
+    "colors": {
+      "accent1": "#E30613",
+      "accent2": "#00A79F",
+      "accent3": "#413C3A",
+      "accent4": "#007480",
+      "accent5": "#F39869",
+      "accent6": "#B51F1F",
+      "dk1": "#413C3A",
+      "lt1": "#FFFFFF",
+      "dk2": "#413C3A",
+      "lt2": "#CAC7C7",
+      "hlink": "#ED6E9C",
+      "folHlink": "#4F8FCC"
+    },
+    "fontScheme": {
+      "name": "EPFL_Beta2",
+      "majorFont": {
+        "latinTypeface": "Franklin Gothic Demi Cond"
+      },
+      "minorFont": {
+        "latinTypeface": "Arial"
+      }
+    },
+    "typefaces": [
+      "Arial",
+      "Franklin Gothic Demi Cond"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout12.xml",
+      "name": "Title_Only",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout12.xml/6",
+          "id": "6",
+          "name": "Titre 5",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "Modifiez le style du titre",
+          "textPreview": "Modifiez le style du titre",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifiez le style du titre",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifiez le style du titre"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout12.xml/7",
+          "id": "7",
+          "name": "Espace réservé de la date 6",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "WELCOME TO EPFL",
+          "textPreview": "WELCOME TO EPFL",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "WELCOME TO EPFL",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "WELCOME TO EPFL"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout12.xml/8",
+          "id": "8",
+          "name": "Espace réservé du pied de page 7",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "Speaker",
+          "textPreview": "Speaker",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Speaker",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Speaker"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout12.xml/9",
+          "id": "9",
+          "name": "Espace réservé du numéro de diapositive 8",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "‹N°›",
+          "textPreview": "‹N°›",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹N°›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹N°›"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "type": "master",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/2",
+          "id": "2",
+          "name": "Title Placeholder 1",
+          "bbox": [
+            95,
+            18.85,
+            385,
+            112.62
+          ],
+          "geometry": "rect",
+          "text": "Modifiez le style du titre",
+          "textPreview": "Modifiez le style du titre",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 0,
+              "right": 7.56,
+              "bottom": 4.91,
+              "left": 18.9
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifiez le style du titre",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifiez le style du titre"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/3",
+          "id": "3",
+          "name": "Text Placeholder 2",
+          "bbox": [
+            95,
+            164.17,
+            811.17,
+            355.57
+          ],
+          "geometry": "rect",
+          "text": "Modifier les styles du texte du masque\nDeuxième niveau\nTroisième niveau\nQuatrième niveau\nCinquième niveau",
+          "textPreview": "Modifier les styles du texte du masque | Deuxième niveau | Troisième niveau | Quatrième niveau | Cinquième niveau",
+          "resolvedTextStyle": {
+            "vertical": 1,
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 18.9
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifier les styles du texte du masque",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifier les styles du "
+                },
+                {
+                  "index": 2,
+                  "text": "texte"
+                },
+                {
+                  "index": 3,
+                  "text": " du masque"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "text": "Deuxième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Deuxième"
+                },
+                {
+                  "index": 2,
+                  "text": " "
+                },
+                {
+                  "index": 3,
+                  "text": "niveau"
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "text": "Troisième niveau\nQuatrième niveau\nCinquième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Troisième"
+                },
+                {
+                  "index": 2,
+                  "text": " "
+                },
+                {
+                  "index": 3,
+                  "text": "niveau"
+                },
+                {
+                  "index": 4,
+                  "text": "\n"
+                },
+                {
+                  "index": 5,
+                  "text": "Quatrième"
+                },
+                {
+                  "index": 6,
+                  "text": " "
+                },
+                {
+                  "index": 7,
+                  "text": "niveau"
+                },
+                {
+                  "index": 8,
+                  "text": "\n"
+                },
+                {
+                  "index": 9,
+                  "text": "Cinquième"
+                },
+                {
+                  "index": 10,
+                  "text": " "
+                },
+                {
+                  "index": 11,
+                  "text": "niveau"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/4",
+          "id": "4",
+          "name": "Date Placeholder 3",
+          "bbox": [
+            -128.23,
+            291.7,
+            350.77,
+            95.7
+          ],
+          "rotation": 270,
+          "geometry": "rect",
+          "text": "WELCOME TO EPFL",
+          "textPreview": "WELCOME TO EPFL",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "WELCOME TO EPFL",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "WELCOME TO EPFL"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/5",
+          "id": "5",
+          "name": "Footer Placeholder 4",
+          "bbox": [
+            747.09,
+            196.75,
+            372,
+            53.83
+          ],
+          "rotation": 270,
+          "geometry": "rect",
+          "text": "Speaker",
+          "textPreview": "Speaker",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Speaker",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Speaker"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 5,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/6",
+          "id": "6",
+          "name": "Slide Number Placeholder 5",
+          "bbox": [
+            906.17,
+            20.5,
+            53.83,
+            17.17
+          ],
+          "geometry": "rect",
+          "text": "‹N°›",
+          "textPreview": "‹N°›",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "insets": {
+              "top": 0,
+              "right": 9.45,
+              "bottom": 0,
+              "left": 9.45
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹N°›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹N°›"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 6,
+          "kind": "image",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/15",
+          "id": "15",
+          "name": "Image 12",
+          "bbox": [
+            13.68,
+            13.89,
+            68.66,
+            29.71
+          ],
+          "contentType": "image/png",
+          "asset": {
+            "assetId": "/ppt/media/image1.png",
+            "contentType": "image/png",
+            "byteLength": 17196
+          },
+          "fillImage": {
+            "assetId": "/ppt/media/image1.png",
+            "contentType": "image/png",
+            "byteLength": 17196
+          }
+        },
+        {
+          "order": 7,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/14",
+          "id": "14",
+          "name": "Rectangle 13",
+          "bbox": [
+            45.14,
+            514.2,
+            4.8,
+            6.28
+          ],
+          "rotation": 270,
+          "geometry": "rect",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "verticalAlignment": "middle"
+          },
+          "fillColor": "accent1",
+          "lineWidth": 0
+        }
+      ]
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/18byd4zy",
+      "id": "2",
+      "name": "Titre 1",
+      "bbox": [
+        95,
+        26.54,
+        790.77,
+        51.53
+      ],
+      "text": "Models – Base Model to EGNN motivation",
+      "textPreview": "Models – Base Model to EGNN motivation",
+      "resolvedFontSize": 42.67,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 42.67,
+        "typeface": "Franklin Gothic Demi Cond",
+        "color": "tx1",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "insets": {
+          "top": 0,
+          "right": 7.56,
+          "bottom": 4.91,
+          "left": 18.9
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Models – Base Model to EGNN"
+          },
+          {
+            "index": 2,
+            "text": "motivation"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Models – Base Model to EGNN motivation",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Models – Base Model to EGNN motivation"
+            }
+          ],
+          "bulletCharacter": "",
+          "lineSpacingPercent": 80000
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6h0fypgb",
+      "id": "5",
+      "name": "Espace réservé du numéro de diapositive 4",
+      "bbox": [
+        906.17,
+        20.5,
+        53.83,
+        17.17
+      ],
+      "text": "8",
+      "textPreview": "8",
+      "resolvedFontSize": 9.33,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 9.33,
+        "typeface": "Franklin Gothic Demi Cond",
+        "color": "tx1",
+        "bold": true,
+        "alignment": "center",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 9.45,
+          "bottom": 0,
+          "left": 9.45
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "8"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "8",
+          "runs": [
+            {
+              "index": 1,
+              "text": "8"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1k7edwv2",
+      "id": "15",
+      "name": "ZoneTexte 14",
+      "bbox": [
+        117.85,
+        113.74,
+        724.31,
+        61.39
+      ],
+      "geometry": "rect",
+      "text": "Equivariant GNNs encode the symmetry of the physical world, letting one model work in any orientation or coordinate frame.",
+      "textPreview": "Equivariant GNNs encode the symmetry of the physical world, letting one model work in any orientation or coordinate frame.",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "§Equivariant GNNs encode the symmetry of the physical world,"
+          },
+          {
+            "index": 2,
+            "text": "letting one model work in any orientation or coordinate frame."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Equivariant GNNs encode the symmetry of the physical world, letting one model work in any orientation or coordinate frame.",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Equivariant",
+              "fontSize": 21.33,
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": " ",
+              "fontSize": 21.33,
+              "bold": true
+            },
+            {
+              "index": 3,
+              "text": "GNNs",
+              "fontSize": 21.33,
+              "bold": true
+            },
+            {
+              "index": 4,
+              "text": " encode the ",
+              "fontSize": 21.33,
+              "bold": true
+            },
+            {
+              "index": 5,
+              "text": "symmetry",
+              "fontSize": 21.33,
+              "bold": true
+            },
+            {
+              "index": 6,
+              "text": " of the ",
+              "fontSize": 21.33,
+              "bold": true
+            },
+            {
+              "index": 7,
+              "text": "physical",
+              "fontSize": 21.33,
+              "bold": true
+            },
+            {
+              "index": 8,
+              "text": " world",
+              "fontSize": 21.33,
+              "bold": true
+            },
+            {
+              "index": 9,
+              "text": ", ",
+              "fontSize": 21.33
+            },
+            {
+              "index": 10,
+              "text": "letting",
+              "fontSize": 21.33
+            },
+            {
+              "index": 11,
+              "text": " one model ",
+              "fontSize": 21.33
+            },
+            {
+              "index": 12,
+              "text": "work",
+              "fontSize": 21.33
+            },
+            {
+              "index": 13,
+              "text": " in ",
+              "fontSize": 21.33
+            },
+            {
+              "index": 14,
+              "text": "any",
+              "fontSize": 21.33
+            },
+            {
+              "index": 15,
+              "text": " orientation or ",
+              "fontSize": 21.33
+            },
+            {
+              "index": 16,
+              "text": "coordinate",
+              "fontSize": 21.33
+            },
+            {
+              "index": 17,
+              "text": " frame.",
+              "fontSize": 21.33
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "kind": "table",
+      "scope": "slide",
+      "aid": "tb/5sre1gnq",
+      "id": "16",
+      "name": "Tableau 3",
+      "bbox": [
+        117.85,
+        203.27,
+        724.3,
+        269.2
+      ],
+      "text": "EGNN literature | Where EGNNs are already used\nTensor Field Networks [9] | Protein & drug design (inverse folding) [13]\nE(n)-EGNN [11] | Fluid / climate flows (hierarchical EGNN) [14]\nDynami-CAL GraphNet [12] | Robot manipulation (RiEMann) [15]\nMulti-body mechanics (Equi-Euler GraphNet) [16]",
+      "textPreview": "EGNN literature | Where EGNNs are already used | Tensor Field Networks [9] | Protein & drug design (inverse folding) [13] | E(n)-EGNN [11...",
+      "rows": 5,
+      "cols": 2,
+      "cells": [
+        {
+          "index": 1,
+          "row": 1,
+          "column": 1,
+          "bbox": [
+            117.85,
+            203.27,
+            362.15,
+            47.6
+          ],
+          "text": "EGNN literature",
+          "textPreview": "EGNN literature",
+          "fillColor": {
+            "type": "theme",
+            "value": "accent6",
+            "transform": {
+              "lighten": 0.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "EGNN literature",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "EGNN ",
+                  "fontSize": 17.33,
+                  "bold": true
+                },
+                {
+                  "index": 2,
+                  "text": "literature",
+                  "fontSize": 17.33,
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "row": 1,
+          "column": 2,
+          "bbox": [
+            480,
+            203.27,
+            362.15,
+            47.6
+          ],
+          "text": "Where EGNNs are already used",
+          "textPreview": "Where EGNNs are already used",
+          "fillColor": {
+            "type": "theme",
+            "value": "bg1",
+            "transform": {
+              "darken": 0.15
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Where EGNNs are already used",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Where",
+                  "fontSize": 17.33,
+                  "bold": true
+                },
+                {
+                  "index": 2,
+                  "text": " ",
+                  "fontSize": 17.33,
+                  "bold": true
+                },
+                {
+                  "index": 3,
+                  "text": "EGNNs",
+                  "fontSize": 17.33,
+                  "bold": true
+                },
+                {
+                  "index": 4,
+                  "text": " are ",
+                  "fontSize": 17.33,
+                  "bold": true
+                },
+                {
+                  "index": 5,
+                  "text": "already",
+                  "fontSize": 17.33,
+                  "bold": true
+                },
+                {
+                  "index": 6,
+                  "text": " ",
+                  "fontSize": 17.33,
+                  "bold": true
+                },
+                {
+                  "index": 7,
+                  "text": "used",
+                  "fontSize": 17.33,
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "row": 2,
+          "column": 1,
+          "bbox": [
+            117.85,
+            250.88,
+            362.15,
+            47.6
+          ],
+          "text": "Tensor Field Networks [9]",
+          "textPreview": "Tensor Field Networks [9]",
+          "fillColor": {
+            "type": "theme",
+            "value": "accent6",
+            "transform": {
+              "lighten": 0.8
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Tensor Field Networks [9]",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Tensor",
+                  "fontSize": 17.33
+                },
+                {
+                  "index": 2,
+                  "text": " Field Networks [9]",
+                  "fontSize": 17.33
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "row": 2,
+          "column": 2,
+          "bbox": [
+            480,
+            250.88,
+            362.15,
+            47.6
+          ],
+          "text": "Protein & drug design (inverse folding) [13]",
+          "textPreview": "Protein & drug design (inverse folding) [13]",
+          "fillColor": {
+            "type": "theme",
+            "value": "bg1",
+            "transform": {
+              "darken": 0.05
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Protein & drug design (inverse folding) [13]",
+              "lineSpacingPercent": 100000,
+              "resolvedTextStyle": {
+                "alignment": "left"
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Protein",
+                  "fontSize": 17.33
+                },
+                {
+                  "index": 2,
+                  "text": " & ",
+                  "fontSize": 17.33
+                },
+                {
+                  "index": 3,
+                  "text": "drug",
+                  "fontSize": 17.33
+                },
+                {
+                  "index": 4,
+                  "text": " design (inverse ",
+                  "fontSize": 17.33
+                },
+                {
+                  "index": 5,
+                  "text": "folding",
+                  "fontSize": 17.33
+                },
+                {
+                  "index": 6,
+                  "text": ") [13]",
+                  "fontSize": 17.33
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "row": 3,
+          "column": 1,
+          "bbox": [
+            117.85,
+            298.48,
+            362.15,
+            63.19
+          ],
+          "text": "E(n)-EGNN [11]",
+          "textPreview": "E(n)-EGNN [11]",
+          "fillColor": {
+            "type": "theme",
+            "value": "accent6",
+            "transform": {
+              "lighten": 0.8
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "E(n)-EGNN [11]",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "E(n)-EGNN [11]",
+                  "fontSize": 17.33,
+                  "typeface": "Arial",
+                  "color": "#413C3A"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "row": 3,
+          "column": 2,
+          "bbox": [
+            480,
+            298.48,
+            362.15,
+            63.19
+          ],
+          "text": "Fluid / climate flows (hierarchical EGNN) [14]",
+          "textPreview": "Fluid / climate flows (hierarchical EGNN) [14]",
+          "fillColor": {
+            "type": "theme",
+            "value": "bg1",
+            "transform": {
+              "darken": 0.05
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Fluid / climate flows (hierarchical EGNN) [14]",
+              "lineSpacingPercent": 100000,
+              "resolvedTextStyle": {
+                "alignment": "left"
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Fluid",
+                  "fontSize": 17.33
+                },
+                {
+                  "index": 2,
+                  "text": " / ",
+                  "fontSize": 17.33
+                },
+                {
+                  "index": 3,
+                  "text": "climate",
+                  "fontSize": 17.33
+                },
+                {
+                  "index": 4,
+                  "text": " flows (",
+                  "fontSize": 17.33
+                },
+                {
+                  "index": 5,
+                  "text": "hierarchical",
+                  "fontSize": 17.33
+                },
+                {
+                  "index": 6,
+                  "text": " EGNN) [14]",
+                  "fontSize": 17.33
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "row": 4,
+          "column": 1,
+          "bbox": [
+            117.85,
+            361.67,
+            362.15,
+            47.6
+          ],
+          "text": "Dynami-CAL GraphNet [12]",
+          "textPreview": "Dynami-CAL GraphNet [12]",
+          "fillColor": {
+            "type": "theme",
+            "value": "accent6",
+            "transform": {
+              "lighten": 0.8
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Dynami-CAL GraphNet [12]",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Dynami-CAL GraphNet [12]",
+                  "fontSize": 17.33,
+                  "typeface": "Arial",
+                  "color": "#413C3A"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "row": 4,
+          "column": 2,
+          "bbox": [
+            480,
+            361.67,
+            362.15,
+            47.6
+          ],
+          "text": "Robot manipulation (RiEMann) [15]",
+          "textPreview": "Robot manipulation (RiEMann) [15]",
+          "fillColor": {
+            "type": "theme",
+            "value": "bg1",
+            "transform": {
+              "darken": 0.05
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Robot manipulation (RiEMann) [15]",
+              "lineSpacingPercent": 100000,
+              "resolvedTextStyle": {
+                "alignment": "left"
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Robot manipulation (",
+                  "fontSize": 17.33
+                },
+                {
+                  "index": 2,
+                  "text": "RiEMann",
+                  "fontSize": 17.33
+                },
+                {
+                  "index": 3,
+                  "text": ") [15]",
+                  "fontSize": 17.33
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "row": 5,
+          "column": 1,
+          "bbox": [
+            117.85,
+            409.28,
+            362.15,
+            63.19
+          ],
+          "fillColor": {
+            "type": "theme",
+            "value": "accent6",
+            "transform": {
+              "lighten": 0.8
+            }
+          }
+        },
+        {
+          "index": 10,
+          "row": 5,
+          "column": 2,
+          "bbox": [
+            480,
+            409.28,
+            362.15,
+            63.19
+          ],
+          "text": "Multi-body mechanics (Equi-Euler GraphNet) [16]",
+          "textPreview": "Multi-body mechanics (Equi-Euler GraphNet) [16]",
+          "fillColor": {
+            "type": "theme",
+            "value": "bg1",
+            "transform": {
+              "darken": 0.05
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Multi-body mechanics (Equi-Euler GraphNet) [16]",
+              "lineSpacingPercent": 100000,
+              "resolvedTextStyle": {
+                "alignment": "left"
+              },
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Multi-body ",
+                  "fontSize": 17.33
+                },
+                {
+                  "index": 2,
+                  "text": "mechanics",
+                  "fontSize": 17.33
+                },
+                {
+                  "index": 3,
+                  "text": " (",
+                  "fontSize": 17.33
+                },
+                {
+                  "index": 4,
+                  "text": "Equi",
+                  "fontSize": 17.33
+                },
+                {
+                  "index": 5,
+                  "text": "-Euler ",
+                  "fontSize": 17.33
+                },
+                {
+                  "index": 6,
+                  "text": "GraphNet",
+                  "fontSize": 17.33
+                },
+                {
+                  "index": 7,
+                  "text": ") [16]",
+                  "fontSize": 17.33
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "composeRuns": []
+}

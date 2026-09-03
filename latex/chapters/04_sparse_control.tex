@@ -113,8 +113,16 @@ and, for \(a_i>0\),
   \log P(a_i)=\log P(g_i=1)+\log P(b_i=a_i\mid g_i=1).
 \]
 
-\noindent \latestrevision{The exact evaluation rules used to convert the two
-heads into one action are documented in
+\noindent \latestrevision{Training always uses the hierarchical sampling
+procedure above. At deterministic evaluation, the resulting policy can be
+decoded in two ways. The \texttt{hierarchical\_greedy} rule first selects the
+most likely gate decision and, if it chooses intervention, the most likely
+non-idle action. The \texttt{final\_action\_map} rule instead selects the most
+likely executed action using the final probabilities defined above. MAP is
+therefore not a separate training mode; it only replaces sampling with a
+deterministic decision. It can favor action \(0\) because the total intervention
+probability is divided among several non-idle actions. The entropy variant used
+by the gate-plus-budget diagnostic is specified in
 Appendix~\ref{app:sparse-control-method-details}.}
 
 \paragraph{Interpretation.}
@@ -126,8 +134,8 @@ used and gets little learning signal.
 \label{subsec:sparse-control-fixed-penalty}
 
 \paragraph{Implementation detail.}
-The fixed-penalty sweep adds a reward penalty to the final executed action of
-each agent:
+The fixed-penalty experiments compare several penalty strengths. In each run,
+a reward penalty is applied to the final executed action of each agent:
 \[
   r'_{i,t}=r_{i,t}
   -\lambda_{fixed}\mathbf{1}[a_{i,t}\neq0],
@@ -209,8 +217,8 @@ Appendix~\ref{app:sparse-control-method-details}.}
 
 \section{Results}
 Figure~\ref{fig:sparse-control-fulltest-tradeoff} summarizes \revision{mean survival} and the
-mean action-0 fraction across agents. Exact values and per-agent action-0
-fractions are reported in Appendix~\ref{app:sparse-control-full-test-tables}.
+mean action-0 fraction across agents. Exact condition means are reported in
+Appendix~\ref{app:sparse-control-full-test-tables}.
 
 \begin{table}[htbp]
   \centering
@@ -278,11 +286,13 @@ fractions are reported in Appendix~\ref{app:sparse-control-full-test-tables}.
 \end{figure}
 
 \paragraph{Interpretation.}
-\latestrevision{The intervention gate is not the strongest method by itself.
-The fixed penalty with $\lambda_{fixed}=0.010$ already reduces unnecessary
-actions, while local-safe AIB with $d=0.20$ gives the best balance between
-survival and action-0 usage among the learned methods. It remains decentralized
-and allows the agents to act more freely when their local grid is stressed.}
+\latestrevision{Local-safe AIB is the clear winner among the learned methods.
+For \(d=0.10\) and \(d=0.20\), it raises mean survival from the baseline's
+93.67\% to about 98.4\%, while reducing the mean non-idle action fraction from
+56.6\% to about 2.1--2.2\%. It therefore improves both objectives at the same
+time instead of trading survival for sparsity. This result suggests that the
+adaptive local-safe cost helps each agent learn to reserve interventions for
+states in which they are useful, while remaining fully decentralized.}
 
 \section{Preliminary WCCI Stress Test}
 \label{sec:sparse-wcci-stress-test}
@@ -294,8 +304,7 @@ but none reliably improved survival over the weak baseline, and the differences
 were small relative to seed variation. Because this pilot changes the grid,
 action space, and maintenance setting at the same time, it cannot isolate the
 cause. It nevertheless motivates the size-independent graph actor introduced
-next. The full protocol, table, and trade-off figure are retained in
-Appendix~\ref{app:sparse-control-wcci-pilot}.}
+next.}
 \\
 \\
 \begin{tcolorbox}[

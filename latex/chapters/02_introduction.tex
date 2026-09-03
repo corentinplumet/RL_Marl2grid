@@ -6,7 +6,7 @@
 
 Although a transmission grid is often represented as a fixed graph, operators
 can change its topology. Inside each substation, transmission lines, generators,
-and loads are connected to one or more busbars. Moving an element from one
+and loads are connected to busbars. Moving an element from one
 busbar to another, or splitting a substation into two separate electrical nodes,
 changes the paths available to the power flow. The loading of the lines changes
 as a result. This type of reconfiguration is called topology control.
@@ -79,7 +79,7 @@ not require every actor to represent the full joint action space.
 \\
 Decentralization does not remove the difficulty of the problem; it changes its
 nature. Because all agents update their policies during training, the
-environment appears non-stationary from the point of view of any one
+environment appears non-stationary from the point of view of any
 agent~\cite{tan1993independent}. Local observations also hide part of the grid,
 so two actions that appear safe separately may be harmful when applied together.
 \\
@@ -113,9 +113,9 @@ A second approach uses simple rules around a learned policy. A common choice is
 to query the agent only when the maximum line loading $\rho_{\max}$ becomes
 high, and to do nothing while the grid remains safe. PowRL combined this rule
 with an overload manager and a reduced action set to win the L2RPN NeurIPS 2020
-robustness track~\cite{chauhan2023powrl}. \textcite{lehna2023comparative} found
-similar survival for advanced rule-based and RL agents, although RL was cheaper
-at execution time.
+robustness track~\cite{chauhan2023powrl}. % \textcite{lehna2023comparative} found
+% similar survival for advanced rule-based and RL agents, although RL was cheaper
+% at execution time.
 
 \paragraph{Hierarchical and centrally coordinated multi-agent methods.}
 A third family of methods divides the decision between several components while
@@ -130,7 +130,8 @@ operate on their own.
 \paragraph{Decentralized multi-agent control.}
 Fully decentralized control has received less attention. Here, agents use local
 observations and act without communication or a central selector, which is the
-setting studied in this thesis. MARL2Grid-TR addresses the same gap because
+setting studied in this thesis. MARL2Grid addresses this gap by proposing a 
+decentralized framework, because
 earlier research mainly considered single-agent control and did not represent
 the decentralized organization of grid operation
 ~\cite{marchesini2026marl2grid}.
@@ -212,4 +213,5 @@ protocol. Chapter~\ref{ch:encoder-transfer-bridge} tests whether the encoders
 selected by Screens A--E remain useful when their grid-specific action heads
 are replaced. Chapter~\ref{ch:screen-f-transfer} then studies the stricter case
 in which the complete candidate-action policy is transferred, with and without
-target adaptation.}
+target adaptation. Chapter~\ref{ch:discussion-conclusion} closes the thesis by
+answering the research questions and discussing the limits of the evidence.}

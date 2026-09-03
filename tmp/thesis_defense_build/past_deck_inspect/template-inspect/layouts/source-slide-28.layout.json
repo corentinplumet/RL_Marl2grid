@@ -1,0 +1,1486 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/3mdove10",
+    "id": "3mdove10",
+    "slide": 28,
+    "layoutId": "/ppt/slideLayouts/slideLayout12.xml",
+    "layoutName": "Title_Only",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 960,
+      "height": 540
+    }
+  },
+  "theme": {
+    "colorSchemeName": "EPFL - New Colors 2019",
+    "colors": {
+      "accent1": "#E30613",
+      "accent2": "#00A79F",
+      "accent3": "#413C3A",
+      "accent4": "#007480",
+      "accent5": "#F39869",
+      "accent6": "#B51F1F",
+      "dk1": "#413C3A",
+      "lt1": "#FFFFFF",
+      "dk2": "#413C3A",
+      "lt2": "#CAC7C7",
+      "hlink": "#ED6E9C",
+      "folHlink": "#4F8FCC"
+    },
+    "fontScheme": {
+      "name": "EPFL_Beta2",
+      "majorFont": {
+        "latinTypeface": "Franklin Gothic Demi Cond"
+      },
+      "minorFont": {
+        "latinTypeface": "Arial"
+      }
+    },
+    "typefaces": [
+      "Arial",
+      "Franklin Gothic Demi Cond"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout12.xml",
+      "name": "Title_Only",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout12.xml/6",
+          "id": "6",
+          "name": "Titre 5",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "Modifiez le style du titre",
+          "textPreview": "Modifiez le style du titre",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifiez le style du titre",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifiez le style du titre"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout12.xml/7",
+          "id": "7",
+          "name": "Espace réservé de la date 6",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "WELCOME TO EPFL",
+          "textPreview": "WELCOME TO EPFL",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "WELCOME TO EPFL",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "WELCOME TO EPFL"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout12.xml/8",
+          "id": "8",
+          "name": "Espace réservé du pied de page 7",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "Speaker",
+          "textPreview": "Speaker",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Speaker",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Speaker"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout12.xml/9",
+          "id": "9",
+          "name": "Espace réservé du numéro de diapositive 8",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "‹N°›",
+          "textPreview": "‹N°›",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹N°›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹N°›"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "type": "master",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/2",
+          "id": "2",
+          "name": "Title Placeholder 1",
+          "bbox": [
+            95,
+            18.85,
+            385,
+            112.62
+          ],
+          "geometry": "rect",
+          "text": "Modifiez le style du titre",
+          "textPreview": "Modifiez le style du titre",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 0,
+              "right": 7.56,
+              "bottom": 4.91,
+              "left": 18.9
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifiez le style du titre",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifiez le style du titre"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/3",
+          "id": "3",
+          "name": "Text Placeholder 2",
+          "bbox": [
+            95,
+            164.17,
+            811.17,
+            355.57
+          ],
+          "geometry": "rect",
+          "text": "Modifier les styles du texte du masque\nDeuxième niveau\nTroisième niveau\nQuatrième niveau\nCinquième niveau",
+          "textPreview": "Modifier les styles du texte du masque | Deuxième niveau | Troisième niveau | Quatrième niveau | Cinquième niveau",
+          "resolvedTextStyle": {
+            "vertical": 1,
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 18.9
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifier les styles du texte du masque",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifier les styles du "
+                },
+                {
+                  "index": 2,
+                  "text": "texte"
+                },
+                {
+                  "index": 3,
+                  "text": " du masque"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "text": "Deuxième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Deuxième"
+                },
+                {
+                  "index": 2,
+                  "text": " "
+                },
+                {
+                  "index": 3,
+                  "text": "niveau"
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "text": "Troisième niveau\nQuatrième niveau\nCinquième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Troisième"
+                },
+                {
+                  "index": 2,
+                  "text": " "
+                },
+                {
+                  "index": 3,
+                  "text": "niveau"
+                },
+                {
+                  "index": 4,
+                  "text": "\n"
+                },
+                {
+                  "index": 5,
+                  "text": "Quatrième"
+                },
+                {
+                  "index": 6,
+                  "text": " "
+                },
+                {
+                  "index": 7,
+                  "text": "niveau"
+                },
+                {
+                  "index": 8,
+                  "text": "\n"
+                },
+                {
+                  "index": 9,
+                  "text": "Cinquième"
+                },
+                {
+                  "index": 10,
+                  "text": " "
+                },
+                {
+                  "index": 11,
+                  "text": "niveau"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/4",
+          "id": "4",
+          "name": "Date Placeholder 3",
+          "bbox": [
+            -128.23,
+            291.7,
+            350.77,
+            95.7
+          ],
+          "rotation": 270,
+          "geometry": "rect",
+          "text": "WELCOME TO EPFL",
+          "textPreview": "WELCOME TO EPFL",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "WELCOME TO EPFL",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "WELCOME TO EPFL"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/5",
+          "id": "5",
+          "name": "Footer Placeholder 4",
+          "bbox": [
+            747.09,
+            196.75,
+            372,
+            53.83
+          ],
+          "rotation": 270,
+          "geometry": "rect",
+          "text": "Speaker",
+          "textPreview": "Speaker",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Speaker",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Speaker"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 5,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/6",
+          "id": "6",
+          "name": "Slide Number Placeholder 5",
+          "bbox": [
+            906.17,
+            20.5,
+            53.83,
+            17.17
+          ],
+          "geometry": "rect",
+          "text": "‹N°›",
+          "textPreview": "‹N°›",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "insets": {
+              "top": 0,
+              "right": 9.45,
+              "bottom": 0,
+              "left": 9.45
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹N°›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹N°›"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 6,
+          "kind": "image",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/15",
+          "id": "15",
+          "name": "Image 12",
+          "bbox": [
+            13.68,
+            13.89,
+            68.66,
+            29.71
+          ],
+          "contentType": "image/png",
+          "asset": {
+            "assetId": "/ppt/media/image1.png",
+            "contentType": "image/png",
+            "byteLength": 17196
+          },
+          "fillImage": {
+            "assetId": "/ppt/media/image1.png",
+            "contentType": "image/png",
+            "byteLength": 17196
+          }
+        },
+        {
+          "order": 7,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/14",
+          "id": "14",
+          "name": "Rectangle 13",
+          "bbox": [
+            45.14,
+            514.2,
+            4.8,
+            6.28
+          ],
+          "rotation": 270,
+          "geometry": "rect",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "verticalAlignment": "middle"
+          },
+          "fillColor": "accent1",
+          "lineWidth": 0
+        }
+      ]
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/q9cz6xkv",
+      "id": "2",
+      "name": "Titre 1",
+      "bbox": [
+        95,
+        26.54,
+        790.77,
+        63.13
+      ],
+      "text": "References",
+      "textPreview": "References",
+      "resolvedFontSize": 42.67,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 42.67,
+        "typeface": "Franklin Gothic Demi Cond",
+        "color": "tx1",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "insets": {
+          "top": 0,
+          "right": 7.56,
+          "bottom": 4.91,
+          "left": 18.9
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "References"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "References",
+          "runs": [
+            {
+              "index": 1,
+              "text": "References"
+            }
+          ],
+          "bulletCharacter": "",
+          "lineSpacingPercent": 80000
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/10nylwji",
+      "id": "5",
+      "name": "Espace réservé du numéro de diapositive 4",
+      "bbox": [
+        906.17,
+        20.5,
+        53.83,
+        17.17
+      ],
+      "text": "28",
+      "textPreview": "28",
+      "resolvedFontSize": 9.33,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 9.33,
+        "typeface": "Franklin Gothic Demi Cond",
+        "color": "tx1",
+        "bold": true,
+        "alignment": "center",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 9.45,
+          "bottom": 0,
+          "left": 9.45
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "28"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "28",
+          "runs": [
+            {
+              "index": 1,
+              "text": "28"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/exwzahkr",
+      "id": "6",
+      "name": "ZoneTexte 5",
+      "bbox": [
+        26.62,
+        89.67,
+        906.76,
+        386.94
+      ],
+      "geometry": "rect",
+      "text": "[1] Yang, Z., Gaidhane, A. D., Drgoňa, J., Chandan, V., Halappanavar, M. M., Liu, F., & Cao, Y. (2024). Physics-constrained graph modeling for building thermal dynamics. Energy and AI, 16, 100346. https://doi.org/10.1016/j.egyai.2024.100346\n[2] Pfaff, T., Fortunato, M., Sanchez‐Gonzalez, A., & Battaglia, P. W. (2021). Learning mesh‐based simulation with graph networks. In International Conference on Learning Representations (ICLR).\n[3] Behl, M. (2018). Thermal RC modeling [Lecture 4 slides]. Principles of Modeling for Cyber-Physical Systems, University of Virginia.\n[4] Lin, Y., Schuman, E., Levin, M. S., McVey, J. R. III, Lerond, J., Sivaraman, C., & Chandan, V. (2021). Dataset description and data cleaning for Systems Engineering Building (SEB) dataset: Benchmark Datasets Project (PNNL-XXXXX). Pacific Northwest National Laboratory.\n[5] Drgona, J., Tuor, A., Koch, J., Shapiro, M., Jacob, B., & Vrabie, D. (2023). NeuroMANCER: Neural modules with adaptive nonlinear constraints and efficient regularizations. Retrieved from https://github.com/pnnl/neuromancer\n[6] Petrichenko, K., & Vautrin, A. (2024, April 4). More efficient and flexible buildings are key to clean energy transitions. International Energy Agency. https://www.iea.org/commentaries/more-efficient-and-flexible-buildings-are-key-to-clean-energy-transitions\n[7] U.S. Energy Information Administration. (2023, January 17). U.S. commercial buildings consumed more fuel for space heating than anything else in 2018. Today in Energy. https://www.eia.gov/todayinenergy/detail.php?id=55199\n[8] Dong, B., Li, Z., Rahman, S. M. M., & Vega, R. (2016). A hybrid model approach for forecasting future residential electricity consumption. Energy and Buildings, 117, 341–351. https://doi.org/10.1016/j.enbuild.2015.09.033",
+      "textPreview": "[1] Yang, Z., Gaidhane, A. D., Drgoňa, J., Chandan, V., Halappanavar, M. M., Liu, F., & Cao, Y. (2024). Physics-constrained graph modelin...",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 26,
+        "lines": [
+          {
+            "index": 1,
+            "text": "• [1] Yang, Z., Gaidhane, A. D., Drgoňa, J., Chandan, V., Halappanavar, M. M., Liu, F., & Cao, Y. (2024)."
+          },
+          {
+            "index": 2,
+            "text": "Physics-constrained graph modeling for building thermal dynamics. Energy and AI, 16, 100346."
+          },
+          {
+            "index": 3,
+            "text": "https://doi.org/10.1016/j.egyai.2024.100346"
+          },
+          {
+            "index": 4,
+            "text": ""
+          },
+          {
+            "index": 5,
+            "text": "• [2] Pfaff, T., Fortunato, M., Sanchez‐Gonzalez, A., & Battaglia, P. W. (2021). Learning mesh‐based simulation with graph"
+          },
+          {
+            "index": 6,
+            "text": "networks. In International Conference on Learning Representations (ICLR)."
+          },
+          {
+            "index": 7,
+            "text": ""
+          },
+          {
+            "index": 8,
+            "text": "• [3] Behl, M. (2018). Thermal RC modeling [Lecture 4 slides]. Principles of Modeling for Cyber-Physical Systems, University"
+          },
+          {
+            "index": 9,
+            "text": "of Virginia."
+          },
+          {
+            "index": 10,
+            "text": ""
+          },
+          {
+            "index": 11,
+            "text": "• [4] Lin, Y., Schuman, E., Levin, M. S., McVey, J. R. III, Lerond, J., Sivaraman, C., & Chandan, V. (2021). Dataset"
+          },
+          {
+            "index": 12,
+            "text": "description and data cleaning for Systems Engineering Building (SEB) dataset: Benchmark Datasets Project"
+          },
+          {
+            "index": 13,
+            "text": "(PNNL-XXXXX). Pacific Northwest National Laboratory."
+          },
+          {
+            "index": 14,
+            "text": ""
+          },
+          {
+            "index": 15,
+            "text": "• [5] Drgona, J., Tuor, A., Koch, J., Shapiro, M., Jacob, B., & Vrabie, D. (2023). NeuroMANCER: Neural modules with"
+          },
+          {
+            "index": 16,
+            "text": "adaptive nonlinear constraints and efficient regularizations. Retrieved from https://github.com/pnnl/neuromancer"
+          },
+          {
+            "index": 17,
+            "text": ""
+          },
+          {
+            "index": 18,
+            "text": "• [6] Petrichenko, K., & Vautrin, A. (2024, April 4). More efficient and flexible buildings are key to clean energy transitions."
+          },
+          {
+            "index": 19,
+            "text": "International Energy Agency."
+          },
+          {
+            "index": 20,
+            "text": "https://www.iea.org/commentaries/more-efficient-and-flexible-buildings-are-key-to-clean-energy-transitions"
+          },
+          {
+            "index": 21,
+            "text": ""
+          },
+          {
+            "index": 22,
+            "text": "• [7] U.S. Energy Information Administration. (2023, January 17). U.S. commercial buildings consumed more fuel for space"
+          },
+          {
+            "index": 23,
+            "text": "heating than anything else in 2018. Today in Energy. https://www.eia.gov/todayinenergy/detail.php?id=55199"
+          },
+          {
+            "index": 24,
+            "text": ""
+          },
+          {
+            "index": 25,
+            "text": "• [8] Dong, B., Li, Z., Rahman, S. M. M., & Vega, R. (2016). A hybrid model approach for forecasting future residential"
+          },
+          {
+            "index": 26,
+            "text": "electricity consumption. Energy and Buildings, 117, 341–351. https://doi.org/10.1016/j.enbuild.2015.09.033"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "[1] Yang, Z., Gaidhane, A. D., Drgoňa, J., Chandan, V., Halappanavar, M. M., Liu, F., & Cao, Y. (2024). Physics-constrained graph modeling for building thermal dynamics. Energy and AI, 16, 100346. https://doi.org/10.1016/j.egyai.2024.100346",
+          "lineSpacingPercent": 100000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "[1] ",
+              "fontSize": 16
+            },
+            {
+              "index": 2,
+              "text": "Yang, Z., ",
+              "fontSize": 16
+            },
+            {
+              "index": 3,
+              "text": "Gaidhane",
+              "fontSize": 16
+            },
+            {
+              "index": 4,
+              "text": ", A. D., ",
+              "fontSize": 16
+            },
+            {
+              "index": 5,
+              "text": "Drgoňa",
+              "fontSize": 16
+            },
+            {
+              "index": 6,
+              "text": ", J., Chandan, V., ",
+              "fontSize": 16
+            },
+            {
+              "index": 7,
+              "text": "Halappanavar",
+              "fontSize": 16
+            },
+            {
+              "index": 8,
+              "text": ", M. M., Liu, F., & Cao, Y. (2024). ",
+              "fontSize": 16
+            },
+            {
+              "index": 9,
+              "text": "Physics-constrained",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 10,
+              "text": " graph modeling for building thermal ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 11,
+              "text": "dynamics",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 12,
+              "text": ". ",
+              "fontSize": 16
+            },
+            {
+              "index": 13,
+              "text": "Energy and AI",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 14,
+              "text": ", 16, 100346. ",
+              "fontSize": 16
+            },
+            {
+              "index": 15,
+              "text": "https://doi.org/10.1016/j.egyai.2024.100346",
+              "fontSize": 16
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "[2] Pfaff, T., Fortunato, M., Sanchez‐Gonzalez, A., & Battaglia, P. W. (2021). Learning mesh‐based simulation with graph networks. In International Conference on Learning Representations (ICLR).",
+          "lineSpacingPercent": 100000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "[2] ",
+              "fontSize": 16
+            },
+            {
+              "index": 2,
+              "text": "Pfaff, ",
+              "fontSize": 16
+            },
+            {
+              "index": 3,
+              "text": "T",
+              "fontSize": 16
+            },
+            {
+              "index": 4,
+              "text": "., ",
+              "fontSize": 16
+            },
+            {
+              "index": 5,
+              "text": "Fortunato",
+              "fontSize": 16
+            },
+            {
+              "index": 6,
+              "text": ", M., Sanchez‐Gonzalez, A., & Battaglia, P. W. (2021). ",
+              "fontSize": 16
+            },
+            {
+              "index": 7,
+              "text": "Learning ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 8,
+              "text": "mesh‐based",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 9,
+              "text": " simulation ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 10,
+              "text": "with",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 11,
+              "text": " graph networks",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 12,
+              "text": ". In ",
+              "fontSize": 16
+            },
+            {
+              "index": 13,
+              "text": "International ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 14,
+              "text": "Conference",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 15,
+              "text": " on Learning ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 16,
+              "text": "Representations",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 17,
+              "text": " (ICLR)",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 18,
+              "text": ".",
+              "fontSize": 16
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 3,
+          "text": "[3] Behl, M. (2018). Thermal RC modeling [Lecture 4 slides]. Principles of Modeling for Cyber-Physical Systems, University of Virginia.",
+          "lineSpacingPercent": 100000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "[3] ",
+              "fontSize": 16
+            },
+            {
+              "index": 2,
+              "text": "Behl",
+              "fontSize": 16
+            },
+            {
+              "index": 3,
+              "text": ", M. (2018). ",
+              "fontSize": 16
+            },
+            {
+              "index": 4,
+              "text": "Thermal RC modeling",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 5,
+              "text": " [Lecture 4 slides]. Principles of Modeling for Cyber-Physical ",
+              "fontSize": 16
+            },
+            {
+              "index": 6,
+              "text": "Systems",
+              "fontSize": 16
+            },
+            {
+              "index": 7,
+              "text": ", ",
+              "fontSize": 16
+            },
+            {
+              "index": 8,
+              "text": "University",
+              "fontSize": 16
+            },
+            {
+              "index": 9,
+              "text": " of Virginia.",
+              "fontSize": 16
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 4,
+          "text": "[4] Lin, Y., Schuman, E., Levin, M. S., McVey, J. R. III, Lerond, J., Sivaraman, C., & Chandan, V. (2021). Dataset description and data cleaning for Systems Engineering Building (SEB) dataset: Benchmark Datasets Project (PNNL-XXXXX). Pacific Northwest National Laboratory.",
+          "lineSpacingPercent": 100000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "[4] ",
+              "fontSize": 16
+            },
+            {
+              "index": 2,
+              "text": "Lin, Y., Schuman, E., Levin, M. S., ",
+              "fontSize": 16
+            },
+            {
+              "index": 3,
+              "text": "McVey",
+              "fontSize": 16
+            },
+            {
+              "index": 4,
+              "text": ", J. R. III, ",
+              "fontSize": 16
+            },
+            {
+              "index": 5,
+              "text": "Lerond",
+              "fontSize": 16
+            },
+            {
+              "index": 6,
+              "text": ", J., Sivaraman, C., & Chandan, V. (2021). ",
+              "fontSize": 16
+            },
+            {
+              "index": 7,
+              "text": "Dataset",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 8,
+              "text": " description and data ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 9,
+              "text": "cleaning",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 10,
+              "text": " for ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 11,
+              "text": "Systems",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 12,
+              "text": " Engineering Building (SEB) ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 13,
+              "text": "dataset",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 14,
+              "text": ": Benchmark ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 15,
+              "text": "Datasets",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 16,
+              "text": " Project",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 17,
+              "text": " (PNNL-XXXXX). Pacific Northwest National ",
+              "fontSize": 16
+            },
+            {
+              "index": 18,
+              "text": "Laboratory",
+              "fontSize": 16
+            },
+            {
+              "index": 19,
+              "text": ".",
+              "fontSize": 16
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 5,
+          "text": "[5] Drgona, J., Tuor, A., Koch, J., Shapiro, M., Jacob, B., & Vrabie, D. (2023). NeuroMANCER: Neural modules with adaptive nonlinear constraints and efficient regularizations. Retrieved from https://github.com/pnnl/neuromancer",
+          "lineSpacingPercent": 100000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "[5] ",
+              "fontSize": 16
+            },
+            {
+              "index": 2,
+              "text": "Drgona",
+              "fontSize": 16
+            },
+            {
+              "index": 3,
+              "text": ", J., ",
+              "fontSize": 16
+            },
+            {
+              "index": 4,
+              "text": "Tuor",
+              "fontSize": 16
+            },
+            {
+              "index": 5,
+              "text": ", A., Koch, J., Shapiro, M., Jacob, B., & ",
+              "fontSize": 16
+            },
+            {
+              "index": 6,
+              "text": "Vrabie",
+              "fontSize": 16
+            },
+            {
+              "index": 7,
+              "text": ", D. (2023). ",
+              "fontSize": 16
+            },
+            {
+              "index": 8,
+              "text": "NeuroMANCER",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 9,
+              "text": ": Neural modules ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 10,
+              "text": "with",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 11,
+              "text": " adaptive ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 12,
+              "text": "nonlinear",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 13,
+              "text": " ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 14,
+              "text": "constraints",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 15,
+              "text": " and efficient ",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 16,
+              "text": "regularizations",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 17,
+              "text": ". ",
+              "fontSize": 16
+            },
+            {
+              "index": 18,
+              "text": "Retrieved",
+              "fontSize": 16
+            },
+            {
+              "index": 19,
+              "text": " ",
+              "fontSize": 16
+            },
+            {
+              "index": 20,
+              "text": "from",
+              "fontSize": 16
+            },
+            {
+              "index": 21,
+              "text": " ",
+              "fontSize": 16
+            },
+            {
+              "index": 22,
+              "text": "https://github.com/pnnl/neuromancer",
+              "fontSize": 16
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 6,
+          "text": "[6] Petrichenko, K., & Vautrin, A. (2024, April 4). More efficient and flexible buildings are key to clean energy transitions. International Energy Agency. https://www.iea.org/commentaries/more-efficient-and-flexible-buildings-are-key-to-clean-energy-transitions",
+          "lineSpacingPercent": 100000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "[6] ",
+              "fontSize": 16
+            },
+            {
+              "index": 2,
+              "text": "Petrichenko",
+              "fontSize": 16
+            },
+            {
+              "index": 3,
+              "text": ", K., & Vautrin, A. (2024, April 4). More efficient and flexible buildings are key to clean ",
+              "fontSize": 16
+            },
+            {
+              "index": 4,
+              "text": "energy",
+              "fontSize": 16
+            },
+            {
+              "index": 5,
+              "text": " transitions. International Energy Agency. ",
+              "fontSize": 16
+            },
+            {
+              "index": 6,
+              "text": "https://www.iea.org/commentaries/more-efficient-and-flexible-buildings-are-key-to-clean-energy-transitions",
+              "fontSize": 16
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 7,
+          "text": "[7] U.S. Energy Information Administration. (2023, January 17). U.S. commercial buildings consumed more fuel for space heating than anything else in 2018. Today in Energy. https://www.eia.gov/todayinenergy/detail.php?id=55199",
+          "lineSpacingPercent": 100000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "[7] U.S. Energy Information Administration. (2023, ",
+              "fontSize": 16
+            },
+            {
+              "index": 2,
+              "text": "January",
+              "fontSize": 16
+            },
+            {
+              "index": 3,
+              "text": " 17). U.S. commercial buildings ",
+              "fontSize": 16
+            },
+            {
+              "index": 4,
+              "text": "consumed",
+              "fontSize": 16
+            },
+            {
+              "index": 5,
+              "text": " more fuel for ",
+              "fontSize": 16
+            },
+            {
+              "index": 6,
+              "text": "space",
+              "fontSize": 16
+            },
+            {
+              "index": 7,
+              "text": " ",
+              "fontSize": 16
+            },
+            {
+              "index": 8,
+              "text": "heating",
+              "fontSize": 16
+            },
+            {
+              "index": 9,
+              "text": " ",
+              "fontSize": 16
+            },
+            {
+              "index": 10,
+              "text": "than",
+              "fontSize": 16
+            },
+            {
+              "index": 11,
+              "text": " ",
+              "fontSize": 16
+            },
+            {
+              "index": 12,
+              "text": "anything",
+              "fontSize": 16
+            },
+            {
+              "index": 13,
+              "text": " ",
+              "fontSize": 16
+            },
+            {
+              "index": 14,
+              "text": "else",
+              "fontSize": 16
+            },
+            {
+              "index": 15,
+              "text": " in 2018. ",
+              "fontSize": 16
+            },
+            {
+              "index": 16,
+              "text": "Today",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 17,
+              "text": " in Energy",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 18,
+              "text": ". ",
+              "fontSize": 16
+            },
+            {
+              "index": 19,
+              "text": "https://www.eia.gov/todayinenergy/detail.php?id=55199",
+              "fontSize": 16
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 8,
+          "text": "[8] Dong, B., Li, Z., Rahman, S. M. M., & Vega, R. (2016). A hybrid model approach for forecasting future residential electricity consumption. Energy and Buildings, 117, 341–351. https://doi.org/10.1016/j.enbuild.2015.09.033",
+          "lineSpacingPercent": 100000,
+          "runs": [
+            {
+              "index": 1,
+              "text": "[8] ",
+              "fontSize": 16
+            },
+            {
+              "index": 2,
+              "text": "Dong, B., Li, Z., Rahman, S. M. M., & Vega, R. (2016). A ",
+              "fontSize": 16
+            },
+            {
+              "index": 3,
+              "text": "hybrid",
+              "fontSize": 16
+            },
+            {
+              "index": 4,
+              "text": " model ",
+              "fontSize": 16
+            },
+            {
+              "index": 5,
+              "text": "approach",
+              "fontSize": 16
+            },
+            {
+              "index": 6,
+              "text": " for ",
+              "fontSize": 16
+            },
+            {
+              "index": 7,
+              "text": "forecasting",
+              "fontSize": 16
+            },
+            {
+              "index": 8,
+              "text": " future ",
+              "fontSize": 16
+            },
+            {
+              "index": 9,
+              "text": "residential",
+              "fontSize": 16
+            },
+            {
+              "index": 10,
+              "text": " ",
+              "fontSize": 16
+            },
+            {
+              "index": 11,
+              "text": "electricity",
+              "fontSize": 16
+            },
+            {
+              "index": 12,
+              "text": " ",
+              "fontSize": 16
+            },
+            {
+              "index": 13,
+              "text": "consumption",
+              "fontSize": 16
+            },
+            {
+              "index": 14,
+              "text": ". ",
+              "fontSize": 16
+            },
+            {
+              "index": 15,
+              "text": "Energy and Buildings, 117",
+              "fontSize": 16,
+              "italic": true
+            },
+            {
+              "index": 16,
+              "text": ", 341–351. ",
+              "fontSize": 16
+            },
+            {
+              "index": 17,
+              "text": "https://doi.org/10.1016/j.enbuild.2015.09.033",
+              "fontSize": 16
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    }
+  ],
+  "composeRuns": []
+}

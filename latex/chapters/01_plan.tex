@@ -39,11 +39,11 @@ retain useful performance on a larger grid?}}
   graph-actor weights learned on \texttt{bus14} retain useful performance on
   WCCI, and when zero-shot transfer is insufficient, does source initialization
   improve target-grid learning over training from scratch?
-  {\color{red}Chapters~\ref{ch:encoder-inputs}--\ref{ch:screen-f-transfer}
+  {\color{red}Chapters~\ref{ch:wcci-transfer}--\ref{ch:discussion-conclusion}
   diagnose input compatibility, define the target protocol, test whether a
   frozen source encoder remains useful after replacing its action heads, and
   finally compare complete-policy zero-shot transfer with scratch training and
-  fine-tuning.}
+  fine-tuning before answering the combined research question.}
 \end{enumerate}
 
 \section{Contributions}
@@ -60,7 +60,7 @@ retain useful performance on a larger grid?}}
 
   \item \textbf{A shared graph actor with size-independent candidate-action
   scoring.} Chapters~\ref{ch:methods} and~\ref{ch:experiments} define the local
-  graph, score actions from the nodes they affect, and screen representation,
+  graph, score actions from the nodes they affect, screen representation,
   message-passing, graph-readout, and action-scoring choices.
 
   \item \textbf{A diagnosis and correction of cross-grid input mismatch.}
@@ -70,6 +70,6 @@ retain useful performance on a larger grid?}}
   \item \textbf{A controlled WCCI transfer and adaptation study.}
   {\color{red}Chapters~\ref{ch:wcci-transfer}--\ref{ch:screen-f-transfer}
   separate encoder-only transfer from complete-policy transfer, compare
-  original and corrected input preprocessing, and evaluate zero-shot
+  original and transformed input preprocessing, and evaluate zero-shot
   deployment, WCCI training from scratch, and source-initialized adaptation.}
 \end{itemize}

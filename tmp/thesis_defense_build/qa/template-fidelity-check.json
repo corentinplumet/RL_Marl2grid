@@ -1,0 +1,13 @@
+{
+  "status": "pass",
+  "checkedAt": "2026-08-31T07:01:20.066Z",
+  "workspace": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build",
+  "finalPptx": "/Users/corentinplumet/Documents/RL_Marl2grid/master_thesis_defense_EPFL.pptx",
+  "starterPptx": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-starter.pptx",
+  "mapPath": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/template-frame-map.json",
+  "starterLayoutDir": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/epfl_inspect/template-starter-layout",
+  "finalLayoutDir": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build/final-inspect/layouts",
+  "editDir": "/Users/corentinplumet/Documents/RL_Marl2grid/tmp/thesis_defense_build",
+  "issueCount": 0,
+  "issues": []
+}

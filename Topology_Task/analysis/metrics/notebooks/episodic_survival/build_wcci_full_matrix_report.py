@@ -39,7 +39,7 @@ every arm so the pages can be read against each other:
 
 | element | what it shows |
 |---|---|
-| **left row strip** | the architecture, coloured by input condition (`NL` raw / `NLS` physically scaled) |
+| **left row strip** | the architecture, coloured by input condition (raw or physically scaled features) |
 | **heat map(s)** | one panel per gate condition, architecture (row) x reduced action space (column) |
 | **bars on top** | the column marginal, with the number of cells behind it |
 | **bars on the right** | the *matched* difference between the two panels, cell by cell |
@@ -105,6 +105,16 @@ def save_figure(fig, stem):
     fig.savefig(EXPORT_DIR / f"{stem}.png", dpi=170, bbox_inches="tight")
 
 
+def display_variant(row):
+    """Replace internal experiment prefixes with report-facing terminology."""
+    row = str(row)
+    if row.startswith("NLS_"):
+        return "scaled_" + row.removeprefix("NLS_")
+    if row.startswith("NL_"):
+        return "raw_" + row.removeprefix("NL_")
+    return row
+
+
 # --- the one derived column ------------------------------------------------
 # `load()` classifies by adaptation route. `cas_hl_gmax_delta_*` is the same
 # route (zero-shot, no target-grid gradient) on a *different backbone*:
@@ -123,6 +133,7 @@ ARM_ORDER = [
     "bus14 zero-shot (gmax-delta)",
     "bus14 zero-shot + AIB",
     "MAPPO fine-tune (conservative)",
+    "MAPPO fine-tune (Gmax-delta)",
     "MAPPO fine-tune (aggressive)",
     "BC on greedy labels",
     "MAPPO scratch",
@@ -517,6 +528,7 @@ matrix_panel(
     delta_label="gate effect (pp)",
     delta_note="right bars: mean over caps of (gated − ungated), matched cells only",
     panel_colors={"ungated": GATE_COLORS["ungated"], "local rho 0.95": GATE_COLORS["gated"]},
+    row_labels={row: display_variant(row) for row in CORE_ORDER},
     stem="02_core_zero_shot_hard",
 )
 
@@ -634,6 +646,7 @@ matrix_panel(
     delta_label="gate effect (pp)",
     delta_note="right bars: mean over caps of (gated − ungated)",
     panel_colors={"ungated": GATE_COLORS["ungated"], "local rho 0.95": GATE_COLORS["gated"]},
+    row_labels={row: display_variant(row) for row in AIB_ORDER},
     stem="04_aib_matrix_hard",
 )
 
@@ -749,6 +762,7 @@ matrix_panel(
     delta_label="gate effect (pp)",
     delta_note="right bars: mean over caps of (gated - ungated)",
     panel_colors={"ungated": GATE_COLORS["ungated"], "local rho 0.95": GATE_COLORS["gated"]},
+    row_labels={row: display_variant(row) for row in GMAX_ORDER},
     stem="06_gmax_matrix_hard",
 )
 
@@ -1112,6 +1126,100 @@ display(factor_contrasts)
 ''')
 
 
+# ---------------------------------------------------------------- 8. ftgd
+md(r"""
+## 8. Fine-tuning the gmax-delta backbone — the fourth complete block
+
+Section 5 transfers the gmax-delta backbone zero-shot. This block fine-tunes it
+on WCCI under the conservative recipe — annealed actor learning rate, gentler
+PPO updates, a 5M-step budget — at mk32 and mk64, and evaluates the final
+weights in both gate conditions. Seven architectures, four cells each, nothing
+missing.
+
+It is a separate arm from `MAPPO fine-tune (conservative)` because the backbone
+differs: those runs start from the plain `cas_hl` sweep, these from
+`cas_hl_gmax_delta`. Same target recipe, same caps, same evaluation — so the
+pair below is the backbone contrast with everything else held fixed, which is
+the only reason to have run it.
+""")
+
+code(r'''
+ftgd = runs.loc[runs["arm"] == "MAPPO fine-tune (Gmax-delta)"].copy()
+FTGD_CAPS = W.caps_in(ftgd)
+FTGD_HARD = {gate: cell_matrix(ftgd.loc[ftgd["gate"] == gate], "variant", "mk_int", "hard_pct")
+             for gate in ("ungated", "gated")}
+FTGD_ORDER = order_by_mean(*FTGD_HARD.values())
+FTGD_HARD = {("local rho 0.95" if k == "gated" else k):
+             v.reindex(index=FTGD_ORDER, columns=FTGD_CAPS) for k, v in FTGD_HARD.items()}
+
+ftgd_gate_pairs = W.matched_pairs(ftgd, "gate", ("ungated", "gated"), ["variant", "mk"],
+                                  value="hard_pct")
+matrix_panel(
+    FTGD_HARD,
+    title=f"Gmax-delta backbone, conservatively fine-tuned on WCCI — "
+          f"{len(FTGD_ORDER)} architectures x {len(FTGD_CAPS)} reduced action spaces, "
+          f"both gate conditions complete",
+    metric_label=f"survival on the {N_HARD} difficult chronics (%)",
+    floor=DN_HARD,
+    delta=ftgd_gate_pairs.groupby("variant")["delta"].mean(),
+    delta_label="gate effect (pp)",
+    delta_note="right bars: mean over caps of (gated − ungated)",
+    panel_colors={"ungated": GATE_COLORS["ungated"], "local rho 0.95": GATE_COLORS["gated"]},
+    row_labels={row: display_variant(row) for row in FTGD_ORDER},
+    stem="08_ftgd_matrix_hard",
+)
+
+missing_ftgd = sorted(set(CORE_ORDER) - set(FTGD_ORDER))
+if missing_ftgd:
+    display(Markdown(
+        f"_{len(FTGD_ORDER)} architectures evaluated; "
+        f"`{'`, `'.join(missing_ftgd)}` absent from this campaign._"
+    ))
+''')
+
+
+md(r"""
+### The backbone contrast, cell by cell
+
+Both fine-tuned arms exist at mk32 and mk64 in both gate conditions, so the two
+can be paired on architecture, cap and gate. What survives that pairing is the
+effect of the bus14 backbone the fine-tune started from, and nothing else.
+""")
+
+code(r'''
+ft_backbones = runs.loc[
+    runs["arm"].isin(["MAPPO fine-tune (conservative)", "MAPPO fine-tune (Gmax-delta)"])
+    & runs["mk"].isin(FTGD_CAPS)
+].copy()
+# The conservative arm carries both `final` and `best test` weights while the
+# gmax-delta arm carries only `final`; matched_pairs resolves a cell with `max`,
+# which would give the plain backbone two draws to the gmax-delta arm's one.
+ft_backbones = ft_backbones.loc[ft_backbones["selection"] == "last"]
+
+ftgd_backbone_rows = []
+for gate in ("ungated", "gated"):
+    pairs = W.matched_pairs(
+        ft_backbones.loc[ft_backbones["gate"] == gate], "arm",
+        ("MAPPO fine-tune (conservative)", "MAPPO fine-tune (Gmax-delta)"),
+        ["variant", "mk"], value="hard_pct",
+    )
+    if pairs.empty:
+        continue
+    mean_d, lo, hi = W.paired_bootstrap(pairs["delta"])
+    ftgd_backbone_rows.append({
+        "gate": gate, "cells": len(pairs), "mean_pp": mean_d,
+        "ci_low": lo, "ci_high": hi,
+        "cells_favouring_gmax": int((pairs["delta"] > 0).sum()),
+    })
+ftgd_backbone = pd.DataFrame(ftgd_backbone_rows)
+display(Markdown(
+    "#### gmax-delta backbone minus plain `cas_hl` backbone, both conservatively "
+    "fine-tuned, `final` weights only"
+))
+display(ftgd_backbone)
+''')
+
+
 # ---------------------------------------------------------------- 9. chronics
 md(r"""
 ## 9. Chronic by chronic: the best runs against their matching greedy oracle
@@ -1362,6 +1470,9 @@ so a number on any page can be traced back to the cell it came from.
 
 code(r'''
 exports = {
+    "08_ftgd_hard_ungated.csv": FTGD_HARD["ungated"].reset_index(),
+    "08_ftgd_hard_gated.csv": FTGD_HARD["local rho 0.95"].reset_index(),
+    "08_ftgd_backbone_contrast.csv": ftgd_backbone,
     "inventory_by_arm_cap_gate.csv": inventory,
     "core_hard_ungated.csv": CORE_HARD["ungated"].reset_index(),
     "core_hard_gated_rho095.csv": CORE_HARD["local rho 0.95"].reset_index(),

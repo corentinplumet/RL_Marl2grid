@@ -1,0 +1,1297 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/jyx0ra1s",
+    "id": "jyx0ra1s",
+    "slide": 4,
+    "layoutId": "/ppt/slideLayouts/slideLayout8.xml",
+    "layoutName": "Title_Content_Image1",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 960,
+      "height": 540
+    }
+  },
+  "theme": {
+    "colorSchemeName": "EPFL - New Colors 2019",
+    "colors": {
+      "accent1": "#E30613",
+      "accent2": "#00A79F",
+      "accent3": "#413C3A",
+      "accent4": "#007480",
+      "accent5": "#F39869",
+      "accent6": "#B51F1F",
+      "dk1": "#413C3A",
+      "lt1": "#FFFFFF",
+      "dk2": "#413C3A",
+      "lt2": "#CAC7C7",
+      "hlink": "#ED6E9C",
+      "folHlink": "#4F8FCC"
+    },
+    "fontScheme": {
+      "name": "EPFL_Beta2",
+      "majorFont": {
+        "latinTypeface": "Franklin Gothic Demi Cond"
+      },
+      "minorFont": {
+        "latinTypeface": "Arial"
+      }
+    },
+    "typefaces": [
+      "Arial",
+      "Franklin Gothic Demi Cond",
+      "Times New Roman"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout8.xml",
+      "name": "Title_Content_Image1",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout8.xml/3",
+          "id": "3",
+          "name": "Content Placeholder 2",
+          "bbox": [
+            95,
+            164.17,
+            481,
+            355.57
+          ],
+          "text": "Modifier les styles du texte du masque\nDeuxième niveau\nTroisième niveau\nQuatrième niveau\nCinquième niveau",
+          "textPreview": "Modifier les styles du texte du masque | Deuxième niveau | Troisième niveau | Quatrième niveau | Cinquième niveau",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifier les styles du texte du masque\nDeuxième niveau\nTroisième niveau\nQuatrième niveau\nCinquième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifier les styles du texte du masque\nDeuxième niveau\nTroisième niveau\nQuatrième niveau\nCinquième niveau"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout8.xml/8",
+          "id": "8",
+          "name": "Espace réservé pour une image  7",
+          "bbox": [
+            576,
+            0,
+            330.17,
+            540
+          ],
+          "text": "Cliquez sur l'icône pour ajouter une image",
+          "textPreview": "Cliquez sur l'icône pour ajouter une image",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Cliquez sur l'icône pour ajouter une image",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Cliquez sur l'icône pour ajouter une image"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout8.xml/5",
+          "id": "5",
+          "name": "Titre 4",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "Modifiez le style du titre",
+          "textPreview": "Modifiez le style du titre",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifiez le style du titre",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifiez le style du titre"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout8.xml/6",
+          "id": "6",
+          "name": "Espace réservé de la date 5",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "WELCOME TO EPFL",
+          "textPreview": "WELCOME TO EPFL",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "WELCOME TO EPFL",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "WELCOME TO EPFL"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 5,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout8.xml/11",
+          "id": "11",
+          "name": "Espace réservé du pied de page 10",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "Speaker",
+          "textPreview": "Speaker",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Speaker",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Speaker"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 6,
+          "kind": "shape",
+          "scope": "layout",
+          "aid": "template/layout//ppt/slideLayouts/slideLayout8.xml/12",
+          "id": "12",
+          "name": "Espace réservé du numéro de diapositive 11",
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "text": "‹N°›",
+          "textPreview": "‹N°›",
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹N°›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹N°›"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "type": "master",
+      "elements": [
+        {
+          "order": 1,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/2",
+          "id": "2",
+          "name": "Title Placeholder 1",
+          "bbox": [
+            95,
+            18.85,
+            385,
+            112.62
+          ],
+          "geometry": "rect",
+          "text": "Modifiez le style du titre",
+          "textPreview": "Modifiez le style du titre",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 0,
+              "right": 7.56,
+              "bottom": 4.91,
+              "left": 18.9
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifiez le style du titre",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifiez le style du titre"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/3",
+          "id": "3",
+          "name": "Text Placeholder 2",
+          "bbox": [
+            95,
+            164.17,
+            811.17,
+            355.57
+          ],
+          "geometry": "rect",
+          "text": "Modifier les styles du texte du masque\nDeuxième niveau\nTroisième niveau\nQuatrième niveau\nCinquième niveau",
+          "textPreview": "Modifier les styles du texte du masque | Deuxième niveau | Troisième niveau | Quatrième niveau | Cinquième niveau",
+          "resolvedTextStyle": {
+            "vertical": 1,
+            "autoFit": "shrinkText",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 18.9
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Modifier les styles du texte du masque",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Modifier les styles du "
+                },
+                {
+                  "index": 2,
+                  "text": "texte"
+                },
+                {
+                  "index": 3,
+                  "text": " du masque"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "text": "Deuxième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Deuxième"
+                },
+                {
+                  "index": 2,
+                  "text": " "
+                },
+                {
+                  "index": 3,
+                  "text": "niveau"
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "text": "Troisième niveau\nQuatrième niveau\nCinquième niveau",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Troisième"
+                },
+                {
+                  "index": 2,
+                  "text": " "
+                },
+                {
+                  "index": 3,
+                  "text": "niveau"
+                },
+                {
+                  "index": 4,
+                  "text": "\n"
+                },
+                {
+                  "index": 5,
+                  "text": "Quatrième"
+                },
+                {
+                  "index": 6,
+                  "text": " "
+                },
+                {
+                  "index": 7,
+                  "text": "niveau"
+                },
+                {
+                  "index": 8,
+                  "text": "\n"
+                },
+                {
+                  "index": 9,
+                  "text": "Cinquième"
+                },
+                {
+                  "index": 10,
+                  "text": " "
+                },
+                {
+                  "index": 11,
+                  "text": "niveau"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/4",
+          "id": "4",
+          "name": "Date Placeholder 3",
+          "bbox": [
+            -128.23,
+            291.7,
+            350.77,
+            95.7
+          ],
+          "rotation": 270,
+          "geometry": "rect",
+          "text": "WELCOME TO EPFL",
+          "textPreview": "WELCOME TO EPFL",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "WELCOME TO EPFL",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "WELCOME TO EPFL"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/5",
+          "id": "5",
+          "name": "Footer Placeholder 4",
+          "bbox": [
+            747.09,
+            196.75,
+            372,
+            53.83
+          ],
+          "rotation": 270,
+          "geometry": "rect",
+          "text": "Speaker",
+          "textPreview": "Speaker",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "vertical": 1,
+            "verticalAlignment": "middle",
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "Speaker",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "Speaker"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 5,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/6",
+          "id": "6",
+          "name": "Slide Number Placeholder 5",
+          "bbox": [
+            906.17,
+            20.5,
+            53.83,
+            17.17
+          ],
+          "geometry": "rect",
+          "text": "‹N°›",
+          "textPreview": "‹N°›",
+          "resolvedTextStyle": {
+            "anchor": 1,
+            "vertical": 1,
+            "verticalAlignment": "top",
+            "insets": {
+              "top": 0,
+              "right": 9.45,
+              "bottom": 0,
+              "left": 9.45
+            }
+          },
+          "paragraphs": [
+            {
+              "index": 1,
+              "text": "‹N°›",
+              "runs": [
+                {
+                  "index": 1,
+                  "text": "‹N°›"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "order": 6,
+          "kind": "image",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/15",
+          "id": "15",
+          "name": "Image 12",
+          "bbox": [
+            13.68,
+            13.89,
+            68.66,
+            29.71
+          ],
+          "contentType": "image/png",
+          "asset": {
+            "assetId": "/ppt/media/image1.png",
+            "contentType": "image/png",
+            "byteLength": 17196
+          },
+          "fillImage": {
+            "assetId": "/ppt/media/image1.png",
+            "contentType": "image/png",
+            "byteLength": 17196
+          }
+        },
+        {
+          "order": 7,
+          "kind": "shape",
+          "scope": "master",
+          "aid": "template/master//ppt/slideMasters/slideMaster1.xml/14",
+          "id": "14",
+          "name": "Rectangle 13",
+          "bbox": [
+            45.14,
+            514.2,
+            4.8,
+            6.28
+          ],
+          "rotation": 270,
+          "geometry": "rect",
+          "resolvedTextStyle": {
+            "anchor": 2,
+            "verticalAlignment": "middle"
+          },
+          "fillColor": "accent1",
+          "lineWidth": 0
+        }
+      ]
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/sna103ap",
+      "id": "7",
+      "name": "Titre 6",
+      "bbox": [
+        95,
+        18.85,
+        822,
+        112.62
+      ],
+      "text": "Introduction – Motivation & Objective",
+      "textPreview": "Introduction – Motivation & Objective",
+      "resolvedFontSize": 42.67,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 42.67,
+        "typeface": "Franklin Gothic Demi Cond",
+        "color": "tx1",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "insets": {
+          "top": 0,
+          "right": 7.56,
+          "bottom": 4.91,
+          "left": 18.9
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Introduction – Motivation & Objective"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Introduction – Motivation & Objective",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Introduction – Motivation & Objective"
+            }
+          ],
+          "bulletCharacter": "",
+          "lineSpacingPercent": 80000
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/doj29oba",
+      "id": "6",
+      "name": "Espace réservé du numéro de diapositive 5",
+      "bbox": [
+        906.17,
+        20.5,
+        53.83,
+        17.17
+      ],
+      "text": "4",
+      "textPreview": "4",
+      "resolvedFontSize": 9.33,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "vertical": 1,
+        "fontSize": 9.33,
+        "typeface": "Franklin Gothic Demi Cond",
+        "color": "tx1",
+        "bold": true,
+        "alignment": "center",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 9.45,
+          "bottom": 0,
+          "left": 9.45
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "4"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "4",
+          "lineSpacingPercent": 100000,
+          "resolvedTextStyle": {
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "4",
+              "fontSize": 9.33,
+              "typeface": "Franklin Gothic Demi Cond",
+              "color": "#413C3A",
+              "bold": true,
+              "textTransform": "none"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ql8jytsj",
+      "id": "5",
+      "name": "ZoneTexte 4",
+      "bbox": [
+        416.35,
+        137.54,
+        489.82,
+        162.37
+      ],
+      "geometry": "rect",
+      "text": "Challenges in existing approaches:\nWhite-box RC models capture physics but require hand-tuned parameters (often unknown in real buildings).\nBlack-box ML models can fit data well but offer no physical guarantees (risk of unsafe or inefficient predictions).",
+      "textPreview": "Challenges in existing approaches: | White-box RC models capture physics but require hand-tuned parameters (often unknown in real buildin...",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 7,
+        "lines": [
+          {
+            "index": 1,
+            "text": "§Challenges in existing approaches:"
+          },
+          {
+            "index": 2,
+            "text": "§White-box RC models capture physics but"
+          },
+          {
+            "index": 3,
+            "text": "require hand-tuned parameters (often unknown"
+          },
+          {
+            "index": 4,
+            "text": "in real buildings)."
+          },
+          {
+            "index": 5,
+            "text": "§Black-box ML models can fit data well but offer"
+          },
+          {
+            "index": 6,
+            "text": "no physical guarantees (risk of unsafe or"
+          },
+          {
+            "index": 7,
+            "text": "inefficient predictions)."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Challenges in existing approaches:",
+          "resolvedTextStyle": {
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Challenges in ",
+              "color": "#000000",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "existing",
+              "color": "#000000",
+              "bold": true
+            },
+            {
+              "index": 3,
+              "text": " ",
+              "color": "#000000",
+              "bold": true
+            },
+            {
+              "index": 4,
+              "text": "approaches",
+              "color": "#000000",
+              "bold": true
+            },
+            {
+              "index": 5,
+              "text": ":",
+              "color": "#000000",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "White-box RC models capture physics but require hand-tuned parameters (often unknown in real buildings).",
+          "resolvedTextStyle": {
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "White-box RC ",
+              "color": "#000000",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "models",
+              "color": "#000000",
+              "bold": true
+            },
+            {
+              "index": 3,
+              "text": " capture ",
+              "color": "#000000"
+            },
+            {
+              "index": 4,
+              "text": "physics",
+              "color": "#000000"
+            },
+            {
+              "index": 5,
+              "text": " but ",
+              "color": "#000000"
+            },
+            {
+              "index": 6,
+              "text": "require",
+              "color": "#000000"
+            },
+            {
+              "index": 7,
+              "text": " hand-",
+              "color": "#000000"
+            },
+            {
+              "index": 8,
+              "text": "tuned",
+              "color": "#000000"
+            },
+            {
+              "index": 9,
+              "text": " ",
+              "color": "#000000"
+            },
+            {
+              "index": 10,
+              "text": "parameters",
+              "color": "#000000"
+            },
+            {
+              "index": 11,
+              "text": " (",
+              "color": "#000000"
+            },
+            {
+              "index": 12,
+              "text": "often",
+              "color": "#000000"
+            },
+            {
+              "index": 13,
+              "text": " ",
+              "color": "#000000"
+            },
+            {
+              "index": 14,
+              "text": "unknown",
+              "color": "#000000"
+            },
+            {
+              "index": 15,
+              "text": " in real buildings).",
+              "color": "#000000"
+            }
+          ],
+          "marginLeft": 342900
+        },
+        {
+          "index": 3,
+          "text": "Black-box ML models can fit data well but offer no physical guarantees (risk of unsafe or inefficient predictions).",
+          "resolvedTextStyle": {
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Black-box ML ",
+              "color": "#000000",
+              "bold": true
+            },
+            {
+              "index": 2,
+              "text": "models",
+              "color": "#000000",
+              "bold": true
+            },
+            {
+              "index": 3,
+              "text": " can fit data ",
+              "color": "#000000"
+            },
+            {
+              "index": 4,
+              "text": "well",
+              "color": "#000000"
+            },
+            {
+              "index": 5,
+              "text": " but ",
+              "color": "#000000"
+            },
+            {
+              "index": 6,
+              "text": "offer",
+              "color": "#000000"
+            },
+            {
+              "index": 7,
+              "text": " no ",
+              "color": "#000000"
+            },
+            {
+              "index": 8,
+              "text": "physical",
+              "color": "#000000"
+            },
+            {
+              "index": 9,
+              "text": " ",
+              "color": "#000000"
+            },
+            {
+              "index": 10,
+              "text": "guarantees",
+              "color": "#000000"
+            },
+            {
+              "index": 11,
+              "text": " (",
+              "color": "#000000"
+            },
+            {
+              "index": 12,
+              "text": "risk",
+              "color": "#000000"
+            },
+            {
+              "index": 13,
+              "text": " of ",
+              "color": "#000000"
+            },
+            {
+              "index": 14,
+              "text": "unsafe",
+              "color": "#000000"
+            },
+            {
+              "index": 15,
+              "text": " or inefficient ",
+              "color": "#000000"
+            },
+            {
+              "index": 16,
+              "text": "predictions",
+              "color": "#000000"
+            },
+            {
+              "index": 17,
+              "text": ").",
+              "color": "#000000"
+            }
+          ],
+          "marginLeft": 342900
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/x8vaxsfe",
+      "id": "15",
+      "name": "ZoneTexte 14",
+      "bbox": [
+        84,
+        424.4,
+        833,
+        75.13
+      ],
+      "geometry": "rect",
+      "text": "The objective:\nLeverage building topology via Graph Neural Networks (GNNs) and embed first-principles heat-flow laws for models that are both accurate and physically interpretable.",
+      "textPreview": "The objective: | Leverage building topology via Graph Neural Networks (GNNs) and embed first-principles heat-flow laws for models that ar...",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "Arial",
+        "color": "dk1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "§The objective:"
+          },
+          {
+            "index": 2,
+            "text": "§Leverage building topology via Graph Neural Networks (GNNs) and embed first-principles"
+          },
+          {
+            "index": 3,
+            "text": "heat-flow laws for models that are both accurate and physically interpretable."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "The objective:",
+          "resolvedTextStyle": {
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "The objective:",
+              "color": "#000000",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "Leverage building topology via Graph Neural Networks (GNNs) and embed first-principles heat-flow laws for models that are both accurate and physically interpretable.",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Leverage",
+              "color": "#000000"
+            },
+            {
+              "index": 2,
+              "text": " building ",
+              "color": "#000000"
+            },
+            {
+              "index": 3,
+              "text": "topology",
+              "color": "#000000"
+            },
+            {
+              "index": 4,
+              "text": " via Graph Neural Networks (",
+              "color": "#000000"
+            },
+            {
+              "index": 5,
+              "text": "GNNs",
+              "color": "#000000"
+            },
+            {
+              "index": 6,
+              "text": ") and ",
+              "color": "#000000"
+            },
+            {
+              "index": 7,
+              "text": "embed",
+              "color": "#000000"
+            },
+            {
+              "index": 8,
+              "text": " first-",
+              "color": "#000000"
+            },
+            {
+              "index": 9,
+              "text": "principles",
+              "color": "#000000"
+            },
+            {
+              "index": 10,
+              "text": " ",
+              "color": "#000000"
+            },
+            {
+              "index": 11,
+              "text": "heat",
+              "color": "#000000"
+            },
+            {
+              "index": 12,
+              "text": "-flow ",
+              "color": "#000000"
+            },
+            {
+              "index": 13,
+              "text": "laws",
+              "color": "#000000"
+            },
+            {
+              "index": 14,
+              "text": " for ",
+              "color": "#000000"
+            },
+            {
+              "index": 15,
+              "text": "models",
+              "color": "#000000"
+            },
+            {
+              "index": 16,
+              "text": " ",
+              "color": "#000000"
+            },
+            {
+              "index": 17,
+              "text": "that",
+              "color": "#000000"
+            },
+            {
+              "index": 18,
+              "text": " are ",
+              "color": "#000000"
+            },
+            {
+              "index": 19,
+              "text": "both",
+              "color": "#000000"
+            },
+            {
+              "index": 20,
+              "text": " ",
+              "color": "#000000"
+            },
+            {
+              "index": 21,
+              "text": "accurate",
+              "color": "#000000"
+            },
+            {
+              "index": 22,
+              "text": " ",
+              "color": "#000000"
+            },
+            {
+              "index": 23,
+              "text": "and",
+              "color": "#000000",
+              "italic": true
+            },
+            {
+              "index": 24,
+              "text": " ",
+              "color": "#000000"
+            },
+            {
+              "index": 25,
+              "text": "physically",
+              "color": "#000000"
+            },
+            {
+              "index": 26,
+              "text": " ",
+              "color": "#000000"
+            },
+            {
+              "index": 27,
+              "text": "interpretable",
+              "color": "#000000"
+            },
+            {
+              "index": 28,
+              "text": ".",
+              "color": "#000000"
+            }
+          ],
+          "marginLeft": 342900
+        }
+      ]
+    },
+    {
+      "order": 5,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/sbm5cbix",
+      "id": "17",
+      "name": "Image 12",
+      "bbox": [
+        84,
+        82.16,
+        290.98,
+        242.37
+      ],
+      "rotation": 0,
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image7.png",
+        "contentType": "image/png",
+        "byteLength": 260676
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image7.png",
+        "contentType": "image/png",
+        "byteLength": 260676
+      }
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/a5kr2xg3",
+      "id": "16",
+      "name": "ZoneTexte 15",
+      "bbox": [
+        84,
+        330.66,
+        290.98,
+        45.24
+      ],
+      "rotation": 0,
+      "geometry": "rect",
+      "text": "Figure 2: A RC-network model for thermal zone [8]",
+      "textPreview": "Figure 2: A RC-network model for thermal zone [8]",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "Arial",
+        "color": "tx1",
+        "alignment": "left",
+        "wrap": "square",
+        "autoFit": "resizeShapeToFitText",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Figure 2: A RC-network model for thermal"
+          },
+          {
+            "index": 2,
+            "text": "zone [8]"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Figure 2: A RC-network model for thermal zone [8]",
+          "resolvedTextStyle": {
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Figure 2: ",
+              "fontSize": 14.67,
+              "typeface": "Times New Roman",
+              "bold": true,
+              "italic": true
+            },
+            {
+              "index": 2,
+              "text": "A RC-network model for thermal zone ",
+              "fontSize": 14.67,
+              "typeface": "Times New Roman",
+              "color": "#000000",
+              "bold": true
+            },
+            {
+              "index": 3,
+              "text": "[8]",
+              "fontSize": 14.67,
+              "typeface": "Times New Roman",
+              "bold": true,
+              "italic": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    }
+  ],
+  "composeRuns": []
+}

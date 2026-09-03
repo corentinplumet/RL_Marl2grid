@@ -1,0 +1,377 @@
+\chapter{\texorpdfstring{Cross-Grid Input Compatibility and Scaling}{Cross-Grid Input Compatibility and Scaling}}
+\label{ch:encoder-inputs}
+
+A GNN can process grids of different sizes, but this alone does
+not guarantee that its learned representation will transfer. The same input
+feature must also have a comparable numerical meaning on both grids. For
+example, an encoder trained on \texttt{bus14} may behave poorly on WCCI if a
+power or angle feature has a different scale or reference. This chapter checks
+that compatibility before evaluating transfer.
+\\
+\\
+The comparison concerns the graph encoder used by the actors.
+The critic already receives a normalized flat observation and remains specific
+to each grid. By contrast, the transferred encoder initially reads raw graph
+features because physical scaling and running standardization are disabled.
+Its inputs must therefore be checked directly.
+
+
+\section{Measurement protocol}
+\label{sec:wcci-protocol}
+
+A do-nothing policy is run for 6{,}000 environment steps on
+each grid. Each chronic contributes at most 300 steps, which spreads the sample
+over roughly twenty scenarios instead of concentrating it in one. At every
+step, the local graph of each agent is rebuilt and all visible nodes are
+recorded. All the agents are pooled because they use the same encoder. The final
+sample contains 426{,}000 node observations for \texttt{bus14} and
+1{,}236{,}000 for WCCI.
+\\
+\\
+Only node features are compared. In this graph schema, the nine
+edge channels only identify relation types and contain no continuous physical
+measurements.
+\\
+\\
+Three statistics describe the difference between each pair of
+feature distributions. Let $A$ denote \texttt{bus14} and $B$ denote WCCI, with
+empirical distributions $F_A$ and $F_B$, means $\mu_A$ and $\mu_B$, and
+standard deviations $\sigma_A$ and $\sigma_B$. The pooled spread is
+$\sigma_p=\sqrt{(\sigma_A^2+\sigma_B^2)/2}$.
+\begin{align}
+  \text{offset} &= \frac{\mu_B-\mu_A}{\sigma_p},
+  &\text{scale ratio} &= \frac{\sigma_B}{\sigma_A},
+  &\mathrm{KS} &= \sup_x |F_A(x)-F_B(x)| . \label{eq:offset-scale}
+\end{align}
+A positive offset means that WCCI has the higher mean. A scale
+ratio above one means that WCCI has the wider distribution. The
+Kolmogorov--Smirnov (KS) statistic is the largest difference between the two
+empirical cumulative distributions and lies between zero and one.
+\\
+\\
+These statistics describe different problems. The offset
+detects a shift in the centre, while the scale ratio detects a change in spread.
+KS summarizes the remaining disagreement. A feature is easiest to transfer
+when its offset is near zero and its scale ratio is near one.
+
+
+\section{What the encoder reads}
+\label{sec:wcci-features}
+
+The transfer study uses the disaggregated line-node graph. Its
+twelve node channels are listed in
+Table~\ref{tab:heterogeneous-line-node-features}. All node types use the same
+feature vector, although most channels apply to only one type. The remaining
+entries are set to zero, so the feature matrix is sparse by construction. For
+example, \texttt{rho} is defined on transmission-line nodes and is zero on
+busbars, generators and loads. These zeros indicate that the feature does not
+apply to the node; they are not physical measurements equal to zero.
+\\
+\\
+This sparsity can hide differences between the grids because
+the shared zeros dominate the complete distribution. The analysis therefore
+reports each feature both over all rows and over only the rows on which it is
+defined. For example, the \texttt{p} and \texttt{theta} results combine
+generator and load nodes, while \texttt{rho} uses transmission-line nodes.
+Channels that remain constant under the do-nothing policy are kept in the table
+for completeness, but they provide little information about cross-grid
+compatibility.
+
+
+\section{Results}
+\label{sec:wcci-results}
+
+Table~\ref{tab:wcci-shift} reports each statistic in two ways.
+The first uses all sampled rows, including the structural zeros. The second
+keeps only rows on which the feature is defined. The second view gives the
+clearer comparison of the physical measurements.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Distribution differences between \texttt{bus14} and WCCI on the
+  disaggregated line-node graph. Offset is measured in pooled standard
+  deviations, and the scale ratio is WCCI divided by \texttt{bus14}. The final
+  three columns keep only rows on which each measurement is defined. Type
+  indicators and \texttt{domain\_mask} have no such restricted view. A constant
+  channel has no defined scale ratio.}
+  \label{tab:wcci-shift}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{lrrrrrrrr}
+    \toprule
+    & \multicolumn{2}{c}{Zeros (\%)} & \multicolumn{3}{c}{All sampled rows}
+    & \multicolumn{3}{c}{Applicable rows} \\
+    \cmidrule(lr){2-3}\cmidrule(lr){4-6}\cmidrule(lr){7-9}
+    Channel & \texttt{bus14} & WCCI & offset & ratio & KS & offset & ratio & KS \\
+    \midrule
+    \texttt{theta}  & 77.5 & 73.8 & $+0.653$ & 0.83 & 0.157 & $+1.864$ & 1.43 & \textbf{0.678} \\
+    \texttt{p}      & 77.8 & 76.7 & $-0.037$ & 2.14 & 0.042 & $-0.158$ & \textbf{2.54} & 0.201 \\
+    \texttt{rho}    & 63.4 & 63.6 & $-0.088$ & 0.92 & 0.053 & $-0.260$ & 1.05 & 0.141 \\
+    \texttt{line\_status} & 63.4 & 63.6 & $-0.005$ & 1.00 & 0.002 & \multicolumn{3}{c}{constant at one} \\
+    \texttt{timestep\_overflow} & 100 & 100 & $-0.002$ & 0.70 & 0.000 & $-0.004$ & 0.70 & 0.000 \\
+    \texttt{time\_before\_cooldown\_line} & 100 & 100 & N/A & N/A & 0.000 & \multicolumn{3}{c}{constant} \\
+    \texttt{time\_before\_cooldown\_sub}  & 100 & 100 & N/A & N/A & 0.000 & \multicolumn{3}{c}{constant} \\
+    \midrule
+    \texttt{is\_busbar}   & 60.6 & 65.0 & $-0.093$ & 0.98 & 0.045 & \multicolumn{3}{c}{N/A} \\
+    \texttt{is\_generator} & 91.5 & 89.3 & $+0.076$ & 1.11 & 0.022 & \multicolumn{3}{c}{N/A} \\
+    \texttt{is\_load}      & 84.5 & 82.0 & $+0.066$ & 1.06 & 0.025 & \multicolumn{3}{c}{N/A} \\
+    \texttt{is\_transmission\_line} & 63.4 & 63.6 & $-0.004$ & 1.00 & 0.002 & \multicolumn{3}{c}{N/A} \\
+    \texttt{domain\_mask}  & 0 & 0 & N/A & N/A & 0.000 & \multicolumn{3}{c}{constant at one} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\noindent Over all rows, no channel reaches $\mathrm{KS}=0.2$ because the
+many zeros hide the differences. On the applicable rows, \texttt{theta} has
+$\mathrm{KS}=0.678$ and an offset of $+1.86$ standard deviations, while
+\texttt{p} is $2.54$ times wider on WCCI. The type indicators differ little,
+showing a similar mix of busbars, assets and transmission lines.
+\\
+\\
+The raw ranges tell the same story. Power spans $[0,97]$~MW on
+\texttt{bus14} and $[-281,399]$~MW on WCCI, where $7.8\,\%$ of asset rows are
+negative. These values come mainly from WCCI load profiles: a negative load is
+a net injection rather than consumption. They are retained because the sign is
+physical, and they lie outside the range seen during \texttt{bus14} training.
+Angles span $[-11.6,1.5]$ and $[-7.1,16.8]$ degrees. Power therefore differs in
+both scale and support, while the angle distribution mainly shifts its centre.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{figures/wcci_feature_distributions.png}
+  \caption{Feature distributions on the rows where each channel is defined. \texttt{rho} is
+  similar on both grids. \texttt{p} has a much wider range on WCCI, while
+  \texttt{theta} is mainly shifted rather than widened. The last panel reports
+  the KS statistic.}
+  \label{fig:wcci-distributions}
+\end{figure}
+
+
+\section{Scale changes and offsets}
+\label{sec:wcci-interpretation}
+
+Figure~\ref{fig:wcci-offset-scale} separates a change in centre
+from a change in spread. Each point represents one feature. The horizontal axis
+shows the absolute offset, and the vertical axis shows the scale ratio on a
+logarithmic scale. A feature near the bottom-left corner has a similar centre
+and spread on both grids. The left panel shows the raw inputs, while the right
+panel shows the transformed inputs discussed in
+Section~\ref{sec:wcci-corrected}.
+\\
+\\
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{figures/wcci_feature_offset_scale.png}
+  \caption{Absolute offset against scale ratio on the rows where each channel
+  is defined. The
+  shaded band marks scale ratios close to one, and the dotted vertical line
+  marks an offset of $0.3$ pooled standard deviations. The left panel uses raw
+  features. The right panel uses the transformations from
+  Section~\ref{sec:wcci-correction}. The largest offset falls from $1.86$ to
+  $0.81$, although \texttt{p} gains a larger offset.}
+  \label{fig:wcci-offset-scale}
+\end{figure}
+
+\newpage
+
+\noindent The raw distributions reveal two different
+mismatches. The \texttt{p} channel differs in scale and includes negative WCCI
+values that were not seen during source training, while \texttt{theta} has an
+offset of $1.86$ pooled standard deviations. These observations motivate
+testing deterministic power scaling and a reference-independent angle
+representation.
+\\
+\\
+The \texttt{rho} channel is already comparable. Its scale ratio
+is $1.05$ and its offset is $-0.26$. This is expected because \texttt{rho}
+divides the loading of each transmission line by its own thermal limit. It shows
+the value of using grid-relative quantities when the physics allows it.
+
+
+\section{Transforming the inputs}
+\label{sec:wcci-correction}
+
+We explore provides two forms of preprocessing. Physical scaling
+divides a feature by a fixed constant defined from grid metadata. Running
+standardization instead estimates a mean and standard deviation during
+training. The implementation keeps separate statistics for each node type, so
+the sparse feature blocks do not contaminate one another. It standardizes
+continuous channels such as \texttt{p} and \texttt{theta}, but deliberately
+leaves \texttt{rho} unchanged.
+
+\subsection{Running standardization does not align a new grid}
+\label{sec:wcci-running-norm}
+
+During source training, running standardization can centre and
+scale the \texttt{bus14} inputs and the resulting statistics are saved. In strict zero-shot transfer, they must remain frozen: both grids
+use the same transformation $(x-\mu_{14})/\sigma_{14}$. This centres
+\texttt{bus14}, but WCCI keeps its relative offset and scale difference.
+Without clipping, applying the same monotonic affine transformation to both
+grids also leaves their KS distance unchanged. Running standardization may help
+source training, but it is not a cross-grid alignment method.
+
+\subsection{Physical scaling for the power channels}
+\label{sec:wcci-physical-scaling}
+
+Physical scaling divides the power channels by the largest
+generator capacity in each environment, as defined in
+Section~\ref{subsec:graph-feature-normalization}. Scaling leaves the
+structural zeros at zero, and the divisor is fixed before training. The largest
+generator is only an approximate measure of grid size, so
+Table~\ref{tab:wcci-normalizer} compares it with several alternatives. Among
+the tested choices, it brings the power spreads closest to equality.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Candidate power normalizers and the resulting \texttt{p} scale ratio
+  on asset nodes. A ratio of $1.00$ is ideal. Without scaling, the ratio is
+  $2.54$.}
+  \label{tab:wcci-normalizer}
+  \setlength{\tabcolsep}{8pt}
+  \begin{tabular}{lrrr}
+    \toprule
+    Divisor & \texttt{bus14} & WCCI & Resulting ratio \\
+    \midrule
+    \textbf{Maximum $P_{\max}$ (used)} & 140 & 400 & \textbf{0.89} \\
+    Total $P_{\max}$ & 540 & 2{,}450 & 0.56 \\
+    Generator count & 6 & 22 & 0.69 \\
+    Median $P_{\max}$ & 85 & 71 & 3.04 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Replacing absolute voltage angles}
+\label{sec:wcci-angle-representation}
+
+Scaling cannot solve the angle problem. Absolute voltage angles
+are measured relative to the slack bus, and the two grids use different slack
+locations. The shift in Figure~\ref{fig:wcci-distributions} is therefore partly
+caused by the reference choice rather than by a physical difference between the
+grids.
+\\
+\\
+The solution is to use the angle difference across each
+transmission line, as described in Section~\ref{sec:line-node-angle}. This
+difference does not depend on the slack-bus reference. It is stored on the
+transmission-line node, which is also more common than the generator and load
+nodes that carry the absolute angle. Both environments therefore replace
+absolute angles with line-angle differences. This changes both the physical
+quantity and the node type that carries it; it is a new representation rather
+than a rescaling of the original channel.
+
+\subsection{Results of the transformations}
+\label{sec:wcci-corrected}
+
+Table~\ref{tab:wcci-corrected} evaluates both transformations
+under the same protocol as the raw inputs. The right panel of
+Figure~\ref{fig:wcci-offset-scale} shows the result. The angle difference now
+behaves similarly to \texttt{rho}, and the power-scale ratio is within
+$11\,\%$ of one.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Distribution differences for the original and transformed inputs
+  after enabling
+  \texttt{gnn\_angle\_representation = edge\_diff} and
+  \texttt{gnn\_physical\_scaling = true}. Statistics are computed on the node
+  rows where each channel is defined. The offset is retained because scaling
+  each grid by a different constant can also move the centre.}
+  \label{tab:wcci-corrected}
+  \setlength{\tabcolsep}{6pt}
+  \begin{tabular}{lrrr|rrr}
+    \toprule
+    & \multicolumn{3}{c|}{Original} & \multicolumn{3}{c}{Transformed} \\
+    \cmidrule(lr){2-4}\cmidrule(lr){5-7}
+    Channel & offset & ratio & KS & offset & ratio & KS \\
+    \midrule
+    \texttt{theta}      & $+1.864$ & 1.43 & 0.678 & \multicolumn{3}{c}{replaced} \\
+    \texttt{theta\_diff} & \multicolumn{3}{c|}{N/A} & $-0.383$ & \textbf{1.15} & \textbf{0.230} \\
+    \texttt{p}          & $-0.158$ & 2.54 & 0.201 & $-0.808$ & \textbf{0.89} & 0.511 \\
+    \texttt{rho}        & $-0.260$ & 1.05 & 0.141 & $-0.260$ & 1.05 & 0.141 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\noindent The angle transformation clearly improves cross-grid
+compatibility. Replacing the absolute angle with a reference-independent
+difference reduces KS from $0.678$ to $0.230$, while the scale ratio remains
+close to one. Because the two channels describe different quantities on
+different node types, this is a comparison between representations rather than
+a direct normalization of the same variable.
+\\
+\\
+The power transformation involves a trade-off. Scaling
+improves the spread ratio from $2.54$ to $0.89$, but it increases the offset from $-0.158$
+to $-0.808$ and raises KS from $0.201$ to $0.511$. The reason is that
+the mean sampled generator output represents about $39\,\%$ of the largest
+generator capacity on \texttt{bus14}, but only $20\,\%$ on WCCI. These values
+do not describe the utilization of each individual generator. Dividing by the
+largest generator capacity therefore places typical outputs at different
+numerical levels on the two grids.
+\\
+\\
+The evidence supports the angle representation, while power
+scaling remains uncertain. The transformed-input condition combines both
+transformations as an experimental condition, while the raw-input condition
+keeps the original features as a control.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{figures/wcci_feature_corrected.png}
+  \caption{Transformed feature distributions. The angle difference is centred in
+  a similar region on both grids, and the scaled power channels now have similar
+  widths. Compare with the raw distributions in
+  Figure~\ref{fig:wcci-distributions}.}
+  \label{fig:wcci-corrected}
+\end{figure}
+
+\section{Inputs retained for transfer}
+\label{sec:wcci-corrected-inputs}
+
+The transfer experiments retain two input conditions. The raw-input condition
+uses the original graph features. The transformed-input condition divides power
+by the largest generator on each grid and replaces absolute voltage angles with
+line-angle differences. Running standardization is disabled because frozen
+source statistics cannot align WCCI in strict zero-shot transfer. Comparing
+otherwise matched raw-input and transformed-input models isolates the effect of
+deterministic input preprocessing. The later bridge experiments separately
+study the effect of source pretraining in
+Chapters~\ref{ch:encoder-transfer-bridge} and~\ref{ch:screen-f-transfer}.
+\\
+\\
+\begin{tcolorbox}[
+  colframe=red!75!black,
+  colback=red!5!white,
+  title=Chapter 8 Summary: Cross-Grid Input Compatibility and Scaling]
+\textbf{Purpose:} Check whether the shared encoder receives
+comparable numerical inputs on \texttt{bus14} and WCCI.
+\\
+\\
+\textbf{Content:} Do-nothing rollouts provide $426{,}000$
+\texttt{bus14} and $1{,}236{,}000$ WCCI graph-node entries. Each feature is
+compared using its offset, scale ratio and KS statistic.
+\\
+\\
+\textbf{Findings:}
+\begin{itemize}
+  \item \texttt{rho} is already comparable because each line
+  loading is divided by its own thermal limit.
+  \item WCCI power has a wider range and includes negative net
+  injections that are absent from the sampled \texttt{bus14} inputs.
+  \item Replacing absolute angles with line-angle differences
+  reduces angle KS from $0.678$ to $0.230$.
+  \item Power scaling improves the spread ratio from $2.54$ to
+  $0.89$, but increases the offset from $-0.158$ to $-0.808$.
+  \item Type-aware running standardization preserves sparse
+  zeros, but frozen source statistics cannot align WCCI in strict zero-shot
+  transfer.
+\end{itemize}
+\textbf{Takeaway:} The angle transformation is supported by the
+distribution analysis, whereas power scaling has mixed effects. The raw-input
+and transformed-input conditions are therefore both evaluated. Target-specific
+standardization would be a separate calibration experiment rather than strict
+zero-shot transfer.
+\end{tcolorbox}

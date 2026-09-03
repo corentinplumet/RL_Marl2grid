@@ -1,0 +1,205 @@
+\chapter{Graph-Policy Implementation Reference}
+\label{app:gine-architecture}
+
+This appendix keeps only the implementation details needed to reproduce the
+graph actors: candidate-action metadata, exact input inventories, masking
+rules, and decentralized information boundaries.
+
+\section{Candidate-action scorer implementation}
+\label{app:candidate-scorer-details}
+
+A Grid2Op action is mapped once to the graph rows of the line endpoints,
+generators, loads, and substations that it modifies. All busbars of a modified
+substation are included so that both the current and destination contexts are
+available. A boundary action uses only rows already present in the local graph.
+For example, moving one endpoint of line 4 at substation 6 maps to the two
+busbar rows of substation 6 and the line-node row of line 4.
+
+Candidates touch different numbers of nodes, so their row lists are padded to
+one tensor width and a Boolean mask removes the padding during aggregation.
+The optional descriptor $\boldsymbol\phi_j$ adds five binary operation types
+and seven counts, normalized within the agent's action space.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Static candidate-action descriptor $\boldsymbol\phi_j$.}
+  \label{tab:candidate-action-features}
+  \label{tab:candidate-metadata-example}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{L{0.27\textwidth}L{0.63\textwidth}}
+    \toprule
+    Block & Entries \\
+    \midrule
+    Binary indicators & Do nothing; modifies a substation; touches a line,
+      load, or generator \\
+    Scaled counts & Modified substations and topology entries; line-status and
+      line-endpoint changes; generator, load, and other changes \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Exact graph inputs}
+
+All node types in one representation share a common feature width; unavailable
+columns are zero. Inactive candidate nodes are entirely zeroed, disconnected,
+and excluded from readout.
+
+\subsection{Node inputs}
+\label{sec:gnn-node-input-inventory}
+
+\begin{table}[H]
+  \centering
+  \scriptsize
+  \caption{Nonzero node inputs under the default node-angle representation.
+  With \texttt{edge\_diff}, equipment angles leave the node rows; the busbar
+  and disaggregated schemas place the angle difference on the transmission-line
+  edge, while the line-node schema stores \texttt{theta\_diff} on the line row.}
+  \label{tab:gine-gat-node-inventory}
+  \label{tab:graph-node-features}
+  \label{tab:heterogeneous-node-features}
+  \label{tab:heterogeneous-line-node-features}
+  \setlength{\tabcolsep}{3pt}
+  \begin{tabular}{L{0.18\textwidth}L{0.17\textwidth}L{0.56\textwidth}}
+    \toprule
+    Representation & Node type & Populated input features \\
+    \midrule
+    \texttt{bus} & Busbar & \texttt{gen\_p}, \texttt{gen\_theta}, \texttt{load\_p}, \texttt{load\_theta}, \texttt{time\_before\_cooldown\_sub}, \texttt{domain\_mask} \\
+    \midrule
+    disaggregated & Busbar & \texttt{is\_busbar}, \texttt{time\_before\_cooldown\_sub}, \texttt{domain\_mask} \\
+     & Generator & \texttt{is\_generator}, \texttt{p}, \texttt{theta}, \texttt{domain\_mask} \\
+     & Load & \texttt{is\_load}, \texttt{p}, \texttt{theta}, \texttt{domain\_mask} \\
+    \midrule
+    disaggregated line-node & Busbar & \texttt{is\_busbar}, \texttt{time\_before\_cooldown\_sub}, \texttt{domain\_mask} \\
+     & Generator/load & Type indicator, \texttt{p}, \texttt{theta}, \texttt{domain\_mask} \\
+     & Transmission line & \texttt{is\_transmission\_line}, \texttt{line\_status}, \texttt{rho}, overflow and cooldown counters, optional maintenance times, \texttt{domain\_mask} \\
+    \midrule
+    Augmented schema & Summary/virtual node & Learned structural vector; no raw physical feature row \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Edge inputs}
+\label{sec:gnn-edge-input-inventory}
+
+\begin{table}[H]
+  \centering
+  \scriptsize
+  \caption{Directed relations and edge inputs. Under \texttt{edge\_diff},
+  the transmission-line block of the busbar and disaggregated schemas also
+  contains \texttt{theta\_diff}.}
+  \label{tab:gine-gat-edge-inventory}
+  \label{tab:graph-edge-features}
+  \label{tab:heterogeneous-edge-features}
+  \label{tab:heterogeneous-line-edge-features}
+  \label{tab:same-substation-augmentation-features}
+  \setlength{\tabcolsep}{3pt}
+  \begin{tabular}{L{0.18\textwidth}L{0.28\textwidth}L{0.45\textwidth}}
+    \toprule
+    Representation & Directed relation & Edge inputs \\
+    \midrule
+    \texttt{bus} & Busbar $\leftrightarrow$ busbar & Transmission-line state; structural relations use an all-zero row \\
+    \midrule
+    disaggregated & Busbar $\leftrightarrow$ busbar & Transmission-line state plus line-relation indicator \\
+     & Generator/load $\leftrightarrow$ busbar & Zero physical block plus direction-specific relation \\
+     & Same-substation busbars & \texttt{relation\_same\_substation\_busbar}$=1$; other entries zero \\
+    \midrule
+    disaggregated line-node & Busbar $\leftrightarrow$ line node & Origin/extremity-and-direction relation; line state is stored on the line node \\
+     & Generator/load $\leftrightarrow$ busbar & Direction-specific relation \\
+     & Same-substation busbars & \texttt{relation\_same\_substation\_busbar}$=1$; other entries zero \\
+    \midrule
+    Augmented schema & Busbar $\leftrightarrow$ summary/virtual & Zero edge vector \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Deterministic physical scales}
+\label{app:physical-scales}
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Fixed scales used for continuous graph inputs.}
+  \label{tab:graph-physical-scales}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{L{0.34\textwidth}L{0.25\textwidth}L{0.31\textwidth}}
+    \toprule
+    Features & Scale & Source \\
+    \midrule
+    Power inputs & Largest generator rating & Grid model \\
+    Angles and angle differences & $180$ degrees & Fixed angular scale \\
+    Substation/line cooldown & Corresponding maximum & Grid2Op parameter \\
+    Overflow counter & Allowed overflow duration & Grid2Op parameter \\
+    Maintenance time/duration & Episode horizon & Chronic horizon \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Graph construction and local boundaries}
+\label{app:graph-construction}
+
+\subsection{Candidate sizes and masking}
+\label{app:graph-sizes}
+\label{app:graph-indexing}
+
+Let $S$, $B$, $L$, $N_g$, and $N_d$ denote the included substations,
+busbars per substation, transmission lines, generators, and loads. Attachment
+directions $d_g,d_d,d_\ell$ equal one or two, and $P_\ell$ is the number of
+represented line endpoints.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Candidate graph size before masking. Self edges add
+  $|\mathcal V|$ edges and same-substation edges add $SB(B-1)$.}
+  \label{tab:appendix-graph-sizes}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{L{0.24\textwidth}L{0.26\textwidth}L{0.38\textwidth}}
+    \toprule
+    Schema & Candidate nodes & Candidate directed edges \\
+    \midrule
+    \texttt{bus} & $SB$ & $2B^2L$ \\
+    disaggregated & $SB+N_g+N_d$ & $2B^2L+B(d_gN_g+d_dN_d)$ \\
+    disaggregated line-node & $SB+N_g+N_d+L$ & $Bd_\ell P_\ell+B(d_gN_g+d_dN_d)$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Candidate rows stay at fixed indices throughout an episode. An inactive edge
+is zeroed and removed with \texttt{edge\_mask}; an inactive node and all its
+incident edges are zeroed, and \texttt{node\_mask} excludes it from readout.
+Topology changes therefore update masks without rebuilding tensor shapes.
+
+\subsection{Substation augmentations}
+\label{app:graph-augmentation-details}
+
+Direct same-substation edges and summary nodes are added only to controlled
+busbars. The busbar schema represents a direct structural edge with an all-zero
+edge row; the other schemas activate the typed same-substation relation shown
+in Table~\ref{tab:same-substation-augmentation-features}. A summary node uses a
+learned structural vector and zero-valued attachment edges. Neither
+augmentation exposes additional contextual equipment.
+
+\subsection{Decentralized information boundary}
+\label{app:local-graphs}
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Information from another agent's domain visible to a local actor.}
+  \label{tab:local-information-boundary}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{L{0.24\textwidth}L{0.64\textwidth}}
+    \toprule
+    Representation & Neighbor information available \\
+    \midrule
+    busbar & Shared-line edge and attached far-end busbar, including aggregated generator/load power and angles \\
+    disaggregated & Shared-line edge and attached far-end busbar; no neighboring generator/load nodes or private-asset state \\
+    disaggregated line-node & Shared-line node only; no neighboring busbar, equipment, or far-end attachment \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The centralized critic remains unrestricted during training. Regression tests
+verify masking, topology-dependent context, and the absence of neighboring
+private assets from local actor graphs.
